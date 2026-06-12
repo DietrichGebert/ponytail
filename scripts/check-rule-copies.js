@@ -8,18 +8,20 @@ function read(relPath) {
   return fs.readFileSync(path.join(root, relPath), 'utf8').replace(/\r\n/g, '\n').trim();
 }
 
-function stripCursorFrontmatter(text) {
+function stripFrontmatter(text) {
   return text.replace(/^---\n[\s\S]*?\n---\n*/, '').trim();
 }
 
 const agents = read('AGENTS.md');
 const canonical = agents.replace(/\n\n\(Yes, this file also applies[\s\S]*?\)$/, '').trim();
 
+// Compact copies: same body as AGENTS.md, host-specific frontmatter stripped.
 const copies = [
-  ['.cursor/rules/ponytail.mdc', stripCursorFrontmatter],
+  ['.cursor/rules/ponytail.mdc', stripFrontmatter],
   ['.windsurf/rules/ponytail.md', text => text.trim()],
   ['.clinerules/ponytail.md', text => text.trim()],
   ['.github/copilot-instructions.md', text => text.trim()],
+  ['.kiro/steering/ponytail.md', stripFrontmatter],
 ];
 
 let failed = false;
@@ -32,9 +34,32 @@ for (const [relPath, normalize] of copies) {
   }
 }
 
+// SKILL.md is the runtime source of truth and is longer than the compact body,
+// so it cannot be byte-compared. ponytail: canary, not full equality. Assert the
+// load-bearing rules survive verbatim in both the source and AGENTS.md. Changing
+// a rule's wording trips this, which is the reminder to propagate it everywhere.
+// Upgrade path: generate the copies from SKILL.md if this ever misses a real drift.
+const INVARIANTS = [
+  'naive heuristic',                       // ceiling-comment rule
+  'ONE runnable check',                    // test reflex
+  'flimsier algorithm',                    // robust-variant rule
+  'input validation at trust boundaries',  // the "not lazy about" clause
+];
+
+const skill = read('skills/ponytail/SKILL.md');
+const sources = [['skills/ponytail/SKILL.md', skill], ['AGENTS.md', agents]];
+for (const phrase of INVARIANTS) {
+  for (const [label, text] of sources) {
+    if (!text.includes(phrase)) {
+      console.error(`${label} is missing rule invariant: "${phrase}"`);
+      failed = true;
+    }
+  }
+}
+
 if (failed) {
-  console.error('Update the copied rule text or AGENTS.md so the shared body matches.');
+  console.error('Update the copied rule text, AGENTS.md, or SKILL.md so the shared rules match.');
   process.exit(1);
 }
 
-console.log('Rule copies match AGENTS.md shared body.');
+console.log(`Rule copies match AGENTS.md; ${INVARIANTS.length} rule invariants present in SKILL.md and AGENTS.md.`);
