@@ -67,6 +67,8 @@ Active every session. `/ponytail-review` finds what to delete in your diff. `/po
 
 Cursor, Windsurf, Cline, Copilot, Aider: copy the matching rules file from this repo ([`.cursor/rules/`](.cursor/rules/), [`.windsurf/rules/`](.windsurf/rules/), [`.clinerules/`](.clinerules/), [`.github/copilot-instructions.md`](.github/copilot-instructions.md), [`AGENTS.md`](AGENTS.md)).
 
+Pi (oh-my-pi): copy the [`skills/`](skills/) directory contents to `~/.pi/agent/skills/` (global) or `.pi/skills/` in your project (project-scoped). Pi discovers them natively — no extra config.
+
 ## FAQ
 
 **Does it need a config file?**
