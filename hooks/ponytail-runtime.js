@@ -3,9 +3,12 @@ const path = require('path');
 const os = require('os');
 
 const isCodex = Boolean(process.env.PLUGIN_DATA);
+const isOpenCode = Boolean(process.env.OPENCODE_PLUGIN_ROOT);
 const statePath = isCodex
   ? path.join(process.env.PLUGIN_DATA, '.ponytail-active')
-  : path.join(os.homedir(), '.claude', '.ponytail-active');
+  : isOpenCode
+    ? path.join(os.homedir(), '.config', 'opencode', '.ponytail-active')
+    : path.join(os.homedir(), '.claude', '.ponytail-active');
 
 function setMode(mode) {
   fs.mkdirSync(path.dirname(statePath), { recursive: true });

@@ -1,5 +1,11 @@
-$Flag = Join-Path $HOME ".claude/.ponytail-active"
-if (-not (Test-Path $Flag)) {
+$FlagOpenCode = Join-Path $HOME ".config/opencode/.ponytail-active"
+$FlagClaude = Join-Path $HOME ".claude/.ponytail-active"
+
+if (Test-Path $FlagOpenCode) {
+    $Flag = $FlagOpenCode
+} elseif (Test-Path $FlagClaude) {
+    $Flag = $FlagClaude
+} else {
     exit 0
 }
 

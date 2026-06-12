@@ -1,10 +1,10 @@
 #!/usr/bin/env node
-// ponytail — Claude Code SessionStart activation hook
+// ponytail — SessionStart activation hook (Claude Code + OpenCode)
 //
 // Runs on every session start:
-//   1. Writes flag file at ~/.claude/.ponytail-active (statusline reads this)
+//   1. Writes flag file (statusline reads this)
 //   2. Emits ponytail ruleset as hidden SessionStart context
-//   3. Detects missing statusline config and emits setup nudge
+//   3. Detects missing statusline config and emits setup nudge (Claude Code only)
 
 const fs = require('fs');
 const path = require('path');
@@ -18,8 +18,12 @@ const {
   writeHookOutput,
 } = require('./ponytail-runtime');
 
-const claudeDir = path.join(os.homedir(), '.claude');
-const settingsPath = path.join(claudeDir, 'settings.json');
+const isOpenCode = Boolean(process.env.OPENCODE_PLUGIN_ROOT);
+const statePath = isOpenCode
+  ? path.join(os.homedir(), '.config', 'opencode', '.ponytail-active')
+  : isCodex
+    ? path.join(process.env.PLUGIN_DATA, '.ponytail-active')
+    : path.join(os.homedir(), '.claude', '.ponytail-active');
 
 const mode = getDefaultMode();
 
@@ -32,7 +36,8 @@ if (mode === 'off') {
 
 // 1. Write flag file
 try {
-  setMode(mode);
+  fs.mkdirSync(path.dirname(statePath), { recursive: true });
+  fs.writeFileSync(statePath, mode);
 } catch (e) {
   // Silent fail -- flag is best-effort, don't block the hook
 }
@@ -40,8 +45,11 @@ try {
 // 2. Emit the ponytail ruleset, filtered to the active intensity level.
 let output = getPonytailInstructions(mode);
 
-// 3. Detect missing statusline config — nudge Claude to help set it up
-if (!isCodex) try {
+// 3. Detect missing statusline config — nudge Claude to help set it up (Claude Code only)
+if (!isCodex && !isOpenCode) try {
+  const claudeDir = path.join(os.homedir(), '.claude');
+  const settingsPath = path.join(claudeDir, 'settings.json');
+  
   let hasStatusline = false;
   if (fs.existsSync(settingsPath)) {
     const settings = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));

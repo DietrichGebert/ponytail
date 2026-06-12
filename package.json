@@ -2,10 +2,15 @@
   "name": "ponytail",
   "version": "0.1.0",
   "description": "Lazy senior dev mode for AI agents. The best code is the code you never wrote.",
-  "keywords": ["pi-package", "pi", "skills", "ponytail"],
+  "keywords": ["pi-package", "pi", "skills", "ponytail", "opencode-plugin"],
   "license": "MIT",
   "pi": {
     "extensions": ["./pi-extension/index.js"],
     "skills": ["./skills"]
+  },
+  "opencode": {
+    "plugin": ".opencode/plugins/ponytail.js",
+    "skills": ".opencode/skills",
+    "commands": ".opencode/commands"
   }
 }

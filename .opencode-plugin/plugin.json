@@ -1,0 +1,15 @@
+{
+  "name": "ponytail",
+  "version": "4.1.0",
+  "description": "Lazy senior dev mode. Forces the simplest, shortest solution that actually works: YAGNI, stdlib first, no unrequested abstractions.",
+  "author": {
+    "name": "Dietrich Gebert",
+    "url": "https://github.com/DietrichGebert"
+  },
+  "compatibility": ["claude-code", "opencode", "codex"],
+  "opencode": {
+    "plugin": ".opencode/plugins/ponytail.js",
+    "skills": ".opencode/skills",
+    "commands": ".opencode/commands"
+  }
+}
