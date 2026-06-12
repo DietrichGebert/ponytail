@@ -67,6 +67,14 @@ Active every session. `/ponytail-review` finds what to delete in your diff. `/po
 
 Cursor, Windsurf, Cline, Copilot, Aider: copy the matching rules file from this repo ([`.cursor/rules/`](.cursor/rules/), [`.windsurf/rules/`](.windsurf/rules/), [`.clinerules/`](.clinerules/), [`.github/copilot-instructions.md`](.github/copilot-instructions.md), [`AGENTS.md`](AGENTS.md)).
 
+## Development
+
+When changing the compact rule text, keep the agent copies aligned:
+
+```bash
+node scripts/check-rule-copies.js
+```
+
 ## FAQ
 
 **Does it need a config file?**
