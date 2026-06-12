@@ -84,6 +84,8 @@ Cursor, Windsurf, Cline, Copilot, Aider, Kiro: copy the matching rules file from
 
 Kiro: copy `.kiro/steering/ponytail.md` to `~/.kiro/steering/` (global) or `.kiro/steering/` in your project.
 
+Which files map to which agent: [Agent portability](docs/agent-portability.md).
+
 ## Development
 
 When changing the compact rule text, keep the agent copies aligned:
