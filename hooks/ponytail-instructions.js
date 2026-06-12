@@ -12,14 +12,24 @@ function filterSkillBodyForMode(body, mode) {
   const effectiveMode = normalizeMode(mode) || DEFAULT_MODE;
   const withoutFrontmatter = String(body || '').replace(/^---[\s\S]*?---\s*/, '');
 
+  // Only the intensity table rows and worked examples are mode-specific, and
+  // both are keyed by a mode name (lite/full/ultra). A bullet whose label is
+  // not a mode — e.g. "No unrequested abstractions: ..." — is a normal rule
+  // and must be kept verbatim.
   return withoutFrontmatter
     .split(/\r?\n/)
     .filter((line) => {
-      const tableMatch = line.match(/^\|\s*\*\*(.+?)\*\*\s*\|/);
-      if (tableMatch) return tableMatch[1].trim() === effectiveMode;
+      const tableLabel = line.match(/^\|\s*\*\*(.+?)\*\*\s*\|/);
+      if (tableLabel) {
+        const labelMode = normalizeMode(tableLabel[1].trim());
+        if (labelMode) return labelMode === effectiveMode;
+      }
 
-      const exampleMatch = line.match(/^-\s*([^:]+):\s*/);
-      if (exampleMatch) return exampleMatch[1].trim() === effectiveMode;
+      const exampleLabel = line.match(/^-\s*([^:]+):\s*/);
+      if (exampleLabel) {
+        const labelMode = normalizeMode(exampleLabel[1].trim());
+        if (labelMode) return labelMode === effectiveMode;
+      }
 
       return true;
     })
