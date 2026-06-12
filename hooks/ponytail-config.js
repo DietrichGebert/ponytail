@@ -13,7 +13,25 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 
+const DEFAULT_MODE = 'full';
 const VALID_MODES = ['off', 'lite', 'full', 'ultra', 'review'];
+const RUNTIME_MODES = ['off', 'lite', 'full', 'ultra'];
+
+function normalizeMode(mode) {
+  if (typeof mode !== 'string') return null;
+  const normalized = mode.trim().toLowerCase();
+  return RUNTIME_MODES.includes(normalized) ? normalized : null;
+}
+
+function normalizeConfigMode(mode) {
+  if (typeof mode !== 'string') return null;
+  const normalized = mode.trim().toLowerCase();
+  return VALID_MODES.includes(normalized) ? normalized : null;
+}
+
+function normalizePersistedMode(mode) {
+  return normalizeMode(mode) || normalizeConfigMode(mode);
+}
 
 function getConfigDir() {
   if (process.env.XDG_CONFIG_HOME) {
@@ -51,7 +69,28 @@ function getDefaultMode() {
   }
 
   // 3. Default
-  return 'full';
+  return DEFAULT_MODE;
 }
 
-module.exports = { getDefaultMode, getConfigDir, getConfigPath, VALID_MODES };
+function writeDefaultMode(mode) {
+  const normalized = normalizeConfigMode(mode);
+  if (!normalized) return null;
+
+  const configPath = getConfigPath();
+  fs.mkdirSync(path.dirname(configPath), { recursive: true });
+  fs.writeFileSync(configPath, JSON.stringify({ defaultMode: normalized }, null, 2), 'utf8');
+  return normalized;
+}
+
+module.exports = {
+  DEFAULT_MODE,
+  VALID_MODES,
+  RUNTIME_MODES,
+  getDefaultMode,
+  getConfigDir,
+  getConfigPath,
+  normalizeMode,
+  normalizeConfigMode,
+  normalizePersistedMode,
+  writeDefaultMode,
+};

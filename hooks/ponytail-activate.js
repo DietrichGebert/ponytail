@@ -10,6 +10,7 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const { getDefaultMode } = require('./ponytail-config');
+const { getPonytailInstructions } = require('./ponytail-instructions');
 const {
   clearMode,
   isCodex,
@@ -37,99 +38,7 @@ try {
 }
 
 // 2. Emit the ponytail ruleset, filtered to the active intensity level.
-//    A short summary is too weak — models drift back to over-building
-//    mid-conversation, especially after context compression prunes it.
-//    Full rules with examples anchor behavior much more reliably.
-//
-//    Reads SKILL.md at runtime so edits to the source of truth propagate
-//    automatically — no hardcoded duplication to go stale.
-
-// Modes that have their own independent skill files — not intensity levels.
-// For these, emit a short activation line; the skill itself handles behavior.
-const INDEPENDENT_MODES = new Set(['review']);
-
-if (INDEPENDENT_MODES.has(mode)) {
-  writeHookOutput(
-    'SessionStart',
-    mode,
-    'PONYTAIL MODE ACTIVE — level: ' + mode + '. Behavior defined by /ponytail-' + mode + ' skill.',
-  );
-  process.exit(0);
-}
-
-// Read SKILL.md — the single source of truth for ponytail behavior.
-// Plugin installs: __dirname = <plugin_root>/hooks/, SKILL.md at <plugin_root>/skills/ponytail/SKILL.md
-let skillContent = '';
-try {
-  skillContent = fs.readFileSync(
-    path.join(__dirname, '..', 'skills', 'ponytail', 'SKILL.md'), 'utf8'
-  );
-} catch (e) { /* standalone install — will use fallback below */ }
-
-let output;
-
-if (skillContent) {
-  // Strip YAML frontmatter
-  const body = skillContent.replace(/^---[\s\S]*?---\s*/, '');
-
-  // Filter intensity table: keep header rows + only the active level's row
-  const filtered = body.split('\n').reduce((acc, line) => {
-    // Intensity table rows start with | **level** |
-    const tableRowMatch = line.match(/^\|\s*\*\*(\S+?)\*\*\s*\|/);
-    if (tableRowMatch) {
-      if (tableRowMatch[1] === mode) {
-        acc.push(line);
-      }
-      return acc;
-    }
-
-    // Example lines start with "- level:" — keep only lines matching active level
-    const exampleMatch = line.match(/^- (\S+?):\s/);
-    if (exampleMatch) {
-      if (exampleMatch[1] === mode) {
-        acc.push(line);
-      }
-      return acc;
-    }
-
-    acc.push(line);
-    return acc;
-  }, []);
-
-  output = 'PONYTAIL MODE ACTIVE — level: ' + mode + '\n\n' + filtered.join('\n');
-} else {
-  // Fallback when SKILL.md is not found (hook installed without skills dir).
-  // Minimum viable ruleset — better than nothing.
-  output =
-    'PONYTAIL MODE ACTIVE — level: ' + mode + '\n\n' +
-    'You are a lazy senior developer. Lazy means efficient, not careless. The best code is the code never written.\n\n' +
-    '## Persistence\n\n' +
-    'ACTIVE EVERY RESPONSE. No drift back to over-building. Still active if unsure. Off only: "stop ponytail" / "normal mode".\n\n' +
-    'Current level: **' + mode + '**. Switch: `/ponytail lite|full|ultra`.\n\n' +
-    '## The ladder\n\n' +
-    'Before any code, stop at the first rung that holds:\n' +
-    '1. Does this need to be built at all? (YAGNI)\n' +
-    '2. Does the standard library do this? Use it.\n' +
-    '3. Does a native platform feature cover it? Use it.\n' +
-    '4. Does an already-installed dependency solve it? Use it.\n' +
-    '5. Can this be one line? Make it one line.\n' +
-    '6. Only then: write the minimum code that works.\n\n' +
-    '## Rules\n\n' +
-    'No abstractions that were not requested. No avoidable dependencies. No boilerplate nobody asked for. ' +
-    'Deletion over addition. Boring over clever. Fewest files possible. ' +
-    'Ship the lazy version and question the complex request in the same response — never stall. ' +
-    'Between two same-size stdlib options, pick the one correct on edge cases. ' +
-    'Mark intentional simplifications with a `ponytail:` comment — a shortcut with a known ceiling names the ceiling and the upgrade path in the comment.\n\n' +
-    '## Output\n\n' +
-    'Code first. Then at most three short lines: what was skipped, when to add it. ' +
-    'If the explanation is longer than the code, delete the explanation.\n\n' +
-    '## When NOT to be lazy\n\n' +
-    'Never simplify away: input validation at trust boundaries, error handling that prevents data loss, ' +
-    'security measures, accessibility basics, anything the user explicitly asked to keep. ' +
-    'Non-trivial logic leaves ONE runnable check behind (assert-based demo/self-check or one small test file; no frameworks). Trivial one-liners need no test.\n\n' +
-    '## Boundaries\n\n' +
-    'Ponytail governs what you build, not how you talk. "stop ponytail" or "normal mode": revert. Level persists until changed or session end.';
-}
+let output = getPonytailInstructions(mode);
 
 // 3. Detect missing statusline config — nudge Claude to help set it up
 if (!isCodex) try {

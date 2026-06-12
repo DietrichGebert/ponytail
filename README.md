@@ -73,6 +73,12 @@ codex
 Open `/plugins`, select the Ponytail marketplace, and install Ponytail. Then
 open `/hooks`, review and trust its two lifecycle hooks, and start a new thread.
 
+### Pi agent harness
+
+```
+pi install git:github.com/DietrichGebert/ponytail
+```
+
 That was it. He'd be proud. He won't say it.
 
 Active every session. `/ponytail-review` finds what to delete in your diff. `/ponytail ultra` exists for when the codebase has wronged you personally. `/ponytail-help` explains the rest.
