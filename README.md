@@ -79,6 +79,16 @@ open `/hooks`, review and trust its two lifecycle hooks, and start a new thread.
 pi install git:github.com/DietrichGebert/ponytail
 ```
 
+### OpenCode
+
+Run OpenCode from a checkout of this repo (the plugin reuses its `hooks/` and `skills/`), and add to `opencode.json`:
+
+```json
+{ "plugin": ["./.opencode/plugins/ponytail.mjs"] }
+```
+
+Injects the ruleset every turn at the active level; adds `/ponytail` and `/ponytail-review`. OpenCode also auto-loads this repo's `AGENTS.md`, so the rules hold even without the plugin — the plugin adds the `lite/full/ultra/off` levels.
+
 That was it. He'd be proud. He won't say it.
 
 Active every session. `/ponytail-review` finds what to delete in your diff. `/ponytail ultra` exists for when the codebase has wronged you personally. `/ponytail-help` explains the rest.
