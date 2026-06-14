@@ -99,14 +99,15 @@ Run OpenCode from a checkout of this repo (the plugin reuses its `hooks/` and `s
 { "plugin": ["./.opencode/plugins/ponytail.mjs"] }
 ```
 
-Injects the ruleset every turn at the active level; adds `/ponytail` and `/ponytail-review`. OpenCode also auto-loads this repo's `AGENTS.md`, so the rules hold even without the plugin. The plugin adds the `lite/full/ultra/off` levels.
+Injects the ruleset every turn at the active level; adds `/ponytail`, `/ponytail-review`, and `/ponytail-audit`. OpenCode also auto-loads this repo's `AGENTS.md`, so the rules hold even without the plugin. The plugin adds the `lite/full/ultra/off` levels.
 
 That was it. He'd be proud. He won't say it.
 
-Active every session. `/ponytail-review` finds what to delete in your diff. `/ponytail ultra` exists for when the codebase has wronged you personally. `/ponytail-help` explains the rest.
+Active every session. `/ponytail-review` finds what to delete in your diff, `/ponytail-audit` does the same for the whole repo. `/ponytail ultra` exists for when the codebase has wronged you personally. `/ponytail-help` explains the rest.
 
-In Codex, invoke the skills as `@ponytail`, `@ponytail-review`, and
-`@ponytail-help`. Startup and mode-change text shows the current mode.
+In Codex, invoke the skills as `@ponytail`, `@ponytail-review`,
+`@ponytail-audit`, and `@ponytail-help`. Startup and mode-change text shows the
+current mode.
 
 Cursor, Windsurf, Cline, Copilot, Aider, Kiro: copy the matching rules file from this repo ([`.cursor/rules/`](.cursor/rules/), [`.windsurf/rules/`](.windsurf/rules/), [`.clinerules/`](.clinerules/), [`.github/copilot-instructions.md`](.github/copilot-instructions.md), [`AGENTS.md`](AGENTS.md), [`.kiro/steering/`](.kiro/steering/)).
 

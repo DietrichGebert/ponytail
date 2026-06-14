@@ -28,5 +28,6 @@ instructions, keep its copied rule text aligned with `AGENTS.md`.
 
 - `skills/ponytail/SKILL.md`: lazy senior dev mode
 - `skills/ponytail-review/SKILL.md`: over-engineering review
+- `skills/ponytail-audit/SKILL.md`: whole-repo over-engineering audit
 - `skills/ponytail-help/SKILL.md`: quick reference
 - `AGENTS.md`: compact always-on instruction set for agents without skill support
