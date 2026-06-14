@@ -11,7 +11,7 @@
 <p align="center">
   <img src="https://img.shields.io/github/stars/DietrichGebert/ponytail?style=flat-square&color=111111&label=stars" alt="Stars">
   <img src="https://img.shields.io/github/v/release/DietrichGebert/ponytail?style=flat-square&color=111111&label=release" alt="Release">
-  <img src="https://img.shields.io/badge/works%20with-10%20agents-111111?style=flat-square" alt="Works with 10 agents">
+  <img src="https://img.shields.io/badge/works%20with-11%20agents-111111?style=flat-square" alt="Works with 11 agents">
   <img src="https://img.shields.io/badge/license-MIT-111111?style=flat-square" alt="MIT license">
 </p>
 
@@ -100,6 +100,14 @@ Run OpenCode from a checkout of this repo (the plugin reuses its `hooks/` and `s
 ```
 
 Injects the ruleset every turn at the active level; adds `/ponytail` and `/ponytail-review`. OpenCode also auto-loads this repo's `AGENTS.md`, so the rules hold even without the plugin. The plugin adds the `lite/full/ultra/off` levels.
+
+### Gemini CLI
+
+```bash
+gemini extensions install https://github.com/DietrichGebert/ponytail
+```
+
+Loads the ruleset as always-on context every session and registers `/ponytail` and `/ponytail-review`; the `skills/` ship too, activated when a task needs them.
 
 That was it. He'd be proud. He won't say it.
 
