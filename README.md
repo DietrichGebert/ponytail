@@ -121,6 +121,8 @@ Cursor, Windsurf, Cline, Copilot, Aider, Kiro: copy the matching rules file from
 
 Kiro: copy `.kiro/steering/ponytail.md` to `~/.kiro/steering/` (global) or `.kiro/steering/` in your project.
 
+GitHub Copilot CLI: it already reads `AGENTS.md` and `.github/copilot-instructions.md` in a project, or copy the rules into `~/.copilot/copilot-instructions.md` to run ponytail in every project.
+
 Which files map to which agent: [Agent portability](docs/agent-portability.md).
 
 ## Development

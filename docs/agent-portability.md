@@ -16,6 +16,7 @@ to load in a given agent.
 | Windsurf | `.windsurf/rules/ponytail.md` | Project rule. |
 | Cline | `.clinerules/ponytail.md` | Project rule. |
 | GitHub Copilot | `.github/copilot-instructions.md` | Repository instruction file. |
+| GitHub Copilot CLI | `AGENTS.md`, `.github/copilot-instructions.md`, `~/.copilot/copilot-instructions.md` | Reads custom instructions: per-project from `AGENTS.md` or `.github/copilot-instructions.md`, or globally from `~/.copilot/copilot-instructions.md`. Instruction-tier (no `/ponytail` levels or hooks). |
 | Kiro | `.kiro/steering/ponytail.md` | Steering rule; copy globally or into a project. |
 | Generic agents | `AGENTS.md` or `skills/*/SKILL.md` | Copy the compact rule file or load the skill files directly. |
 
