@@ -16,6 +16,10 @@ function run(script, env, input = '') {
   });
 }
 
+// Keep the base env clean so the default-dir checks are deterministic; the
+// CLAUDE_CONFIG_DIR case sets it explicitly.
+delete process.env.CLAUDE_CONFIG_DIR;
+
 const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'ponytail-hooks-'));
 const home = path.join(temp, 'home');
 const pluginData = path.join(temp, 'plugin-data');
@@ -72,6 +76,27 @@ assert.equal(result.status, 0, result.stderr);
 assert.equal(
   fs.readFileSync(path.join(home, '.claude', '.ponytail-active'), 'utf8'),
   'full',
+);
+
+// CLAUDE_CONFIG_DIR overrides ~/.claude for the flag file (issue #34).
+const home2 = path.join(temp, 'home2');
+fs.mkdirSync(home2, { recursive: true });
+const customConfigDir = path.join(temp, 'custom-claude');
+result = run('ponytail-activate.js', {
+  HOME: home2,
+  USERPROFILE: home2,
+  CLAUDE_CONFIG_DIR: customConfigDir,
+  PONYTAIL_DEFAULT_MODE: 'lite',
+});
+assert.equal(result.status, 0, result.stderr);
+assert.equal(
+  fs.readFileSync(path.join(customConfigDir, '.ponytail-active'), 'utf8'),
+  'lite',
+);
+assert.equal(
+  fs.existsSync(path.join(home2, '.claude', '.ponytail-active')),
+  false,
+  'flag must not land in ~/.claude when CLAUDE_CONFIG_DIR is set',
 );
 
 fs.rmSync(temp, { recursive: true, force: true });
