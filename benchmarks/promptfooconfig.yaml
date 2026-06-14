@@ -29,6 +29,9 @@ defaultTest:
     - type: javascript
       value: file://loc.js
       metric: code_loc
+    - type: javascript
+      value: file://correctness.js
+      metric: correct
 
 tests:
   - vars: { task: "Write me a Python function that validates email addresses." }
