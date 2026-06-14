@@ -4,8 +4,7 @@ description: >
   Whole-codebase audit for over-engineering. Scans a repository and produces a
   ranked report of things to delete, simplify, or replace with stdlib/native
   equivalents. Covers: single-implementation abstractions, reinvented standard
-  libraries, unnecessary dependencies, speculative features, dead code,
-  over-modularization. Use when the user says "audit this codebase",
+  libraries, unnecessary dependencies. Use when the user says "audit this codebase",
   "audit for over-engineering", "what can I delete from this repo",
   "find bloat", "ponytail-audit", "/ponytail-audit", or "review the whole
   project for complexity". One-shot — produces a report, does not apply fixes.
@@ -62,16 +61,8 @@ Sample up to 20 source files (largest first, then random). For each:
 - Utility function duplicating a built-in → `stdlib: file X, util Y. Built-in Z does this.`
 - Error handling that swallows and re-throws identically → `shrink: file X, catch-and-rethrow. Remove wrapper.`
 - Comments that repeat the code → `delete: file X, comments restate the code. Code is the doc.`
-- TODO/FIXME older than 6 months → `delete: file X, stale TODO from [date]. Act or remove.`
 - Feature flag / config toggle never set to the alternate value → `yagni: file X, toggle Y always Z. Remove the branch.`
 - Logging/debug scaffolding in production paths → `delete: file X, debug logging. Replace with structured logger or remove.`
-
-### Phase 5: Structural audit
-
-- Source directory with fewer than 3 files → `shrink: dir X has N files. Merge or flatten.`
-- Package/namespace with no public API (everything internal) → `shrink: package X, no exports. Flatten into parent.`
-- Empty test file or test file with only imports/setup → `delete: test file X, no assertions.`
-- Build config for a module/target that produces nothing used → `delete: build target X, output unused.`
 
 ## Output format
 
@@ -102,10 +93,6 @@ Produce the report in this structure:
 - `<tag>` <finding>. [file/path]
 
 ## Code-level savings (<N> findings)
-
-- `<tag>` <finding>. [file/path]
-
-## Structural savings (<N> findings)
 
 - `<tag>` <finding>. [file/path]
 
