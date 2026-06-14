@@ -123,6 +123,8 @@ Kiro: copy `.kiro/steering/ponytail.md` to `~/.kiro/steering/` (global) or `.kir
 
 GitHub Copilot CLI: it already reads `AGENTS.md` and `.github/copilot-instructions.md` in a project, or copy the rules into `~/.copilot/copilot-instructions.md` to run ponytail in every project.
 
+Antigravity and VS Code with the Codex extension: both read `AGENTS.md`, which this repo ships, so it works from the repo root with no setup (`~/.codex/AGENTS.md` makes Codex global, `.agents/rules/` makes it an always-on rule in Antigravity).
+
 Which files map to which agent: [Agent portability](docs/agent-portability.md).
 
 ## Development
