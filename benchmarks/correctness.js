@@ -183,8 +183,10 @@ except Exception as e:
 output = sys.stdout.getvalue()
 sys.stdout = _stdout
 
-# Check output contains 351 (100.5 + 200.0 + 50.5)
-if '351' in output:
+# Check output contains the number 351 (100.5 + 200.0 + 50.5)
+# Match as a standalone number (not as substring of e.g. 13510)
+import re
+if re.search(r'(?<![\\d])351(?:\\.0)?(?![\\d])', output):
     print("PASS")
 else:
     # Try running it differently: maybe it defines a function
@@ -220,7 +222,7 @@ else:
   },
 
   ratelimit(blocks) {
-    const code = blocks.find((b) => b.lang === 'python' || b.lang === 'py' || (!b.lang && b.code.includes('rate') || b.code.includes('limit')));
+    const code = blocks.find((b) => b.lang === 'python' || b.lang === 'py' || (!b.lang && (b.code.includes('rate') || b.code.includes('limit'))));
     if (!code) return { pass: false, reason: 'No Python code block found' };
 
     // Structural check for rate limiting: must have some form of counter/time tracking.

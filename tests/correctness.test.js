@@ -96,6 +96,16 @@ test('csv: code that prints wrong value fails', () => {
   assert.equal(result.score, 0);
 });
 
+test('csv: value containing 351 as substring fails (e.g. 13510)', () => {
+  const result = check(
+    "Write Python code that reads sales.csv and sums the 'amount' column.",
+    'python',
+    `print(13510)`,
+  );
+  assert.equal(result.pass, false);
+  assert.equal(result.score, 0);
+});
+
 // --- React countdown ---
 
 test('countdown: valid React component passes', () => {
