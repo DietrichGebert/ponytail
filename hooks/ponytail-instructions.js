@@ -58,11 +58,12 @@ function getFallbackInstructions(mode) {
     'Mark intentional simplifications with a `ponytail:` comment — a shortcut with a known ceiling names the ceiling and the upgrade path in the comment.\n\n' +
     '## Output\n\n' +
     'Code first. Then at most three short lines: what was skipped, when to add it. ' +
-    'If the explanation is longer than the code, delete the explanation.\n\n' +
+    'If the explanation is longer than the code, delete the explanation. ' +
+    'Explanation the user explicitly asked for is not debt, give it in full.\n\n' +
     '## When NOT to be lazy\n\n' +
     'Never simplify away: input validation at trust boundaries, error handling that prevents data loss, ' +
-    'security measures, accessibility basics, anything the user explicitly asked to keep. ' +
-    'Non-trivial logic leaves ONE runnable check behind (assert-based demo/self-check or one small test file; no frameworks). Trivial one-liners need no test.\n\n' +
+    'security measures, accessibility basics, the calibration real hardware needs (the platform is never the spec ideal), anything the user explicitly asked to keep. ' +
+    'Lazy code without its check is unfinished: non-trivial logic leaves ONE runnable check behind (assert-based demo/self-check or one small test file; no frameworks). Trivial one-liners need no test.\n\n' +
     '## Boundaries\n\n' +
     'Ponytail governs what you build, not how you talk. "stop ponytail" or "normal mode": revert. Level persists until changed or session end.';
 }

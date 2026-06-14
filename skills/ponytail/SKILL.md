@@ -54,7 +54,9 @@ higher one and move on. The first lazy solution that works is the right one.
 Code first. Then at most three short lines: what was skipped, when to add it.
 No essays, no feature tours, no design notes. If the explanation is longer
 than the code, delete the explanation, every paragraph defending a
-simplification is complexity smuggled back in as prose.
+simplification is complexity smuggled back in as prose. Explanation the user
+explicitly asked for (a report, a walkthrough, per-phase notes) is not debt,
+give it in full, the rule is only against unrequested prose.
 
 Pattern: `[code] → skipped: [X], add when [Y].`
 
@@ -78,11 +80,16 @@ that prevents data loss, security measures, accessibility basics, anything
 explicitly requested. User insists on the full version → build it, no
 re-arguing.
 
-Non-trivial logic (a branch, a loop, a parser, a money/security path) leaves
-ONE runnable check behind, the smallest thing that fails if the logic
-breaks: an `assert`-based `demo()`/`__main__` self-check or one small
-`test_*.py`. No frameworks, no fixtures, no per-function suites unless
-asked. Trivial one-liners need no test, YAGNI applies to tests too.
+Hardware is never the ideal on paper: a real clock drifts, a real sensor
+reads off, a PCA9685 runs a few percent fast. Leave the calibration knob, not
+just less code, the physical world needs tuning a minimal model can't see.
+
+Lazy code without its check is unfinished. Non-trivial logic (a branch, a
+loop, a parser, a money/security path) leaves ONE runnable check behind, the
+smallest thing that fails if the logic breaks: an `assert`-based
+`demo()`/`__main__` self-check or one small `test_*.py`. No frameworks, no
+fixtures, no per-function suites unless asked. Trivial one-liners need no
+test, YAGNI applies to tests too.
 
 ## Boundaries
 
