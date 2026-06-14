@@ -31,19 +31,28 @@ function read(relPath) {
   return fs.readFileSync(path.join(root, relPath), 'utf8');
 }
 
-const manifest = JSON.parse(read(MANIFEST));
+// Read inside each test (not at module scope) so a missing or malformed manifest
+// surfaces as a clean per-test assertion failure, not a load-time crash that
+// collapses every case into one unreadable stack trace.
+function loadManifest() {
+  assert.ok(fs.existsSync(path.join(root, MANIFEST)), `${MANIFEST} must exist`);
+  return JSON.parse(read(MANIFEST));
+}
 
 test('manifest names the ponytail extension with a pinned version', () => {
+  const manifest = loadManifest();
   assert.equal(manifest.name, EXTENSION_NAME);
   assert.match(manifest.version, PINNED_SEMVER);
 });
 
 test('version stays aligned with the other plugin manifests', () => {
+  const manifest = loadManifest();
   const claude = JSON.parse(read('.claude-plugin/plugin.json'));
   assert.equal(manifest.version, claude.version);
 });
 
 test('contextFileName resolves to a file carrying the ponytail rules', () => {
+  const manifest = loadManifest();
   assert.ok(manifest.contextFileName, 'contextFileName must be set so rules load every session');
   const context = read(manifest.contextFileName);
   for (const phrase of RULE_INVARIANTS) {
