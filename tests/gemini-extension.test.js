@@ -16,6 +16,12 @@ const MANIFEST = 'gemini-extension.json';
 const EXTENSION_NAME = 'ponytail';
 // Floating refs are a supply-chain footgun; the manifest version must be pinned.
 const PINNED_SEMVER = /^\d+\.\d+\.\d+$/;
+const VERSIONED_MANIFESTS = [
+  'gemini-extension.json',
+  '.claude-plugin/plugin.json',
+  '.codex-plugin/plugin.json',
+  '.github/plugin/plugin.json',
+];
 // Gemini auto-discovers these by directory; the manifest is only useful if they exist.
 const REUSED_COMMANDS = ['commands/ponytail.toml', 'commands/ponytail-review.toml'];
 const REUSED_SKILLS = ['skills/ponytail/SKILL.md'];
@@ -46,9 +52,15 @@ test('manifest names the ponytail extension with a pinned version', () => {
 });
 
 test('version stays aligned with the other plugin manifests', () => {
-  const manifest = loadManifest();
-  const claude = JSON.parse(read('.claude-plugin/plugin.json'));
-  assert.equal(manifest.version, claude.version);
+  const versions = VERSIONED_MANIFESTS.map((rel) => {
+    const manifest = JSON.parse(read(rel));
+    assert.match(manifest.version, PINNED_SEMVER, `${rel} version must be pinned semver`);
+    return manifest.version;
+  });
+  const [sharedVersion, ...rest] = versions;
+  for (const version of rest) {
+    assert.equal(version, sharedVersion);
+  }
 });
 
 test('contextFileName resolves to a file carrying the ponytail rules', () => {
