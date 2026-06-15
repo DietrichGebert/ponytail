@@ -155,7 +155,12 @@ Active every session, with a handful of commands (see [Commands](#commands)). `/
 
 Set the level for every new session with the `PONYTAIL_DEFAULT_MODE` env var (`lite`/`full`/`ultra`/`off`), or a `defaultMode` field in `~/.config/ponytail/config.json` (`%APPDATA%\ponytail\config.json` on Windows). The default is `full`.
 
-**Readability guard (opt-in, off by default).** Writing little is the senior move, not the goal. Turn this on and ponytail adds one rule to the active level: never buy fewer lines with worse architecture, readability, scalability, maintainability, or modularity — when short and clear pull apart, clear wins. Enable with `PONYTAIL_GUARD_READABILITY=1` or `"guardReadability": true` in the same config file. Nothing changes unless you opt in.
+**Readability guard (opt-in, off by default).** Writing little is the senior move, not the goal. Turn this on and ponytail adds one rule to the active level: never buy fewer lines with worse architecture, readability, scalability, maintainability, or modularity — when short and clear pull apart, clear wins.
+
+- **Turn it on:** `PONYTAIL_GUARD_READABILITY=1` (env), or `"guardReadability": true` in `~/.config/ponytail/config.json` (`%APPDATA%\ponytail\config.json` on Windows).
+- **Turn it off:** drop the env var (or set it to `0`), or `"guardReadability": false`. It's off by default, so doing nothing keeps it off.
+- **Precedence:** the env var wins over the config file. The env var is read at session start; the config file is read each turn.
+- **What it changes:** when on, the agent gets one extra rule at the top of every turn — no slash command, no new dependency. Everyone who doesn't set it sees ponytail exactly as before.
 
 Cursor, Windsurf, Cline, GitHub Copilot (editor), Aider, Kiro: copy the matching rules file from this repo ([`.cursor/rules/`](.cursor/rules/), [`.windsurf/rules/`](.windsurf/rules/), [`.clinerules/`](.clinerules/), [`.github/copilot-instructions.md`](.github/copilot-instructions.md), [`AGENTS.md`](AGENTS.md), [`.kiro/steering/`](.kiro/steering/)).
 
