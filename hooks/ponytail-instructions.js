@@ -3,9 +3,23 @@
 
 const fs = require('fs');
 const path = require('path');
-const { DEFAULT_MODE, normalizeMode, normalizePersistedMode } = require('./ponytail-config');
+const { DEFAULT_MODE, normalizeMode, normalizePersistedMode, getReadabilityGuard } = require('./ponytail-config');
 
 const INDEPENDENT_MODES = new Set(['review']);
+
+// Appended to the active ruleset only when the opt-in readability guard is on
+// (PONYTAIL_GUARD_READABILITY / config guardReadability). The point of writing
+// little is to work like a senior, not to win at code golf.
+const READABILITY_GUARD_CLAUSE =
+  '\n\n## Readability guard (opt-in)\n\n' +
+  'Writing little is the senior move, not the goal. Never buy fewer lines with worse ' +
+  'architecture, readability, scalability, maintainability, or modularity. A one-liner that ' +
+  'swallows two well-named helpers and now needs decoding is not senior, it is a junior flexing — ' +
+  'keep the helpers. When short and clear pull apart, clear wins; say which corner you cut in one line.';
+
+function withReadabilityGuard(instructions) {
+  return getReadabilityGuard() ? instructions + READABILITY_GUARD_CLAUSE : instructions;
+}
 const SKILL_PATH = path.join(__dirname, '..', 'skills', 'ponytail', 'SKILL.md');
 
 function filterSkillBodyForMode(body, mode) {
@@ -77,12 +91,14 @@ function getPonytailInstructions(mode) {
 
   const effectiveMode = normalizeMode(configuredMode) || DEFAULT_MODE;
 
+  let instructions;
   try {
-    return 'PONYTAIL MODE ACTIVE — level: ' + effectiveMode + '\n\n' +
+    instructions = 'PONYTAIL MODE ACTIVE — level: ' + effectiveMode + '\n\n' +
       filterSkillBodyForMode(fs.readFileSync(SKILL_PATH, 'utf8'), effectiveMode);
   } catch (e) {
-    return getFallbackInstructions(effectiveMode);
+    instructions = getFallbackInstructions(effectiveMode);
   }
+  return withReadabilityGuard(instructions);
 }
 
 module.exports = {

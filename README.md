@@ -155,6 +155,8 @@ Active every session, with a handful of commands (see [Commands](#commands)). `/
 
 Set the level for every new session with the `PONYTAIL_DEFAULT_MODE` env var (`lite`/`full`/`ultra`/`off`), or a `defaultMode` field in `~/.config/ponytail/config.json` (`%APPDATA%\ponytail\config.json` on Windows). The default is `full`.
 
+**Readability guard (opt-in, off by default).** Writing little is the senior move, not the goal. Turn this on and ponytail adds one rule to the active level: never buy fewer lines with worse architecture, readability, scalability, maintainability, or modularity — when short and clear pull apart, clear wins. Enable with `PONYTAIL_GUARD_READABILITY=1` or `"guardReadability": true` in the same config file. Nothing changes unless you opt in.
+
 Cursor, Windsurf, Cline, GitHub Copilot (editor), Aider, Kiro: copy the matching rules file from this repo ([`.cursor/rules/`](.cursor/rules/), [`.windsurf/rules/`](.windsurf/rules/), [`.clinerules/`](.clinerules/), [`.github/copilot-instructions.md`](.github/copilot-instructions.md), [`AGENTS.md`](AGENTS.md), [`.kiro/steering/`](.kiro/steering/)).
 
 Kiro: copy `.kiro/steering/ponytail.md` to `~/.kiro/steering/` (global) or `.kiro/steering/` in your project.

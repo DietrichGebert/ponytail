@@ -77,13 +77,34 @@ function getDefaultMode() {
   return DEFAULT_MODE;
 }
 
+function readConfig() {
+  try {
+    return JSON.parse(fs.readFileSync(getConfigPath(), 'utf8'));
+  } catch (e) {
+    return {};
+  }
+}
+
+// Opt-in readability guard (default off). Keeps "write less code" from
+// turning into unreadable golf: env wins, then config, then off.
+function getReadabilityGuard() {
+  const env = process.env.PONYTAIL_GUARD_READABILITY;
+  if (typeof env === 'string') {
+    return ['1', 'true', 'yes', 'on'].includes(env.trim().toLowerCase());
+  }
+  return readConfig().guardReadability === true;
+}
+
 function writeDefaultMode(mode) {
   const normalized = normalizeConfigMode(mode);
   if (!normalized) return null;
 
   const configPath = getConfigPath();
   fs.mkdirSync(path.dirname(configPath), { recursive: true });
-  fs.writeFileSync(configPath, JSON.stringify({ defaultMode: normalized }, null, 2), 'utf8');
+  // Merge so we don't clobber other fields (e.g. guardReadability).
+  const config = readConfig();
+  config.defaultMode = normalized;
+  fs.writeFileSync(configPath, JSON.stringify(config, null, 2), 'utf8');
   return normalized;
 }
 
@@ -92,6 +113,7 @@ module.exports = {
   VALID_MODES,
   RUNTIME_MODES,
   getDefaultMode,
+  getReadabilityGuard,
   getConfigDir,
   getConfigPath,
   getClaudeDir,
