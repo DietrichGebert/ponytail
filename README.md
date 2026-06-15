@@ -1,5 +1,8 @@
 <p align="center">
-  <img src="assets/logo.png" width="220" alt="Ponytail, the lazy senior dev">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/logo-dark.png">
+    <img src="assets/logo.png" width="220" alt="Ponytail, the lazy senior dev">
+  </picture>
 </p>
 
 <h1 align="center">Ponytail</h1>
@@ -11,7 +14,7 @@
 <p align="center">
   <img src="https://img.shields.io/github/stars/DietrichGebert/ponytail?style=flat-square&color=111111&label=stars" alt="Stars">
   <img src="https://img.shields.io/github/v/release/DietrichGebert/ponytail?style=flat-square&color=111111&label=release" alt="Release">
-  <img src="https://img.shields.io/badge/works%20with-10%20agents-111111?style=flat-square" alt="Works with 10 agents">
+  <img src="https://img.shields.io/badge/works%20with-11%20agents-111111?style=flat-square" alt="Works with 11 agents">
   <img src="https://img.shields.io/badge/license-MIT-111111?style=flat-square" alt="MIT license">
 </p>
 
@@ -109,20 +112,41 @@ Run OpenCode from a checkout of this repo (the plugin reuses its `hooks/` and `s
 { "plugin": ["./.opencode/plugins/ponytail.mjs"] }
 ```
 
-Injects the ruleset every turn at the active level; adds `/ponytail` and `/ponytail-review`. OpenCode also auto-loads this repo's `AGENTS.md`, so the rules hold even without the plugin. The plugin adds the `lite/full/ultra/off` levels.
+Injects the ruleset every turn at the active level; adds the `/ponytail` commands (see [Commands](#commands)). OpenCode also auto-loads this repo's `AGENTS.md`, so the rules hold even without the plugin. The plugin adds the `lite/full/ultra/off` levels.
+
+### Gemini CLI
+
+```bash
+gemini extensions install https://github.com/DietrichGebert/ponytail
+```
+
+Loads the ruleset as always-on context every session and registers the `/ponytail` commands; the `skills/` ship too, activated when a task needs them.
 
 That was it. He'd be proud. He won't say it.
 
-Active every session. `/ponytail-review` finds what to delete in your diff. `/ponytail ultra` exists for when the codebase has wronged you personally. `/ponytail-help` explains the rest.
-
-In Codex, invoke the skills as `@ponytail`, `@ponytail-review`, and
-`@ponytail-help`. Startup and mode-change text shows the current mode.
+Active every session, with a handful of commands (see [Commands](#commands)). `/ponytail ultra` exists for when the codebase has wronged you personally. Startup and mode-change text shows the current mode.
 
 Windsurf, Cline, Copilot, Aider, Kiro: copy the matching rules file from this repo ([`.windsurf/rules/`](.windsurf/rules/), [`.clinerules/`](.clinerules/), [`.github/copilot-instructions.md`](.github/copilot-instructions.md), [`AGENTS.md`](AGENTS.md), [`.kiro/steering/`](.kiro/steering/)). Cursor can also copy [`.cursor/rules/`](.cursor/rules/) directly if you do not want the plugin hooks and skills.
 
 Kiro: copy `.kiro/steering/ponytail.md` to `~/.kiro/steering/` (global) or `.kiro/steering/` in your project.
 
+GitHub Copilot CLI: it already reads `AGENTS.md` and `.github/copilot-instructions.md` in a project, or copy the rules into `~/.copilot/copilot-instructions.md` to run ponytail in every project.
+
+Antigravity and VS Code with the Codex extension: both read `AGENTS.md`, which this repo ships, so it works from the repo root with no setup (`~/.codex/AGENTS.md` makes Codex global, `.agents/rules/` makes it an always-on rule in Antigravity).
+
 Which files map to which agent: [Agent portability](docs/agent-portability.md).
+
+## Commands
+
+| Command | What it does |
+|---------|--------------|
+| `/ponytail [lite \| full \| ultra \| off]` | Set the intensity, or turn it off. No argument reports the current level. |
+| `/ponytail-review` | Review the current diff for over-engineering, hands back a delete-list. |
+| `/ponytail-audit` | Audit the whole repo for over-engineering, not just the diff. |
+| `/ponytail-debt` | Harvest the `ponytail:` shortcuts you've deferred into a ledger, so "later" doesn't become "never". |
+| `/ponytail-help` | Quick reference for the commands above. |
+
+Commands need a skill-capable host (Claude Code, Codex, OpenCode, Gemini, pi). In Codex they're skills, invoke with `@` (`@ponytail-review`). The instruction-only adapters (Cursor, Windsurf, Cline, Copilot, Kiro, Antigravity) load the always-on ruleset without the commands.
 
 ## Development
 

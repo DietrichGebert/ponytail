@@ -40,6 +40,21 @@ Tasks: email validator, JS debounce, CSV sum, React countdown, FastAPI rate-limi
 
 Versus baseline, ponytail writes **80-94% less code**, costs **47-77% less**, and runs **3-6x faster**, on every model.
 
+## Metrics
+
+| File | Metric | Behavior |
+|------|--------|----------|
+| `loc.js` | `loc` | Measurement - always passes, records line count |
+| `correctness.js` | `correct` | Gate - fails if generated code doesn't work |
+
+`correctness.js` extracts fenced code blocks and runs per-task checks (spawns Python/Node for email, debounce, CSV; structural regex for React and FastAPI). A broken one-liner that scores great on LOC will fail on correctness.
+
+> **Note:** The React countdown and FastAPI rate-limit checks are keyword/structural only (no runtime execution), so they verify plausible structure rather than full correctness. The email, debounce, and CSV checks execute the code.
+
+### Prerequisites
+
+Running the benchmark requires **Python 3**, **pandas**, and **Node.js** (18+).
+
 ## Notes
 
 - Caveman is a prose-compression skill (it leaves code "normal"), so it lands between baseline and ponytail on code size and wins mainly on prose tokens.

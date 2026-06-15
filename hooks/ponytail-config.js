@@ -50,6 +50,11 @@ function getConfigPath() {
   return path.join(getConfigDir(), 'config.json');
 }
 
+function getClaudeDir() {
+  // ponytail: CLAUDE_CONFIG_DIR overrides ~/.claude, matching Claude Code.
+  return process.env.CLAUDE_CONFIG_DIR || path.join(os.homedir(), '.claude');
+}
+
 function getDefaultMode() {
   // 1. Environment variable (highest priority)
   const envMode = process.env.PONYTAIL_DEFAULT_MODE;
@@ -89,6 +94,7 @@ module.exports = {
   getDefaultMode,
   getConfigDir,
   getConfigPath,
+  getClaudeDir,
   normalizeMode,
   normalizeConfigMode,
   normalizePersistedMode,

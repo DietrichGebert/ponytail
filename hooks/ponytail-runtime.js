@@ -1,6 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
+const { getClaudeDir } = require('./ponytail-config');
 
 const isCodex = Boolean(process.env.PLUGIN_DATA);
 const isCursor = Boolean(process.env.CURSOR_PLUGIN_ROOT);
@@ -8,7 +9,7 @@ const statePath = isCodex
   ? path.join(process.env.PLUGIN_DATA, '.ponytail-active')
   : isCursor
     ? path.join(os.homedir(), '.cursor', '.ponytail-active')
-  : path.join(os.homedir(), '.claude', '.ponytail-active');
+  : path.join(getClaudeDir(), '.ponytail-active');
 
 function setMode(mode) {
   fs.mkdirSync(path.dirname(statePath), { recursive: true });

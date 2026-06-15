@@ -12,9 +12,14 @@ to load in a given agent.
 | Codex | `.codex-plugin/plugin.json`, `hooks/hooks.json`, `hooks/`, `skills/` | Plugin install with the same skills plus lifecycle hooks for activation and mode tracking. |
 | OpenCode | `.opencode/plugins/ponytail.mjs`, `.opencode/command/`, `hooks/`, `skills/` | Server plugin injects the ruleset each turn via `experimental.chat.system.transform` and persists `/ponytail` switches; reuses the shared instruction builder. |
 | Cursor | `.cursor-plugin/`, `.cursor/rules/`, `hooks/cursor-hooks.json`, `hooks/cursor-*.js`, `skills/` | Cursor plugin install with rules, skills, and native lifecycle hooks for activation, mode tracking, dependency-install approval, compaction reminders, and cleanup; project rule still works when copied directly. |
+| pi | `pi-extension/`, `skills/`, `hooks/` | Package extension: injects the ruleset each turn through the shared instruction builder and registers the `/ponytail` commands. |
+| Gemini CLI | `gemini-extension.json`, `AGENTS.md`, `commands/`, `skills/` | Extension manifest points `contextFileName` at `AGENTS.md` for always-on rules, and reuses the existing `commands/*.toml` and `skills/`, which Gemini CLI auto-discovers. |
 | Windsurf | `.windsurf/rules/ponytail.md` | Project rule. |
 | Cline | `.clinerules/ponytail.md` | Project rule. |
 | GitHub Copilot | `.github/copilot-instructions.md` | Repository instruction file. |
+| GitHub Copilot CLI | `AGENTS.md`, `.github/copilot-instructions.md`, `~/.copilot/copilot-instructions.md` | Reads custom instructions: per-project from `AGENTS.md` or `.github/copilot-instructions.md`, or globally from `~/.copilot/copilot-instructions.md`. Instruction-tier (no `/ponytail` levels or hooks). |
+| Antigravity | `AGENTS.md` | Reads `AGENTS.md` at the repo root as always-on rules (like `.cursorrules`/`CLAUDE.md`); `.agents/rules/` also works for workspace rules. Instruction-tier. |
+| VS Code + Codex extension | `AGENTS.md` | The Codex extension reads `AGENTS.md` (repo root, or `~/.codex/AGENTS.md` globally). Instruction-tier; the full Codex plugin row above adds `/ponytail` levels and hooks. |
 | Kiro | `.kiro/steering/ponytail.md` | Steering rule; copy globally or into a project. |
 | Generic agents | `AGENTS.md` or `skills/*/SKILL.md` | Copy the compact rule file or load the skill files directly. |
 
@@ -28,5 +33,7 @@ instructions, keep its copied rule text aligned with `AGENTS.md`.
 
 - `skills/ponytail/SKILL.md`: lazy senior dev mode
 - `skills/ponytail-review/SKILL.md`: over-engineering review
+- `skills/ponytail-audit/SKILL.md`: whole-repo over-engineering audit
+- `skills/ponytail-debt/SKILL.md`: harvest `ponytail:` shortcuts into a tracked ledger
 - `skills/ponytail-help/SKILL.md`: quick reference
 - `AGENTS.md`: compact always-on instruction set for agents without skill support

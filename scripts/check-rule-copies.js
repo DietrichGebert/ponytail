@@ -44,6 +44,7 @@ const INVARIANTS = [
   'ONE runnable check',                    // test reflex
   'flimsier algorithm',                    // robust-variant rule
   'input validation at trust boundaries',  // the "not lazy about" clause
+  'Lazy code without its check is unfinished', // one-check promoted to headline
 ];
 
 const skill = read('skills/ponytail/SKILL.md');
