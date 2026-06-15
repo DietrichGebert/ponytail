@@ -9,3 +9,8 @@ node_modules/
 # promptfoo eval artifacts
 .promptfoo/
 benchmarks/output*
+
+# one-off social/announcement art, not repo content
+announce-*.png
+changelog-*.png
+ponytail-*.gif
