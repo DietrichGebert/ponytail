@@ -102,6 +102,13 @@ In an interactive Copilot CLI session, use the slash equivalents:
 /plugin install ponytail@ponytail
 ```
 
+Copilot CLI namespaces plugin commands by plugin name. For example:
+
+```text
+/ponytail:ponytail ultra
+/ponytail:ponytail-review
+```
+
 ### Pi agent harness
 
 ```
