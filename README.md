@@ -46,6 +46,8 @@ With ponytail:
 
 More survivors in [examples/](examples/).
 
+> **Pairs well with** [Modern Web Guidance](https://github.com/GoogleChrome/modern-web-guidance) for web work: ponytail decides *whether* to lean on the platform, MWG is how the agent looks up *which* native feature does the job. See [examples/web-platform-lookup.md](examples/web-platform-lookup.md).
+
 ## Numbers
 
 The honest measurement is a real agent doing real work: a headless Claude Code session editing [tiangolo's full-stack-fastapi-template](https://github.com/fastapi/full-stack-fastapi-template) (a real FastAPI + React repo), scored on the `git diff` it leaves behind. Twelve feature tickets, the same agent with and without the skill, n=4, Haiku 4.5.
