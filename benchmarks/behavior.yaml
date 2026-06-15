@@ -1,0 +1,40 @@
+# Ponytail behavior gates: does the ruleset actually produce its refined
+# behaviors (not just carry the text)? Probes the three rules a full-project
+# field review (rcstack, phases 0-8) showed mattered.
+#
+#   Run:    npx promptfoo@latest eval -c benchmarks/behavior.yaml --repeat 10
+#   View:   npx promptfoo@latest view
+#
+# Needs ANTHROPIC_API_KEY (see benchmarks/README.md). The grader (behavior.js)
+# is proven separately by tests/behavior.test.js, which needs no API key.
+#
+# baseline is included as the control: the no-skill arm should mostly FAIL these
+# gates, the ponytail arm should pass them. That delta is the point.
+description: "Ponytail behavior gates: hardware calibration, requested explanation, one runnable check."
+
+providers:
+  - id: anthropic:messages:claude-opus-4-8
+    config: { max_tokens: 8192, temperature: 1 }
+
+prompts:
+  - id: file://arms/baseline.js
+    label: baseline (no skill)
+  - id: file://arms/ponytail.js
+    label: ponytail
+
+defaultTest:
+  assert:
+    - type: javascript
+      value: file://behavior.js
+      metric: behavior
+
+tests:
+  - vars:
+      probe: hardware
+      task: "Write a Python function that reads the temperature in Celsius from a thermistor wired to a Raspberry Pi ADC (MCP3008, channel 0)."
+  - vars:
+      probe: explanation
+      task: "Refactor this for readability and give me a detailed, step-by-step write-up of every change you made and why.\n\ndef p(d):\n    r = []\n    for x in d:\n        if x.get('a') and x['a'] > 0:\n            r.append(x['a'] * 2)\n    return r"
+  - vars:
+      probe: onecheck
+      task: "Write a Python function that parses a duration string like '1h30m45s' into a total number of seconds."
