@@ -99,5 +99,44 @@ assert.equal(
   'flag must not land in ~/.claude when CLAUDE_CONFIG_DIR is set',
 );
 
+const copilotData = path.join(temp, 'copilot-data');
+const codexData = path.join(temp, 'codex-data-shadow');
+result = run('ponytail-activate.js', {
+  HOME: home,
+  USERPROFILE: home,
+  COPILOT_PLUGIN_DATA: copilotData,
+  PLUGIN_DATA: codexData,
+  PONYTAIL_DEFAULT_MODE: 'full',
+});
+assert.equal(result.status, 0, result.stderr);
+assert.equal(fs.readFileSync(path.join(copilotData, '.ponytail-active'), 'utf8'), 'full');
+assert.equal(
+  fs.existsSync(path.join(codexData, '.ponytail-active')),
+  false,
+  'copilot hooks must not write mode state to codex PLUGIN_DATA',
+);
+output = JSON.parse(result.stdout);
+assert.match(output.additionalContext, /PONYTAIL MODE ACTIVE — level: full/);
+
+result = run(
+  'ponytail-mode-tracker.js',
+  {
+    HOME: home,
+    USERPROFILE: home,
+    COPILOT_PLUGIN_DATA: copilotData,
+    PLUGIN_DATA: codexData,
+  },
+  JSON.stringify({ prompt: '/ponytail ultra' }),
+);
+assert.equal(result.status, 0, result.stderr);
+assert.equal(fs.readFileSync(path.join(copilotData, '.ponytail-active'), 'utf8'), 'ultra');
+assert.equal(
+  fs.existsSync(path.join(codexData, '.ponytail-active')),
+  false,
+  'copilot mode tracker must keep codex PLUGIN_DATA untouched',
+);
+output = JSON.parse(result.stdout);
+assert.deepEqual(output, {});
+
 fs.rmSync(temp, { recursive: true, force: true });
 console.log('hook compatibility checks passed');
