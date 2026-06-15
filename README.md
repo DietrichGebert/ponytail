@@ -88,6 +88,8 @@ codex
 Open `/plugins`, select the Ponytail marketplace, and install Ponytail. Then
 open `/hooks`, review and trust its two lifecycle hooks, and start a new thread.
 
+The hooks need `node` on the shell's `PATH` (they power the statusline badge and `/ponytail <level>` switching). If it isn't there — a Nix dev shell, a scoped install — the hooks no-op silently and the skills and commands still work; the mode badge just won't update.
+
 ### Pi agent harness
 
 ```

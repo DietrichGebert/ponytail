@@ -99,5 +99,36 @@ assert.equal(
   'flag must not land in ~/.claude when CLAUDE_CONFIG_DIR is set',
 );
 
+// issue #51: when node isn't on the shell's PATH, the lifecycle hooks must
+// degrade silently (exit 0, no stderr) instead of erroring on every prompt.
+// The guard lives in hooks.json, not the JS, so run the real command strings.
+if (process.platform !== 'win32') {
+  const hooksConfig = JSON.parse(
+    fs.readFileSync(path.join(root, 'hooks', 'hooks.json'), 'utf8'),
+  );
+  const commands = Object.values(hooksConfig.hooks)
+    .flat()
+    .flatMap((entry) => entry.hooks)
+    .map((h) => h.command.replace(/\$\{CLAUDE_PLUGIN_ROOT\}/g, root));
+
+  for (const command of commands) {
+    const missingNode = spawnSync('/bin/sh', ['-c', command], {
+      env: { PATH: '/nonexistent' },
+      input: JSON.stringify({ prompt: 'hello' }),
+      encoding: 'utf8',
+    });
+    assert.equal(missingNode.status, 0, `hook must exit 0 without node: ${command}`);
+    assert.equal(missingNode.stderr, '', `hook must stay silent without node: ${command}`);
+  }
+
+  // Sanity: with node present the guard still runs the hook normally.
+  const activate = commands.find((c) => c.includes('ponytail-activate.js'));
+  const present = spawnSync('/bin/sh', ['-c', activate], {
+    env: { ...process.env, ...codexEnv },
+    encoding: 'utf8',
+  });
+  assert.equal(present.status, 0, present.stderr);
+}
+
 fs.rmSync(temp, { recursive: true, force: true });
 console.log('hook compatibility checks passed');
