@@ -29,9 +29,9 @@ Level sticks until changed or session end.
 | **ponytail-review** | `/ponytail-review` | Over-engineering review: `L42: yagni: factory, one product. Inline.` |
 | **ponytail-help** | `/ponytail-help` | This card. |
 
-Codex uses `@ponytail`, `@ponytail-review`, and `@ponytail-help`; Claude Code
-and OpenCode use the slash-command forms above (OpenCode ships `/ponytail` and
-`/ponytail-review`).
+Codex uses `@ponytail`, `@ponytail-review`, and `@ponytail-help`; Claude Code,
+GitHub Copilot CLI, and OpenCode use the slash-command forms above (OpenCode
+ships `/ponytail` and `/ponytail-review`).
 
 ## Deactivate
 
@@ -59,9 +59,9 @@ Resolution: env var > config file > `full`.
 
 ## Update
 
-Enable auto-update once: open `/plugin`, go to Marketplaces, pick ponytail, Enable auto-update. Claude Code then pulls new versions at startup (run `/reload-plugins` when it prompts). Manual refresh: `/plugin marketplace update ponytail` then `/reload-plugins`.
+Enable auto-update once: open `/plugin`, go to Marketplaces, pick ponytail, Enable auto-update. Claude Code then pulls new versions at startup (run `/reload-plugins` when it prompts). Manual refresh on hosts with `/plugin`: `/plugin marketplace update ponytail`, then restart or reload plugins if prompted.
 
-If `/plugin` is not recognized, your Claude Code is out of date. Update it (`npm install -g @anthropic-ai/claude-code@latest`, or `brew upgrade claude-code`) and restart. Other hosts use their own update flow.
+If `/plugin` is not recognized, your host is out of date or does not support plugin marketplaces. Other hosts use their own update flow.
 
 ## More
 

@@ -17,7 +17,7 @@ to load in a given agent.
 | Windsurf | `.windsurf/rules/ponytail.md` | Project rule. |
 | Cline | `.clinerules/ponytail.md` | Project rule. |
 | GitHub Copilot | `.github/copilot-instructions.md` | Repository instruction file. |
-| GitHub Copilot CLI | `AGENTS.md`, `.github/copilot-instructions.md`, `~/.copilot/copilot-instructions.md` | Reads custom instructions: per-project from `AGENTS.md` or `.github/copilot-instructions.md`, or globally from `~/.copilot/copilot-instructions.md`. Instruction-tier (no `/ponytail` levels or hooks). |
+| GitHub Copilot CLI | `package.json`, `skills/`, `AGENTS.md`, `.github/copilot-instructions.md`, `~/.copilot/copilot-instructions.md` | Install from the plugin marketplace with `/plugin marketplace add DietrichGebert/ponytail` then `/plugin install ponytail@ponytail` to expose the skills in `/skills`. Instruction files still work per-project or globally without the plugin. |
 | Antigravity | `AGENTS.md` | Reads `AGENTS.md` at the repo root as always-on rules (like `.cursorrules`/`CLAUDE.md`); `.agents/rules/` also works for workspace rules. Instruction-tier. |
 | VS Code + Codex extension | `AGENTS.md` | The Codex extension reads `AGENTS.md` (repo root, or `~/.codex/AGENTS.md` globally). Instruction-tier; the full Codex plugin row above adds `/ponytail` levels and hooks. |
 | Kiro | `.kiro/steering/ponytail.md` | Steering rule; copy globally or into a project. |

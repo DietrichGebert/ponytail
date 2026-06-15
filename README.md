@@ -78,6 +78,16 @@ The most effort ponytail will ever ask of you:
 /plugin install ponytail@ponytail
 ```
 
+### GitHub Copilot CLI
+
+```
+/plugin marketplace add DietrichGebert/ponytail
+/plugin install ponytail@ponytail
+```
+
+Start a new session. Ponytail's skills are then available from `/skills` and
+the commands below.
+
 ### Codex
 
 ```bash
@@ -120,7 +130,7 @@ Cursor, Windsurf, Cline, Copilot, Aider, Kiro: copy the matching rules file from
 
 Kiro: copy `.kiro/steering/ponytail.md` to `~/.kiro/steering/` (global) or `.kiro/steering/` in your project.
 
-GitHub Copilot CLI: it already reads `AGENTS.md` and `.github/copilot-instructions.md` in a project, or copy the rules into `~/.copilot/copilot-instructions.md` to run ponytail in every project.
+GitHub Copilot CLI without the plugin: it already reads `AGENTS.md` and `.github/copilot-instructions.md` in a project, or copy the rules into `~/.copilot/copilot-instructions.md` to run ponytail in every project.
 
 Antigravity and VS Code with the Codex extension: both read `AGENTS.md`, which this repo ships, so it works from the repo root with no setup (`~/.codex/AGENTS.md` makes Codex global, `.agents/rules/` makes it an always-on rule in Antigravity).
 
@@ -136,7 +146,7 @@ Which files map to which agent: [Agent portability](docs/agent-portability.md).
 | `/ponytail-debt` | Harvest the `ponytail:` shortcuts you've deferred into a ledger, so "later" doesn't become "never". |
 | `/ponytail-help` | Quick reference for the commands above. |
 
-Commands need a skill-capable host (Claude Code, Codex, OpenCode, Gemini, pi). In Codex they're skills, invoke with `@` (`@ponytail-review`). The instruction-only adapters (Cursor, Windsurf, Cline, Copilot, Kiro, Antigravity) load the always-on ruleset without the commands.
+Commands need a skill-capable host (Claude Code, GitHub Copilot CLI, Codex, OpenCode, Gemini, pi). In Codex they're skills, invoke with `@` (`@ponytail-review`). In Copilot CLI they're skills managed from `/skills`. The instruction-only adapters (Cursor, Windsurf, Cline, Copilot, Kiro, Antigravity) load the always-on ruleset without the commands.
 
 ## Development
 
