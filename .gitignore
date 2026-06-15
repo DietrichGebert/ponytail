@@ -9,6 +9,10 @@ node_modules/
 # promptfoo eval artifacts
 .promptfoo/
 benchmarks/output*
+benchmarks/benchmark-local-results.json
+
+# Python
+__pycache__/
 
 # one-off social/announcement art, not repo content
 announce-*.png

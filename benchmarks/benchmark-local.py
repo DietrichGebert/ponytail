@@ -37,9 +37,10 @@ def load_arms():
 
 
 def count_loc(text):
-    """Non-blank, non-comment lines inside fenced code blocks."""
+    """Non-blank, non-comment lines of code: fenced blocks, or the whole
+    response when the model emitted bare code with no fence."""
     blocks = re.findall(r"```[a-zA-Z0-9_+\-]*\n([\s\S]*?)```", text)
-    lines = "\n".join(blocks).splitlines()
+    lines = ("\n".join(blocks) if blocks else text).splitlines()
     return sum(
         1 for l in lines
         if l.strip()
@@ -110,7 +111,7 @@ def run(model, repeat, ollama_url):
     sep = "-" * len(header)
 
     print(f"\n{'=' * 60}")
-    print(f"  RESULTS — {model}  (n={repeat}, median)")
+    print(f"  RESULTS - {model}  (n={repeat}, median)")
     print(f"{'=' * 60}")
 
     print(f"\nCode LOC per task (median)")
@@ -139,7 +140,7 @@ def run(model, repeat, ollama_url):
 
     out = Path(__file__).parent / "benchmark-local-results.json"
     out.write_text(json.dumps(results, indent=2), encoding="utf-8")
-    print(f"\nFull responses → {out}")
+    print(f"\nFull responses -> {out}")
 
 
 def main():
