@@ -1,0 +1,22 @@
+name: ponytail
+version: 4.6.0
+description: Lazy senior dev mode for Hermes Agent. Prefer YAGNI, stdlib, native features, and the smallest correct implementation.
+author: Dietrich Gebert
+homepage: https://github.com/DietrichGebert/ponytail
+repository: https://github.com/DietrichGebert/ponytail
+license: MIT
+keywords:
+  - yagni
+  - minimalism
+  - code-review
+  - productivity
+provides_hooks:
+  - pre_llm_call
+provides_commands:
+  - ponytail
+provides_skills:
+  - ponytail
+  - ponytail-review
+  - ponytail-audit
+  - ponytail-debt
+  - ponytail-help

@@ -14,7 +14,7 @@
 <p align="center">
   <img src="https://img.shields.io/github/stars/DietrichGebert/ponytail?style=flat-square&color=111111&label=stars" alt="Stars">
   <img src="https://img.shields.io/github/v/release/DietrichGebert/ponytail?style=flat-square&color=111111&label=release" alt="Release">
-  <img src="https://img.shields.io/badge/works%20with-13%20agents-111111?style=flat-square" alt="Works with 13 agents">
+  <img src="https://img.shields.io/badge/works%20with-14%20agents-111111?style=flat-square" alt="Works with 14 agents">
   <img src="https://img.shields.io/badge/license-MIT-111111?style=flat-square" alt="MIT license">
 </p>
 
@@ -139,6 +139,14 @@ gemini extensions install https://github.com/DietrichGebert/ponytail
 
 Loads the ruleset as always-on context every session and registers the `/ponytail` commands; the `skills/` ship too, activated when a task needs them.
 
+### Hermes Agent
+
+```bash
+hermes plugins install DietrichGebert/ponytail --enable
+```
+
+Restart Hermes after installing. Hermes starts with ponytail off; turn it on explicitly with `/ponytail on`, `/ponytail lite`, `/ponytail full`, or `/ponytail ultra`. Turn it off with `/ponytail off`. The plugin injects the active ponytail level through Hermes' `pre_llm_call` hook and registers the bundled skills as `ponytail:<skill-name>` for explicit loading.
+
 ### Antigravity CLI
 
 Google is renaming Gemini CLI to Antigravity CLI (the `agy` binary); the same extension installs there:
@@ -169,13 +177,13 @@ Which files map to which agent: [Agent portability](docs/agent-portability.md).
 
 | Command | What it does |
 |---------|--------------|
-| `/ponytail [lite \| full \| ultra \| off]` | Set the intensity, or turn it off. No argument reports the current level. |
+| `/ponytail on \| off \| lite \| full \| ultra` | Set the intensity, or turn it off. `on` maps to `full`. |
 | `/ponytail-review` | Review the current diff for over-engineering, hands back a delete-list. |
 | `/ponytail-audit` | Audit the whole repo for over-engineering, not just the diff. |
 | `/ponytail-debt` | Harvest the `ponytail:` shortcuts you've deferred into a ledger, so "later" doesn't become "never". |
 | `/ponytail-help` | Quick reference for the commands above. |
 
-Commands need a skill-capable host (Claude Code, Codex, OpenCode, Gemini, pi). In Codex they're skills, invoke with `@` (`@ponytail-review`). The instruction-only adapters (Cursor, Windsurf, Cline, Copilot, Kiro, Antigravity) load the always-on ruleset without the commands.
+Commands need a skill-capable host (Claude Code, Codex, OpenCode, Gemini, Hermes Agent, pi). In Codex they're skills, invoke with `@` (`@ponytail-review`). The instruction-only adapters (Cursor, Windsurf, Cline, Copilot, Kiro, Antigravity) load the always-on ruleset without the commands.
 
 ## Development
 
