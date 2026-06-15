@@ -1,0 +1,20 @@
+{
+  "name": "ponytail",
+  "description": "Lazy senior dev mode for AI agents. The best code is the code you never wrote.",
+  "owner": {
+    "name": "Dietrich Gebert",
+    "url": "https://github.com/DietrichGebert"
+  },
+  "plugins": [
+    {
+      "name": "ponytail",
+      "description": "Forces the laziest solution that works. YAGNI, stdlib first, one line over fifty.",
+      "source": "./",
+      "category": "productivity",
+      "tags": ["yagni", "minimalism", "code-review", "productivity"],
+      "commands": "commands/",
+      "skills": "skills/",
+      "hooks": "hooks/copilot-hooks.json"
+    }
+  ]
+}
