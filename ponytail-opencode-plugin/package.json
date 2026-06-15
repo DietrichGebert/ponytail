@@ -1,0 +1,34 @@
+{
+  "name": "ponytail-opencode-plugin",
+  "version": "0.1.0",
+  "description": "Ponytail lazy-senior-dev mode plugin for OpenCode",
+  "keywords": [
+    "lazy",
+    "opencode",
+    "plugin",
+    "ponytail",
+    "senior-dev",
+    "yagni"
+  ],
+  "license": "MIT",
+  "files": [
+    "dist"
+  ],
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "bun run build.ts && tsc --emitDeclarationOnly",
+    "dev": "opencode plugin dev",
+    "test": "bun test",
+    "test:watch": "bun test --watch"
+  },
+  "devDependencies": {
+    "@opencode-ai/plugin": "1.17.6",
+    "@types/node": "22.15.0",
+    "typescript": "5.8.3"
+  },
+  "peerDependencies": {
+    "@opencode-ai/plugin": ">=1.14.21"
+  }
+}

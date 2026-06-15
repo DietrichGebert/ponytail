@@ -1,0 +1,8 @@
+{
+  "enabled": true,
+  "defaultMode": "full",
+  "features": {
+    "ponytail": true,
+    "review": true
+  }
+}
