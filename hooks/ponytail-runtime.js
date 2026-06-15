@@ -3,6 +3,7 @@ const path = require('path');
 const { getClaudeDir } = require('./ponytail-config');
 
 const pluginDataDir = process.env.COPILOT_PLUGIN_DATA || process.env.PLUGIN_DATA;
+const isCopilot = Boolean(process.env.COPILOT_PLUGIN_DATA);
 const isCodex = Boolean(pluginDataDir);
 const statePath = isCodex
   ? path.join(pluginDataDir, '.ponytail-active')
@@ -18,6 +19,12 @@ function clearMode() {
 }
 
 function writeHookOutput(event, mode, context = '') {
+  if (isCopilot) {
+    // Copilot reads additionalContext on SessionStart; ignores output elsewhere.
+    process.stdout.write(JSON.stringify(
+      event === 'SessionStart' && context ? { additionalContext: context } : {}));
+    return;
+  }
   if (!isCodex) {
     process.stdout.write(context);
     return;
@@ -35,6 +42,7 @@ function writeHookOutput(event, mode, context = '') {
 module.exports = {
   clearMode,
   isCodex,
+  isCopilot,
   setMode,
   writeHookOutput,
 };
