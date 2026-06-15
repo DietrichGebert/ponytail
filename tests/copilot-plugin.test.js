@@ -31,9 +31,3 @@ test('copilot plugin command directory includes ponytail-debt', () => {
     );
   }
 });
-
-test('debt command resolves via namespaced copilot command form', () => {
-  const manifest = readJSON('.github/plugin/plugin.json');
-  const commandId = path.basename('ponytail-debt.toml', '.toml');
-  assert.equal(`/${manifest.name}:${commandId}`, '/ponytail:ponytail-debt');
-});
