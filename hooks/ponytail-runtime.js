@@ -2,9 +2,10 @@ const fs = require('fs');
 const path = require('path');
 const { getClaudeDir } = require('./ponytail-config');
 
-const isCodex = Boolean(process.env.PLUGIN_DATA);
+const pluginDataDir = process.env.COPILOT_PLUGIN_DATA || process.env.PLUGIN_DATA;
+const isCodex = Boolean(pluginDataDir);
 const statePath = isCodex
-  ? path.join(process.env.PLUGIN_DATA, '.ponytail-active')
+  ? path.join(pluginDataDir, '.ponytail-active')
   : path.join(getClaudeDir(), '.ponytail-active');
 
 function setMode(mode) {

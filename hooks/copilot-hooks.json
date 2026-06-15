@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "hooks": {
+    "sessionStart": [
+      {
+        "type": "command",
+        "bash": "node \"${PLUGIN_ROOT}/hooks/ponytail-copilot-activate.js\"",
+        "powershell": "node \"${PLUGIN_ROOT}\\hooks\\ponytail-copilot-activate.js\"",
+        "timeoutSec": 5
+      }
+    ],
+    "userPromptSubmitted": [
+      {
+        "type": "command",
+        "bash": "node \"${PLUGIN_ROOT}/hooks/ponytail-copilot-mode-tracker.js\"",
+        "powershell": "node \"${PLUGIN_ROOT}\\hooks\\ponytail-copilot-mode-tracker.js\"",
+        "timeoutSec": 5
+      }
+    ]
+  }
+}
