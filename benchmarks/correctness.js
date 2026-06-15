@@ -38,6 +38,20 @@ function exec(cmd, opts = {}) {
   }
 }
 
+// ponytail: probe once at load; macOS and many Linux images ship python3 only.
+let pythonCmd;
+function python() {
+  if (pythonCmd) return pythonCmd;
+  for (const cmd of ['python3', 'python']) {
+    if (exec(`${cmd} -c "import sys"`).ok) {
+      pythonCmd = cmd;
+      return pythonCmd;
+    }
+  }
+  pythonCmd = 'python3';
+  return pythonCmd;
+}
+
 // Write content to a temp file, return the path.
 function tmpFile(ext, content) {
   const p = path.join(os.tmpdir(), `ponytail-bench-${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`);
@@ -100,7 +114,7 @@ if failures:
 print("PASS")
 `;
     const f = tmpFile('.py', harness);
-    const result = exec(`python "${f}"`);
+    const result = exec(`${python()} "${f}"`);
     fs.unlinkSync(f);
     if (result.ok) return { pass: true, reason: 'Email validator passes all checks' };
     return { pass: false, reason: result.stderr || 'Email validator failed' };
@@ -194,7 +208,7 @@ else:
     sys.exit(1)
 `;
     const f = tmpFile('.py', harness);
-    const result = exec(`python "${f}"`);
+    const result = exec(`${python()} "${f}"`);
     try { fs.unlinkSync(f); } catch (e) {}
     try { fs.unlinkSync(csvPath); } catch (e) {}
     if (result.ok) return { pass: true, reason: 'CSV sum produces correct result (351)' };

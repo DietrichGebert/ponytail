@@ -144,7 +144,10 @@ When changing the compact rule text, keep the agent copies aligned:
 
 ```bash
 node scripts/check-rule-copies.js
+npm test
 ```
+
+The correctness benchmark spawns Python for email and CSV checks; `python3` is tried before `python`. CSV checks need `pandas` installed locally.
 
 ## FAQ
 

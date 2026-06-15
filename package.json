@@ -4,6 +4,9 @@
   "description": "Lazy senior dev mode for AI agents. The best code is the code you never wrote.",
   "keywords": ["pi-package", "pi", "skills", "ponytail"],
   "license": "MIT",
+  "scripts": {
+    "test": "node --test tests/*.test.js && npm test --prefix pi-extension"
+  },
   "pi": {
     "extensions": ["./pi-extension/index.js"],
     "skills": ["./skills"]
