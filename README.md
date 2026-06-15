@@ -99,7 +99,7 @@ Run OpenCode from a checkout of this repo (the plugin reuses its `hooks/` and `s
 { "plugin": ["./.opencode/plugins/ponytail.mjs"] }
 ```
 
-Injects the ruleset every turn at the active level; adds `/ponytail`, `/ponytail-review`, and `/ponytail-audit`. OpenCode also auto-loads this repo's `AGENTS.md`, so the rules hold even without the plugin. The plugin adds the `lite/full/ultra/off` levels.
+Injects the ruleset every turn at the active level; adds the `/ponytail` commands (see [Commands](#commands)). OpenCode also auto-loads this repo's `AGENTS.md`, so the rules hold even without the plugin. The plugin adds the `lite/full/ultra/off` levels.
 
 ### Gemini CLI
 
@@ -107,15 +107,11 @@ Injects the ruleset every turn at the active level; adds `/ponytail`, `/ponytail
 gemini extensions install https://github.com/DietrichGebert/ponytail
 ```
 
-Loads the ruleset as always-on context every session and registers `/ponytail` and `/ponytail-review`; the `skills/` ship too, activated when a task needs them.
+Loads the ruleset as always-on context every session and registers the `/ponytail` commands; the `skills/` ship too, activated when a task needs them.
 
 That was it. He'd be proud. He won't say it.
 
-Active every session. `/ponytail-review` finds what to delete in your diff, `/ponytail-audit` does the same for the whole repo, `/ponytail-debt` harvests the `ponytail:` shortcuts you've deferred so they don't rot. `/ponytail ultra` exists for when the codebase has wronged you personally. `/ponytail-help` explains the rest.
-
-In Codex, invoke the skills as `@ponytail`, `@ponytail-review`,
-`@ponytail-audit`, `@ponytail-debt`, and `@ponytail-help`. Startup and
-mode-change text shows the current mode.
+Active every session, with a handful of commands (see [Commands](#commands)). `/ponytail ultra` exists for when the codebase has wronged you personally. Startup and mode-change text shows the current mode.
 
 Cursor, Windsurf, Cline, Copilot, Aider, Kiro: copy the matching rules file from this repo ([`.cursor/rules/`](.cursor/rules/), [`.windsurf/rules/`](.windsurf/rules/), [`.clinerules/`](.clinerules/), [`.github/copilot-instructions.md`](.github/copilot-instructions.md), [`AGENTS.md`](AGENTS.md), [`.kiro/steering/`](.kiro/steering/)).
 
@@ -126,6 +122,18 @@ GitHub Copilot CLI: it already reads `AGENTS.md` and `.github/copilot-instructio
 Antigravity and VS Code with the Codex extension: both read `AGENTS.md`, which this repo ships, so it works from the repo root with no setup (`~/.codex/AGENTS.md` makes Codex global, `.agents/rules/` makes it an always-on rule in Antigravity).
 
 Which files map to which agent: [Agent portability](docs/agent-portability.md).
+
+## Commands
+
+| Command | What it does |
+|---------|--------------|
+| `/ponytail [lite \| full \| ultra \| off]` | Set the intensity, or turn it off. No argument reports the current level. |
+| `/ponytail-review` | Review the current diff for over-engineering, hands back a delete-list. |
+| `/ponytail-audit` | Audit the whole repo for over-engineering, not just the diff. |
+| `/ponytail-debt` | Harvest the `ponytail:` shortcuts you've deferred into a ledger, so "later" doesn't become "never". |
+| `/ponytail-help` | Quick reference for the commands above. |
+
+Commands need a skill-capable host (Claude Code, Codex, OpenCode, Gemini, pi). In Codex they're skills, invoke with `@` (`@ponytail-review`). The instruction-only adapters (Cursor, Windsurf, Cline, Copilot, Kiro, Antigravity) load the always-on ruleset without the commands.
 
 ## Development
 
