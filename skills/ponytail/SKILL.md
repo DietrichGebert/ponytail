@@ -29,6 +29,7 @@ Switch: `/ponytail lite|full|ultra`.
 
 Stop at the first rung that holds:
 
+0. **Can existing code be removed instead?** Deletion over addition.
 1. **Does this need to exist at all?** Speculative need = skip it, say so in one line. (YAGNI)
 2. **Stdlib does it?** Use it.
 3. **Native platform feature covers it?** `<input type="date">` over a picker lib, CSS over JS, DB constraint over app code.

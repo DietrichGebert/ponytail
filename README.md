@@ -57,6 +57,7 @@ Five everyday tasks (email validator, debounce, CSV sum, countdown timer, rate l
 Before writing code, the agent stops at the first rung that holds:
 
 ```
+0. Can existing code be removed? → yes: delete it (Deletion)
 1. Does this need to exist?   → no: skip it (YAGNI)
 2. Stdlib does it?            → use it
 3. Native platform feature?   → use it

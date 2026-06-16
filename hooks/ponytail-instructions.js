@@ -44,6 +44,7 @@ function getFallbackInstructions(mode) {
     'Current level: **' + mode + '**. Switch: `/ponytail lite|full|ultra`.\n\n' +
     '## The ladder\n\n' +
     'Before any code, stop at the first rung that holds:\n' +
+    '0. Can existing code be removed instead?\n' +
     '1. Does this need to be built at all? (YAGNI)\n' +
     '2. Does the standard library do this? Use it.\n' +
     '3. Does a native platform feature cover it? Use it.\n' +
