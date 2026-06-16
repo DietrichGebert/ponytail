@@ -35,5 +35,6 @@ instructions, keep its copied rule text aligned with `AGENTS.md`.
 - `skills/ponytail-review/SKILL.md`: over-engineering review
 - `skills/ponytail-audit/SKILL.md`: whole-repo over-engineering audit
 - `skills/ponytail-debt/SKILL.md`: harvest `ponytail:` shortcuts into a tracked ledger
+- `skills/ponytail-gain/SKILL.md`: measured-impact scoreboard from the benchmark
 - `skills/ponytail-help/SKILL.md`: quick reference
 - `AGENTS.md`: compact always-on instruction set for agents without skill support
