@@ -121,3 +121,33 @@ test("normal mode disables persistent instructions", async () => withTempConfig(
   const disabled = await events.get("before_agent_start")({ systemPrompt: "BASE" }, ctx);
   assert.equal(disabled, undefined);
 }));
+
+test("status bar reflects mode, agent activity, and clears when off", async () => withTempConfig(async () => {
+  const { commands, events } = createPiHarness();
+  const statusCalls = [];
+  const ctx = createCommandContext({
+    ui: {
+      notify() {},
+      setStatus(id, text) { statusCalls.push({ id, text }); },
+      theme: { fg: (_color, text) => text },
+    },
+  });
+
+  await events.get("session_start")({ reason: "startup" }, ctx);
+  await commands.get("ponytail").handler("ultra", ctx);
+
+  const afterSet = statusCalls.at(-1);
+  assert.equal(afterSet.id, "ponytail");
+  assert.match(afterSet.text, /ULTRA/);
+  assert.match(afterSet.text, /○/); // idle before the agent starts working
+
+  await events.get("agent_start")({}, ctx);
+  assert.match(statusCalls.at(-1).text, /●/); // active while working
+
+  await events.get("agent_end")({}, ctx);
+  assert.match(statusCalls.at(-1).text, /○/); // back to idle
+
+  // "normal mode" turns ponytail off (no ctx passed) and clears the status bar
+  await events.get("input")({ text: "normal mode", source: "interactive" }, ctx);
+  assert.equal(statusCalls.at(-1).text, undefined);
+}));
