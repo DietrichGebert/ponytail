@@ -44,7 +44,7 @@ if (!isCodex) try {
   let hasStatusline = false;
   if (fs.existsSync(settingsPath)) {
     const settings = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
-    if (settings.statusLine) {
+    if (settings && typeof settings === 'object' && settings.statusLine) {
       hasStatusline = true;
     }
   }

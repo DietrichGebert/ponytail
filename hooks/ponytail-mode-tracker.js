@@ -14,6 +14,7 @@ process.stdin.on('end', () => {
     const prompt = (data.prompt || '').trim().toLowerCase();
 
     // Match /ponytail commands
+    let handled = false;
     if (/^[/@$]ponytail/.test(prompt)) {
       const parts = prompt.split(/\s+/);
       const cmd = parts[0].replace(/^[@$]/, '/');
@@ -38,14 +39,16 @@ process.stdin.on('end', () => {
           mode,
           'PONYTAIL MODE CHANGED — level: ' + mode,
         );
+        handled = true;
       } else if (mode === 'off') {
         clearMode();
         writeHookOutput('UserPromptSubmit', 'off', 'PONYTAIL MODE OFF');
+        handled = true;
       }
     }
 
-    // Detect deactivation
-    if (/\b(stop ponytail|normal mode)\b/i.test(prompt)) {
+    // Detect deactivation — only if the command branch didn't already handle it
+    if (!handled && /\b(stop ponytail|normal mode)\b/i.test(prompt)) {
       clearMode();
       writeHookOutput('UserPromptSubmit', 'off', 'PONYTAIL MODE OFF');
     }

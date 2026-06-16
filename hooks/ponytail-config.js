@@ -83,7 +83,14 @@ function writeDefaultMode(mode) {
 
   const configPath = getConfigPath();
   fs.mkdirSync(path.dirname(configPath), { recursive: true });
-  fs.writeFileSync(configPath, JSON.stringify({ defaultMode: normalized }, null, 2), 'utf8');
+
+  let existing = {};
+  try {
+    const raw = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+    if (raw && typeof raw === 'object') existing = raw;
+  } catch (e) {}
+
+  fs.writeFileSync(configPath, JSON.stringify({ ...existing, defaultMode: normalized }, null, 2), 'utf8');
   return normalized;
 }
 
