@@ -79,5 +79,14 @@ Running the benchmark requires **Python 3**, **pandas**, and **Node.js** (18+).
 ## Notes
 
 - Caveman is a prose-compression skill (it leaves code "normal"), so it lands between baseline and ponytail on code size and wins mainly on prose tokens.
-- Cost reflects single-shot calls that re-send the skill every time. In real sessions the skill is injected once and prompt-cached, so the cost gap widens further in ponytail's favor.
+- Cost reflects single-shot calls that re-send the skill every time. In real sessions the skill is injected once and prompt-cached, so on tasks shaped like these the cost gap widens further in ponytail's favor.
 - These are everyday tasks. For production-grade specs, where an unconstrained agent bloats much harder, see the writeups in `results/`.
+
+## Where ponytail saves vs. costs
+
+These numbers are single-shot completions. In multi-turn agentic runs the result is task-shaped, not universal:
+
+- **Snowball-prone or blocked tasks** (agent keeps adding, installs a dep, scaffolds "for later"): ponytail's restraint cuts the runaway work — this is where the cost win is largest.
+- **Large completion-forced tasks** (a full draft the agent must finish): ponytail's "understand before you write" discipline can add reading/exploration up front, so it may raise tool calls and tokens while shrinking the written output. Net cost can go either way.
+
+An independent Cursor-SDK A/B measuring this (isolated worktrees, toggling only the rule file) saw ponytail ON correlate with more tool calls and higher estimated cost but leaner drafts on completion-forced tasks, with per-model exceptions: [RicardoCostaGit/ponytail-benchmark-from-cursor](https://github.com/RicardoCostaGit/ponytail-benchmark-from-cursor) (#121). Note also that an SDK's startup `skillCount` is the count of skills *available* in the workspace, not skills the model read — only a `read` of a `SKILL.md` is usage.
