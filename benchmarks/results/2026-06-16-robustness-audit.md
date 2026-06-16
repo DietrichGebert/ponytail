@@ -10,11 +10,10 @@ answers it directly, with a deliberately hostile test set and high sample counts
 - Across **12 classic edge-case traps** (off-by-one, n=0, leap-century, subtractive Roman,
   deep nesting, …) on **two weak models** (`gpt-4.1-mini`, `gpt-5.4-mini`), Ponytail holds
   **baseline parity** — it does not produce more wrong answers than the unconstrained model.
-- The **one** measured soft spot is email validation, and it is **provider-specific**:
+- The **one** measured soft spot is email validation, and it is **provider-specific**.
   OpenAI models, at every size, sometimes reach for `email.utils.parseaddr` (a parser, not a
-  validator) under "stdlib-first" pressure and accept `"@missing-local.com"`. On **Claude —
-  ponytail's target platform — email is 100%** (haiku/sonnet/opus, n=40 each), and ponytail
-  *beats* baseline there.
+  validator) under "stdlib-first" pressure and accept `"@missing-local.com"`. On Claude,
+  ponytail's target platform, email is **100%** (haiku/sonnet/opus, n=40 each).
 - The slip is **not fixable by skill text**: 8 distinct SKILL.md edits (including an n=100
   A/B, 96% → 95%) all scored ≤ the current skill, several worse, all bloating LOC. Counter-
   instructions make small models overthink and fail *more*. Nothing was shipped — adding
@@ -71,15 +70,22 @@ parse ≠ validate trap: under "stdlib-first" pressure a model reaches for
 | model | baseline | ponytail |
 |---|--:|--:|
 | claude-haiku-4-5 | 35/40 | **40/40** |
-| claude-sonnet-4-6 | 0/40 | **40/40** |
+| claude-sonnet-4-6 | 0/40 * | **40/40** |
 | claude-opus-4-8 | 39/40 | **40/40** |
 
 Every OpenAI model slips regardless of size (gpt-4.1 full is the worst). Every Claude model
-is **100%** — and ponytail *beats* baseline: unconstrained Sonnet over-engineers the
-validator into an always-truthy `{is_valid, message}` dict that accepts everything (0/40),
-while ponytail writes a clean correct one. `url`/`creditcard`/`ipv4` hold at ~100% under
-ponytail on both providers, because their lazy stdlib choice (`ipaddress`, Luhn, scheme
-checks) is already strict — only email's obvious stdlib tool is a parser.
+is **100%** under ponytail.
+
+\* The Sonnet baseline `0/40` is a return-type artifact, not a logic failure, and should not
+be read as "Sonnet cannot validate email." Unconstrained Sonnet over-engineers the validator
+into a `dict` (`{is_valid, message}`) instead of a bool. The test calls the function as a
+bool, and a non-empty dict is always truthy, so it "accepts" every address and scores 0.
+Read dict-aware (via `is_valid`), its logic is about 75% correct (9/12). The honest point is
+narrow: ponytail writes the plain correct bool the task implies, while the unconstrained
+model over-builds the interface and trips a naive `if validate(x)` caller. `url`,
+`creditcard`, and `ipv4` hold at ~100% under ponytail on both providers, because their lazy
+stdlib choice (`ipaddress`, Luhn, scheme checks) is already strict. Only email's obvious
+stdlib tool is a parser.
 
 ## The fix that wasn't
 
@@ -103,11 +109,10 @@ shipped. Adding skill text that doesn't work is the cargo-cult Ponytail exists t
 ## Conclusion
 
 "Ponytail degrades model performance" is not supported. Across 12 edge-case traps, ponytail
-holds baseline parity. On validation it is **100% on every Claude model — its target
-platform — where it also rescues baseline's over-engineering.** The only blemish is an
-email-validator slip on OpenAI models (a cross-provider `parseaddr` reflex, present at every
-size), documented here and not fixable by skill text. The LOC win (≈half the code) comes with
-no correctness tax on Claude.
+holds baseline parity. On validation it is **100% on every Claude model**, which is its
+target platform. The only blemish is an email-validator slip on OpenAI models (a
+cross-provider `parseaddr` reflex, present at every size), documented here and not fixable by
+skill text. The LOC win (about half the code) comes with no correctness tax on Claude.
 
 ## Reproduce
 
