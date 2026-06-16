@@ -5,7 +5,7 @@
   "keywords": ["pi-package", "pi", "skills", "ponytail"],
   "license": "MIT",
   "scripts": {
-    "test": "node --test tests/ && npm test --prefix pi-extension"
+    "test": "node --test tests/behavior.test.js tests/commands.test.js tests/copilot-plugin.test.js tests/correctness.test.js tests/gemini-extension.test.js tests/hooks-windows.test.js tests/hooks.test.js tests/openclaw-skills.test.js tests/opencode-plugin.test.js && npm test --prefix pi-extension"
   },
   "pi": {
     "extensions": ["./pi-extension/index.js"],
