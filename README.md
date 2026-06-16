@@ -20,7 +20,7 @@
 
 <p align="center">
   <strong>80-94% less code &middot; 3-6&times; faster &middot; 47-77% cheaper</strong><br>
-  <sub>Median of 10 runs across Haiku, Sonnet, and Opus. <a href="benchmarks/">Reproduce it yourself.</a></sub>
+  <sub>Per-task code, latency, and generation cost on the Claude API &mdash; not a promise about your plan's quota. The ruleset is re-injected every turn, so on a single short prompt that overhead can outweigh the savings. Median of 10 runs across Haiku, Sonnet, and Opus. <a href="benchmarks/">Reproduce it yourself.</a></sub>
 </p>
 
 ---
