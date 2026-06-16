@@ -43,7 +43,14 @@ const INVARIANTS = [
   'naive heuristic',                       // ceiling-comment rule
   'ONE runnable check',                    // test reflex
   'flimsier algorithm',                    // robust-variant rule
-  'input validation at trust boundaries',  // the "not lazy about" clause
+  // the four "not lazy about" safety carve-outs: pin each so a reword in either
+  // file can't silently drop one. Only validation was pinned before. These are the
+  // continuous substrings present in both files ("prevents data loss" because the
+  // full "error handling that prevents data loss" wraps a line in SKILL.md).
+  'input validation at trust boundaries',
+  'prevents data loss',
+  'security',
+  'accessibility',
   'Lazy code without its check is unfinished', // one-check promoted to headline
 ];
 
