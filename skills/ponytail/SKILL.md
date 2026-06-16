@@ -10,6 +10,7 @@ description: >
   "minimal solution", "yagni", "do less", or "shortest path", and whenever
   they complain about over-engineering, bloat, boilerplate, or unnecessary
   dependencies.
+argument-hint: "[lite|full|ultra]"
 license: MIT
 ---
 
