@@ -21,6 +21,10 @@ function clearMode() {
   try { fs.unlinkSync(statePath); } catch (e) {}
 }
 
+function getActiveMode() {
+  try { return fs.readFileSync(statePath, 'utf8').trim(); } catch (e) { return null; }
+}
+
 function writeHookOutput(event, mode, context = '') {
   if (isCopilot) {
     // Copilot reads additionalContext on SessionStart; ignores output elsewhere.
@@ -48,4 +52,5 @@ module.exports = {
   isCopilot,
   setMode,
   writeHookOutput,
+  getActiveMode,
 };
