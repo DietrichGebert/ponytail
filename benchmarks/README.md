@@ -10,7 +10,7 @@ Requires an Anthropic API key and **Node.js ≥ 22.22.0** (promptfoo's engine co
 check with `node --version` and upgrade if needed):
 
 ```bash
-cp ../.env.example ../.env      # add your ANTHROPIC_API_KEY
+cp ../.env.example .env      # add your ANTHROPIC_API_KEY
 npx promptfoo@latest eval -c promptfooconfig.yaml --env-file ../.env --repeat 10
 npx promptfoo@latest view
 ```
