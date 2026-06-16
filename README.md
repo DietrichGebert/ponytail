@@ -7,6 +7,18 @@
 
 <h1 align="center">Ponytail</h1>
 
+<!-- Keep these links, translations synced daily. -->
+<p align="center">
+<a href="https://zdoc.app/de/DietrichGebert/ponytail">Deutsch</a> |
+<a href="https://zdoc.app/es/DietrichGebert/ponytail">Español</a> |
+<a href="https://zdoc.app/fr/DietrichGebert/ponytail">français</a> |
+<a href="https://zdoc.app/ja/DietrichGebert/ponytail">日本語</a> |
+<a href="https://zdoc.app/ko/DietrichGebert/ponytail">한국어</a> |
+<a href="https://zdoc.app/pt/DietrichGebert/ponytail">Português</a> |
+<a href="https://zdoc.app/ru/DietrichGebert/ponytail">Русский</a> |
+<a href="https://zdoc.app/zh/DietrichGebert/ponytail">中文</a>
+</p>
+
 <p align="center">
   <em>He says nothing. He writes one line. It works.</em>
 </p>
