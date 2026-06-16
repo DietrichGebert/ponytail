@@ -3,7 +3,7 @@
 // Inspects user input for /ponytail commands and writes mode to flag file
 
 const { getDefaultMode } = require('./ponytail-config');
-const { clearMode, setMode, writeHookOutput } = require('./ponytail-runtime');
+const { clearMode, setMode, writeHookOutput, getMode } = require('./ponytail-runtime'); // Added getMode
 
 let input = '';
 process.stdin.on('data', chunk => { input += chunk; });
@@ -28,12 +28,33 @@ process.stdin.on('end', () => {
         else if (arg === 'full') mode = 'full';
         else if (arg === 'ultra') mode = 'ultra';
         else if (arg === 'off') mode = 'off';
-        else mode = getDefaultMode();
+        else if (arg === 'status' || arg === 'help') { // New Feature: Status Check
+          writeHookOutput('UserPromptSubmit', 'status', 'CURRENT PONYTAIL MODE: ' + (getMode() || 'off'));
+        } else mode = getDefaultMode();
       }
 
       if (mode && mode !== 'off') {
         setMode(mode);
         writeHookOutput(
+          'UserPromptSubmit',
+          mode,
+          'PONYTAIL MODE CHANGED — level: ' + mode,
+        );
+      } else if (mode === 'off') {
+        clearMode();
+        writeHookOutput('UserPromptSubmit', 'off', 'PONYTAIL MODE OFF');
+      }
+    }
+
+    // Detect deactivation
+    if (/\b(stop ponytail|normal mode)\b/i.test(prompt)) {
+      clearMode();
+      writeHookOutput('UserPromptSubmit', 'off', 'PONYTAIL MODE OFF');
+    }
+  } catch (e) {
+    // Silent fail
+  }
+});
           'UserPromptSubmit',
           mode,
           'PONYTAIL MODE CHANGED — level: ' + mode,
