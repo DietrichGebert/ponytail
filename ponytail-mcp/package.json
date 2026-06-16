@@ -1,0 +1,13 @@
+{
+  "name": "ponytail-mcp",
+  "version": "0.1.0",
+  "description": "MCP server that serves Ponytail's lazy-senior-dev instructions as a prompt and a tool.",
+  "type": "module",
+  "license": "MIT",
+  "bin": { "ponytail-mcp": "./index.js" },
+  "scripts": { "test": "node --test ./test/*.test.js" },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.19.0",
+    "zod": "^3.23.0"
+  }
+}
