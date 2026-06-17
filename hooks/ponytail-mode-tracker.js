@@ -28,7 +28,9 @@ process.stdin.on('end', () => {
         else if (arg === 'full') mode = 'full';
         else if (arg === 'ultra') mode = 'ultra';
         else if (arg === 'off') mode = 'off';
-        else mode = getDefaultMode();
+        else if (arg === '') mode = getDefaultMode();
+        // else: unknown arg (a typo) — leave mode null so we don't silently
+        // reset the active level; pi already treats unknown args as a no-op.
       }
 
       if (mode && mode !== 'off') {
@@ -42,10 +44,10 @@ process.stdin.on('end', () => {
         clearMode();
         writeHookOutput('UserPromptSubmit', 'off', 'PONYTAIL MODE OFF');
       }
-    }
-
-    // Detect deactivation
-    if (/\b(stop ponytail|normal mode)\b/i.test(prompt)) {
+    } else if (/\b(stop ponytail|normal mode)\b/i.test(prompt)) {
+      // Deactivation phrase — but only when the prompt isn't itself a /ponytail
+      // command. A prompt matching both branches used to emit two hook outputs
+      // (two JSON objects on one stdout), breaking the host's JSON.parse.
       clearMode();
       writeHookOutput('UserPromptSubmit', 'off', 'PONYTAIL MODE OFF');
     }

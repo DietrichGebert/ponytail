@@ -138,5 +138,14 @@ assert.equal(
 output = JSON.parse(result.stdout);
 assert.deepEqual(output, {});
 
+// Unknown /ponytail arg must NOT silently reset the level: a typo leaves the
+// active mode untouched and emits nothing (pi already treats it as a no-op).
+run('ponytail-mode-tracker.js', codexEnv, JSON.stringify({ prompt: '@ponytail lite' }));
+assert.equal(fs.readFileSync(codexState, 'utf8'), 'lite');
+result = run('ponytail-mode-tracker.js', codexEnv, JSON.stringify({ prompt: '@ponytail bogus' }));
+assert.equal(result.status, 0, result.stderr);
+assert.equal(fs.readFileSync(codexState, 'utf8'), 'lite', 'unknown arg must not change the persisted level');
+assert.equal(result.stdout, '', 'unknown arg must emit no mode-change output');
+
 fs.rmSync(temp, { recursive: true, force: true });
 console.log('hook compatibility checks passed');
