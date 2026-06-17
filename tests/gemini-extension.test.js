@@ -25,6 +25,10 @@ const VERSIONED_MANIFESTS = [
 // Gemini auto-discovers these by directory; the manifest is only useful if they exist.
 const REUSED_COMMANDS = ['commands/ponytail.toml', 'commands/ponytail-review.toml'];
 const REUSED_SKILLS = ['skills/ponytail/SKILL.md'];
+// Gemini CLI auto-loads this exact path for extension hooks. Ponytail's
+// Claude/Codex hook map uses events Gemini does not support, so it must stay
+// behind the host-specific plugin manifests instead.
+const GEMINI_AUTO_HOOKS = 'hooks/hooks.json';
 // Same load-bearing phrases asserted by scripts/check-rule-copies.js: the file
 // contextFileName points at must actually carry the rules, not just exist.
 const RULE_INVARIANTS = [
@@ -76,4 +80,12 @@ test('the commands and skills the adapter reuses are present', () => {
   for (const rel of [...REUSED_COMMANDS, ...REUSED_SKILLS]) {
     assert.ok(fs.existsSync(path.join(root, rel)), `reused file missing: ${rel}`);
   }
+});
+
+test('Gemini cannot auto-discover Claude/Codex hook events', () => {
+  assert.equal(
+    fs.existsSync(path.join(root, GEMINI_AUTO_HOOKS)),
+    false,
+    `${GEMINI_AUTO_HOOKS} is auto-loaded by Gemini CLI; keep Claude/Codex hooks on manifest paths`,
+  );
 });

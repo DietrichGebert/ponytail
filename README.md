@@ -140,6 +140,7 @@ gemini extensions install https://github.com/DietrichGebert/ponytail
 ```
 
 Loads the ruleset as always-on context every session and registers the `/ponytail` commands; the `skills/` ship too, activated when a task needs them.
+The Gemini adapter intentionally does not ship a root `hooks/hooks.json`: Gemini auto-loads that path, while Ponytail's lifecycle hooks use Claude/Codex event names.
 
 ### Antigravity CLI
 

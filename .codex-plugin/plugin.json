@@ -11,6 +11,7 @@
   "license": "MIT",
   "keywords": ["yagni", "minimalism", "code-review", "productivity"],
   "skills": "./skills/",
+  "hooks": "./hooks/claude-codex-hooks.json",
   "interface": {
     "displayName": "Ponytail",
     "shortDescription": "Lazy senior developer mode",
