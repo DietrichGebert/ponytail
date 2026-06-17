@@ -9,7 +9,7 @@ to load in a given agent.
 | Host | Files | Notes |
 |------|-------|-------|
 | Claude Code | `.claude-plugin/`, `commands/`, `hooks/` | Full plugin install with session activation, mode tracking, commands, and statusline support. |
-| Codex | `.codex-plugin/plugin.json`, `hooks/hooks.json`, `hooks/`, `skills/` | Plugin install with the same skills plus lifecycle hooks for activation and mode tracking. |
+| Codex | `.codex-plugin/plugin.json`, `.agents/plugins/marketplace.json`, `hooks/hooks.json`, `hooks/`, `skills/` | Plugin install with the same skills plus lifecycle hooks for activation and mode tracking. `.agents/plugins/marketplace.json` is the `.agents`-standard marketplace manifest `codex plugin marketplace add` discovers. |
 | OpenCode | `.opencode/plugins/ponytail.mjs`, `.opencode/command/`, `hooks/`, `skills/` | Server plugin injects the ruleset each turn via `experimental.chat.system.transform` and persists `/ponytail` switches; reuses the shared instruction builder. |
 | pi | `pi-extension/`, `skills/`, `hooks/` | Package extension: injects the ruleset each turn through the shared instruction builder and registers the `/ponytail` commands. |
 | Gemini CLI | `gemini-extension.json`, `AGENTS.md`, `commands/`, `skills/` | Extension manifest points `contextFileName` at `AGENTS.md` for always-on rules, and reuses the existing `commands/*.toml` and `skills/`, which Gemini CLI auto-discovers. |
@@ -18,9 +18,10 @@ to load in a given agent.
 | Cline | `.clinerules/ponytail.md` | Project rule. |
 | GitHub Copilot | `.github/copilot-instructions.md` | Repository instruction file. |
 | GitHub Copilot CLI | `.github/plugin/`, `AGENTS.md`, `.github/copilot-instructions.md`, `~/.copilot/copilot-instructions.md` | Plugin-supported (`copilot plugin marketplace add DietrichGebert/ponytail` + `copilot plugin install ponytail@ponytail`). Fallback instruction mode remains: per-project from `AGENTS.md` or `.github/copilot-instructions.md`, or globally from `~/.copilot/copilot-instructions.md` (instruction-tier, no `/ponytail` levels or hooks). |
-| Antigravity | `AGENTS.md` | Reads `AGENTS.md` at the repo root as always-on rules (like `.cursorrules`/`CLAUDE.md`); `.agents/rules/` also works for workspace rules. Instruction-tier. |
+| Antigravity | `gemini-extension.json`, `AGENTS.md`, `commands/`, `skills/` | Installs via `agy plugin install` reusing `gemini-extension.json` (same manifest as Gemini CLI); `/ponytail` commands surface as chat-skills typed into the chat. `AGENTS.md` at the repo root (or `.agents/rules/`) is the always-on-rule fallback. |
 | VS Code + Codex extension | `AGENTS.md` | The Codex extension reads `AGENTS.md` (repo root, or `~/.codex/AGENTS.md` globally). Instruction-tier; the full Codex plugin row above adds `/ponytail` levels and hooks. |
 | Kiro | `.kiro/steering/ponytail.md` | Steering rule; copy globally or into a project. |
+| Aider | `AGENTS.md` | Copy the compact rule file as project conventions. Instruction-tier. |
 | Generic agents | `AGENTS.md` or `skills/*/SKILL.md` | Copy the compact rule file or load the skill files directly. |
 
 ## Adapter Rule
