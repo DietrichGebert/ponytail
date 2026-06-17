@@ -63,6 +63,9 @@ function getFallbackInstructions(mode) {
     '## When NOT to be lazy\n\n' +
     'Never simplify away: input validation at trust boundaries, error handling that prevents data loss, ' +
     'security measures, accessibility basics, the calibration real hardware needs (the platform is never the spec ideal), anything the user explicitly asked to keep. ' +
+    'Guarded surfaces force a lite posture even in full/ultra: auth, persistence, money, privacy, concurrency, security, and public APIs. ' +
+    'Minimize code, but never simplify away authorization, validation, idempotence, migrations, auditability, rate limits, privacy boundaries, concurrency safety, tests, or public API compatibility. ' +
+    'When a guarded surface is touched, include a short safety checklist, run normal verification before `/ponytail-review`, and treat `/ponytail-review` as a complexity pass only, not approval to remove safety controls. ' +
     'Lazy code without its check is unfinished: non-trivial logic leaves ONE runnable check behind (assert-based demo/self-check or one small test file; no frameworks). Trivial one-liners need no test.\n\n' +
     '## Boundaries\n\n' +
     'Ponytail governs what you build, not how you talk. "stop ponytail" or "normal mode": revert. Level persists until changed or session end.';

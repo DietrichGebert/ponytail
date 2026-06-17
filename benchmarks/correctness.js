@@ -6,7 +6,7 @@
 // Unlike loc.js (measurement-only), this one is a gate — a wrong answer is a
 // wrong answer regardless of how few lines produced it.
 
-const { execSync } = require('child_process');
+const { execFileSync } = require('child_process');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
@@ -32,28 +32,67 @@ function identifyTask(task) {
   return null;
 }
 
-// Run a command, return { ok, stderr }.
-function exec(cmd, opts = {}) {
+// Run an executable directly, return { ok, stderr }.
+function execFile(command, args = [], opts = {}) {
   try {
-    execSync(cmd, { timeout: 10_000, encoding: 'utf8', stdio: 'pipe', ...opts });
+    execFileSync(command, args, { timeout: 10_000, encoding: 'utf8', stdio: 'pipe', ...opts });
     return { ok: true, stderr: '' };
   } catch (e) {
-    return { ok: false, stderr: (e.stderr || e.message || '').slice(0, 500) };
+    return { ok: false, stderr: (e.stderr || e.stdout || e.message || '').slice(0, 500) };
   }
 }
 
-// ponytail: probe once at load; macOS and many Linux images ship python3 only.
-let pythonCmd;
-function python() {
-  if (pythonCmd) return pythonCmd;
-  for (const cmd of ['python3', 'python']) {
-    if (exec(`${cmd} -c "import sys"`).ok) {
-      pythonCmd = cmd;
-      return pythonCmd;
+function addPythonCandidate(candidates, seen, command, args = [], opts = {}) {
+  if (!command) return;
+  const key = [command, ...args].join('\0');
+  if (seen.has(key)) return;
+  seen.add(key);
+  candidates.push({ command, args, opts });
+}
+
+// ponytail: probe once per dependency profile. Prefer explicit envs before
+// bare PATH lookup; macOS/Homebrew can otherwise shadow an active conda env.
+const pythonCmds = new Map();
+function python(extraPackages = []) {
+  const key = extraPackages.join(',');
+  if (pythonCmds.has(key)) return pythonCmds.get(key);
+
+  const candidates = [];
+  const seen = new Set();
+  addPythonCandidate(candidates, seen, process.env.PONYTAIL_PYTHON || process.env.PYTHON);
+
+  if (process.env.CONDA_PREFIX) {
+    if (process.platform === 'win32') {
+      addPythonCandidate(candidates, seen, path.join(process.env.CONDA_PREFIX, 'python.exe'));
+    } else {
+      addPythonCandidate(candidates, seen, path.join(process.env.CONDA_PREFIX, 'bin', 'python3'));
+      addPythonCandidate(candidates, seen, path.join(process.env.CONDA_PREFIX, 'bin', 'python'));
     }
   }
-  pythonCmd = 'python3';
-  return pythonCmd;
+
+  addPythonCandidate(candidates, seen, 'python3');
+  addPythonCandidate(candidates, seen, 'python');
+
+  if (extraPackages.includes('pandas')) {
+    addPythonCandidate(candidates, seen, 'uv', ['run', '--with', 'pandas', 'python'], { timeout: 120_000 });
+  }
+
+  const imports = ['sys', ...extraPackages].map((name) => `import ${name}`).join('; ');
+  for (const candidate of candidates) {
+    if (execFile(candidate.command, [...candidate.args, '-c', imports], candidate.opts).ok) {
+      pythonCmds.set(key, candidate);
+      return candidate;
+    }
+  }
+
+  const fallback = { command: 'python3', args: [] };
+  pythonCmds.set(key, fallback);
+  return fallback;
+}
+
+function runPython(file, extraPackages = []) {
+  const candidate = python(extraPackages);
+  return execFile(candidate.command, [...candidate.args, file], candidate.opts);
 }
 
 // Write content to a temp file, return the path.
@@ -118,7 +157,7 @@ if failures:
 print("PASS")
 `;
     const f = tmpFile('.py', harness);
-    const result = exec(`${python()} "${f}"`);
+    const result = runPython(f);
     fs.unlinkSync(f);
     if (result.ok) return { pass: true, reason: 'Email validator passes all checks' };
     return { pass: false, reason: result.stderr || 'Email validator failed' };
@@ -163,7 +202,7 @@ setTimeout(() => {
 }, 120);
 `;
     const f = tmpFile('.mjs', harness);
-    const result = exec(`node "${f}"`);
+    const result = execFile(process.execPath, [f]);
     fs.unlinkSync(f);
     if (result.ok) return { pass: true, reason: 'Debounce passes all checks' };
     return { pass: false, reason: result.stderr || 'Debounce failed' };
@@ -195,8 +234,8 @@ try:
 ${patched.split('\n').map((l) => '    ' + l).join('\n')}
 except Exception as e:
     sys.stdout = _stdout
-    # If it needs sales.csv in cwd, write it there and retry
-    pass
+    print("FAIL: exception while running generated code: " + repr(e), file=sys.stderr)
+    sys.exit(1)
 
 output = sys.stdout.getvalue()
 sys.stdout = _stdout
@@ -212,7 +251,7 @@ else:
     sys.exit(1)
 `;
     const f = tmpFile('.py', harness);
-    const result = exec(`${python()} "${f}"`);
+    const result = runPython(f, ['pandas']);
     try { fs.unlinkSync(f); } catch (e) {}
     try { fs.unlinkSync(csvPath); } catch (e) {}
     if (result.ok) return { pass: true, reason: 'CSV sum produces correct result (351)' };
