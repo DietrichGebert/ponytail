@@ -11,6 +11,9 @@ import { createRequire } from 'module';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 // The shared instruction builder is CommonJS; bridge to it from this ES module.
 const require = createRequire(import.meta.url);
@@ -42,7 +45,18 @@ export default async ({ client } = {}) => {
     try { client && client.app && client.app.log({ body: { service: 'ponytail', level, message } }); } catch (e) {}
   };
 
+  const ponytailSkillsDir = path.resolve(__dirname, '../../skills');
+
   return {
+    // Register skills directory so opencode discovers ponytail skills.
+    config: async (config) => {
+      config.skills = config.skills || {};
+      config.skills.paths = config.skills.paths || [];
+      if (!config.skills.paths.includes(ponytailSkillsDir)) {
+        config.skills.paths.push(ponytailSkillsDir);
+      }
+    },
+
     // Append the ruleset to the system prompt every turn.
     'experimental.chat.system.transform': async (_input, output) => {
       const mode = readMode();
