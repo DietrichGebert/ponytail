@@ -21,6 +21,7 @@ to load in a given agent.
 | Antigravity | `AGENTS.md` | Reads `AGENTS.md` at the repo root as always-on rules (like `.cursorrules`/`CLAUDE.md`); `.agents/rules/` also works for workspace rules. Instruction-tier. |
 | VS Code + Codex extension | `AGENTS.md` | The Codex extension reads `AGENTS.md` (repo root, or `~/.codex/AGENTS.md` globally). Instruction-tier; the full Codex plugin row above adds `/ponytail` levels and hooks. |
 | Kiro | `.kiro/steering/ponytail.md` | Steering rule; copy globally or into a project. |
+| Hermes | `skills/` | SKILL.md-compatible: auto-discovers skills from `skills/` in the project root or `~/.hermes/skills/` globally. Install with `npx skills add DietrichGebert/ponytail --all --global`. Supports all five skills and `/ponytail` commands. |
 | Generic agents | `AGENTS.md` or `skills/*/SKILL.md` | Copy the compact rule file or load the skill files directly. |
 
 ## Adapter Rule
