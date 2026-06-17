@@ -1,4 +1,6 @@
-$Flag = Join-Path $HOME ".claude/.ponytail-active"
+# Mirror ponytail-config.getClaudeDir(): honor CLAUDE_CONFIG_DIR, else ~/.claude.
+$ConfigDir = if ($env:CLAUDE_CONFIG_DIR) { $env:CLAUDE_CONFIG_DIR } else { Join-Path $HOME ".claude" }
+$Flag = Join-Path $ConfigDir ".ponytail-active"
 if (-not (Test-Path $Flag)) {
     exit 0
 }
