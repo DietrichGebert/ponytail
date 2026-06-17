@@ -11,6 +11,8 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 
+const CHECK_TIMEOUT_MS = 20_000;
+
 // Extract fenced code blocks, tagged by language.
 function extractBlocks(text) {
   text = String(text || '');
@@ -35,7 +37,7 @@ function identifyTask(task) {
 // Run a command, return { ok, stderr }.
 function exec(cmd, opts = {}) {
   try {
-    execSync(cmd, { timeout: 10_000, encoding: 'utf8', stdio: 'pipe', ...opts });
+    execSync(cmd, { timeout: CHECK_TIMEOUT_MS, encoding: 'utf8', stdio: 'pipe', ...opts });
     return { ok: true, stderr: '' };
   } catch (e) {
     return { ok: false, stderr: (e.stderr || e.message || '').slice(0, 500) };
