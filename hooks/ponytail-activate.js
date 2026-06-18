@@ -43,7 +43,9 @@ let output = getPonytailInstructions(mode);
 if (!isCodex) try {
   let hasStatusline = false;
   if (fs.existsSync(settingsPath)) {
-    const settings = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
+    // Strip UTF-8 BOM some editors prepend on Windows (breaks JSON.parse)
+    const raw = fs.readFileSync(settingsPath, 'utf8').replace(/^\uFEFF/, '');
+    const settings = JSON.parse(raw);
     if (settings.statusLine) {
       hasStatusline = true;
     }
