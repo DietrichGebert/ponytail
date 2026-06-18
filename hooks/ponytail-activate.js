@@ -69,4 +69,8 @@ if (!isCodex) try {
   // Silent fail — don't block session start over statusline detection
 }
 
-writeHookOutput('SessionStart', mode, output);
+try {
+  writeHookOutput('SessionStart', mode, output);
+} catch (e) {
+  // Silent fail — stdout closed/EPIPE at hook exit must not surface as a hook failure
+}
