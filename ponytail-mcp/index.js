@@ -7,7 +7,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
 
-import { MODES, buildInstructions } from "./instructions.js";
+import { MODES, buildInstructions, resolveMode } from "./instructions.js";
 
 const server = new McpServer({ name: "ponytail", version: "0.1.0" });
 
@@ -38,8 +38,9 @@ server.registerTool(
     annotations: { readOnlyHint: true, openWorldHint: false },
   },
   ({ mode }) => {
-    const instructions = buildInstructions(mode);
-    const structuredContent = { mode: mode || "default", instructions };
+    const resolvedMode = resolveMode(mode);
+    const instructions = buildInstructions(resolvedMode);
+    const structuredContent = { mode: resolvedMode, instructions };
     return { content: [{ type: "text", text: instructions }], structuredContent };
   },
 );
