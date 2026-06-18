@@ -55,6 +55,32 @@ export { writeDefaultMode };
 export default function ponytailExtension(pi) {
   let currentMode = DEFAULT_MODE;
   let configuredDefaultMode = getDefaultMode();
+  let agentActive = false;
+  let lastCtx = null;
+
+  const levelIcons = { lite: "🌿", full: "⚡", ultra: "🔥" };
+
+  // Footer status bar: shows current mode and whether the agent is working.
+  // ponytail: pi clears a status by passing undefined; theme.fg only knows the
+  // documented palette (accent/muted/dim/...), so guard it and fall back to
+  // plain text when no theme is attached (e.g. print/RPC mode).
+  const syncStatus = (ctx) => {
+    const active = ctx?.ui?.setStatus ? ctx : lastCtx;
+    if (!active?.ui?.setStatus) return;
+    if (ctx?.ui?.setStatus) lastCtx = ctx;
+
+    if (currentMode === "off") {
+      active.ui.setStatus("ponytail", undefined);
+      return;
+    }
+
+    const theme = active.ui.theme;
+    const paint = (color, text) => (theme?.fg ? theme.fg(color, text) : text);
+    const indicator = agentActive ? paint("accent", "●") : paint("dim", "○");
+    const icon = levelIcons[currentMode] || "";
+    const label = `${paint("muted", "ponytail")} ${paint("accent", `${icon} ${currentMode.toUpperCase()}`.trim())}`;
+    active.ui.setStatus("ponytail", `${indicator} ${label}`);
+  };
 
   const setMode = (mode, ctx) => {
     const normalized = normalizePersistedMode(mode);
@@ -62,6 +88,7 @@ export default function ponytailExtension(pi) {
 
     currentMode = normalized;
     pi.appendEntry("ponytail-mode", { mode: normalized });
+    syncStatus(ctx);
     ctx?.ui?.notify?.(`Ponytail mode set to ${normalized}.`, "info");
   };
 
@@ -142,6 +169,17 @@ export default function ponytailExtension(pi) {
     const entries = ctx?.sessionManager?.getBranch?.() || ctx?.sessionManager?.getEntries?.() || [];
     configuredDefaultMode = getDefaultMode();
     currentMode = resolveSessionMode(entries, configuredDefaultMode);
+    syncStatus(ctx);
+  });
+
+  pi.on("agent_start", async (_event, ctx) => {
+    agentActive = true;
+    syncStatus(ctx);
+  });
+
+  pi.on("agent_end", async (_event, ctx) => {
+    agentActive = false;
+    syncStatus(ctx);
   });
 
   pi.on("before_agent_start", async (event) => {
