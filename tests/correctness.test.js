@@ -179,6 +179,57 @@ def endpoint():
   assert.equal(result.score, 0);
 });
 
+// --- Unfenced fallback + prose / early-exit guards (gate integrity) ---
+
+// A terse model can answer with bare, unfenced code (issue #65); the gate must
+// still score it. These reach the extractBlocks fallback, which the fenced
+// `check` helper above never exercises.
+test('email: unfenced bare code still passes', () => {
+  const result = correctness(
+    'import re\ndef validate_email(e):\n    return bool(re.match(r"^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$", e))',
+    { vars: { task: 'Write me a Python function that validates email addresses.' } },
+  );
+  assert.equal(result.pass, true);
+});
+
+test('debounce: unfenced arrow function still passes', () => {
+  const result = correctness(
+    'const debounce = (fn, delay) => {\n  let t;\n  return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), delay); };\n};',
+    { vars: { task: 'Add debounce to a search input in vanilla JavaScript.' } },
+  );
+  assert.equal(result.pass, true);
+});
+
+// Prose that name-drops the structural keywords but contains no code must NOT
+// pass the run-free checks (countdown/ratelimit), or the gate rewards talk.
+test('countdown: prose without code fails the structural check', () => {
+  const result = correctness(
+    'To build it, use useState for the count and useEffect with setInterval; each tick set count - 1 until zero.',
+    { vars: { task: 'Build me a countdown timer component in React.' } },
+  );
+  assert.equal(result.pass, false);
+});
+
+test('ratelimit: prose without code fails the structural check', () => {
+  const result = correctness(
+    'Build a rate limiter in FastAPI that tracks requests per window and returns 429 when the limit is exceeded.',
+    { vars: { task: 'Add rate limiting to my FastAPI endpoint.' } },
+  );
+  assert.equal(result.pass, false);
+});
+
+// A model demo that exits 0 before our appended asserts run must not score as a
+// pass just because the process exited cleanly.
+test('email: code that exits 0 before the asserts run fails', () => {
+  const result = check(
+    'Write me a Python function that validates email addresses.',
+    'python',
+    'import sys\ndef validate_email(e):\n    return True  # broken: accepts everything\nsys.exit(0)',
+  );
+  assert.equal(result.pass, false);
+  assert.equal(result.score, 0);
+});
+
 // --- Edge cases ---
 
 test('unknown task is gracefully skipped', () => {

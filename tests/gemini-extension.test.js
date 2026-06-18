@@ -22,6 +22,15 @@ const VERSIONED_MANIFESTS = [
   '.codex-plugin/plugin.json',
   '.github/plugin/plugin.json',
 ];
+// The marketplace manifests for the three plugin ecosystems. Shapes differ per
+// ecosystem, but all must parse, name the ponytail plugin, and — for the two
+// that carry a shared plugin description — keep it identical, so a rename or
+// copy-edit can't silently desync one marketplace listing from the others.
+const MARKETPLACE_MANIFESTS = [
+  '.claude-plugin/marketplace.json',
+  '.github/plugin/marketplace.json',
+  '.agents/plugins/marketplace.json',
+];
 // Gemini auto-discovers these by directory; the manifest is only useful if they exist.
 const REUSED_COMMANDS = ['commands/ponytail.toml', 'commands/ponytail-review.toml'];
 const REUSED_SKILLS = ['skills/ponytail/SKILL.md'];
@@ -75,5 +84,25 @@ test('contextFileName resolves to a file carrying the ponytail rules', () => {
 test('the commands and skills the adapter reuses are present', () => {
   for (const rel of [...REUSED_COMMANDS, ...REUSED_SKILLS]) {
     assert.ok(fs.existsSync(path.join(root, rel)), `reused file missing: ${rel}`);
+  }
+});
+
+test('every marketplace manifest parses and names the ponytail plugin', () => {
+  for (const rel of MARKETPLACE_MANIFESTS) {
+    assert.ok(fs.existsSync(path.join(root, rel)), `marketplace manifest missing: ${rel}`);
+    const manifest = JSON.parse(read(rel));
+    assert.equal(manifest.name, EXTENSION_NAME, `${rel}: top-level name must be ponytail`);
+    assert.ok(Array.isArray(manifest.plugins) && manifest.plugins.length > 0, `${rel}: must list a plugin`);
+    assert.equal(manifest.plugins[0].name, EXTENSION_NAME, `${rel}: plugins[0].name must be ponytail`);
+  }
+});
+
+test('marketplace manifests that carry a plugin description keep it identical', () => {
+  const descriptions = MARKETPLACE_MANIFESTS
+    .map((rel) => JSON.parse(read(rel)).plugins[0].description)
+    .filter(Boolean);
+  assert.ok(descriptions.length >= 2, 'expected a shared plugin description in at least two marketplaces');
+  for (const d of descriptions) {
+    assert.equal(d, descriptions[0], 'a marketplace plugin description drifted from the others');
   }
 });

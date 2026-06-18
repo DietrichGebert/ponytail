@@ -12,6 +12,7 @@ const path = require('path');
 
 const root = path.join(__dirname, '..');
 const HOOKS_JSON = 'hooks/hooks.json';
+const COPILOT_HOOKS_JSON = 'hooks/copilot-hooks.json';
 // cmd.exe variable syntax (%FOO%); PowerShell leaves it literal, breaking the path.
 const CMD_VAR_SYNTAX = /%[A-Za-z_][A-Za-z0-9_]*%/;
 // Pull the hooks/<script> a command launches, so we can check it exists.
@@ -26,6 +27,28 @@ function commandHooks() {
     .flatMap((entry) => entry.hooks);
 }
 
+// Claude's hooks.json carries command/commandWindows; Copilot's copilot-hooks.json
+// uses a flatter shape with bash/powershell. Return every raw command string a
+// manifest launches, so existence and parity checks can share one extractor.
+function claudeCommands() {
+  return commandHooks().flatMap((h) => [h.command, h.commandWindows].filter(Boolean));
+}
+
+function copilotCommands() {
+  const config = JSON.parse(fs.readFileSync(path.join(root, COPILOT_HOOKS_JSON), 'utf8'));
+  return Object.values(config.hooks)
+    .flat()
+    .flatMap((entry) => [entry.bash, entry.powershell].filter(Boolean));
+}
+
+// The set of hooks/<script> basenames a list of command strings references.
+function scriptSet(commands) {
+  return new Set(commands.flatMap((cmd) => {
+    const m = cmd.match(HOOK_SCRIPT);
+    return m ? [m[1]] : [];
+  }));
+}
+
 test('every commandWindows uses PowerShell $env: syntax, not cmd.exe %VAR%', () => {
   const windowsCommands = commandHooks()
     .map((h) => h.commandWindows)
@@ -37,12 +60,19 @@ test('every commandWindows uses PowerShell $env: syntax, not cmd.exe %VAR%', () 
 });
 
 test('every hook command points at a script that ships in hooks/', () => {
-  for (const hook of commandHooks()) {
-    for (const cmd of [hook.command, hook.commandWindows].filter(Boolean)) {
-      const match = cmd.match(HOOK_SCRIPT);
-      assert.ok(match, `cannot find a hooks/ script in command: ${cmd}`);
-      const script = path.join(root, 'hooks', match[1]);
-      assert.ok(fs.existsSync(script), `command references a missing hook script: ${match[1]}`);
-    }
+  for (const cmd of [...claudeCommands(), ...copilotCommands()]) {
+    const match = cmd.match(HOOK_SCRIPT);
+    assert.ok(match, `cannot find a hooks/ script in command: ${cmd}`);
+    const script = path.join(root, 'hooks', match[1]);
+    assert.ok(fs.existsSync(script), `command references a missing hook script: ${match[1]}`);
   }
+});
+
+// A new lifecycle hook added to one host manifest but forgotten in the other
+// would silently leave that host un-wired — Claude's gate would never catch it.
+test('hooks.json and copilot-hooks.json wire the same hooks/ scripts', () => {
+  const claude = [...scriptSet(claudeCommands())].sort();
+  const copilot = [...scriptSet(copilotCommands())].sort();
+  assert.ok(claude.length > 0, 'expected at least one claude hook script');
+  assert.deepEqual(copilot, claude, 'a hook script is wired in one host manifest but not the other');
 });

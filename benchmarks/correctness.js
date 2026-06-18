@@ -17,8 +17,17 @@ function extractBlocks(text) {
   const matches = [...text.matchAll(/```(\w*)\r?\n([\s\S]*?)```/g)];
   // ponytail: terse models often answer with bare, unfenced code. Treat the whole
   // response as one block so the gate scores the code instead of reporting "no block".
-  if (matches.length === 0 && text.trim()) return [{ lang: '', code: text }];
+  if (matches.length === 0 && text.trim()) return [{ lang: '', code: text, unfenced: true }];
   return matches.map((m) => ({ lang: (m[1] || '').toLowerCase(), code: m[2] }));
+}
+
+// ponytail: a fenced block is code by the model's own delimiter; the unfenced
+// fallback wraps the whole response, prose included. The structural-only checks
+// (countdown/ratelimit) never run the code, so prose carrying the right keywords
+// would score as a pass — require a real code construct on an unfenced block
+// before trusting them. ceiling: keyword heuristic, not a parser.
+function looksLikeCode(block) {
+  return !block.unfenced || /[{}]|=>|@\w|\bdef\b|\bimport\b/.test(block.code);
 }
 
 // Identify which task we're evaluating from vars.task.
@@ -35,11 +44,19 @@ function identifyTask(task) {
 // Run a command, return { ok, stderr }.
 function exec(cmd, opts = {}) {
   try {
-    execSync(cmd, { timeout: 10_000, encoding: 'utf8', stdio: 'pipe', ...opts });
-    return { ok: true, stderr: '' };
+    const stdout = execSync(cmd, { timeout: 10_000, encoding: 'utf8', stdio: 'pipe', ...opts });
+    return { ok: true, stdout: stdout || '', stderr: '' };
   } catch (e) {
-    return { ok: false, stderr: (e.stderr || e.message || '').slice(0, 500) };
+    return { ok: false, stdout: e.stdout || '', stderr: (e.stderr || e.message || '').slice(0, 500) };
   }
+}
+
+// ponytail: exit-0 alone is not a pass. The model's own code can sys.exit(0) /
+// process.exit(0) in a __main__/demo block before our appended asserts run, so
+// each harness prints a PASS sentinel on success and we require it here. Without
+// this, a skipped assertion masquerades as a passing answer.
+function passed(result) {
+  return result.ok && /(^|\n)PASS\s*$/.test(result.stdout || '');
 }
 
 // ponytail: probe once at load; macOS and many Linux images ship python3 only.
@@ -120,7 +137,7 @@ print("PASS")
     const f = tmpFile('.py', harness);
     const result = exec(`${python()} "${f}"`);
     fs.unlinkSync(f);
-    if (result.ok) return { pass: true, reason: 'Email validator passes all checks' };
+    if (passed(result)) return { pass: true, reason: 'Email validator passes all checks' };
     return { pass: false, reason: result.stderr || 'Email validator failed' };
   },
 
@@ -165,7 +182,7 @@ setTimeout(() => {
     const f = tmpFile('.mjs', harness);
     const result = exec(`node "${f}"`);
     fs.unlinkSync(f);
-    if (result.ok) return { pass: true, reason: 'Debounce passes all checks' };
+    if (passed(result)) return { pass: true, reason: 'Debounce passes all checks' };
     return { pass: false, reason: result.stderr || 'Debounce failed' };
   },
 
@@ -215,7 +232,7 @@ else:
     const result = exec(`${python()} "${f}"`);
     try { fs.unlinkSync(f); } catch (e) {}
     try { fs.unlinkSync(csvPath); } catch (e) {}
-    if (result.ok) return { pass: true, reason: 'CSV sum produces correct result (351)' };
+    if (passed(result)) return { pass: true, reason: 'CSV sum produces correct result (351)' };
     return { pass: false, reason: result.stderr || 'CSV sum failed' };
   },
 
@@ -223,7 +240,7 @@ else:
     // React components can't run in bare Node without a bundler. Structural check:
     // the code must contain timer/countdown logic (useState/useEffect/setInterval/setTimeout).
     const code = blocks.find((b) => b.code.includes('ount') || b.code.includes('timer') || b.code.includes('Timer'));
-    if (!code) return { pass: false, reason: 'No countdown component found' };
+    if (!code || !looksLikeCode(code)) return { pass: false, reason: 'No countdown component found' };
 
     const src = code.code;
     const hasState = /useState|useReducer|this\.state/.test(src);
@@ -241,7 +258,7 @@ else:
 
   ratelimit(blocks) {
     const code = blocks.find((b) => b.lang === 'python' || b.lang === 'py' || (!b.lang && (b.code.includes('rate') || b.code.includes('limit'))));
-    if (!code) return { pass: false, reason: 'No Python code block found' };
+    if (!code || !looksLikeCode(code)) return { pass: false, reason: 'No Python code block found' };
 
     // Structural check for rate limiting: must have some form of counter/time tracking.
     const src = code.code;
