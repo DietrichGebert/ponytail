@@ -2,7 +2,7 @@
 // ponytail — UserPromptSubmit hook to track which ponytail mode is active
 // Inspects user input for /ponytail commands and writes mode to flag file
 
-const { getDefaultMode } = require('./ponytail-config');
+const { getDefaultMode, isDeactivationCommand } = require('./ponytail-config');
 const { clearMode, setMode, writeHookOutput } = require('./ponytail-runtime');
 
 let input = '';
@@ -45,7 +45,7 @@ process.stdin.on('end', () => {
     }
 
     // Detect deactivation
-    if (/\b(stop ponytail|normal mode)\b/i.test(prompt)) {
+    if (isDeactivationCommand(prompt)) {
       clearMode();
       writeHookOutput('UserPromptSubmit', 'off', 'PONYTAIL MODE OFF');
     }

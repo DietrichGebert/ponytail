@@ -7,6 +7,7 @@ const {
   normalizeMode,
   normalizeConfigMode,
   normalizePersistedMode,
+  isDeactivationCommand,
   writeDefaultMode,
 } = require("../hooks/ponytail-config.js");
 const { getPonytailInstructions, filterSkillBodyForMode } = require("../hooks/ponytail-instructions.js");
@@ -133,7 +134,7 @@ export default function ponytailExtension(pi) {
     if (event?.source === "extension") return;
 
     const text = String(event?.text || "");
-    if (currentMode !== "off" && /\b(stop ponytail|normal mode)\b/i.test(text)) {
+    if (currentMode !== "off" && isDeactivationCommand(text)) {
       setMode("off");
     }
   });

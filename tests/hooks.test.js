@@ -64,6 +64,23 @@ assert.equal(fs.existsSync(codexState), false);
 output = JSON.parse(result.stdout);
 assert.equal(output.systemMessage, 'PONYTAIL:OFF');
 
+// A request that merely mentions "normal mode" must not deactivate ponytail.
+result = run('ponytail-mode-tracker.js', codexEnv, JSON.stringify({ prompt: '@ponytail lite' }));
+assert.equal(result.status, 0, result.stderr);
+assert.equal(fs.readFileSync(codexState, 'utf8'), 'lite');
+
+result = run(
+  'ponytail-mode-tracker.js',
+  codexEnv,
+  JSON.stringify({ prompt: 'add a normal mode toggle next to dark mode' }),
+);
+assert.equal(result.status, 0, result.stderr);
+assert.equal(
+  fs.readFileSync(codexState, 'utf8'),
+  'lite',
+  'incidental "normal mode" in a request must not turn ponytail off',
+);
+
 const claudeEnv = {
   HOME: home,
   USERPROFILE: home,

@@ -121,3 +121,15 @@ test("normal mode disables persistent instructions", async () => withTempConfig(
   const disabled = await events.get("before_agent_start")({ systemPrompt: "BASE" }, ctx);
   assert.equal(disabled, undefined);
 }));
+
+test("a request mentioning normal mode stays active", async () => withTempConfig(async () => {
+  const { commands, events } = createPiHarness();
+  const ctx = createCommandContext();
+
+  await events.get("session_start")({ reason: "startup" }, ctx);
+  await commands.get("ponytail").handler("ultra", ctx);
+  await events.get("input")({ text: "add a normal mode toggle next to dark mode", source: "interactive" }, ctx);
+
+  const result = await events.get("before_agent_start")({ systemPrompt: "BASE" }, ctx);
+  assert.match(result.systemPrompt, /PONYTAIL MODE ACTIVE/);
+}));

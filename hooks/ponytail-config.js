@@ -33,6 +33,15 @@ function normalizePersistedMode(mode) {
   return normalizeMode(mode) || normalizeConfigMode(mode);
 }
 
+// "stop ponytail" / "normal mode" turn ponytail off, but only as a standalone
+// command. Matching the phrase anywhere in the message turned it off mid-task
+// for ordinary requests like "add a normal mode toggle" — so require the whole
+// message to be the command, ignoring case and trailing punctuation.
+function isDeactivationCommand(text) {
+  const t = String(text || '').trim().toLowerCase().replace(/[.!?\s]+$/, '');
+  return t === 'stop ponytail' || t === 'normal mode';
+}
+
 function getConfigDir() {
   if (process.env.XDG_CONFIG_HOME) {
     return path.join(process.env.XDG_CONFIG_HOME, 'ponytail');
@@ -98,5 +107,6 @@ module.exports = {
   normalizeMode,
   normalizeConfigMode,
   normalizePersistedMode,
+  isDeactivationCommand,
   writeDefaultMode,
 };
