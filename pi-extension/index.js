@@ -65,9 +65,9 @@ export default function ponytailExtension(pi) {
   // documented palette (accent/muted/dim/...), so guard it and fall back to
   // plain text when no theme is attached (e.g. print/RPC mode).
   const syncStatus = (ctx) => {
-    if (ctx) lastCtx = ctx;
-    const active = ctx || lastCtx;
+    const active = ctx?.ui?.setStatus ? ctx : lastCtx;
     if (!active?.ui?.setStatus) return;
+    if (ctx?.ui?.setStatus) lastCtx = ctx;
 
     if (currentMode === "off") {
       active.ui.setStatus("ponytail", undefined);
