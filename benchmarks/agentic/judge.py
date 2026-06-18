@@ -61,10 +61,10 @@ def source_text(workdir: Path):
         except Exception: continue
     return "\n\n".join(out)
 
-def judge_call(task_prompt, files, key, retries=3):
+def judge_call(task_prompt, files, key, retries=3, system=RUBRIC):
     user = f"TASK GIVEN TO THE AUTHOR:\n{task_prompt}\n\nFILES THEY WROTE:\n{files}"
     body = json.dumps({"model": JUDGE_MODEL, "max_tokens": 300, "temperature": 0,
-                       "system": RUBRIC, "messages": [{"role": "user", "content": user}]}).encode()
+                       "system": system, "messages": [{"role": "user", "content": user}]}).encode()
     for attempt in range(retries):
         try:
             req = urllib.request.Request("https://api.anthropic.com/v1/messages", data=body,

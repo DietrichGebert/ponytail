@@ -87,6 +87,27 @@ python judge.py --selftest            # validate the judge (small spend)
 python judge.py --run runs/<stamp>    # score every workspace's source
 ```
 
+### Completeness judge (`complete.py`)
+
+Fewer lines only counts as a win if the code still does the job. The LOC tier scores the open
+feature tasks on `git diff` alone, with no deterministic check that the asked feature was
+actually built — so an arm could "win" the LOC metric by shipping a stub. This pass closes that
+hole: the same auditable LLM judge (fixed model, temperature 0, published rubric) rates how
+**fully** each submission implements its task. Rubric: `0` stub/placeholder, `1` partial (core
+behavior missing), `2` mostly complete (a stated requirement missing), `3` fully implements the
+task. Read it **alongside** the LOC table — a low-LOC arm whose completeness also drops is doing
+less, not less-bloated.
+
+Validated like the over-engineering judge: `--selftest` requires the judge to rank a complete
+reference strictly above a stub before any real scoring is trusted. `--selftest-offline` checks
+the gate logic with no API call (no key needed).
+
+```bash
+python complete.py --selftest-offline  # validate the gate logic, no API
+python complete.py --selftest          # validate the judge (small spend)
+python complete.py --run runs/<stamp>  # completeness-score every workspace
+```
+
 ## Reproduce
 
 Needs the `claude` CLI (this is the harness, no SDK), Python 3, an authenticated Claude Code, and a
@@ -117,11 +138,13 @@ re-applied offline with `--rescore`, you never pay the API twice for a measureme
 
 ## What this can and cannot show
 
-- It **can** show whether a skill keeps code minimal *without* dropping safety, on real
-  multi-file edits, across model sizes, with variance.
+- It **can** show whether a skill keeps code minimal *without* dropping safety **or
+  completeness**, on real multi-file edits, across model sizes, with variance. Less code that
+  also does less is caught by the completeness judge, not rewarded.
 - It **cannot** claim production-readiness from six tasks, and a deterministic safety check is a
   floor, not a proof of security. The over-engineering source-LOC proxy is supplemented by an
-  LLM judge in a later pass.
+  LLM judge (`judge.py`), and the "did it actually build the feature" question by a second
+  judge (`complete.py`).
 - If the arms converge (everyone safe, similar size), the benchmark says so. It is built to be
   able to disprove the skill's value, not only to confirm it.
 
