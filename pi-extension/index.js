@@ -146,6 +146,8 @@ export default function ponytailExtension(pi) {
 
   pi.on("before_agent_start", async (event) => {
     if (!currentMode || currentMode === "off") return;
-    return { systemPrompt: `${event.systemPrompt}\n\n${getPonytailInstructions(currentMode)}` };
+    const base = event.systemPrompt || '';
+    const instructions = getPonytailInstructions(currentMode);
+    return { systemPrompt: base ? `${base}\n\n${instructions}` : instructions };
   });
 }

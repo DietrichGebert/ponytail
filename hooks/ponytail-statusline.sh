@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-flag="$HOME/.claude/.ponytail-active"
+flag="${CLAUDE_CONFIG_DIR:-$HOME/.claude}/.ponytail-active"
 [ -f "$flag" ] || exit 0
 
 mode=$(head -n1 "$flag" | tr -d '[:space:]')
