@@ -148,6 +148,15 @@ Injects the ruleset every turn at the active level; adds the `/ponytail` command
 
 The `./` path resolves against your project's `opencode.json`; to share one checkout across projects, point it at the absolute path of the `.mjs` instead (it finds its `hooks/` and `skills/` relative to its own file).
 
+The slash commands ship in `.opencode/commands/` and are auto-discovered when you run OpenCode from this repo's root. To use them in every project without copying, link them into OpenCode's global commands directory:
+
+```bash
+mkdir -p ~/.config/opencode/commands
+ln -s "$PWD"/.opencode/commands/*.md ~/.config/opencode/commands/
+```
+
+Run that once from this repo's root; rerun if a new command is added. Restart OpenCode to pick up the changes.
+
 ### Gemini CLI
 
 ```bash
