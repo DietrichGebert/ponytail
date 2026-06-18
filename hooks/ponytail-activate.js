@@ -2,7 +2,7 @@
 // ponytail — Claude Code SessionStart activation hook
 //
 // Runs on every session start:
-//   1. Writes flag file at ~/.claude/.ponytail-active (statusline reads this)
+//   1. Writes flag file at $CLAUDE_CONFIG_DIR/.ponytail-active (defaults to ~/.claude; statusline reads this)
 //   2. Emits ponytail ruleset as hidden SessionStart context
 //   3. Detects missing statusline config and emits setup nudge
 
