@@ -29,13 +29,20 @@ jobs:
           git remote add upstream https://github.com/DietrichGebert/ponytail.git
           git fetch upstream main
           before="$(git rev-parse HEAD)"
-          git merge --no-edit upstream/main
+          if ! git merge --no-edit upstream/main; then
+            git merge --abort
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "conflict=true" >> "$GITHUB_OUTPUT"
+            echo "::warning::Upstream sync hit a merge conflict. Resolve locally, then push the merge."
+            exit 0
+          fi
           after="$(git rev-parse HEAD)"
           if [ "$before" != "$after" ]; then
             echo "changed=true" >> "$GITHUB_OUTPUT"
           else
             echo "changed=false" >> "$GITHUB_OUTPUT"
           fi
+          echo "conflict=false" >> "$GITHUB_OUTPUT"
 
       - name: Bump Cursor plugin version
         if: steps.merge.outputs.changed == 'true'
@@ -45,10 +52,14 @@ jobs:
           git commit -m "chore: bump Cursor plugin version"
 
       - name: Check plugin adapters
+        if: steps.merge.outputs.conflict != 'true'
         run: |
           node tests/hooks.test.js
           node tests/opencode-plugin.test.js
           node scripts/check-rule-copies.js
 
       - name: Push synced fork
-        run: git push origin HEAD:main
+        if: steps.merge.outputs.conflict != 'true'
+        run: |
+          git pull --rebase origin main
+          git push origin HEAD:main
