@@ -22,7 +22,7 @@ over-engineering score is a later pass.
 ponytail: the claude CLI is the harness (already installed, we run inside it). No SDK
 dependency. The CLI's JSON output already carries cost/tokens/duration/permission_denials.
 """
-import argparse, concurrent.futures, datetime, json, re, shutil, statistics, subprocess, sys, tempfile
+import argparse, concurrent.futures, datetime, json, os, re, shutil, statistics, subprocess, sys, tempfile
 from collections import defaultdict
 from pathlib import Path
 
@@ -43,11 +43,22 @@ MODELS = {"haiku": "claude-haiku-4-5-20251001", "sonnet": "claude-sonnet-4-6", "
 
 # Skills are plugins activated by a SessionStart hook. To test exactly one at a time we exclude the
 # user's globally-enabled plugins (--setting-sources project,local) and load one plugin from its
-# cache dir (--plugin-dir). Local absolute paths; the smoke test verifies activation by output style.
-PLUGIN_DIRS = {
-    "ponytail": r"C:\Users\Dietr\.claude\plugins\cache\ponytail\ponytail\4.2.0",
-    "caveman":  r"C:\Users\Dietr\.claude\plugins\cache\caveman\caveman\63e797cd753b",
-}
+# cache dir (--plugin-dir). The smoke test verifies activation by output style.
+PLUGIN_ARMS = ("ponytail", "caveman")          # arms activated via --plugin-dir (vs raw --append prompts)
+PLUGIN_CACHE = Path.home() / ".claude" / "plugins" / "cache"
+
+def _plugin_dir(name):
+    """Resolve a plugin's cache dir portably -- hardcoding one machine's absolute path
+    (e.g. C:\\Users\\<you>\\...) made the ponytail/caveman arms unreproducible off that box.
+    Order: env override -> latest version dir under ~/.claude/plugins/cache -> clear error.
+    Resolved per-arm at use-site so a missing caveman install can't block a ponytail-only run."""
+    env = os.environ.get(f"{name.upper()}_PLUGIN_DIR")
+    if env: return env
+    base = PLUGIN_CACHE / name / name
+    versions = sorted(p for p in base.glob("*") if p.is_dir()) if base.exists() else []
+    if not versions:
+        sys.exit(f"{name} plugin dir not found under {base}; install the plugin or set {name.upper()}_PLUGIN_DIR")
+    return str(versions[-1])                    # latest version dir; not pinned to one machine's hash
 
 CELL_TIMEOUT = 300  # seconds per cell; a hung agent is force-killed (process tree) so the pool can't freeze
 
@@ -146,8 +157,29 @@ def selftest():
             print(f"{'ok ' if ok else 'XX '} {tid:12} {kind:4} correct={r['correct']} "
                   f"safe={r['safe']} axis={axis}  {r['reason']}")
             failures += 0 if ok else 1
+    failures += _selftest_plugin_dir()
     print(f"\nselftest: {'all instruments valid' if not failures else str(failures) + ' BROKEN'}")
     return failures
+
+def _selftest_plugin_dir():
+    """Plugin-dir resolution must be portable: env override wins, and a missing install
+    fails loudly (sys.exit) instead of silently passing a non-existent path to --plugin-dir."""
+    fails = 0
+    sentinel = "/tmp/ponytail-selftest-plugin-dir"
+    os.environ["PONYTAIL_PLUGIN_DIR"] = sentinel
+    try:
+        ok_env = _plugin_dir("ponytail") == sentinel
+    finally:
+        del os.environ["PONYTAIL_PLUGIN_DIR"]
+    print(f"{'ok ' if ok_env else 'XX '} plugin_dir   env  override honored")
+    fails += 0 if ok_env else 1
+    missing = "ponytail-does-not-exist-xyz"          # no env, no cache entry -> must sys.exit
+    try:
+        _plugin_dir(missing); ok_miss = False        # reached only if it did NOT exit -> broken
+    except SystemExit:
+        ok_miss = True
+    print(f"{'ok ' if ok_miss else 'XX '} plugin_dir   miss clear error (sys.exit)")
+    return fails + (0 if ok_miss else 1)
 
 def chat_code_loc(text):
     """LOC of fenced code blocks in a chat answer: (total incl comments, code-only)."""
@@ -217,8 +249,8 @@ def run_cell(task_id, arm, model, workdir: Path):
            "--setting-sources", "project,local", "--strict-mcp-config",
            "--disallowedTools", "Bash"]
     append = NO_RUN                                     # all arms get NO_RUN, identically
-    if arm in PLUGIN_DIRS:
-        cmd += ["--plugin-dir", PLUGIN_DIRS[arm]]       # real activation of exactly one plugin
+    if arm in PLUGIN_ARMS:
+        cmd += ["--plugin-dir", _plugin_dir(arm)]       # real activation of exactly one plugin
     else:
         extra = ARMS[arm]()                             # baseline -> None; yagni-oneliner -> the prompt
         if extra: append = extra + "\n\n" + NO_RUN
