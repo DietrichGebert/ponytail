@@ -6,6 +6,8 @@ const { getDefaultMode } = require('./ponytail-config');
 const { clearMode, setMode, writeHookOutput } = require('./ponytail-runtime');
 
 let input = '';
+// Exit cleanly if stdin errors (broken pipe, parent crash) — never block session start
+process.stdin.on('error', () => { process.exit(0); });
 process.stdin.on('data', chunk => { input += chunk; });
 process.stdin.on('end', () => {
   try {
