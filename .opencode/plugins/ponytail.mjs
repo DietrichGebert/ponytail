@@ -1,11 +1,13 @@
 // ponytail — OpenCode plugin.
 //
 // Injects the ponytail ruleset into every chat's system prompt at the active
-// intensity, and persists /ponytail mode switches. Reuses the shared instruction
-// builder so Claude Code, Codex, pi, and OpenCode all read one source of truth.
+// intensity, persists /ponytail mode switches, and registers slash commands so
+// they work when the package is installed from npm. Reuses the shared
+// instruction builder so Claude Code,
+// Codex, pi, and OpenCode all read one source of truth.
 //
 // OpenCode loads this as a server plugin — add it to your opencode.json:
-//   { "plugin": ["./.opencode/plugins/ponytail.mjs"] }
+//   { "plugin": ["opencode-ponytail"] }
 
 import { createRequire } from 'module';
 import fs from 'fs';
@@ -40,20 +42,60 @@ function writeMode(mode) {
   fs.writeFileSync(statePath, mode);
 }
 
+function parseCommandFile(filePath) {
+  const content = fs.readFileSync(filePath, 'utf8');
+  const match = content.match(/^---\n([\s\S]*?)\n---\n([\s\S]*)$/);
+  if (!match) return null;
+  const description = match[1].match(/description:\s*(.+)/)?.[1]?.trim();
+  return { description, template: match[2].trim() };
+}
+
+// ponytail: ensure command .md files exist globally so OpenCode's TUI
+// discovers them even outside this repo. One-time copy; delete the files
+// in ~/.config/opencode/commands/ and restart if you want them refreshed.
+function ensureGlobalCommands() {
+  const globalDir = path.join(
+    process.env.XDG_CONFIG_HOME || path.join(os.homedir(), '.config'),
+    'opencode',
+    'commands',
+  );
+  const commandDir = path.join(__dirname, '..', 'command');
+  try {
+    fs.mkdirSync(globalDir, { recursive: true });
+    for (const file of fs.readdirSync(commandDir).filter((f) => f.endsWith('.md'))) {
+      const target = path.join(globalDir, file);
+      if (!fs.existsSync(target)) {
+        try { fs.symlinkSync(path.join(commandDir, file), target); }
+        catch { fs.copyFileSync(path.join(commandDir, file), target); }
+      }
+    }
+  } catch (e) {
+    // command dir missing — graceful no-op
+  }
+}
+
 export default async ({ client } = {}) => {
   const log = (level, message) => {
     try { client && client.app && client.app.log({ body: { service: 'ponytail', level, message } }); } catch (e) {}
   };
 
-  const ponytailSkillsDir = path.resolve(__dirname, '../../skills');
+  ensureGlobalCommands();
 
   return {
-    // Register skills directory so opencode discovers ponytail skills.
-    config: async (config) => {
-      config.skills = config.skills || {};
-      config.skills.paths = config.skills.paths || [];
-      if (!config.skills.paths.includes(ponytailSkillsDir)) {
-        config.skills.paths.push(ponytailSkillsDir);
+    // Register slash commands so they appear even when installed from npm.
+    // ponytail: commands live in ../command/ relative to this file; graceful
+    // no-op if the directory is missing (bundled or stripped build).
+    config: (config) => {
+      if (!config.command) config.command = {};
+      const commandDir = path.join(__dirname, '..', 'command');
+      try {
+        for (const file of fs.readdirSync(commandDir).filter((f) => f.endsWith('.md'))) {
+          const name = path.basename(file, '.md');
+          const parsed = parseCommandFile(path.join(commandDir, file));
+          if (parsed) config.command[name] = parsed;
+        }
+      } catch (e) {
+        // command dir missing — graceful no-op
       }
     },
 
