@@ -133,6 +133,50 @@ Packages that wrap what Python already ships.
 
 ---
 
+## Swift Standard Library / Foundation
+
+Swift packages people add for what the standard library and Foundation already ship.
+
+| You think you need | What the platform has |
+|---|---|
+| `Alamofire` (simple request) | `try await URLSession.shared.data(from: url)` |
+| JSON parsing/encoding library | `JSONDecoder` / `JSONEncoder` + `Codable` |
+| `SwiftDate` (basic parsing) | `Date`, `Calendar`, `DateComponents`, `ISO8601DateFormatter` |
+| Date formatting library | `date.formatted(date: .long, time: .omitted)` (`Date.FormatStyle`) |
+| Relative time ("3 days ago") | `date.formatted(.relative(presentation: .named))` |
+| Number / currency formatting | `value.formatted(.currency(code: "USD"))`, `.percent`, `.number` |
+| Regex library | `Regex` and `/pattern/` regex literals (Swift 5.7+) |
+| `uuid` library | `UUID()` |
+| `CryptoSwift` (hashing, AES) | `CryptoKit`: `SHA256.hash(data:)`, `AES.GCM` |
+| Logging library (`CocoaLumberjack`) | `import os` + `Logger(subsystem:category:)` |
+| Reachability library | `NWPathMonitor` (Network framework) |
+| `R.swift` / asset string constants | Xcode-generated symbols: `Image(.myIcon)`, `Color(.brand)` (Xcode 15+) |
+
+---
+
+## SwiftUI
+
+Custom components and helpers people build that SwiftUI already provides.
+
+| You think you need | What SwiftUI has |
+|---|---|
+| Async image loader (`Kingfisher`, simple case) | `AsyncImage(url:)` |
+| Pull-to-refresh | `.refreshable { await load() }` |
+| Search bar component | `.searchable(text: $query)` |
+| Bottom sheet library | `.sheet` + `.presentationDetents([.medium, .large])` |
+| Markdown renderer (basic) | `Text` renders Markdown literals; `AttributedString(markdown:)` for strings |
+| Charts library | Swift Charts (`import Charts`) |
+| Grid layout library | `Grid`, `LazyVGrid` |
+| Navigation router library | `NavigationStack(path:)` + `navigationDestination(for:)` |
+| Date / color picker component | `DatePicker`, `ColorPicker` |
+| Swipe-to-delete on rows | `.swipeActions { }` |
+| Shimmer / skeleton placeholder | `.redacted(reason: .placeholder)` |
+| Share sheet wrapper | `ShareLink(item:)` |
+| Haptic-on-action helper | `.sensoryFeedback(.success, trigger: value)` (iOS 17+) |
+| Keyboard-avoidance handling | automatic; SwiftUI moves focused fields above the keyboard |
+
+---
+
 ## Database
 
 Things the application layer implements that the database already does.
