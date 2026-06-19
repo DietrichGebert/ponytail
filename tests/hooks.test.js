@@ -77,6 +77,12 @@ assert.equal(
   fs.readFileSync(path.join(home, '.claude', '.ponytail-active'), 'utf8'),
   'full',
 );
+// Claude Code with no statusline configured still gets the setup nudge.
+assert.match(
+  result.stdout,
+  /STATUSLINE SETUP NEEDED/,
+  'Claude Code should be nudged to configure the statusline',
+);
 
 // CLAUDE_CONFIG_DIR overrides ~/.claude for the flag file (issue #34).
 const home2 = path.join(temp, 'home2');
@@ -117,6 +123,11 @@ assert.equal(
 );
 output = JSON.parse(result.stdout);
 assert.match(output.additionalContext, /PONYTAIL MODE ACTIVE — level: full/);
+// The statusline is Claude Code-only; Copilot must not get its setup nudge.
+assert.ok(
+  !output.additionalContext.includes('STATUSLINE SETUP NEEDED'),
+  'Copilot must not receive the Claude Code statusline setup nudge',
+);
 
 result = run(
   'ponytail-mode-tracker.js',
