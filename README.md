@@ -14,7 +14,7 @@
 <p align="center">
   <img src="https://img.shields.io/github/stars/DietrichGebert/ponytail?style=flat-square&color=111111&label=stars" alt="Stars">
   <img src="https://img.shields.io/github/v/release/DietrichGebert/ponytail?style=flat-square&color=111111&label=release" alt="Release">
-  <img src="https://img.shields.io/badge/works%20with-14%20agents-111111?style=flat-square" alt="Works with 14 agents">
+  <img src="https://img.shields.io/badge/works%20with-15%20agents-111111?style=flat-square" alt="Works with 15 agents">
   <img src="https://img.shields.io/badge/license-MIT-111111?style=flat-square" alt="MIT license">
 </p>
 
@@ -128,7 +128,7 @@ copilot plugin install ponytail@ponytail
 
 In an interactive Copilot CLI session, use the slash equivalents:
 
-```
+```text
 /plugin marketplace add DietrichGebert/ponytail
 /plugin install ponytail@ponytail
 ```
@@ -139,6 +139,16 @@ Copilot CLI namespaces plugin commands by plugin name. For example:
 /ponytail:ponytail ultra
 /ponytail:ponytail-review
 ```
+
+### Hermes
+
+```bash
+hermes skills install https://raw.githubusercontent.com/DietrichGebert/ponytail/main/skills/ponytail/SKILL.md
+```
+
+This installs the portable `skills/ponytail/SKILL.md` skill. After installing, load it with `/skill ponytail` or start a session with `--skills ponytail`. The `lite`/`full`/`ultra` intensity levels are configured via the `PONYTAIL_DEFAULT_MODE` environment variable or `~/.config/ponytail/config.json`.
+
+The skill governs what you build (use the ladder, never cut validation/security/accessibility); not how you talk — pair with [Caveman](https://github.com/JuliusBrussee/caveman) for terse prose.
 
 ### Pi agent harness
 
