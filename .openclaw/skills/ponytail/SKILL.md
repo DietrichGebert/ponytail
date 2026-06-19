@@ -31,6 +31,16 @@ Stop at the first rung that holds:
 The ladder is a reflex, not a research project. Two rungs work → take the
 higher one and move on. The first lazy solution that works is the right one.
 
+## Web tasks: rung 3 lookup
+
+On web work, rung 3 is where the laziest win hides: a native element or CSS
+behavior the agent forgot exists. If a web task turns on whether the platform
+covers it (a date input, dialog, popover, view transition, container query),
+and the `modern-web` CLI is available, look it up: `modern-web search "<task>"`,
+then `modern-web retrieve <id>`. It is a lookup, not a license, the answer
+still goes through the ladder. MWG suggests the cutting edge; you keep only the
+rung that holds. Not installed? Skip it, the ladder runs fine without it.
+
 ## Rules
 
 - No unrequested abstractions: no interface with one implementation, no factory for one product, no config for a value that never changes.
