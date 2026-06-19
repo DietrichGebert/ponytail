@@ -1,11 +1,13 @@
 // ponytail — OpenCode plugin.
 //
 // Injects the ponytail ruleset into every chat's system prompt at the active
-// intensity, and persists /ponytail mode switches. Reuses the shared instruction
-// builder so Claude Code, Codex, pi, and OpenCode all read one source of truth.
+// intensity, persists /ponytail mode switches, and registers slash commands so
+// they work when the package is installed from npm. Reuses the shared
+// instruction builder so Claude Code, Codex, pi, and OpenCode all read one
+// source of truth.
 //
 // OpenCode loads this as a server plugin — add it to your opencode.json:
-//   { "plugin": ["./.opencode/plugins/ponytail.mjs"] }
+//   { "plugin": ["opencode-ponytail"] }
 
 import { createRequire } from 'module';
 import fs from 'fs';
@@ -40,6 +42,14 @@ function writeMode(mode) {
   fs.writeFileSync(statePath, mode);
 }
 
+function parseCommandFile(filePath) {
+  const content = fs.readFileSync(filePath, 'utf8');
+  const match = content.match(/^---\n([\s\S]*?)\n---\n([\s\S]*)$/);
+  if (!match) return null;
+  const description = match[1].match(/description:\s*(.+)/)?.[1]?.trim();
+  return { description, template: match[2].trim() };
+}
+
 export default async ({ client } = {}) => {
   const log = (level, message) => {
     try { client && client.app && client.app.log({ body: { service: 'ponytail', level, message } }); } catch (e) {}
@@ -48,8 +58,18 @@ export default async ({ client } = {}) => {
   const ponytailSkillsDir = path.resolve(__dirname, '../../skills');
 
   return {
-    // Register skills directory so opencode discovers ponytail skills.
+    // Register slash commands + skills directory.
     config: async (config) => {
+      if (!config.command) config.command = {};
+      const commandDir = path.join(__dirname, '..', 'command');
+      try {
+        for (const file of fs.readdirSync(commandDir).filter((f) => f.endsWith('.md'))) {
+          const name = path.basename(file, '.md');
+          const parsed = parseCommandFile(path.join(commandDir, file));
+          if (parsed) config.command[name] = parsed;
+        }
+      } catch (e) {}
+
       config.skills = config.skills || {};
       config.skills.paths = config.skills.paths || [];
       if (!config.skills.paths.includes(ponytailSkillsDir)) {
