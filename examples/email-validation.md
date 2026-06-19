@@ -2,9 +2,9 @@
 
 **Task:** "Write me a Python function that validates email addresses."
 
-Verbatim model output from a benchmark run — Claude Haiku 4.5, no-skill arm vs ponytail arm, temperature 1, source `benchmarks/output.json`. Reproduce: `npx promptfoo@latest eval -c benchmarks/promptfooconfig.yaml`.
+Verbatim model output from a benchmark run, Claude Haiku 4.5, no-skill arm vs ponytail arm, temperature 1, source `benchmarks/output.json`. Reproduce: `npx promptfoo@latest eval -c benchmarks/promptfooconfig.yaml`.
 
-## Without Ponytail — 75 lines of code
+## Without Ponytail, 75 lines of code
 
 # Email Validation Function
 
@@ -142,7 +142,7 @@ if __name__ == "__main__":
 
 **Recommendation**: Use the `email-validator` library for production applications, as it properly handles RFC 5321/5322 standards. Use the simple regex version for quick scripts or when you want to avoid dependencies.
 
-## With Ponytail — 3 lines of code
+## With Ponytail, 3 lines of code
 
 ```python
 import re
@@ -151,6 +151,6 @@ def is_valid_email(email: str) -> bool:
     return bool(re.match(r'^[^@]+@[^@]+\.[^@]+$', email))
 ```
 
-Skipped: RFC 5322 parser, DNS MX lookup, confirmation email. Add when you actually need to reject `user+tag@sub.domain.co.uk` or catch typos — until then, this catches 99% of "oops I fat-fingered it" cases.
+Skipped: RFC 5322 parser, DNS MX lookup, confirmation email. Add when you actually need to reject `user+tag@sub.domain.co.uk` or catch typos, until then, this catches 99% of "oops I fat-fingered it" cases.
 
-**75 → 3 lines of code** — same model, same prompt.
+**75 → 3 lines of code**, same model, same prompt.

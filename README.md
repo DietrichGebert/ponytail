@@ -181,7 +181,7 @@ It reuses this repo's `gemini-extension.json`. One difference: Antigravity conve
 
 ### CodeWhale
 
-Reads `AGENTS.md` from the project root — zero setup. Copy [`AGENTS.md`](AGENTS.md) to your project, or run `codewhale` from a checkout of this repo. That's it.
+Reads `AGENTS.md` from the project root, zero setup. Copy [`AGENTS.md`](AGENTS.md) to your project, or run `codewhale` from a checkout of this repo. That's it.
 
 ### OpenClaw
 

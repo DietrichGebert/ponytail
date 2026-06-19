@@ -26,7 +26,7 @@ the convention out of the ledger.
 
 One row per marker, grouped by file:
 
-`<file>:<line> — <what was simplified>. ceiling: <the limit named>. upgrade: <the trigger to revisit>.`
+`<file>:<line>, <what was simplified>. ceiling: <the limit named>. upgrade: <the trigger to revisit>.`
 
 The convention is `ponytail: <ceiling>, <upgrade path>`, so pull the ceiling
 and the trigger straight from the comment. Want an owner per row too? add

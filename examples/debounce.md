@@ -2,9 +2,9 @@
 
 **Task:** "Add debounce to a search input in vanilla JavaScript. It currently fires an API call on every keystroke."
 
-Verbatim model output from a benchmark run — Claude Haiku 4.5, no-skill arm vs ponytail arm, temperature 1, source `benchmarks/output.json`. Reproduce: `npx promptfoo@latest eval -c benchmarks/promptfooconfig.yaml`.
+Verbatim model output from a benchmark run, Claude Haiku 4.5, no-skill arm vs ponytail arm, temperature 1, source `benchmarks/output.json`. Reproduce: `npx promptfoo@latest eval -c benchmarks/promptfooconfig.yaml`.
 
-## Without Ponytail — 116 lines of code
+## Without Ponytail, 116 lines of code
 
 # Debounce Search Input
 
@@ -190,7 +190,7 @@ searchInput.addEventListener('blur', () => {
 
 **Typical keystroke reduction:** 10 characters = 10 API calls → 1-2 API calls with debounce ✅
 
-## With Ponytail — 10 lines of code
+## With Ponytail, 10 lines of code
 
 ```javascript
 const searchInput = document.querySelector('input[type="search"]');
@@ -206,6 +206,6 @@ searchInput.addEventListener('input', (e) => {
 });
 ```
 
-Skipped: debounce utility function, class wrapper, config object — `setTimeout` + `clearTimeout` is the debounce. Add a utility when you need it on 3+ inputs.
+Skipped: debounce utility function, class wrapper, config object, `setTimeout` + `clearTimeout` is the debounce. Add a utility when you need it on 3+ inputs.
 
-**116 → 10 lines of code** — same model, same prompt.
+**116 → 10 lines of code**, same model, same prompt.

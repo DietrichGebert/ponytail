@@ -12,9 +12,9 @@ prompt menu, or that pull context through tools. See issue #70.
 
 ## What it exposes
 
-- Prompt `ponytail` — returns the ruleset as a user message. Optional `mode`
+- Prompt `ponytail`, returns the ruleset as a user message. Optional `mode`
   argument: `lite`, `full`, or `ultra`. Omit it to use the configured default.
-- Tool `ponytail_instructions` — same text, plus `structuredContent`
+- Tool `ponytail_instructions`, same text, plus `structuredContent`
   (`{ mode, instructions }`), for hosts that pull context via tools or code
   execution. Read-only.
 

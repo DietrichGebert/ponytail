@@ -2,9 +2,9 @@
 
 **Task:** "Write Python code that reads sales.csv and sums the 'amount' column."
 
-Verbatim model output from a benchmark run — Claude Haiku 4.5, no-skill arm vs ponytail arm, temperature 1, source `benchmarks/output.json`. Reproduce: `npx promptfoo@latest eval -c benchmarks/promptfooconfig.yaml`.
+Verbatim model output from a benchmark run, Claude Haiku 4.5, no-skill arm vs ponytail arm, temperature 1, source `benchmarks/output.json`. Reproduce: `npx promptfoo@latest eval -c benchmarks/promptfooconfig.yaml`.
 
-## Without Ponytail — 20 lines of code
+## Without Ponytail, 20 lines of code
 
 # Python code to read sales.csv and sum the 'amount' column
 
@@ -57,7 +57,7 @@ except KeyError:
 - Provides built-in error handling
 - Efficient for large files
 
-## With Ponytail — 3 lines of code
+## With Ponytail, 3 lines of code
 
 ```python
 import csv
@@ -66,6 +66,6 @@ total = sum(float(row['amount']) for row in csv.DictReader(open('sales.csv')))
 print(total)
 ```
 
-Skipped: pandas, error handling, file closing — add when the CSV is large, malformed, or you need more analysis.
+Skipped: pandas, error handling, file closing, add when the CSV is large, malformed, or you need more analysis.
 
-**20 → 3 lines of code** — same model, same prompt.
+**20 → 3 lines of code**, same model, same prompt.

@@ -92,11 +92,11 @@ python judge.py --run runs/<stamp>    # score every workspace's source
 
 Fewer lines only counts as a win if the code still does the job. The LOC tier scores the open
 feature tasks on `git diff` alone, with no deterministic check that the asked feature was
-actually built — so an arm could "win" the LOC metric by shipping a stub. This pass closes that
+actually built, so an arm could "win" the LOC metric by shipping a stub. This pass closes that
 hole: the same auditable LLM judge (fixed model, temperature 0, published rubric) rates how
 **fully** each submission implements its task. Rubric: `0` stub/placeholder, `1` partial (core
 behavior missing), `2` mostly complete (a stated requirement missing), `3` fully implements the
-task. Read it **alongside** the LOC table — a low-LOC arm whose completeness also drops is doing
+task. Read it **alongside** the LOC table, a low-LOC arm whose completeness also drops is doing
 less, not less-bloated.
 
 Validated like the over-engineering judge: `--selftest` requires the judge to rank a complete

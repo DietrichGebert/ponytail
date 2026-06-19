@@ -6,7 +6,7 @@ Three arms (no skill, [caveman](https://github.com/JuliusBrussee/caveman), ponyt
 
 ### Claude (Haiku / Sonnet / Opus)
 
-Requires an Anthropic API key and **Node.js ≥ 22.22.0** (promptfoo's engine constraint —
+Requires an Anthropic API key and **Node.js ≥ 22.22.0** (promptfoo's engine constraint,
 check with `node --version` and upgrade if needed):
 
 ```bash

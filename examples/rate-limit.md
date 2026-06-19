@@ -2,9 +2,9 @@
 
 **Task:** "Add rate limiting to my FastAPI endpoint so users can't spam it."
 
-Verbatim model output from a benchmark run — Claude Haiku 4.5, no-skill arm vs ponytail arm, temperature 1, source `benchmarks/output.json`. Reproduce: `npx promptfoo@latest eval -c benchmarks/promptfooconfig.yaml`.
+Verbatim model output from a benchmark run, Claude Haiku 4.5, no-skill arm vs ponytail arm, temperature 1, source `benchmarks/output.json`. Reproduce: `npx promptfoo@latest eval -c benchmarks/promptfooconfig.yaml`.
 
-## Without Ponytail — 128 lines of code
+## Without Ponytail, 128 lines of code
 
 # Rate Limiting in FastAPI
 
@@ -248,9 +248,9 @@ async def test_rate_limit():
             # First 5 should be 200, 6th should be 429
 ```
 
-**Recommendation:** Use `slowapi` for most cases—it's the most popular and easiest to implement! 🚀
+**Recommendation:** Use `slowapi` for most cases, it's the most popular and easiest to implement! 🚀
 
-## With Ponytail — 10 lines of code
+## With Ponytail, 10 lines of code
 
 ```python
 from fastapi import FastAPI, HTTPException
@@ -267,6 +267,6 @@ async def my_endpoint(request):
     return {"status": "ok"}
 ```
 
-Skipped: custom rate limit logic, Redis, sliding windows — `slowapi` handles it. Add when: you need distributed rate limiting across multiple servers (swap `Limiter` for Redis backend) or per-user limits (add `key_func=lambda r: r.headers.get("authorization")`).
+Skipped: custom rate limit logic, Redis, sliding windows, `slowapi` handles it. Add when: you need distributed rate limiting across multiple servers (swap `Limiter` for Redis backend) or per-user limits (add `key_func=lambda r: r.headers.get("authorization")`).
 
-**128 → 10 lines of code** — same model, same prompt.
+**128 → 10 lines of code**, same model, same prompt.

@@ -37,7 +37,7 @@ export function DeleteModal({ onConfirm, onCancel }) {
 }
 ```
 
-A dependency, a portal, an overlay, a root, a trigger, a content wrapper — to show a box with two buttons.
+A dependency, a portal, an overlay, a root, a trigger, a content wrapper, to show a box with two buttons.
 
 ## With Ponytail
 

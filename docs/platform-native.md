@@ -60,7 +60,7 @@ Libraries people install that the runtime already ships.
 | `query-string` / `qs` | `new URLSearchParams(location.search)` |
 | `lodash.clonedeep` | `structuredClone(obj)` |
 | `lodash.groupby` | `Object.groupBy(arr, fn)` |
-| `lodash.debounce` | — see debounce one-liner below |
+| `lodash.debounce` | see debounce one-liner below |
 | `numeral` / `accounting` | `new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" })` |
 | `date-fns` format | `new Intl.DateTimeFormat("en-US", { dateStyle: "long" }).format(date)` |
 | `date-fns` relative time | `new Intl.RelativeTimeFormat("en", { numeric: "auto" }).format(-3, "day")` |
@@ -97,7 +97,7 @@ Packages that wrap Node built-ins.
 | `make-dir` | `fs.mkdirSync(path, { recursive: true })` |
 | `slash` (win paths) | `path.posix` or `path.normalize()` |
 | `uuid` (v4) | `crypto.randomUUID()` |
-| `ms` (parse duration strings) | — keep `ms`, it's genuinely useful and tiny |
+| `ms` (parse duration strings) | keep `ms`, it's genuinely useful and tiny |
 | `is-stream` | `val instanceof stream.Readable` |
 | `object-assign` | `Object.assign()` / spread |
 | `array-uniq` | `[...new Set(arr)]` |
@@ -119,12 +119,12 @@ Packages that wrap what Python already ships.
 | `python-dateutil` (basic parsing) | `datetime.fromisoformat()` (Python 3.7+) |
 | `pytz` | `zoneinfo.ZoneInfo("America/New_York")` (Python 3.9+) |
 | `attrs` (simple data classes) | `@dataclass` |
-| `six` | — drop it, Python 2 is gone |
+| `six` | drop it, Python 2 is gone |
 | `pathlib2` | `pathlib.Path` (built-in since Python 3.4) |
 | `enum34` | `enum.Enum` (built-in since Python 3.4) |
 | `typing_extensions` (common types) | `from __future__ import annotations` + built-in generics |
 | `simplejson` (basic use) | `json` (stdlib) |
-| `requests` (simple GET) | `urllib.request.urlopen(url)` — `requests` for anything real |
+| `requests` (simple GET) | `urllib.request.urlopen(url)`, `requests` for anything real |
 | `click` (single command) | `argparse` (stdlib) |
 | `mergedeep` | `dict \| other_dict` (Python 3.9+) |
 | `more-itertools` (basic) | `itertools` (stdlib): `chain`, `islice`, `groupby`, `product` |
@@ -150,9 +150,9 @@ Things the application layer implements that the database already does.
 | JSON storage + query | `jsonb` (Postgres) / `JSON_EXTRACT` (SQLite/MySQL) |
 | UUID generation | `gen_random_uuid()` (Postgres) / `UUID()` (MySQL) |
 | Timestamps on insert/update | `DEFAULT now()` + trigger or `ON UPDATE CURRENT_TIMESTAMP` |
-| Enforce uniqueness | `UNIQUE` constraint — not application-level checks |
-| Enforce referential integrity | `FOREIGN KEY` — not application-level checks |
-| Enforce value ranges | `CHECK (price > 0)` — not application-level validation |
+| Enforce uniqueness | `UNIQUE` constraint, not application-level checks |
+| Enforce referential integrity | `FOREIGN KEY`, not application-level checks |
+| Enforce value ranges | `CHECK (price > 0)`, not application-level validation |
 
 ---
 
@@ -170,4 +170,4 @@ You debug the wrapper.
 
 Skip the wrapper. The platform ships with your app for free.
 
-When the native solution is genuinely insufficient (old browser support, edge cases it doesn't handle, ergonomics that matter at scale), the library earns its place. Install it then — not before.
+When the native solution is genuinely insufficient (old browser support, edge cases it doesn't handle, ergonomics that matter at scale), the library earns its place. Install it then, not before.

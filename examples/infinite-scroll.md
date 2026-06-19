@@ -55,4 +55,4 @@ export function Feed({ items, fetchMore, hasMore }) {
 }
 ```
 
-**1 dependency → 0 dependencies.** `IntersectionObserver` fires only when the sentinel enters the viewport — no scroll event, no throttling, no jank. Ships in every browser. The library wraps exactly this API.
+**1 dependency → 0 dependencies.** `IntersectionObserver` fires only when the sentinel enters the viewport, no scroll event, no throttling, no jank. Ships in every browser. The library wraps exactly this API.

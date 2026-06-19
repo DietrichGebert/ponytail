@@ -32,4 +32,4 @@ const byStatus = Object.groupBy(orders, order => order.status);
 // → { pending: [...], shipped: [...], delivered: [...] }
 ```
 
-**1 dependency (or a reduce) → 1 built-in.** `Object.groupBy` shipped in Chrome 117, Firefox 119, Safari 17.4, Node.js 21. If you need a `Map` instead of a plain object: `Map.groupBy(orders, o => o.status)`. Check your target runtime; if you need IE11 or old Node, the `reduce` one-liner is still the right call — not lodash.
+**1 dependency (or a reduce) → 1 built-in.** `Object.groupBy` shipped in Chrome 117, Firefox 119, Safari 17.4, Node.js 21. If you need a `Map` instead of a plain object: `Map.groupBy(orders, o => o.status)`. Check your target runtime; if you need IE11 or old Node, the `reduce` one-liner is still the right call, not lodash.
