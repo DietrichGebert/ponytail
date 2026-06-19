@@ -26,7 +26,8 @@ const mode = getDefaultMode();
 // "off" mode — skip activation entirely, don't write flag or emit rules
 if (mode === 'off') {
   clearMode();
-  writeHookOutput('SessionStart', 'off', isCodex ? '' : 'OK');
+  const hookOutput = (isCodex || isCopilot) ? '' : 'OK';
+  writeHookOutput('SessionStart', 'off', hookOutput);
   process.exit(0);
 }
 
