@@ -8,6 +8,16 @@ const { spawnSync } = require('child_process');
 
 const root = path.join(__dirname, '..');
 
+// isShellSafe gates the statusline setup snippet (issue #200): ordinary install
+// paths pass, paths carrying shell metacharacters are rejected so they never get
+// embedded in a shell command.
+const { isShellSafe } = require('../hooks/ponytail-config');
+assert.equal(isShellSafe('C:\\Users\\x\\.claude\\plugins\\ponytail\\hooks\\ponytail-statusline.ps1'), true);
+assert.equal(isShellSafe('/home/u/.claude/plugins/ponytail/hooks/ponytail-statusline.sh'), true);
+assert.equal(isShellSafe('/tmp/a"&calc.exe&"/x.sh'), false);
+assert.equal(isShellSafe('/tmp/$(calc)/x.sh'), false);
+assert.equal(isShellSafe('/tmp/a;rm -rf/x.sh'), false);
+
 function run(script, env, input = '') {
   return spawnSync(process.execPath, [path.join(root, 'hooks', script)], {
     env: { ...process.env, ...env },
