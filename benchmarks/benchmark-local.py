@@ -15,6 +15,7 @@ import json
 import re
 import time
 import urllib.request
+from urllib.parse import urlparse
 from pathlib import Path
 
 ROOT = Path(__file__).parent.parent
@@ -149,6 +150,9 @@ def main():
     parser.add_argument("--repeat",     type=int, default=1, help="Runs per cell; median reported (default: 1)")
     parser.add_argument("--ollama-url", default="http://localhost:11434", help="Ollama base URL")
     args = parser.parse_args()
+    parsed = urlparse(args.ollama_url)
+    if parsed.scheme not in ("http", "https") or not parsed.netloc:
+        parser.error("--ollama-url must be an http(s) URL, e.g. http://localhost:11434")
     run(args.model, args.repeat, args.ollama_url)
 
 
