@@ -111,6 +111,7 @@ The desktop app has no `/plugin` command. Install it from the UI instead: Custom
 
 ```bash
 codex plugin marketplace add DietrichGebert/ponytail
+codex plugin add ponytail@ponytail
 codex
 ```
 

@@ -111,6 +111,7 @@ La app de escritorio no tiene el comando `/plugin`. Instálala desde la interfaz
 
 ```bash
 codex plugin marketplace add DietrichGebert/ponytail
+codex plugin add ponytail@ponytail
 codex
 ```
 
