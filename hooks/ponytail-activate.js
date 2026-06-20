@@ -14,6 +14,7 @@ const {
   clearMode,
   isCodex,
   isCopilot,
+  isKiro,
   setMode,
   writeHookOutput,
 } = require('./ponytail-runtime');
@@ -42,7 +43,7 @@ try {
 let output = getPonytailInstructions(mode);
 
 // 3. Detect missing statusline config — nudge Claude to help set it up
-if (!isCodex && !isCopilot) try {
+if (!isCodex && !isCopilot && !isKiro) try {
   let hasStatusline = false;
   if (fs.existsSync(settingsPath)) {
     // Strip UTF-8 BOM some editors prepend on Windows (breaks JSON.parse)

@@ -140,6 +140,29 @@ Copilot CLI namespaces plugin commands by plugin name. For example:
 /ponytail:ponytail-review
 ```
 
+### Kiro CLI
+
+Kiro has no marketplace/plugin install flow. Install ponytail by copying this repo's `hooks/` and `skills/` into Kiro's directories, then adding the agent config:
+
+```bash
+mkdir -p ~/.kiro/ponytail ~/.kiro/skills ~/.kiro/agents
+cp -R hooks ~/.kiro/ponytail/
+cp -R skills/* ~/.kiro/skills/
+cp .kiro/agents/ponytail.json ~/.kiro/agents/ponytail.json
+```
+
+If `KIRO_HOME` is set, replace `~/.kiro` in those install commands with `$KIRO_HOME`; the bundled hook commands already use `${KIRO_HOME:-$HOME/.kiro}`.
+
+In Kiro, switch to it with:
+
+```text
+/agent swap ponytail
+```
+
+Kiro loads slash commands from skills, so `/ponytail`, `/ponytail-review`, `/ponytail-audit`, `/ponytail-debt`, `/ponytail-gain`, and `/ponytail-help` work through the copied skills. `/ponytail full`, `/ponytail ultra`, `/ponytail lite`, and `/ponytail off` switch modes through the `userPromptSubmit` hook.
+
+The statusline badge is Claude-Code-only. On Kiro, as on Codex and Copilot, mode changes are reflected in conversation context, not a persistent statusline badge.
+
 ### Pi agent harness
 
 ```
@@ -199,7 +222,7 @@ Set the level for every new session with the `PONYTAIL_DEFAULT_MODE` env var (`l
 
 Cursor, Windsurf, Cline, GitHub Copilot (editor), Aider, Kiro, Zed, CodeWhale: copy the matching rules file from this repo ([`.cursor/rules/`](.cursor/rules/), [`.windsurf/rules/`](.windsurf/rules/), [`.clinerules/`](.clinerules/), [`.github/copilot-instructions.md`](.github/copilot-instructions.md), [`AGENTS.md`](AGENTS.md), [`.kiro/steering/`](.kiro/steering/)).
 
-Kiro: copy `.kiro/steering/ponytail.md` to `~/.kiro/steering/` (global) or `.kiro/steering/` in your project.
+Kiro instruction-only mode (lightweight, no hooks/commands): copy `.kiro/steering/ponytail.md` to `~/.kiro/steering/` (global) or `.kiro/steering/` in your project. For the full hook + slash-command setup, see the Kiro CLI section above. If `KIRO_HOME` is set, use `$KIRO_HOME/steering/` for the global path.
 
 GitHub Copilot CLI fallback (instruction-only mode): it reads `AGENTS.md` and `.github/copilot-instructions.md` in a project, or copy the rules into `~/.copilot/copilot-instructions.md` to run ponytail in every project. This path keeps always-on guidance, but does not add plugin mode switches or hooks.
 
@@ -218,7 +241,7 @@ Which files map to which agent: [Agent portability](docs/agent-portability.md).
 | `/ponytail-gain` | Show the measured impact scoreboard (less code, less cost, more speed) from the benchmark. |
 | `/ponytail-help` | Quick reference for the commands above. |
 
-Commands need a skill-capable host (Claude Code, Codex, OpenCode, Gemini, pi). In Codex they're skills, invoke with `@` (`@ponytail-review`). The instruction-only adapters (Cursor, Windsurf, Cline, Copilot, Kiro, Antigravity) load the always-on ruleset without the commands.
+Commands need a skill-capable host (Claude Code, Codex, Kiro CLI, OpenCode, Gemini, pi). In Codex they're skills, invoke with `@` (`@ponytail-review`). The instruction-only adapters (Cursor, Windsurf, Cline, Copilot, Kiro, Antigravity) load the always-on ruleset without the commands.
 
 ## Development
 
