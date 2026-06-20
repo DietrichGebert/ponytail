@@ -21,13 +21,8 @@ function run(script, env, input = '') {
 delete process.env.CLAUDE_CONFIG_DIR;
 
 const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'ponytail-hooks-'));
-let cleanedTemp = false;
-function cleanupTemp() {
-  if (cleanedTemp) return;
-  cleanedTemp = true;
-  fs.rmSync(temp, { recursive: true, force: true });
-}
-process.once('exit', cleanupTemp);
+// Runs on normal exit and on assertion-throw exit; force makes it idempotent.
+process.on('exit', () => fs.rmSync(temp, { recursive: true, force: true }));
 
 const home = path.join(temp, 'home');
 const pluginData = path.join(temp, 'plugin-data');
@@ -163,5 +158,4 @@ assert.equal(
 output = JSON.parse(result.stdout);
 assert.deepEqual(output, {});
 
-cleanupTemp();
 console.log('hook compatibility checks passed');
