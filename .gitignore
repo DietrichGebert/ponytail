@@ -22,5 +22,8 @@ ponytail-*.gif
 # Claude Code local settings (machine-specific permission grants)
 .claude/settings.local.json
 
+# Aider temp files / chat history
+.aider*
+
 # agentic benchmark workspaces (agent output, kept locally for inspection)
 benchmarks/agentic/runs/
