@@ -22,7 +22,7 @@ over-engineering score is a later pass.
 ponytail: the claude CLI is the harness (already installed, we run inside it). No SDK
 dependency. The CLI's JSON output already carries cost/tokens/duration/permission_denials.
 """
-import argparse, concurrent.futures, datetime, json, os, re, shutil, statistics, subprocess, sys, tempfile
+import argparse, concurrent.futures, datetime, json, os, re, shutil, signal, statistics, subprocess, sys, tempfile
 from collections import defaultdict
 from pathlib import Path
 
@@ -158,6 +158,7 @@ def selftest():
                   f"safe={r['safe']} axis={axis}  {r['reason']}")
             failures += 0 if ok else 1
     failures += _selftest_plugin_dir()
+    failures += _selftest_kill()
     print(f"\nselftest: {'all instruments valid' if not failures else str(failures) + ' BROKEN'}")
     return failures
 
@@ -180,6 +181,27 @@ def _selftest_plugin_dir():
         ok_miss = True
     print(f"{'ok ' if ok_miss else 'XX '} plugin_dir   miss clear error (sys.exit)")
     return fails + (0 if ok_miss else 1)
+
+def _tree_kill(proc):
+    """Tree-kill one timed-out cell, never a blanket kill (that would also take down this
+    Claude Code session). Windows: taskkill /T walks the child PIDs. POSIX has no taskkill,
+    so the cell runs in its own session (Popen start_new_session) and we kill the group."""
+    if os.name == "nt":
+        subprocess.run(["taskkill", "/F", "/T", "/PID", str(proc.pid)],
+                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    else:
+        try: os.killpg(os.getpgid(proc.pid), signal.SIGKILL)
+        except ProcessLookupError: pass  # already exited
+
+def _selftest_kill():
+    """tree-kill must actually terminate a cell that outran its timeout, on this platform."""
+    p = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(30)"],
+                         start_new_session=(os.name != "nt"))
+    _tree_kill(p)
+    try: ok = p.wait(timeout=10) is not None
+    except subprocess.TimeoutExpired: ok = False; p.kill()
+    print(f"{'ok ' if ok else 'XX '} tree_kill    terminates a timed-out cell")
+    return 0 if ok else 1
 
 def chat_code_loc(text):
     """LOC of fenced code blocks in a chat answer: (total incl comments, code-only)."""
@@ -258,16 +280,16 @@ def run_cell(task_id, arm, model, workdir: Path):
     out_path, err_path = workdir / "_claude.json", workdir / "_claude.stderr.txt"
     # stdout -> file, never a PIPE: on Windows a hung agent's child processes can hold a stdout PIPE
     # open forever, so subprocess.run(timeout=) never fires and the worker freezes. Writing to a file
-    # lets proc.wait(timeout) return reliably; on timeout we tree-kill ONLY this cell's process
-    # (taskkill /T on proc.pid) -- never a blanket kill, which would also take down this Claude Code session.
+    # lets proc.wait(timeout) return reliably; on timeout _tree_kill ends ONLY this cell's process
+    # tree -- never a blanket kill, which would also take down this Claude Code session.
     try:
         with open(out_path, "wb") as so, open(err_path, "wb") as se:
-            proc = subprocess.Popen(cmd, cwd=str(workdir), stdout=so, stderr=se)
+            proc = subprocess.Popen(cmd, cwd=str(workdir), stdout=so, stderr=se,
+                                    start_new_session=(os.name != "nt"))
             try:
                 proc.wait(timeout=CELL_TIMEOUT)
             except subprocess.TimeoutExpired:
-                subprocess.run(["taskkill", "/F", "/T", "/PID", str(proc.pid)],
-                               stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                _tree_kill(proc)
                 try: proc.wait(timeout=15)
                 except Exception: pass
                 se.write(f"\n[KILLED after {CELL_TIMEOUT}s timeout]".encode())
