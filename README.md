@@ -207,6 +207,17 @@ VS Code with the Codex extension reads `AGENTS.md`, which this repo ships, so it
 
 Which files map to which agent: [Agent portability](docs/agent-portability.md).
 
+### Uninstall
+
+| Host | Command |
+|------|---------|
+| Claude Code | `/plugin remove ponytail` |
+| Codex | `codex plugin remove ponytail` |
+| Pi agent | `pi uninstall ponytail` |
+| Cursor / Windsurf / Cline / etc. | Delete the copied rule file |
+
+These remove the plugin's own files. They leave behind a small amount of state ponytail writes outside the plugin folder: the mode flag, `~/.config/ponytail/config.json`, and (if you accepted the setup nudge) a `statusLine` entry in `~/.claude/settings.json`. Run `node scripts/uninstall.js` (from this repo, or wherever it was installed) to clean those up too. It only removes the statusLine entry if it points at ponytail's own script, so a statusline you set up yourself is left untouched.
+
 ## Commands
 
 | Command | What it does |
