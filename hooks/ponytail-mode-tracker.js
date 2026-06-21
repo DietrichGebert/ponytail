@@ -3,7 +3,29 @@
 // Inspects user input for /ponytail commands and writes mode to flag file
 
 const { getDefaultMode, isDeactivationCommand } = require('./ponytail-config');
-const { clearMode, setMode, writeHookOutput } = require('./ponytail-runtime');
+const { clearMode, isKiro, setMode, writeHookOutput } = require('./ponytail-runtime');
+
+const VALID_MODES = ['lite', 'full', 'ultra', 'off'];
+
+// Kiro expands /ponytail <mode> into the full ponytail skill text and appends
+// the user's argument as the final line, so the literal-command regex below
+// never matches. Only accept this shape when it starts with the skill heading.
+function getKiroSkillMode(prompt) {
+  if (!isKiro) return null;
+  if (!prompt.startsWith('# ponytail')) return null;
+  const last = prompt.split(/\r?\n/).map(line => line.trim()).filter(Boolean).pop();
+  return VALID_MODES.includes(last) ? last : null;
+}
+
+function applyMode(mode) {
+  if (mode === 'off') {
+    clearMode();
+    writeHookOutput('UserPromptSubmit', 'off', 'PONYTAIL MODE OFF');
+  } else {
+    setMode(mode);
+    writeHookOutput('UserPromptSubmit', mode, 'PONYTAIL MODE CHANGED — level: ' + mode);
+  }
+}
 
 let input = '';
 process.stdin.on('data', chunk => { input += chunk; });
@@ -31,17 +53,11 @@ process.stdin.on('end', () => {
         else mode = getDefaultMode();
       }
 
-      if (mode && mode !== 'off') {
-        setMode(mode);
-        writeHookOutput(
-          'UserPromptSubmit',
-          mode,
-          'PONYTAIL MODE CHANGED — level: ' + mode,
-        );
-      } else if (mode === 'off') {
-        clearMode();
-        writeHookOutput('UserPromptSubmit', 'off', 'PONYTAIL MODE OFF');
-      }
+      if (mode) applyMode(mode);
+    } else {
+      // Kiro expands the slash command into skill text; recover the trailing mode.
+      const kiroMode = getKiroSkillMode(prompt);
+      if (kiroMode) applyMode(kiroMode);
     }
 
     // Detect deactivation

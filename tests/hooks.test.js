@@ -221,9 +221,66 @@ result = run(
   JSON.stringify({ hook_event_name: 'userPromptSubmit', prompt: '/ponytail ultra' }),
 );
 assert.equal(result.status, 0, result.stderr);
-assert.equal(fs.readFileSync(path.join(home, '.kiro', 'ponytail', '.ponytail-active'), 'utf8'), 'ultra');
+const kiroState = path.join(home, '.kiro', 'ponytail', '.ponytail-active');
+assert.equal(fs.readFileSync(kiroState, 'utf8'), 'ultra');
 assert.match(result.stdout, /PONYTAIL MODE CHANGED — level: ultra/);
 assert.throws(() => JSON.parse(result.stdout), SyntaxError, 'kiro hook output must stay raw text');
+
+const kiroPonytailSkill = '# Ponytail\n\nLazy senior dev mode.\n';
+
+fs.writeFileSync(kiroState, 'full');
+result = run(
+  'ponytail-mode-tracker.js',
+  kiroEnv,
+  JSON.stringify({ hook_event_name: 'userPromptSubmit', prompt: kiroPonytailSkill + '\nultra' }),
+);
+assert.equal(result.status, 0, result.stderr);
+assert.equal(fs.readFileSync(kiroState, 'utf8'), 'ultra');
+assert.match(result.stdout, /PONYTAIL MODE CHANGED — level: ultra/);
+assert.throws(() => JSON.parse(result.stdout), SyntaxError, 'kiro expanded output must stay raw text');
+
+fs.writeFileSync(kiroState, 'ultra');
+result = run(
+  'ponytail-mode-tracker.js',
+  kiroEnv,
+  JSON.stringify({ hook_event_name: 'userPromptSubmit', prompt: kiroPonytailSkill + '\noff' }),
+);
+assert.equal(result.status, 0, result.stderr);
+assert.equal(fs.existsSync(kiroState), false);
+assert.match(result.stdout, /PONYTAIL MODE OFF/);
+
+fs.writeFileSync(kiroState, 'full');
+result = run(
+  'ponytail-mode-tracker.js',
+  kiroEnv,
+  JSON.stringify({ hook_event_name: 'userPromptSubmit', prompt: 'please turn it\noff' }),
+);
+assert.equal(result.status, 0, result.stderr);
+assert.equal(fs.readFileSync(kiroState, 'utf8'), 'full');
+assert.equal(result.stdout, '');
+
+fs.writeFileSync(kiroState, 'full');
+result = run(
+  'ponytail-mode-tracker.js',
+  kiroEnv,
+  JSON.stringify({ hook_event_name: 'userPromptSubmit', prompt: '# Ponytail Review\n\nreview this diff' }),
+);
+assert.equal(result.status, 0, result.stderr);
+assert.equal(fs.readFileSync(kiroState, 'utf8'), 'full');
+assert.equal(result.stdout, '');
+
+const claudeExpandedHome = path.join(temp, 'claude-expanded-home');
+fs.mkdirSync(path.join(claudeExpandedHome, '.claude'), { recursive: true });
+const claudeExpandedState = path.join(claudeExpandedHome, '.claude', '.ponytail-active');
+fs.writeFileSync(claudeExpandedState, 'full');
+result = run(
+  'ponytail-mode-tracker.js',
+  { HOME: claudeExpandedHome, USERPROFILE: claudeExpandedHome },
+  JSON.stringify({ hook_event_name: 'userPromptSubmit', prompt: kiroPonytailSkill + '\nultra' }),
+);
+assert.equal(result.status, 0, result.stderr);
+assert.equal(fs.readFileSync(claudeExpandedState, 'utf8'), 'full');
+assert.equal(result.stdout, '');
 
 const kiroConfig = JSON.parse(fs.readFileSync(path.join(root, '.kiro', 'agents', 'ponytail.json'), 'utf8'));
 assert.equal(kiroConfig.name, 'ponytail');
