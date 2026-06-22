@@ -98,6 +98,50 @@ The most effort ponytail will ever ask of you:
 
 The Claude Code and Codex plugins run two tiny Node.js lifecycle hooks, so `node` needs to be on your PATH (note for Nix/nvm users: it must be on the non-interactive shell's PATH). If it isn't, the skills still work, the always-on activation just stays quiet instead of erroring on every prompt.
 
+### System-wide (auto-detect)
+
+Installs ponytail for every AI agent on your machine in one go. Auto-detects which agents are installed and creates symlinks for each one.
+
+```bash
+# Quick install (curl-pipe)
+curl -fsSL https://raw.githubusercontent.com/DietrichGebert/ponytail/main/install.sh | sh
+
+# Or from a local checkout:
+./install.sh --all
+```
+
+Per-agent install:
+
+```bash
+./install.sh --agent claude          # Claude Code only
+./install.sh --agent codex           # Codex only
+./install.sh --agent opencode        # OpenCode only
+./install.sh --agent cursor          # Cursor only
+./install.sh --agent copilot         # GitHub Copilot CLI only
+```
+
+Check status and uninstall:
+
+```bash
+./install.sh --list                  # Show what's installed and detected
+./install.sh --uninstall             # Remove all symlinks and hooks
+```
+
+Node.js version also available:
+
+```bash
+node install.js --list               # Status with colour output
+node install.js --dry-run --yes      # Preview without making changes
+node install.js --agent claude       # Install for specific agent
+node install.js --uninstall          # Remove everything
+```
+
+The install script copies ponytail's rules, hooks, and skills to `~/.config/ponytail/`, then creates symlinks to each agent's config directory. It also installs lifecycle hooks for Claude Code (session activation and mode tracking).
+
+**Detection sources:** binary in PATH, config directory, npm global packages, VS Code extensions, GitHub CLI extensions, Cargo packages, and common app paths. Run `install.sh --list` to see what was detected on your machine.
+
+---
+
 ### Claude Code
 
 ```
@@ -227,6 +271,13 @@ When changing the compact rule text, keep the agent copies aligned:
 ```bash
 node scripts/check-rule-copies.js
 npm test
+```
+
+The install scripts (`install.sh` and `install.js`) maintain the list of supported agents and their detection logic. After adding a new agent adapter, update both files:
+
+```bash
+node install.js --list     # Check detection works
+bash install.sh --list     # Bash version too
 ```
 
 The OpenClaw skill package (`.openclaw/skills/`) is generated from `skills/`; rerun `node scripts/build-openclaw-skills.js` after changing a skill, the test suite fails if it is stale.
