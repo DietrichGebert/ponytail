@@ -52,6 +52,10 @@ const INVARIANTS = [
   'prevents data loss',
   'security',
   'accessibility',
+  'Guarded surfaces',                      // safety override for sensitive work
+  'authorization, validation, idempotence', // guarded-surface controls
+  'public API compatibility',              // public API guardrail
+  'not approval to remove',                // ponytail-review safety boundary
   'Lazy code without its check is unfinished', // one-check promoted to headline
 ];
 
@@ -66,9 +70,49 @@ for (const phrase of INVARIANTS) {
   }
 }
 
+// The hook is a live instruction source for OpenCode and the fallback path, but
+// it is intentionally shorter than SKILL.md/AGENTS.md. Check the invariants it
+// must carry without forcing byte equality with the compact host copies.
+const HOOK_INVARIANTS = [
+  'ONE runnable check',
+  'input validation at trust boundaries',
+  'prevents data loss',
+  'security',
+  'accessibility',
+  'Guarded surfaces',
+  'authorization, validation, idempotence',
+  'public API compatibility',
+  'not approval to remove',
+  'Lazy code without its check is unfinished',
+];
+
+const hook = read('hooks/ponytail-instructions.js');
+for (const phrase of HOOK_INVARIANTS) {
+  if (!hook.includes(phrase)) {
+    console.error(`hooks/ponytail-instructions.js is missing rule invariant: "${phrase}"`);
+    failed = true;
+  }
+}
+
+const { getFallbackInstructions, getPonytailInstructions } = require(path.join(root, 'hooks', 'ponytail-instructions.js'));
+for (const mode of ['lite', 'full', 'ultra']) {
+  const instructionSources = [
+    [`getPonytailInstructions(${mode})`, getPonytailInstructions(mode)],
+    [`getFallbackInstructions(${mode})`, getFallbackInstructions(mode)],
+  ];
+  for (const [label, text] of instructionSources) {
+    for (const phrase of HOOK_INVARIANTS) {
+      if (!text.includes(phrase)) {
+        console.error(`${label} is missing hook invariant: "${phrase}"`);
+        failed = true;
+      }
+    }
+  }
+}
+
 if (failed) {
   console.error('Update the copied rule text, AGENTS.md, or SKILL.md so the shared rules match.');
   process.exit(1);
 }
 
-console.log(`Rule copies match AGENTS.md; ${INVARIANTS.length} rule invariants present in SKILL.md and AGENTS.md.`);
+console.log(`Rule copies match AGENTS.md; ${INVARIANTS.length} rule invariants present in SKILL.md and AGENTS.md; ${HOOK_INVARIANTS.length} hook invariants present.`);

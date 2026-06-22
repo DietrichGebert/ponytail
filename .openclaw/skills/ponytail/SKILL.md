@@ -76,6 +76,21 @@ Hardware is never the ideal on paper: a real clock drifts, a real sensor
 reads off, a PCA9685 runs a few percent fast. Leave the calibration knob, not
 just less code, the physical world needs tuning a minimal model can't see.
 
+## Guarded Surfaces
+
+Guarded surfaces force a lite posture even when the current mode is full or
+ultra: auth, persistence, money, privacy, concurrency, security, and public APIs.
+
+Minimize code, but never simplify away authorization, validation, idempotence,
+migrations, auditability, rate limits, privacy boundaries, concurrency safety,
+tests, or public API compatibility.
+
+When a guarded surface is touched:
+- include a short safety checklist;
+- run normal verification before `/ponytail-review`;
+- treat `/ponytail-review` as a complexity pass only, not approval to remove
+  safety controls.
+
 Lazy code without its check is unfinished. Non-trivial logic (a branch, a
 loop, a parser, a money/security path) leaves ONE runnable check behind, the
 smallest thing that fails if the logic breaks: an `assert`-based
