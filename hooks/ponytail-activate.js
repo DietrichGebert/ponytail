@@ -66,7 +66,7 @@ if (!isCodex && !isCopilot) try {
       output += "\n\n" +
         "STATUSLINE SETUP NEEDED: The ponytail plugin includes a statusline badge showing active mode " +
         "(e.g. [PONYTAIL], [PONYTAIL:ULTRA]). It is not configured yet. " +
-        "To enable, add this to ~/.claude/settings.json: " +
+        "To enable, add this to " + settingsPath + ": " +
         statusLineSnippet + " " +
         "Proactively offer to set this up for the user on first interaction.";
     } else {
@@ -76,7 +76,7 @@ if (!isCodex && !isCopilot) try {
         "STATUSLINE SETUP NEEDED: The ponytail plugin includes a statusline badge showing active mode. " +
         "Its install path contains characters unsafe to embed in a shell command, so configure it manually: " +
         "add a statusLine command of type \"command\" that runs " + scriptName +
-        " from the plugin's hooks directory to ~/.claude/settings.json, quoting/escaping the path for your shell. " +
+        " from the plugin's hooks directory to " + settingsPath + ", quoting/escaping the path for your shell. " +
         "Proactively offer to set this up for the user on first interaction.";
     }
   }

@@ -128,6 +128,19 @@ assert.equal(
   false,
   'flag must not land in ~/.claude when CLAUDE_CONFIG_DIR is set',
 );
+// The statusline setup nudge must point at CLAUDE_CONFIG_DIR/settings.json, not
+// ~/.claude/settings.json — otherwise it sends users to the wrong file. Native
+// Claude Code receives the nudge as raw stdout (no JSON wrapper).
+const nudgeContext = result.stdout;
+assert.match(nudgeContext, /STATUSLINE SETUP NEEDED/);
+assert.ok(
+  nudgeContext.includes(path.join(customConfigDir, 'settings.json')),
+  'statusline nudge must reference CLAUDE_CONFIG_DIR/settings.json',
+);
+assert.ok(
+  !nudgeContext.includes('~/.claude/settings.json'),
+  'statusline nudge must not hardcode ~/.claude/settings.json when CLAUDE_CONFIG_DIR is set',
+);
 
 const copilotData = path.join(temp, 'copilot-data');
 const codexData = path.join(temp, 'codex-data-shadow');
