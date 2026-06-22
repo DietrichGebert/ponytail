@@ -168,4 +168,29 @@ assert.equal(
 output = JSON.parse(result.stdout);
 assert.deepEqual(output, {});
 
+// SubagentStart hook: when ponytail mode is active it injects the ruleset into
+// each subagent (issue #252). Native Claude must get the hookSpecificOutput JSON
+// form, not raw stdout, or the context is dropped.
+const subHome = path.join(temp, 'sub-home');
+const subFlag = path.join(subHome, '.claude', '.ponytail-active');
+fs.mkdirSync(path.dirname(subFlag), { recursive: true });
+const subEnv = { HOME: subHome, USERPROFILE: subHome };
+delete subEnv.PLUGIN_DATA;
+
+fs.writeFileSync(subFlag, 'full');
+result = run('ponytail-subagent.js', subEnv);
+assert.equal(result.status, 0, result.stderr);
+output = JSON.parse(result.stdout);
+assert.equal(output.hookSpecificOutput.hookEventName, 'SubagentStart');
+assert.match(
+  output.hookSpecificOutput.additionalContext,
+  /PONYTAIL MODE ACTIVE — level: full/,
+);
+
+// No flag → ponytail off → inject nothing (empty stdout, no failure).
+fs.unlinkSync(subFlag);
+result = run('ponytail-subagent.js', subEnv);
+assert.equal(result.status, 0, result.stderr);
+assert.equal(result.stdout, '', 'SubagentStart must stay silent when ponytail is off');
+
 console.log('hook compatibility checks passed');
