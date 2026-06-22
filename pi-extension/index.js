@@ -3,6 +3,7 @@ import { createRequire } from "node:module";
 const require = createRequire(import.meta.url);
 const {
   DEFAULT_MODE,
+  RUNTIME_MODES,
   getDefaultMode,
   normalizeMode,
   normalizeConfigMode,
@@ -14,6 +15,9 @@ const { getPonytailInstructions, filterSkillBodyForMode } = require("../hooks/po
 
 export { filterSkillBodyForMode };
 export const readDefaultMode = getDefaultMode;
+
+const RUNTIME_MODE_LIST = RUNTIME_MODES.join("|");
+const PONYTAIL_COMMAND_DESCRIPTION = `Set mode: ${RUNTIME_MODE_LIST}. Commands: status, default <mode>`;
 
 export function resolveSessionMode(entries, fallbackMode = DEFAULT_MODE) {
   const fallback = normalizePersistedMode(fallbackMode) || DEFAULT_MODE;
@@ -80,7 +84,7 @@ export default function ponytailExtension(pi) {
   };
 
   pi.registerCommand("ponytail", {
-    description: "Set or report Ponytail mode",
+    description: PONYTAIL_COMMAND_DESCRIPTION,
     handler: async (args, ctx) => {
       const parsed = parsePonytailCommand(args, configuredDefaultMode);
 
