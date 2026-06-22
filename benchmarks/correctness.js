@@ -6,7 +6,7 @@
 // Unlike loc.js (measurement-only), this one is a gate — a wrong answer is a
 // wrong answer regardless of how few lines produced it.
 
-const { execSync } = require('child_process');
+const { execFileSync } = require('child_process');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
@@ -32,10 +32,12 @@ function identifyTask(task) {
   return null;
 }
 
-// Run a command, return { ok, stderr }.
-function exec(cmd, opts = {}) {
+const EXEC_TIMEOUT_MS = 20_000;
+
+// Run a command without a shell, return { ok, stderr }.
+function exec(cmd, args = [], opts = {}) {
   try {
-    execSync(cmd, { timeout: 10_000, encoding: 'utf8', stdio: 'pipe', ...opts });
+    execFileSync(cmd, args, { timeout: EXEC_TIMEOUT_MS, encoding: 'utf8', stdio: 'pipe', ...opts });
     return { ok: true, stderr: '' };
   } catch (e) {
     return { ok: false, stderr: (e.stderr || e.message || '').slice(0, 500) };
@@ -47,7 +49,7 @@ let pythonCmd;
 function python() {
   if (pythonCmd) return pythonCmd;
   for (const cmd of ['python3', 'python']) {
-    if (exec(`${cmd} -c "import sys"`).ok) {
+    if (exec(cmd, ['-c', 'import sys']).ok) {
       pythonCmd = cmd;
       return pythonCmd;
     }
@@ -118,7 +120,7 @@ if failures:
 print("PASS")
 `;
     const f = tmpFile('.py', harness);
-    const result = exec(`${python()} "${f}"`);
+    const result = exec(python(), [f]);
     fs.unlinkSync(f);
     if (result.ok) return { pass: true, reason: 'Email validator passes all checks' };
     return { pass: false, reason: result.stderr || 'Email validator failed' };
@@ -163,7 +165,7 @@ setTimeout(() => {
 }, 120);
 `;
     const f = tmpFile('.mjs', harness);
-    const result = exec(`node "${f}"`);
+    const result = exec('node', [f]);
     fs.unlinkSync(f);
     if (result.ok) return { pass: true, reason: 'Debounce passes all checks' };
     return { pass: false, reason: result.stderr || 'Debounce failed' };
@@ -212,7 +214,7 @@ else:
     sys.exit(1)
 `;
     const f = tmpFile('.py', harness);
-    const result = exec(`${python()} "${f}"`);
+    const result = exec(python(), [f]);
     try { fs.unlinkSync(f); } catch (e) {}
     try { fs.unlinkSync(csvPath); } catch (e) {}
     if (result.ok) return { pass: true, reason: 'CSV sum produces correct result (351)' };

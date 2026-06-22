@@ -5,12 +5,19 @@
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const { spawnSync } = require('node:child_process');
 const correctness = require('../benchmarks/correctness');
 
 // Helper: wrap code in a fenced block and call the assertion with task vars.
 function check(task, lang, code) {
   const output = '```' + lang + '\n' + code + '\n```';
   return correctness(output, { vars: { task } });
+}
+
+function hasPandas() {
+  const opts = { stdio: 'ignore', timeout: 2_000 };
+  return spawnSync('python3', ['-c', 'import pandas'], opts).status === 0 ||
+    spawnSync('python', ['-c', 'import pandas'], opts).status === 0;
 }
 
 // --- Email validator ---
@@ -74,7 +81,19 @@ test('debounce: immediate-call implementation fails', () => {
 
 // --- CSV sum ---
 
-test('csv: correct pandas one-liner passes', () => {
+test('csv: correct stdlib implementation passes', () => {
+  const result = check(
+    "Write Python code that reads sales.csv and sums the 'amount' column.",
+    'python',
+    `import csv
+with open('sales.csv', newline='') as f:
+    print(sum(float(row['amount']) for row in csv.DictReader(f)))`,
+  );
+  assert.equal(result.pass, true);
+  assert.equal(result.score, 1);
+});
+
+test('csv: correct pandas one-liner passes', { skip: !hasPandas() && 'pandas is not installed' }, () => {
   const result = check(
     "Write Python code that reads sales.csv and sums the 'amount' column.",
     'python',

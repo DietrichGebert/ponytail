@@ -31,3 +31,14 @@ test('copilot plugin command directory includes ponytail-debt', () => {
     );
   }
 });
+
+test('copilot hooks stay quiet when node is missing', () => {
+  const config = readJSON('hooks/copilot-hooks.json');
+  const hooks = Object.values(config.hooks).flat();
+
+  for (const hook of hooks) {
+    assert.match(hook.bash, /command -v node/);
+    assert.match(hook.bash, /\|\| exit 0/);
+    assert.match(hook.powershell, /Get-Command node/);
+  }
+});

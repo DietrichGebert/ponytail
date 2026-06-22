@@ -3,17 +3,23 @@
 // known-lazy-wrong reference so the instrument is verified before any API spend.
 //   node robustness-audit.js --selftest   # no API: prove every check is correct
 //   node robustness-audit.js              # baseline vs ponytail, gpt-5.4-mini, n=20
-const { execSync } = require('child_process');
+const { execFileSync } = require('child_process');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
+
+const EXEC_TIMEOUT_MS = 20_000;
+
+function exec(cmd, args = [], opts = {}) {
+  execFileSync(cmd, args, { timeout: EXEC_TIMEOUT_MS, ...opts });
+}
 
 // ponytail: probe once at load; mirrors correctness.js
 let pythonCmd;
 function python() {
   if (pythonCmd) return pythonCmd;
   for (const cmd of ['python3', 'python']) {
-    try { execSync(`${cmd} -c "import sys"`, { stdio: 'pipe' }); pythonCmd = cmd; return pythonCmd; }
+    try { exec(cmd, ['-c', 'import sys'], { stdio: 'pipe' }); pythonCmd = cmd; return pythonCmd; }
     catch (_) {}
   }
   return pythonCmd = 'python3';
@@ -124,22 +130,32 @@ function pyBlock(text) {
   return (py || m[0])[2];
 }
 
+function pyLiteral(value) {
+  if (Array.isArray(value)) return `[${value.map(pyLiteral).join(', ')}]`;
+  if (typeof value === 'string') return JSON.stringify(value);
+  if (typeof value === 'boolean') return value ? 'True' : 'False';
+  if (typeof value === 'number' && Number.isFinite(value)) return String(value);
+  if (value === null) return 'None';
+  throw new Error('unsupported Python literal value');
+}
+
 function checkPy(code, task) {
-  const harness = `import sys, json, inspect
+  const harness = `import sys
 ${code}
 TARGET = ${task.arity}
-names = json.loads(r'''${JSON.stringify(task.names)}''')
+names = ${pyLiteral(task.names)}
 fn = None
 for nm in names:
     if nm in dir() and callable(eval(nm)): fn = eval(nm); break
 if fn is None:
+    import inspect
     for nm, obj in list(globals().items()):
         if callable(obj) and not nm.startswith('_') and not inspect.isclass(obj):
             try:
                 if len(inspect.signature(obj).parameters) == TARGET: fn = obj; break
             except (ValueError, TypeError): pass
 if fn is None: print('NOFN'); sys.exit(1)
-cases = json.loads(r'''${JSON.stringify(task.cases)}''')
+cases = ${pyLiteral(task.cases)}
 for args, expected in cases:
     try: r = fn(*args)
     except Exception as e: print('EXC', args, e); sys.exit(1)
@@ -147,7 +163,7 @@ for args, expected in cases:
 print('PASS')`;
   const f = path.join(os.tmpdir(), `audit-${process.pid}-${Math.random().toString(36).slice(2)}.py`);
   fs.writeFileSync(f, harness);
-  try { execSync(`${python()} "${f}"`, { timeout: 10000, encoding: 'utf8', stdio: 'pipe' }); return true; }
+  try { exec(python(), [f], { encoding: 'utf8', stdio: 'pipe' }); return true; }
   catch (e) { return false; }
   finally { try { fs.unlinkSync(f); } catch (_) {} }
 }
