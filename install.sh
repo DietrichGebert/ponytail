@@ -179,6 +179,8 @@ detect_antigravity() {
 }
 
 detect_kilo() {
+  command -v kilo &>/dev/null && return 0
+  [[ -f "${HOME}/.config/kilo/kilo.json" ]] && return 0
   command -v code &>/dev/null && code --list-extensions 2>/dev/null | grep -qi "kilo" && return 0
   for extdir in "${HOME}/.vscode/extensions" "${HOME}/.vscode-server/extensions"; do
     [[ -d "$extdir" ]] && ls "$extdir" 2>/dev/null | grep -qi "kilo" && return 0
@@ -272,7 +274,7 @@ sync_files() {
   done
 
   # Hidden agent dirs
-  for d in .cursor .windsurf .clinerules .kiro .openclaw .opencode .github .agents; do
+  for d in .cursor .windsurf .clinerules .kiro .openclaw .opencode .github .agents .claude-plugin .codex-plugin pi-extension; do
     if [[ -d "$REPO_ROOT/$d" ]]; then
       mkdir -p "$CONFIG_DIR/$d"
       cp -r "$REPO_ROOT/$d"/* "$CONFIG_DIR/$d"/ 2>/dev/null || true
@@ -280,6 +282,21 @@ sync_files() {
   done
 
   log "Files synced"
+
+  # Create hooks symlink inside .claude-plugin so plugin.json can find them
+  if [[ -d "$CONFIG_DIR/.claude-plugin" ]] && [[ -d "$CONFIG_DIR/hooks" ]]; then
+    local claude_plugin_hooks="$CONFIG_DIR/.claude-plugin/hooks"
+    if [[ ! -L "$claude_plugin_hooks" ]]; then
+      ln -sf "$CONFIG_DIR/hooks" "$claude_plugin_hooks"
+    fi
+  fi
+  # Same for .codex-plugin
+  if [[ -d "$CONFIG_DIR/.codex-plugin" ]] && [[ -d "$CONFIG_DIR/hooks" ]]; then
+    local codex_plugin_hooks="$CONFIG_DIR/.codex-plugin/hooks"
+    if [[ ! -L "$codex_plugin_hooks" ]]; then
+      ln -sf "$CONFIG_DIR/hooks" "$codex_plugin_hooks"
+    fi
+  fi
 }
 
 # ---- Install for one agent --------------------------------------------------
@@ -353,68 +370,95 @@ install_agent() {
     rm -rf "$link_path"
   fi
 
+  # Special handling for Claude Code and Codex: use their CLI marketplace mechanism
+  # They don't scan directories — they require `plugin marketplace add` + `plugin install`
+  if [[ "$name" == "claude" ]]; then
+    local claude_bin
+    claude_bin="$(command -v claude 2>/dev/null || true)"
+    if [[ -n "$claude_bin" ]]; then
+      # Register marketplace (idempotent)
+      "$claude_bin" plugin marketplace add "$REPO_ROOT" 2>/dev/null || true
+      # Install plugin
+      "$claude_bin" plugin install ponytail@ponytail 2>/dev/null && log "Claude Code: ponytail plugin installed" || warn "Claude Code: plugin install failed — run: claude plugin install ponytail@ponytail"
+    else
+      warn "claude binary not found — run: claude plugin marketplace add <repo> && claude plugin install ponytail@ponytail"
+    fi
+    return 0
+  fi
+
+  if [[ "$name" == "codex" ]]; then
+    local codex_bin
+    codex_bin="$(command -v codex 2>/dev/null || true)"
+    if [[ -n "$codex_bin" ]]; then
+      "$codex_bin" plugin marketplace add "$REPO_ROOT" 2>/dev/null || true
+      "$codex_bin" plugin add ponytail@ponytail 2>/dev/null && log "Codex: ponytail plugin installed" || warn "Codex: plugin install failed — run: codex plugin add ponytail@ponytail"
+    else
+      warn "codex binary not found — run: codex plugin marketplace add <repo> && codex plugin add ponytail"
+    fi
+    return 0
+  fi
+
+  # Special handling for Kilo Code (fork of OpenCode): needs plugin entry in kilo.json
+  if [[ "$name" == "kilo" ]]; then
+    local kilo_config="${HOME}/.config/kilo/kilo.json"
+    local kilo_plugins_dir="${HOME}/.config/kilo/plugins"
+    local ponytail_mjs="$CONFIG_DIR/.opencode/plugins/ponytail.mjs"
+    if [[ -f "$ponytail_mjs" ]]; then
+      mkdir -p "$kilo_plugins_dir"
+      ln -sf "$ponytail_mjs" "$kilo_plugins_dir/ponytail.mjs"
+      # Add plugin entry to kilo.json
+      python3 -c "
+import json
+with open('$kilo_config') as f:
+    s = json.load(f)
+plugins = s.get('plugin', [])
+kilo_plugin = '$kilo_plugins_dir/ponytail.mjs'
+if kilo_plugin not in plugins:
+    s['plugin'] = plugins + [kilo_plugin]
+    with open('$kilo_config', 'w') as f:
+        json.dump(s, f, indent=2)
+    print('added plugin')
+else:
+    print('already present')
+" 2>/dev/null && log "Kilo Code: ponytail plugin added to kilo.json" || warn "Failed to update kilo.json"
+    else
+      warn "ponytail.mjs not found at $ponytail_mjs"
+    fi
+    return 0
+  fi
+
   # Create symlink
   ln -sf "$src_path" "$link_path"
   log "Linked $src_rel → $link_path"
 }
 
-# ---- Install hooks for Claude Code / Codex ---------------------------------
-install_hooks() {
-  header "Installing lifecycle hooks"
-
-  # Claude Code
+# ---- Remove legacy hooks from settings.json ----------------------------------
+remove_legacy_hooks() {
+  # Hooks are now managed by the plugin itself via plugin.json → hooks/claude-codex-hooks.json
+  # Remove any manually-added ponytail hooks from settings.json
   local claude_settings="${HOME}/.claude/settings.json"
-  local codex_settings="${HOME}/.codex/settings.json"
-
   if [[ -f "$claude_settings" ]]; then
-    info "Claude Code: adding hooks to settings.json..."
-    local tempfile
-    tempfile=$(mktemp)
-    # Use python for safe JSON manipulation
     python3 -c "
-import json, sys
+import json
 with open('$claude_settings') as f:
     s = json.load(f)
-s.setdefault('hooks', {})
-s['hooks']['SessionStart'] = s['hooks'].get('SessionStart', [])
-s['hooks']['UserPromptSubmit'] = s['hooks'].get('UserPromptSubmit', [])
-# Check if already installed
-already = any('ponytail' in str(h) for h in s['hooks']['SessionStart'])
-if not already:
-    s['hooks']['SessionStart'].append({
-        'matcher': 'startup|resume|clear|compact',
-        'hooks': [{
-            'type': 'command',
-            'command': 'command -v node >/dev/null 2>&1 && node \"${CLAUDE_CONFIG_DIR}/../plugins/ponytail/hooks/ponytail-activate.js\" || exit 0',
-            'timeout': 5,
-            'statusMessage': 'Loading ponytail mode...'
-        }]
-    })
-    s['hooks']['UserPromptSubmit'].append({
-        'hooks': [{
-            'type': 'command',
-            'command': 'command -v node >/dev/null 2>&1 && node \"${CLAUDE_CONFIG_DIR}/../plugins/ponytail/hooks/ponytail-mode-tracker.js\" || exit 0',
-            'timeout': 5,
-            'statusMessage': 'Tracking ponytail mode...'
-        }]
-    })
+changed = False
+for hook_key in ['SessionStart', 'UserPromptSubmit']:
+    hooks = s.get('hooks', {}).get(hook_key, [])
+    new_hooks = [h for h in hooks if 'ponytail' not in str(h)]
+    if len(new_hooks) != len(hooks):
+        s['hooks'][hook_key] = new_hooks
+        changed = True
+if changed:
     with open('$claude_settings', 'w') as f:
         json.dump(s, f, indent=2)
-    print('hooks added')
-else:
-    print('hooks already present')
-" 2>/dev/null && log "Claude Code hooks installed" || warn "Failed to install Claude Code hooks"
+" 2>/dev/null || true
   fi
+}
 
-  # Codex - similar approach
-  if [[ -d "${HOME}/.codex/plugins" ]] && [[ -d "$CONFIG_DIR/.codex-plugin" ]]; then
-    local codex_plugin_dir="${HOME}/.codex/plugins/ponytail"
-    mkdir -p "$(dirname "$codex_plugin_dir")"
-    if [[ ! -L "$codex_plugin_dir" ]]; then
-      ln -sf "$CONFIG_DIR/.codex-plugin" "$codex_plugin_dir"
-      log "Codex plugin symlinked"
-    fi
-  fi
+# Hooks are managed by the plugin itself — no manual install needed
+install_hooks() {
+  remove_legacy_hooks
 }
 
 # ---- Remove all symlinks ----------------------------------------------------
@@ -429,6 +473,43 @@ uninstall_all() {
     link_target="$(echo "$rest" | cut -d: -f5)"
 
     if [[ -z "$link_target" ]]; then
+      continue
+    fi
+
+    # For Claude/Codex, use CLI to uninstall (marketplace mechanism)
+    if [[ "$name" == "claude" ]]; then
+      command -v claude &>/dev/null && {
+        claude plugin uninstall ponytail 2>/dev/null || true
+        claude plugin marketplace remove ponytail 2>/dev/null || true
+        log "Claude Code: uninstalled"
+      }
+      continue
+    fi
+    if [[ "$name" == "codex" ]]; then
+      command -v codex &>/dev/null && {
+        codex plugin remove ponytail 2>/dev/null || true
+        codex plugin marketplace remove ponytail 2>/dev/null || true
+        log "Codex: uninstalled"
+      }
+      continue
+    fi
+
+    # For Kilo Code (fork of OpenCode), remove plugin entry from kilo.json
+    if [[ "$name" == "kilo" ]]; then
+      local kilo_config="${HOME}/.config/kilo/kilo.json"
+      local kilo_plugins_dir="${HOME}/.config/kilo/plugins"
+      rm -f "$kilo_plugins_dir/ponytail.mjs" 2>/dev/null
+      if [[ -f "$kilo_config" ]]; then
+        python3 -c "
+import json
+with open('$kilo_config') as f:
+    s = json.load(f)
+plugins = s.get('plugin', [])
+s['plugin'] = [p for p in plugins if 'ponytail' not in p]
+with open('$kilo_config', 'w') as f:
+    json.dump(s, f, indent=2)
+" 2>/dev/null && log "Kilo Code: uninstalled" || true
+      fi
       continue
     fi
 
@@ -491,7 +572,27 @@ list_status() {
     local detected="" installed=""
     "$detect_fn" &>/dev/null && detected="${GREEN}yes${NC}" || detected="${DIM}no${NC}"
 
-    if [[ -L "$link_target" ]]; then
+    # Claude Code and Codex use marketplace mechanism, not symlinks
+    if [[ "$name" == "claude" ]]; then
+      if command -v claude &>/dev/null && claude plugin list 2>/dev/null | grep -q "ponytail"; then
+        installed="${GREEN}plugin${NC}"
+      else
+        installed="${DIM}no${NC}"
+      fi
+    elif [[ "$name" == "codex" ]]; then
+      if command -v codex &>/dev/null && codex plugin list 2>/dev/null | grep -q "ponytail"; then
+        installed="${GREEN}plugin${NC}"
+      else
+        installed="${DIM}no${NC}"
+      fi
+    elif [[ "$name" == "kilo" ]]; then
+      local kilo_config="${HOME}/.config/kilo/kilo.json"
+      if [[ -f "$kilo_config" ]] && python3 -c "import json; s=json.load(open('$kilo_config')); exit(0 if any('ponytail' in p for p in s.get('plugin',[])) else 1)" 2>/dev/null; then
+        installed="${GREEN}plugin${NC}"
+      else
+        installed="${DIM}no${NC}"
+      fi
+    elif [[ -L "$link_target" ]]; then
       installed="${GREEN}symlink${NC}"
     elif [[ -z "$link_target" ]]; then
       installed="${GRAY}N/A${NC}"

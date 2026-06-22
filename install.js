@@ -151,9 +151,9 @@ const AGENTS = [
     name: 'kilo',
     label: 'Kilo Code',
     detectDir: join(homedir(), '.kilocode'),
-    srcDir: '.kiro/steering/ponytail.md',
-    linkPath: join(homedir(), '.kilocode', 'rules', 'ponytail.md'),
-    detectLabel: 'vscode-ext/config',
+    srcDir: '.opencode/plugins/ponytail.mjs',
+    linkPath: join(homedir(), '.config', 'kilo', 'plugins', 'ponytail.mjs'),
+    detectLabel: 'binary/config',
   },
   {
     name: 'codewhale',
@@ -281,7 +281,9 @@ function detectAgent(agent) {
         existsSync('/opt/homebrew/bin/agy');
 
     case 'kilo':
-      return vscodeExt('kilo') ||
+      return binInPath('kilo') ||
+        existsSync(join(homedir(), '.config', 'kilo', 'kilo.json')) ||
+        vscodeExt('kilo') ||
         vscodeExtDir(/kilo/i) ||
         existsSync(join(agent.detectDir, 'rules.json')) ||
         existsSync(join(agent.detectDir, 'config.json')) ||
@@ -371,6 +373,17 @@ function syncFiles(repoRoot) {
     }
   }
   log('Files synced');
+
+  // Create hooks symlink inside .claude-plugin so plugin.json can find them
+  const claudePluginHooks = join(CONFIG_DIR, '.claude-plugin', 'hooks');
+  const codexPluginHooks = join(CONFIG_DIR, '.codex-plugin', 'hooks');
+  const hooksDir = join(CONFIG_DIR, 'hooks');
+  if (existsSync(join(CONFIG_DIR, '.claude-plugin')) && existsSync(hooksDir) && !existsSync(claudePluginHooks)) {
+    try { mkdirSync(dirname(claudePluginHooks), { recursive: true }); symlinkSync(hooksDir, claudePluginHooks, 'dir'); } catch {}
+  }
+  if (existsSync(join(CONFIG_DIR, '.codex-plugin')) && existsSync(hooksDir) && !existsSync(codexPluginHooks)) {
+    try { mkdirSync(dirname(codexPluginHooks), { recursive: true }); symlinkSync(hooksDir, codexPluginHooks, 'dir'); } catch {}
+  }
 }
 
 function symlinkAgent(agent, dryRun) {
@@ -401,10 +414,63 @@ function symlinkAgent(agent, dryRun) {
   }
 
   try {
+    // Special handling for Claude Code and Codex: use their CLI marketplace mechanism
+    // They don't scan directories — they require `plugin marketplace add` + `plugin install`
+    if (agent.name === 'claude' || agent.name === 'codex') {
+      const bin = agent.name === 'claude' ? 'claude' : 'codex';
+      const installCmd = agent.name === 'claude' ? 'plugin install ponytail@ponytail' : 'plugin add ponytail@ponytail';
+      if (dryRun) {
+        info(`[dry-run] Would run: ${bin} plugin marketplace add <repo> && ${bin} ${installCmd}`);
+        return true;
+      }
+      try {
+        execSync(`${bin} plugin marketplace add "${REPO_ROOT}"`, { stdio: 'ignore' });
+      } catch {}
+      try {
+        execSync(`${bin} ${installCmd}`, { stdio: 'ignore' });
+        log(`${agent.label}: ponytail plugin installed`);
+        return true;
+      } catch (e) {
+        warn(`${agent.label}: plugin install failed — run: ${bin} ${installCmd}`);
+        return false;
+      }
+    }
+
+    // Special handling for Kilo Code (fork of OpenCode): needs plugin entry in kilo.json
+    if (agent.name === 'kilo') {
+      const kiloConfig = join(homedir(), '.config', 'kilo', 'kilo.json');
+      const ponytailMjs = join(CONFIG_DIR, '.opencode', 'plugins', 'ponytail.mjs');
+      if (!existsSync(ponytailMjs)) {
+        warn(`${agent.label}: ponytail.mjs not found`);
+        return false;
+      }
+      if (dryRun) {
+        info(`[dry-run] Would symlink ponytail.mjs and add plugin to kilo.json`);
+        return true;
+      }
+      mkdirSync(dirname(linkPath), { recursive: true });
+      if (existsSync(linkPath)) rmSync(linkPath, { recursive: true, force: true });
+      execSync(`ln -sf "${ponytailMjs}" "${linkPath}"`);
+      // Add plugin entry to kilo.json
+      try {
+        const s = JSON.parse(readFileSync(kiloConfig, 'utf8'));
+        s.plugin = s.plugin || [];
+        if (!s.plugin.includes(linkPath)) {
+          s.plugin.push(linkPath);
+          writeFileSync(kiloConfig, JSON.stringify(s, null, 2));
+        }
+        log(`${agent.label}: plugin added to kilo.json`);
+      } catch (e) {
+        warn(`${agent.label}: failed to update kilo.json: ${e.message}`);
+      }
+      return true;
+    }
+
     mkdirSync(dirname(linkPath), { recursive: true });
     if (existsSync(linkPath)) {
       rmSync(linkPath, { recursive: true, force: true });
     }
+
     // Use junction on Windows for dirs, symlink on Unix
     if (isWin && statSync(srcPath).isDirectory()) {
       execSync(`mklink /J "${linkPath}" "${srcPath}"`, { stdio: 'ignore' });
@@ -425,6 +491,31 @@ function symlinkAgent(agent, dryRun) {
 }
 
 function removeSymlink(agent) {
+  // For Claude/Codex, use CLI to uninstall
+  if (agent.name === 'claude' || agent.name === 'codex') {
+    const bin = agent.name === 'claude' ? 'claude' : 'codex';
+    const removeCmd = agent.name === 'claude' ? 'plugin uninstall ponytail' : 'plugin remove ponytail';
+    try {
+      execSync(`${bin} ${removeCmd}`, { stdio: 'ignore' });
+      log(`Uninstalled: ${agent.label}`);
+    } catch {}
+    try {
+      execSync(`${bin} plugin marketplace remove ponytail`, { stdio: 'ignore' });
+    } catch {}
+    return true;
+  }
+  // For Kilo Code, remove plugin entry from kilo.json
+  if (agent.name === 'kilo') {
+    const kiloConfig = join(homedir(), '.config', 'kilo', 'kilo.json');
+    if (agent.linkPath && existsSync(agent.linkPath)) rmSync(agent.linkPath, { force: true });
+    try {
+      const s = JSON.parse(readFileSync(kiloConfig, 'utf8'));
+      s.plugin = (s.plugin || []).filter(p => !p.includes('ponytail'));
+      writeFileSync(kiloConfig, JSON.stringify(s, null, 2));
+      log(`Removed: ${agent.label}`);
+    } catch {}
+    return true;
+  }
   if (!agent.linkPath) return true;
   if (!existsSync(agent.linkPath) && !isSymlink(agent.linkPath)) return true;
   try {
@@ -442,72 +533,32 @@ function isSymlink(p) {
 }
 
 function installHooks(dryRun) {
-  hdr('Installing lifecycle hooks');
+  // Hooks are now managed by the plugin itself via plugin.json → hooks/claude-codex-hooks.json
+  // Remove any legacy manually-added ponytail hooks from settings.json
+  removeLegacyHooks(dryRun);
+}
 
-  // Claude Code
+function removeLegacyHooks(dryRun) {
   const claudeSettings = join(homedir(), '.claude', 'settings.json');
-  if (existsSync(claudeSettings)) {
-    info('Claude Code: adding hooks to settings.json');
-    if (!dryRun) {
-      try {
-        const raw = readFileSync(claudeSettings, 'utf8');
-        const s = JSON.parse(raw);
-        s.hooks = s.hooks || {};
-        s.hooks.SessionStart = s.hooks.SessionStart || [];
-        s.hooks.UserPromptSubmit = s.hooks.UserPromptSubmit || [];
-
-        const hasHooks = s.hooks.SessionStart.some(h =>
-          JSON.stringify(h).includes('ponytail')
-        );
-
-        if (!hasHooks) {
-          s.hooks.SessionStart.push({
-            matcher: 'startup|resume|clear|compact',
-            hooks: [{
-              type: 'command',
-              command: 'command -v node >/dev/null 2>&1 && node "${CLAUDE_CONFIG_DIR}/../plugins/ponytail/hooks/ponytail-activate.js" || exit 0',
-              timeout: 5,
-              statusMessage: 'Loading ponytail mode...',
-            }],
-          });
-          s.hooks.UserPromptSubmit.push({
-            hooks: [{
-              type: 'command',
-              command: 'command -v node >/dev/null 2>&1 && node "${CLAUDE_CONFIG_DIR}/../plugins/ponytail/hooks/ponytail-mode-tracker.js" || exit 0',
-              timeout: 5,
-              statusMessage: 'Tracking ponytail mode...',
-            }],
-          });
-          writeFileSync(claudeSettings, JSON.stringify(s, null, 2));
-          log('Claude Code hooks installed');
-        } else {
-          info('Claude Code hooks already present');
-        }
-      } catch (e) {
-        warn(`Failed to update Claude Code hooks: ${e.message}`);
+  if (!existsSync(claudeSettings)) return;
+  if (dryRun) return;
+  try {
+    const raw = readFileSync(claudeSettings, 'utf8');
+    const s = JSON.parse(raw);
+    let changed = false;
+    for (const key of ['SessionStart', 'UserPromptSubmit']) {
+      const hooks = s.hooks?.[key] || [];
+      const filtered = hooks.filter(h => !JSON.stringify(h).includes('ponytail'));
+      if (filtered.length !== hooks.length) {
+        s.hooks[key] = filtered;
+        changed = true;
       }
     }
-  }
-
-  // Codex
-  const codexPlugins = join(homedir(), '.codex', 'plugins', 'ponytail');
-  if (existsSync(join(homedir(), '.codex'))) {
-    if (!dryRun) {
-      try {
-        const src = join(CONFIG_DIR, '.codex-plugin');
-        if (existsSync(src)) {
-          mkdirSync(dirname(codexPlugins), { recursive: true });
-          if (!existsSync(codexPlugins)) {
-            const rel = relative(dirname(codexPlugins), src);
-            execSync(`ln -sf "${rel}" "${codexPlugins}"`);
-            log('Codex plugin linked');
-          }
-        }
-      } catch (e) {
-        warn(`Failed to link Codex plugin: ${e.message}`);
-      }
+    if (changed) {
+      writeFileSync(claudeSettings, JSON.stringify(s, null, 2));
+      log('Removed legacy ponytail hooks from settings.json');
     }
-  }
+  } catch {}
 }
 
 function removeHooks() {
