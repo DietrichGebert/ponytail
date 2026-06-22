@@ -197,6 +197,13 @@ detect_codewhale() {
   return 1
 }
 
+detect_hermes() {
+  command -v hermes &>/dev/null && return 0
+  [[ -d "${HOME}/.hermes" ]] && return 0
+  [[ -d "${HOME}/.local/share/pipx/venvs/hermes-agent" ]] && return 0
+  return 1
+}
+
 # ---- Agent definitions using detect functions --------------------------------
 AGENT_DEFS=(
   "claude:Claude Code:detect_claude:.claude-plugin:${HOME}/.claude/plugins/ponytail:binary/config"
@@ -212,6 +219,7 @@ AGENT_DEFS=(
   "pi:Pi agent:detect_pi:pi-extension:${HOME}/.pi/extensions/ponytail:binary/config/cargo"
   "antigravity:Antigravity:detect_antigravity:.agents/rules/ponytail.md:${HOME}/.agents/rules/ponytail.md:binary"
   "kilo:Kilo Code:detect_kilo:.kiro/steering/ponytail.md:${HOME}/.kilocode/rules/ponytail.md:vscode-ext/config"
+  "hermes:Hermes:detect_hermes:.hermes/plugins/ponytail:${HOME}/.hermes/plugins/ponytail:binary/pipx"
   "codewhale:CodeWhale:detect_codewhale:AGENTS.md::binary/npm"
 )
 
@@ -274,7 +282,7 @@ sync_files() {
   done
 
   # Hidden agent dirs
-  for d in .cursor .windsurf .clinerules .kiro .openclaw .opencode .github .agents .claude-plugin .codex-plugin pi-extension; do
+  for d in .cursor .windsurf .clinerules .kiro .openclaw .opencode .github .agents .claude-plugin .codex-plugin pi-extension .hermes; do
     if [[ -d "$REPO_ROOT/$d" ]]; then
       mkdir -p "$CONFIG_DIR/$d"
       cp -r "$REPO_ROOT/$d"/* "$CONFIG_DIR/$d"/ 2>/dev/null || true
@@ -313,7 +321,7 @@ install_agent() {
   done
 
   if [[ -z "$def" ]]; then
-    error "Unknown agent: $name. Supported: claude codex copilot opencode cursor windsurf cline kiro openclaw gemini pi antigravity codewhale kilo"
+    error "Unknown agent: $name. Supported: claude codex copilot opencode cursor windsurf cline kiro openclaw gemini pi antigravity codewhale kilo hermes"
     return 1
   fi
 
@@ -427,6 +435,73 @@ else:
     return 0
   fi
 
+  # Special handling for OpenCode: needs plugin entry in opencode.json
+  if [[ "$name" == "opencode" ]]; then
+    local opencode_config="${HOME}/.config/opencode/opencode.json"
+    local opencode_plugins_dir="${HOME}/.config/opencode/plugins"
+    local ponytail_mjs="$CONFIG_DIR/.opencode/plugins/ponytail.mjs"
+    if [[ -f "$ponytail_mjs" ]]; then
+      mkdir -p "$opencode_plugins_dir"
+      ln -sf "$ponytail_mjs" "$opencode_plugins_dir/ponytail.mjs"
+      # Add plugin entry to opencode.json
+      python3 -c "
+import json, os
+config_path = '$opencode_config'
+plugin_path = '$opencode_plugins_dir/ponytail.mjs'
+if os.path.isfile(config_path):
+    with open(config_path) as f:
+        s = json.load(f)
+else:
+    s = {}
+plugins = s.get('plugin', [])
+if plugin_path not in plugins:
+    s['plugin'] = plugins + [plugin_path]
+    with open(config_path, 'w') as f:
+        json.dump(s, f, indent=2)
+    print('added plugin')
+else:
+    print('already present')
+" 2>/dev/null && log "OpenCode: ponytail plugin added to opencode.json" || warn "Failed to update opencode.json"
+      # Symlink command files for /ponytail commands
+      local cmd_src="$CONFIG_DIR/.opencode/command"
+      local cmd_dest="${HOME}/.config/opencode/command"
+      if [[ -d "$cmd_src" ]]; then
+        mkdir -p "$cmd_dest"
+        for cmdfile in "$cmd_src"/*; do
+          [[ -f "$cmdfile" ]] && ln -sf "$cmdfile" "$cmd_dest/$(basename "$cmdfile")" 2>/dev/null || true
+        done
+      fi
+    else
+      warn "ponytail.mjs not found at $ponytail_mjs"
+    fi
+    return 0
+  fi
+
+  # Special handling for Hermes: install plugin AND skill
+  if [[ "$name" == "hermes" ]]; then
+    local hermes_plugins_dir="${HOME}/.hermes/plugins"
+    local hermes_skills_dir="${HOME}/.hermes/skills/ponytail"
+    local plugin_src="$CONFIG_DIR/.hermes/plugins/ponytail"
+    local skill_src="$CONFIG_DIR/skills/ponytail/SKILL.md"
+    # Install plugin (for pre_llm_call hook — always-active injection)
+    if [[ -d "$plugin_src" ]]; then
+      mkdir -p "$hermes_plugins_dir"
+      ln -sf "$plugin_src" "$hermes_plugins_dir/ponytail"
+      log "Hermes: plugin symlinked"
+    fi
+    # Install skill (for visibility in hermes skills list + commands)
+    if [[ -f "$skill_src" ]]; then
+      mkdir -p "$hermes_skills_dir"
+      ln -sf "$skill_src" "$hermes_skills_dir/SKILL.md"
+      log "Hermes: skill symlinked"
+    fi
+    # Enable plugin if hermes binary is available
+    if command -v hermes &>/dev/null; then
+      hermes plugins enable ponytail 2>/dev/null || true
+    fi
+    return 0
+  fi
+
   # Create symlink
   ln -sf "$src_path" "$link_path"
   log "Linked $src_rel → $link_path"
@@ -513,6 +588,41 @@ with open('$kilo_config', 'w') as f:
       continue
     fi
 
+    # For OpenCode, remove plugin entry from opencode.json and command symlinks
+    if [[ "$name" == "opencode" ]]; then
+      local opencode_config="${HOME}/.config/opencode/opencode.json"
+      local opencode_plugins_dir="${HOME}/.config/opencode/plugins"
+      rm -f "$opencode_plugins_dir/ponytail.mjs" 2>/dev/null
+      # Remove command symlinks
+      local cmd_dest="${HOME}/.config/opencode/command"
+      if [[ -d "$cmd_dest" ]]; then
+        for cmdfile in "$cmd_dest"/ponytail*; do
+          [[ -L "$cmdfile" ]] && rm -f "$cmdfile" 2>/dev/null
+        done
+      fi
+      if [[ -f "$opencode_config" ]]; then
+        python3 -c "
+import json
+with open('$opencode_config') as f:
+    s = json.load(f)
+plugins = s.get('plugin', [])
+s['plugin'] = [p for p in plugins if 'ponytail' not in p]
+with open('$opencode_config', 'w') as f:
+    json.dump(s, f, indent=2)
+" 2>/dev/null && log "OpenCode: uninstalled" || true
+      fi
+      continue
+    fi
+
+    # For Hermes, remove plugin and skill
+    if [[ "$name" == "hermes" ]]; then
+      rm -rf "${HOME}/.hermes/plugins/ponytail" 2>/dev/null
+      rm -rf "${HOME}/.hermes/skills/ponytail" 2>/dev/null
+      command -v hermes &>/dev/null && hermes plugins disable ponytail 2>/dev/null || true
+      log "Hermes: uninstalled"
+      continue
+    fi
+
     if [[ -L "$link_target" ]]; then
       rm -f "$link_target"
       log "Removed symlink: $link_target"
@@ -589,6 +699,15 @@ list_status() {
       local kilo_config="${HOME}/.config/kilo/kilo.json"
       if [[ -f "$kilo_config" ]] && python3 -c "import json; s=json.load(open('$kilo_config')); exit(0 if any('ponytail' in p for p in s.get('plugin',[])) else 1)" 2>/dev/null; then
         installed="${GREEN}plugin${NC}"
+      else
+        installed="${DIM}no${NC}"
+      fi
+    elif [[ "$name" == "opencode" ]]; then
+      local opencode_config="${HOME}/.config/opencode/opencode.json"
+      if [[ -f "$opencode_config" ]] && python3 -c "import json; s=json.load(open('$opencode_config')); exit(0 if any('ponytail' in p for p in s.get('plugin',[])) else 1)" 2>/dev/null; then
+        installed="${GREEN}plugin${NC}"
+      elif [[ -L "$link_target" ]]; then
+        installed="${GREEN}symlink${NC}"
       else
         installed="${DIM}no${NC}"
       fi

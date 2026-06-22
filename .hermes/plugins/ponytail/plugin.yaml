@@ -1,0 +1,9 @@
+name: ponytail
+version: "1.0.0"
+description: Injects ponytail ruleset into every LLM call — lazy senior dev mode.
+author: ponytail contributors
+homepage: https://github.com/DietrichGebert/ponytail
+hooks:
+  - pre_llm_call
+provides_hooks:
+  - pre_llm_call

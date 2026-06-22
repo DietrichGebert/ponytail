@@ -19,7 +19,7 @@
  *   claude, codex, copilot, opencode, cursor, windsurf, cline,
  *   kiro, openclaw, gemini, pi, antigravity, codewhale, kilo
  */
-const { existsSync, readFileSync, writeFileSync, mkdirSync, unlinkSync, readdirSync, statSync, copyFileSync, rmSync } = require("fs");
+const { existsSync, readFileSync, writeFileSync, mkdirSync, unlinkSync, readdirSync, statSync, copyFileSync, rmSync, symlinkSync } = require("fs");
 const { homedir, platform, EOL } = require("os");
 const { join, dirname, basename, resolve, relative } = require("path");
 const { execSync } = require("child_process");
@@ -156,6 +156,14 @@ const AGENTS = [
     detectLabel: 'binary/config',
   },
   {
+    name: 'hermes',
+    label: 'Hermes',
+    detectDir: join(homedir(), '.hermes'),
+    srcDir: '.hermes/plugins/ponytail',
+    linkPath: join(homedir(), '.hermes', 'plugins', 'ponytail'),
+    detectLabel: 'binary/pipx',
+  },
+  {
     name: 'codewhale',
     label: 'CodeWhale',
     detectDir: '/usr/local/bin/codewhale',
@@ -289,6 +297,11 @@ function detectAgent(agent) {
         existsSync(join(agent.detectDir, 'config.json')) ||
         existsSync(join(agent.detectDir, 'plugins'));
 
+    case 'hermes':
+      return binInPath('hermes') ||
+        existsSync(agent.detectDir) ||
+        existsSync(join(homedir(), '.local', 'share', 'pipx', 'venvs', 'hermes-agent'));
+
     case 'codewhale':
       return binInPath('codewhale') ||
         existsSync('/usr/local/bin/codewhale') ||
@@ -358,7 +371,7 @@ function syncFiles(repoRoot) {
     'hooks', 'skills', 'commands', 'docs', 'assets',
     '.cursor', '.windsurf', '.clinerules', '.kiro',
     '.openclaw', '.opencode', '.github', '.agents',
-    '.claude-plugin', '.codex-plugin', 'pi-extension',
+    '.claude-plugin', '.codex-plugin', 'pi-extension', '.hermes',
   ];
 
   for (const item of items) {
@@ -466,6 +479,86 @@ function symlinkAgent(agent, dryRun) {
       return true;
     }
 
+    // Special handling for OpenCode: needs plugin entry in opencode.json
+    if (agent.name === 'opencode') {
+      const opencodeConfig = join(homedir(), '.config', 'opencode', 'opencode.json');
+      const ponytailMjs = join(CONFIG_DIR, '.opencode', 'plugins', 'ponytail.mjs');
+      if (!existsSync(ponytailMjs)) {
+        warn(`${agent.label}: ponytail.mjs not found`);
+        return false;
+      }
+      if (dryRun) {
+        info(`[dry-run] Would symlink ponytail.mjs and add plugin to opencode.json`);
+        return true;
+      }
+      mkdirSync(dirname(linkPath), { recursive: true });
+      if (existsSync(linkPath)) rmSync(linkPath, { recursive: true, force: true });
+      execSync(`ln -sf "${ponytailMjs}" "${linkPath}"`);
+      // Add plugin entry to opencode.json
+      try {
+        let s = {};
+        if (existsSync(opencodeConfig)) {
+          s = JSON.parse(readFileSync(opencodeConfig, 'utf8'));
+        }
+        s.plugin = s.plugin || [];
+        if (!s.plugin.includes(linkPath)) {
+          s.plugin.push(linkPath);
+          writeFileSync(opencodeConfig, JSON.stringify(s, null, 2));
+        }
+        log(`${agent.label}: plugin added to opencode.json`);
+      } catch (e) {
+        warn(`${agent.label}: failed to update opencode.json: ${e.message}`);
+      }
+      // Symlink command files for /ponytail commands
+      try {
+        const cmdSrc = join(CONFIG_DIR, '.opencode', 'command');
+        const cmdDest = join(homedir(), '.config', 'opencode', 'command');
+        if (existsSync(cmdSrc)) {
+          mkdirSync(cmdDest, { recursive: true });
+          for (const f of readdirSync(cmdSrc)) {
+            const src = join(cmdSrc, f);
+            const dest = join(cmdDest, f);
+            if (statSync(src).isFile()) {
+              try { execSync(`ln -sf "${src}" "${dest}"`); } catch {}
+            }
+          }
+        }
+      } catch {}
+      return true;
+    }
+
+    // Special handling for Hermes: install plugin AND skill
+    if (agent.name === 'hermes') {
+      const hermesPluginsDir = join(homedir(), '.hermes', 'plugins');
+      const hermesSkillsDir = join(homedir(), '.hermes', 'skills', 'ponytail');
+      const pluginSrc = join(CONFIG_DIR, '.hermes', 'plugins', 'ponytail');
+      const skillSrc = join(CONFIG_DIR, 'skills', 'ponytail', 'SKILL.md');
+      if (dryRun) {
+        info(`[dry-run] Would symlink plugin and skill for Hermes`);
+        return true;
+      }
+      // Install plugin (for pre_llm_call hook — always-active injection)
+      if (existsSync(pluginSrc)) {
+        mkdirSync(hermesPluginsDir, { recursive: true });
+        if (existsSync(linkPath)) rmSync(linkPath, { recursive: true, force: true });
+        execSync(`ln -sf "${pluginSrc}" "${linkPath}"`);
+        log(`${agent.label}: plugin symlinked`);
+      }
+      // Install skill (for visibility in hermes skills list + commands)
+      if (existsSync(skillSrc)) {
+        mkdirSync(hermesSkillsDir, { recursive: true });
+        const skillDest = join(hermesSkillsDir, 'SKILL.md');
+        if (existsSync(skillDest)) rmSync(skillDest, { force: true });
+        execSync(`ln -sf "${skillSrc}" "${skillDest}"`);
+        log(`${agent.label}: skill symlinked`);
+      }
+      // Enable plugin if hermes binary is available
+      try {
+        execSync('hermes plugins enable ponytail', { stdio: 'ignore' });
+      } catch {}
+      return true;
+    }
+
     mkdirSync(dirname(linkPath), { recursive: true });
     if (existsSync(linkPath)) {
       rmSync(linkPath, { recursive: true, force: true });
@@ -514,6 +607,38 @@ function removeSymlink(agent) {
       writeFileSync(kiloConfig, JSON.stringify(s, null, 2));
       log(`Removed: ${agent.label}`);
     } catch {}
+    return true;
+  }
+  // For OpenCode, remove plugin entry from opencode.json and command symlinks
+  if (agent.name === 'opencode') {
+    const opencodeConfig = join(homedir(), '.config', 'opencode', 'opencode.json');
+    if (agent.linkPath && existsSync(agent.linkPath)) rmSync(agent.linkPath, { force: true });
+    // Remove command symlinks
+    try {
+      const cmdDest = join(homedir(), '.config', 'opencode', 'command');
+      if (existsSync(cmdDest)) {
+        for (const f of readdirSync(cmdDest)) {
+          if (f.startsWith('ponytail')) {
+            const p = join(cmdDest, f);
+            try { if (isSymlink(p)) rmSync(p, { force: true }); } catch {}
+          }
+        }
+      }
+    } catch {}
+    try {
+      const s = JSON.parse(readFileSync(opencodeConfig, 'utf8'));
+      s.plugin = (s.plugin || []).filter(p => !p.includes('ponytail'));
+      writeFileSync(opencodeConfig, JSON.stringify(s, null, 2));
+      log(`Removed: ${agent.label}`);
+    } catch {}
+    return true;
+  }
+  // For Hermes, remove plugin and skill
+  if (agent.name === 'hermes') {
+    try { rmSync(join(homedir(), '.hermes', 'plugins', 'ponytail'), { recursive: true, force: true }); } catch {}
+    try { rmSync(join(homedir(), '.hermes', 'skills', 'ponytail'), { recursive: true, force: true }); } catch {}
+    try { execSync('hermes plugins disable ponytail', { stdio: 'ignore' }); } catch {}
+    log(`Removed: ${agent.label}`);
     return true;
   }
   if (!agent.linkPath) return true;
@@ -622,7 +747,22 @@ function listStatus(repoRoot) {
   for (const agent of AGENTS) {
     const detected = detectAgent(agent) ? `${C.green}yes${C.reset}` : `${C.dim}no${C.reset}`;
     let installed;
-    if (!agent.linkPath) {
+    // Check JSON config for agents that use plugin mechanism
+    if (agent.name === 'kilo') {
+      try {
+        const cfg = join(homedir(), '.config', 'kilo', 'kilo.json');
+        const s = JSON.parse(readFileSync(cfg, 'utf8'));
+        installed = (s.plugin || []).some(p => p.includes('ponytail'))
+          ? `${C.green}plugin${C.reset}` : `${C.dim}no${C.reset}`;
+      } catch { installed = `${C.dim}no${C.reset}`; }
+    } else if (agent.name === 'opencode') {
+      try {
+        const cfg = join(homedir(), '.config', 'opencode', 'opencode.json');
+        const s = JSON.parse(readFileSync(cfg, 'utf8'));
+        installed = (s.plugin || []).some(p => p.includes('ponytail'))
+          ? `${C.green}plugin${C.reset}` : `${C.dim}no${C.reset}`;
+      } catch { installed = `${C.dim}no${C.reset}`; }
+    } else if (!agent.linkPath) {
       installed = `${C.gray}N/A${C.reset}`;
     } else if (isSymlink(agent.linkPath)) {
       installed = `${C.green}symlink${C.reset}`;

@@ -247,6 +247,8 @@ Kiro: copy `.kiro/steering/ponytail.md` to `~/.kiro/steering/` (global) or `.kir
 
 Kilo Code: copy `.kiro/steering/ponytail.md` to `~/.kilocode/rules/` (global), or use the install script: `install.sh --agent kilo`.
 
+Hermes: the install script creates a plugin at `~/.hermes/plugins/ponytail/` that injects the ruleset via the `pre_llm_call` hook. Run `install.sh --agent hermes`, or copy `.hermes/plugins/ponytail/` to `~/.hermes/plugins/`.
+
 GitHub Copilot CLI fallback (instruction-only mode): it reads `AGENTS.md` and `.github/copilot-instructions.md` in a project, or copy the rules into `~/.copilot/copilot-instructions.md` to run ponytail in every project. This path keeps always-on guidance, but does not add plugin mode switches or hooks.
 
 VS Code with the Codex extension reads `AGENTS.md`, which this repo ships, so it works from the repo root with no setup (`~/.codex/AGENTS.md` makes Codex global).
