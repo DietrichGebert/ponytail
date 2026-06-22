@@ -165,7 +165,7 @@ Installs ponytail as an OpenClaw skill from ClawHub; the review, audit, debt, an
 npx skills add DietrichGebert/ponytail --all --global
 ```
 
-Installs all five ponytail skills into `~/.hermes/skills/` globally; Hermes auto-discovers them on the next session. Without `npx`, copy [`skills/`](skills/) into `~/.hermes/skills/` or drop it in your project root — Hermes reads `skills/` at the repo root automatically.
+Installs all five ponytail skills into `~/.hermes/skills/` globally; Hermes auto-discovers them on the next session. Without `npx`, copy the skills manually: `cp -r skills/* ~/.hermes/skills/`.
 
 That was it. He'd be proud. He won't say it.
 
