@@ -83,12 +83,15 @@ Antes de escribir código, el agente se detiene en el primer peldaño que aguant
 
 ```
 1. ¿Necesita existir esto?        → no: omitirlo (YAGNI)
-2. ¿Lo hace la stdlib?            → úsala
-3. ¿Es una feature nativa?        → úsala
-4. ¿Una dependencia ya instalada? → úsala
-5. ¿Cabe en una línea?            → una línea
-6. Solo entonces: el mínimo que funciona
+2. ¿Ya existe en este código?     → reúsalo, no lo reescribas
+3. ¿Lo hace la stdlib?            → úsala
+4. ¿Es una feature nativa?        → úsala
+5. ¿Una dependencia ya instalada? → úsala
+6. ¿Cabe en una línea?            → una línea
+7. Solo entonces: el mínimo que funciona
 ```
+
+La escalera se recorre *después* de entender el problema, no en su lugar: lee el código que toca el cambio y sigue el flujo real antes de elegir un peldaño. Flojo en la solución, nunca en la lectura.
 
 Flojo, no negligente: la validación en límites de confianza, el manejo de pérdida de datos, la seguridad y la accesibilidad nunca están en riesgo.
 
