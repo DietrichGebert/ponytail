@@ -26,9 +26,14 @@ function run(script, env, input = '') {
   });
 }
 
-// Keep the base env clean so the default-dir checks are deterministic; the
-// CLAUDE_CONFIG_DIR case sets it explicitly.
+// Keep the base env clean so the default-dir / native-Claude checks are
+// deterministic; the CLAUDE_CONFIG_DIR and codex/copilot cases set these
+// explicitly where needed. run() spreads process.env, so a PLUGIN_DATA /
+// COPILOT_PLUGIN_DATA leaked from the dev or CI shell would otherwise steer
+// writeHookOutput into the wrong branch and mis-fire the native assertions.
 delete process.env.CLAUDE_CONFIG_DIR;
+delete process.env.PLUGIN_DATA;
+delete process.env.COPILOT_PLUGIN_DATA;
 
 const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'ponytail-hooks-'));
 // Runs on normal exit and on assertion-throw exit; force makes it idempotent.
@@ -175,7 +180,6 @@ const subHome = path.join(temp, 'sub-home');
 const subFlag = path.join(subHome, '.claude', '.ponytail-active');
 fs.mkdirSync(path.dirname(subFlag), { recursive: true });
 const subEnv = { HOME: subHome, USERPROFILE: subHome };
-delete subEnv.PLUGIN_DATA;
 
 fs.writeFileSync(subFlag, 'full');
 result = run('ponytail-subagent.js', subEnv);
@@ -192,5 +196,17 @@ fs.unlinkSync(subFlag);
 result = run('ponytail-subagent.js', subEnv);
 assert.equal(result.status, 0, result.stderr);
 assert.equal(result.stdout, '', 'SubagentStart must stay silent when ponytail is off');
+
+// Codex shares claude-codex-hooks.json, so SubagentStart is reachable under Codex
+// too — assert the codex branch emits the badge plus hookSpecificOutput.
+const subCodex = path.join(temp, 'sub-codex');
+fs.mkdirSync(subCodex, { recursive: true });
+fs.writeFileSync(path.join(subCodex, '.ponytail-active'), 'full');
+result = run('ponytail-subagent.js', { HOME: subHome, USERPROFILE: subHome, PLUGIN_DATA: subCodex });
+assert.equal(result.status, 0, result.stderr);
+output = JSON.parse(result.stdout);
+assert.equal(output.systemMessage, 'PONYTAIL:FULL');
+assert.equal(output.hookSpecificOutput.hookEventName, 'SubagentStart');
+assert.match(output.hookSpecificOutput.additionalContext, /PONYTAIL MODE ACTIVE — level: full/);
 
 console.log('hook compatibility checks passed');
