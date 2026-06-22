@@ -217,3 +217,23 @@ You know exactly why.
 ## License
 
 [MIT](LICENSE). The shortest license that works.
+
+## Contributing to Ponytail
+
+We welcome contributions to Ponytail! Here are some ways you can help:
+
+### Documentation
+If you find any part of the documentation unclear or incomplete, feel free to submit a pull request. Improving the documentation is a great way to get started with contributing.
+
+### Tests
+Help us improve the reliability of Ponytail by adding tests. If you notice any areas that lack coverage, consider writing tests for them.
+
+### Good First Issues
+Check out the [issues](https://github.com/DietrichGebert/ponytail/issues) labeled 'good first issue'. These are ideal for newcomers looking to contribute.
+
+### General Guidelines
+- Ensure your code follows the existing style and conventions.
+- Write clear commit messages.
+- Test your changes before submitting a pull request.
+
+Thank you for considering contributing to Ponytail!
