@@ -26,6 +26,10 @@ try {
   const raw = fs.readFileSync(settingsPath, 'utf8').replace(/^\uFEFF/, '');
   const settings = JSON.parse(raw);
   const cmd = settings.statusLine && settings.statusLine.command;
+  // ponytail: substring-match the script name, then drop the whole statusLine
+  // key. A combined statusline (e.g. caveman+ponytail) whose command contains
+  // "ponytail-statusline" gets removed wholesale. Parse out only ponytail's part
+  // if combined statuslines become common.
   if (typeof cmd === 'string' && cmd.includes('ponytail-statusline')) {
     delete settings.statusLine;
     fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2), 'utf8');
