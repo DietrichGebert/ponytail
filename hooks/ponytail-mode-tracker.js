@@ -6,11 +6,14 @@ const { getDefaultMode, isDeactivationCommand } = require('./ponytail-config');
 const { clearMode, setMode, writeHookOutput } = require('./ponytail-runtime');
 
 let input = '';
-process.stdin.on('data', chunk => { input += chunk; });
-process.stdin.on('end', () => {
+let done = false;
+
+function processInput() {
+  if (done) return;
+  done = true;
   try {
     // Strip UTF-8 BOM some shells prepend when piping (breaks JSON.parse)
-    const data = JSON.parse(input.replace(/^\uFEFF/, ''));
+    const data = JSON.parse(input.replace(/^﻿/, ''));
     const prompt = (data.prompt || '').trim().toLowerCase();
 
     // Match /ponytail commands
@@ -52,4 +55,15 @@ process.stdin.on('end', () => {
   } catch (e) {
     // Silent fail
   }
-});
+  process.exit(0);
+}
+
+// Windows fix: PowerShell script-block wrappers (`if (...) { node ... }`) do
+// not forward stdin to child processes, so the 'end' event never fires and the
+// hook hangs indefinitely, blocking every prompt response. The 500 ms hard cap
+// ensures we always exit within the hook timeout window regardless of platform.
+setTimeout(processInput, 500);
+
+process.stdin.on('data', chunk => { input += chunk; });
+process.stdin.on('end', processInput);
+process.stdin.on('error', processInput);
