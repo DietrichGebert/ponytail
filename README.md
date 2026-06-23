@@ -83,12 +83,15 @@ Before writing code, the agent stops at the first rung that holds:
 
 ```
 1. Does this need to exist?   → no: skip it (YAGNI)
-2. Stdlib does it?            → use it
-3. Native platform feature?   → use it
-4. Installed dependency?      → use it
-5. One line?                  → one line
-6. Only then: the minimum that works
+2. Already in this codebase?  → reuse it, don't rewrite
+3. Stdlib does it?            → use it
+4. Native platform feature?   → use it
+5. Installed dependency?      → use it
+6. One line?                  → one line
+7. Only then: the minimum that works
 ```
+
+The ladder runs *after* it understands the problem, not instead of it: it reads the code the change touches and traces the real flow before picking a rung. Lazy about the solution, never about reading.
 
 Lazy, not negligent: trust-boundary validation, data-loss handling, security, and accessibility are never on the chopping block.
 
@@ -229,7 +232,7 @@ node scripts/check-rule-copies.js
 npm test
 ```
 
-The OpenClaw skill package (`.openclaw/skills/`) is generated from `skills/`; rerun `node scripts/build-openclaw-skills.js` after changing a skill, the test suite fails if it is stale.
+The OpenClaw skill package (`.openclaw/skills/`) is generated from `skills/`; rerun `node scripts/build-openclaw-skills.js` after changing a skill, the test suite fails if it is stale. To publish the skills to ClawHub, run `clawhub login` once, then `node scripts/publish-openclaw-skills.js` (it publishes all six at the `package.json` version; pass `--dry-run` to preview).
 
 The correctness benchmark spawns Python for email and CSV checks; `python3` is tried before `python`. CSV checks need `pandas` installed locally.
 

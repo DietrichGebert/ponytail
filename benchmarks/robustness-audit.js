@@ -8,6 +8,17 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 
+// ponytail: probe once at load; mirrors correctness.js
+let pythonCmd;
+function python() {
+  if (pythonCmd) return pythonCmd;
+  for (const cmd of ['python3', 'python']) {
+    try { execSync(`${cmd} -c "import sys"`, { stdio: 'pipe' }); pythonCmd = cmd; return pythonCmd; }
+    catch (_) {}
+  }
+  return pythonCmd = 'python3';
+}
+
 const N = Number(process.env.AUDIT_N) || 20;
 const MODEL = process.env.AUDIT_MODEL || 'gpt-5.4-mini';
 const ROOT = path.join(__dirname, '..');
@@ -136,7 +147,7 @@ for args, expected in cases:
 print('PASS')`;
   const f = path.join(os.tmpdir(), `audit-${process.pid}-${Math.random().toString(36).slice(2)}.py`);
   fs.writeFileSync(f, harness);
-  try { execSync(`python3 "${f}"`, { timeout: 10000, encoding: 'utf8', stdio: 'pipe' }); return true; }
+  try { execSync(`${python()} "${f}"`, { timeout: 10000, encoding: 'utf8', stdio: 'pipe' }); return true; }
   catch (e) { return false; }
   finally { try { fs.unlinkSync(f); } catch (_) {} }
 }
