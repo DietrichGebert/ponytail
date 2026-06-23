@@ -3,6 +3,7 @@ name: test
 on:
   push:
     branches: [main]
+    tags: ['v*']
   pull_request:
 
 jobs:
@@ -24,6 +25,9 @@ jobs:
 
       - name: Check rule copies
         run: node scripts/check-rule-copies.js
+
+      - name: Check version consistency
+        run: node scripts/check-versions.js
 
       - name: Run tests
         run: npm test
