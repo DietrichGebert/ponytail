@@ -18,6 +18,8 @@ const HOST_PLUGIN_MANIFESTS = [
 ];
 // cmd.exe variable syntax (%FOO%); PowerShell leaves it literal, breaking the path.
 const CMD_VAR_SYNTAX = /%[A-Za-z_][A-Za-z0-9_]*%/;
+// PowerShell 5.1 rejects these POSIX shell guards when a host runs `command`.
+const POSIX_GUARD_SYNTAX = /\bcommand\s+-v\b|&&|\|\||>\/dev\/null|2>&1/;
 // Pull the hooks/<script> a command launches, so we can check it exists.
 const HOOK_SCRIPT = /hooks[\\/]([\w.-]+\.(?:js|mjs|cjs|ps1|sh))/;
 
@@ -37,6 +39,26 @@ test('every commandWindows uses PowerShell $env: syntax, not cmd.exe %VAR%', () 
   assert.ok(windowsCommands.length > 0, 'expected at least one commandWindows entry');
   for (const cmd of windowsCommands) {
     assert.doesNotMatch(cmd, CMD_VAR_SYNTAX, `commandWindows uses cmd.exe %VAR% (breaks under PowerShell): ${cmd}`);
+  }
+});
+
+test('shared hook commands avoid POSIX-only guard syntax', () => {
+  const commands = commandHooks()
+    .map((h) => h.command)
+    .filter(Boolean);
+  assert.ok(commands.length > 0, 'expected at least one shared command entry');
+  for (const cmd of commands) {
+    assert.doesNotMatch(cmd, POSIX_GUARD_SYNTAX, `command uses POSIX-only guard syntax: ${cmd}`);
+  }
+});
+
+test('shared hook commands keep lifecycle hooks non-blocking', () => {
+  const commands = commandHooks()
+    .map((h) => h.command)
+    .filter(Boolean);
+  assert.ok(commands.length > 0, 'expected at least one shared command entry');
+  for (const cmd of commands) {
+    assert.match(cmd, /;\s*exit 0$/, `command must exit successfully if node or the hook script fails: ${cmd}`);
   }
 });
 
