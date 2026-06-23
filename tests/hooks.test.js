@@ -94,6 +94,84 @@ assert.equal(
   'incidental "normal mode" in a request must not turn ponytail off',
 );
 
+const cursorEnv = {
+  HOME: home,
+  USERPROFILE: home,
+  CURSOR_PLUGIN_ROOT: root,
+  PONYTAIL_DEFAULT_MODE: 'lite',
+};
+const cursorState = path.join(home, '.cursor', '.ponytail-active');
+
+result = run('ponytail-activate.js', cursorEnv);
+assert.equal(result.status, 0, result.stderr);
+assert.equal(fs.readFileSync(cursorState, 'utf8'), 'lite');
+output = JSON.parse(result.stdout);
+assert.match(output.additional_context, /PONYTAIL MODE ACTIVE — level: lite/);
+
+result = run(
+  'cursor-mode-tracker.js',
+  cursorEnv,
+  JSON.stringify({ prompt: '/ponytail ultra' }),
+);
+assert.equal(result.status, 0, result.stderr);
+assert.equal(fs.readFileSync(cursorState, 'utf8'), 'ultra');
+output = JSON.parse(result.stdout);
+assert.equal(output.continue, true);
+
+result = run(
+  'cursor-mode-tracker.js',
+  cursorEnv,
+  JSON.stringify({ prompt: 'add a normal mode toggle next to dark mode' }),
+);
+assert.equal(result.status, 0, result.stderr);
+assert.equal(
+  fs.readFileSync(cursorState, 'utf8'),
+  'ultra',
+  'incidental "normal mode" in a Cursor request must not turn ponytail off',
+);
+output = JSON.parse(result.stdout);
+assert.equal(output.continue, true);
+
+result = run(
+  'cursor-mode-tracker.js',
+  cursorEnv,
+  JSON.stringify({ prompt: 'stop ponytail' }),
+);
+assert.equal(result.status, 0, result.stderr);
+assert.equal(fs.existsSync(cursorState), false);
+output = JSON.parse(result.stdout);
+assert.equal(output.continue, true);
+
+result = run(
+  'cursor-guard-shell.js',
+  cursorEnv,
+  JSON.stringify({ command: 'npm install left-pad' }),
+);
+assert.equal(result.status, 0, result.stderr);
+output = JSON.parse(result.stdout);
+assert.equal(output.permission, 'ask');
+assert.match(output.agent_message, /Ponytail ladder/);
+
+result = run(
+  'cursor-guard-shell.js',
+  cursorEnv,
+  JSON.stringify({ command: 'npm test' }),
+);
+assert.equal(result.status, 0, result.stderr);
+output = JSON.parse(result.stdout);
+assert.equal(output.permission, 'allow');
+
+result = run('cursor-pre-compact.js', cursorEnv);
+assert.equal(result.status, 0, result.stderr);
+output = JSON.parse(result.stdout);
+assert.match(output.user_message, /Ponytail still applies/);
+
+fs.mkdirSync(path.dirname(cursorState), { recursive: true });
+fs.writeFileSync(cursorState, 'full');
+result = run('cursor-session-end.js', cursorEnv);
+assert.equal(result.status, 0, result.stderr);
+assert.equal(fs.existsSync(cursorState), false);
+
 const claudeEnv = {
   HOME: home,
   USERPROFILE: home,
