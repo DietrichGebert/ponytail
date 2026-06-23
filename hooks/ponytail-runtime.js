@@ -1,14 +1,20 @@
 const fs = require('fs');
+const os = require('os');
 const path = require('path');
 const { getClaudeDir } = require('./ponytail-config');
 
 const STATE_FILE = '.ponytail-active';
 const isCopilot = Boolean(process.env.COPILOT_PLUGIN_DATA);
-const isCodex = !isCopilot && Boolean(process.env.PLUGIN_DATA);
+const isKiro = process.env.PONYTAIL_HOST === 'kiro';
+const isCodex = !isCopilot && !isKiro && Boolean(process.env.PLUGIN_DATA);
 
 let stateDir = getClaudeDir();
 if (isCodex) stateDir = process.env.PLUGIN_DATA;
 if (isCopilot) stateDir = process.env.COPILOT_PLUGIN_DATA;
+if (isKiro) {
+  const kiroHome = process.env.KIRO_HOME || path.join(os.homedir(), '.kiro');
+  stateDir = path.join(kiroHome, 'ponytail');
+}
 
 const statePath = path.join(stateDir, STATE_FILE);
 
@@ -46,6 +52,7 @@ module.exports = {
   clearMode,
   isCodex,
   isCopilot,
+  isKiro,
   setMode,
   writeHookOutput,
 };
