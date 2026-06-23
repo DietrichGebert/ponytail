@@ -105,8 +105,11 @@ The Claude Code and Codex plugins run two tiny Node.js lifecycle hooks, so `node
 
 ```
 /plugin marketplace add DietrichGebert/ponytail
+```
+```
 /plugin install ponytail@ponytail
 ```
+(You have to send two separate prompts for the install to work) 
 
 The desktop app has no `/plugin` command. Install it from the UI instead: Customize, the + by personal plugins, Create plugin and add marketplace, Add from repository, then enter the repo URL (thanks @NiklasDHahn, #98).
 
