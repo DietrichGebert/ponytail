@@ -186,6 +186,23 @@ It reuses this repo's `gemini-extension.json`. One difference: Antigravity conve
 
 Reads `AGENTS.md` from the project root, zero setup. Copy [`AGENTS.md`](AGENTS.md) to your project, or run `codewhale` from a checkout of this repo. That's it.
 
+### Kimi Code CLI
+
+Kimi reads `AGENTS.md` at the project root as always-on instructions. Copy [`AGENTS.md`](AGENTS.md) to your repo root and you're done.
+
+For the skill set (`ponytail`, `ponytail-review`, `ponytail-audit`, `ponytail-debt`, `ponytail-gain`, `ponytail-help`), copy [`.agents/skills/`](.agents/skills/) into your project or into your global skills directory:
+
+```bash
+# project-local
+cp -r .agents/skills /path/to/your/project/.agents/
+
+# global
+mkdir -p ~/.agents/skills
+cp -r .agents/skills/* ~/.agents/skills/
+```
+
+If you run Kimi from a checkout of this repo, the `.agents/skills/` directory is discovered automatically.
+
 ### OpenClaw
 
 ```bash

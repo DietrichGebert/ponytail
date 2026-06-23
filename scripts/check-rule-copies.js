@@ -56,7 +56,12 @@ const INVARIANTS = [
 ];
 
 const skill = read('skills/ponytail/SKILL.md');
-const sources = [['skills/ponytail/SKILL.md', skill], ['AGENTS.md', agents]];
+const kimiSkill = read('.agents/skills/ponytail/SKILL.md');
+const sources = [
+  ['skills/ponytail/SKILL.md', skill],
+  ['AGENTS.md', agents],
+  ['.agents/skills/ponytail/SKILL.md', kimiSkill],
+];
 for (const phrase of INVARIANTS) {
   for (const [label, text] of sources) {
     if (!text.includes(phrase)) {

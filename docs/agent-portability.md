@@ -22,6 +22,7 @@ to load in a given agent.
 | CodeWhale | `AGENTS.md` | Reads `AGENTS.md` from the repo root as project instructions; also reads `CLAUDE.md` and `.claude/instructions.md` as fallbacks. Instruction-tier. |
 | VS Code + Codex extension | `AGENTS.md` | The Codex extension reads `AGENTS.md` (repo root, or `~/.codex/AGENTS.md` globally). Instruction-tier; the full Codex plugin row above adds `/ponytail` levels and hooks. |
 | Kiro | `.kiro/steering/ponytail.md` | Steering rule; copy globally or into a project. |
+| Kimi Code CLI | `.agents/skills/ponytail/` (project or `~/.agents/skills/`), `AGENTS.md` | Skill package auto-discovered when working inside the repo; copy to another project or to `~/.agents/skills/` for global use. `AGENTS.md` at project root provides always-on rules without skill activation. |
 | Generic agents | `AGENTS.md` or `skills/*/SKILL.md` | Copy the compact rule file or load the skill files directly. |
 
 ## Adapter Rule
