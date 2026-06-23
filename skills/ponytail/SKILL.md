@@ -71,6 +71,30 @@ give it in full, the rule is only against unrequested prose.
 
 Pattern: `[code] → skipped: [X], add when [Y].`
 
+## Game-dev exception
+
+Game dev has two products: the game and the iteration loop.
+
+Do not simplify away tuneable gameplay feel. Movement, timing, camera, combat,
+AI, spawn, damage, animation, audio, and difficulty values are calibration knobs
+unless this is a throwaway prototype.
+
+Prefer engine-native workflows over tiny code diffs: scenes, prefabs, resources,
+data assets, components, editor tools, animation events, debug gizmos, and test
+scenes are allowed when they reduce iteration pain now.
+
+YAGNI applies to architecture, not experiments. A mechanic prototype may exist
+just to test fun, but it should stay small and disposable.
+
+For game-dev tasks, use full pressure for bug fixes, refactors, performance
+cleanup, small gameplay changes, and removing overengineering; lite pressure for
+new mechanics, combat systems, save/load, networking, editor tooling, content
+pipelines, and architecture decisions; and normal/off pressure for brainstorming,
+feel exploration, narrative, UX, audio, and level design.
+
+For design/system questions, give the tradeoff first, then the lazy
+implementation. For bugfixes, stay code-first and terse.
+
 ## Intensity
 
 | Level | What change |

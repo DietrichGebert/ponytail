@@ -53,6 +53,7 @@ const INVARIANTS = [
   'security',
   'accessibility',
   'Lazy code without its check is unfinished', // one-check promoted to headline
+  'YAGNI applies to architecture, not experiments', // game-dev prototype carve-out
 ];
 
 const skill = read('skills/ponytail/SKILL.md');

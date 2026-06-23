@@ -12,6 +12,7 @@ const root = path.join(__dirname, '..');
 // paths pass, paths carrying shell metacharacters are rejected so they never get
 // embedded in a shell command.
 const { isShellSafe } = require('../hooks/ponytail-config');
+const { getFallbackInstructions } = require('../hooks/ponytail-instructions');
 assert.equal(isShellSafe('C:\\Users\\x\\.claude\\plugins\\ponytail\\hooks\\ponytail-statusline.ps1'), true);
 assert.equal(isShellSafe('/home/u/.claude/plugins/ponytail/hooks/ponytail-statusline.sh'), true);
 assert.equal(isShellSafe('/tmp/a"&calc.exe&"/x.sh'), false);
@@ -147,6 +148,8 @@ assert.equal(
 );
 output = JSON.parse(result.stdout);
 assert.match(output.additionalContext, /PONYTAIL MODE ACTIVE — level: full/);
+assert.match(output.additionalContext, /Game dev has two products/);
+assert.match(getFallbackInstructions('full'), /Gameplay feel values are calibration knobs/);
 
 result = run(
   'ponytail-mode-tracker.js',

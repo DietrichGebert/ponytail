@@ -62,6 +62,13 @@ function getFallbackInstructions(mode) {
     'Code first. Then at most three short lines: what was skipped, when to add it. ' +
     'If the explanation is longer than the code, delete the explanation. ' +
     'Explanation the user explicitly asked for is not debt, give it in full.\n\n' +
+    '## Game-dev exception\n\n' +
+    'Game dev has two products: the game and the iteration loop. ' +
+    'Gameplay feel values are calibration knobs: movement, timing, camera, combat, AI, spawn, damage, animation, audio, and difficulty stay tuneable unless this is a throwaway prototype. ' +
+    'Prefer engine-native workflows over tiny code diffs; scenes, prefabs, resources, data assets, components, editor tools, animation events, debug gizmos, and test scenes are allowed when they reduce iteration pain now. ' +
+    'YAGNI applies to architecture, not experiments: mechanic prototypes may exist to test fun if they stay small and disposable. ' +
+    'For game-dev tasks, use full pressure for bug fixes/refactors/perf/small changes/removing overengineering, lite pressure for new mechanics/systems/save-load/networking/tooling/pipelines/architecture, and normal/off pressure for brainstorming/feel/narrative/UX/audio/level design. ' +
+    'For design/system questions, give the tradeoff first, then the lazy implementation; for bugfixes, stay code-first and terse.\n\n' +
     '## When NOT to be lazy\n\n' +
     'Never simplify away: understanding the problem (read it fully and trace the real flow before picking a rung — a small diff you do not understand is just laziness dressed up as efficiency), input validation at trust boundaries, error handling that prevents data loss, ' +
     'security measures, accessibility basics, the calibration real hardware needs (the platform is never the spec ideal), anything the user explicitly asked to keep. ' +
