@@ -105,6 +105,8 @@ The Claude Code and Codex plugins run two tiny Node.js lifecycle hooks, so `node
 
 ```
 /plugin marketplace add DietrichGebert/ponytail
+```
+```
 /plugin install ponytail@ponytail
 ```
 
