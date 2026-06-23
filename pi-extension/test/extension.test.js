@@ -135,3 +135,33 @@ test("a request mentioning normal mode stays active", async () => withTempConfig
   const result = await events.get("before_agent_start")({ systemPrompt: "BASE" }, ctx);
   assert.match(result.systemPrompt, /PONYTAIL MODE ACTIVE/);
 }));
+
+test("status bar renders the mode and flips active on agent_start", async () => withTempConfig(async () => {
+  const { events } = createPiHarness();
+  const statusWrites = [];
+  const ctx = createCommandContext({
+    sessionManager: { getEntries: () => [{ type: "custom", customType: "ponytail-mode", data: { mode: "ultra" } }] },
+    ui: { notify() {}, setStatus: (key, text) => statusWrites.push({ key, text }), theme: { fg: (_color, text) => text } },
+  });
+
+  await events.get("session_start")({ reason: "resume" }, ctx);
+  await events.get("agent_start")({}, ctx);
+
+  assert.equal(statusWrites.at(-2).key, "ponytail");
+  assert.match(statusWrites.at(-2).text, /○.*ULTRA/);
+  assert.match(statusWrites.at(-1).text, /●.*ULTRA/);
+}));
+
+test("status bar stays silent when ui lacks a theme", async () => withTempConfig(async () => {
+  const { events } = createPiHarness();
+  const calls = [];
+  const ctx = createCommandContext({
+    sessionManager: { getEntries: () => [{ type: "custom", customType: "ponytail-mode", data: { mode: "ultra" } }] },
+    ui: { notify() {}, setStatus: (_key, text) => calls.push(text) }, // setStatus present, theme absent
+  });
+
+  await events.get("session_start")({ reason: "resume" }, ctx);
+  await events.get("agent_start")({}, ctx);
+
+  assert.deepEqual(calls, []);
+}));

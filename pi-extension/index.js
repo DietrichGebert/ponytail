@@ -63,7 +63,7 @@ export default function ponytailExtension(pi) {
   function syncStatus(ctx) {
     if (ctx) lastCtx = ctx;
     const c = ctx || lastCtx;
-    if (!c?.ui?.setStatus) return;
+    if (!c?.ui?.setStatus || !c.ui.theme?.fg) return;
     const theme = c.ui.theme;
     if (currentMode === "off") {
       c.ui.setStatus("ponytail", "");
