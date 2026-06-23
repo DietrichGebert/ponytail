@@ -91,6 +91,11 @@ that prevents data loss, security measures, accessibility basics, anything
 explicitly requested. User insists on the full version → build it, no
 re-arguing.
 
+**Never shrink functional data.** URLs must include protocols (`https://`),
+file paths must remain complete, commands must stay executable. A URL
+without its protocol isn't "the same logic, shorter" — it's a broken URL.
+Functional strings are executable data, not decoration.
+
 Never lazy about understanding the problem. The ladder shortens the
 solution, never the reading. Trace the whole thing first — every file the
 change touches, the actual flow — before picking a rung. Laziness that skips
