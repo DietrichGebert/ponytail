@@ -114,6 +114,8 @@ assert.equal(
 );
 
 // CLAUDE_CONFIG_DIR overrides ~/.claude for the flag file (issue #34).
+// The statusline nudge must also reference the resolved settings path, not the
+// hardcoded ~/.claude/settings.json literal (issue #255 / #250).
 const home2 = path.join(temp, 'home2');
 fs.mkdirSync(home2, { recursive: true });
 const customConfigDir = path.join(temp, 'custom-claude');
@@ -133,6 +135,20 @@ assert.equal(
   false,
   'flag must not land in ~/.claude when CLAUDE_CONFIG_DIR is set',
 );
+// The nudge text must reference the resolved settings path (customConfigDir/settings.json)
+// and must NOT contain the hardcoded ~/.claude/settings.json (issue #255).
+const customSettingsPath = path.join(customConfigDir, 'settings.json');
+assert.match(
+  result.stdout,
+  new RegExp(customSettingsPath.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')),
+  'statusline nudge must reference CLAUDE_CONFIG_DIR/settings.json, not ~/.claude/settings.json',
+);
+assert.doesNotMatch(
+  result.stdout,
+  /~\/.claude\/settings\.json/,
+  'statusline nudge must not contain hardcoded ~/.claude/settings.json when CLAUDE_CONFIG_DIR is set',
+);
+
 
 const copilotData = path.join(temp, 'copilot-data');
 const codexData = path.join(temp, 'codex-data-shadow');
