@@ -14,6 +14,7 @@
 <p align="center">
   <img src="https://img.shields.io/github/stars/DietrichGebert/ponytail?style=flat-square&color=111111&label=stars" alt="Stars">
   <img src="https://img.shields.io/github/v/release/DietrichGebert/ponytail?style=flat-square&color=111111&label=release" alt="Release">
+  <img src="https://img.shields.io/npm/v/@dietrichgebert/ponytail?style=flat-square&color=111111&label=npm" alt="npm">
   <img src="https://img.shields.io/badge/works%20with-14%20agents-111111?style=flat-square" alt="Works with 14 agents">
   <img src="https://img.shields.io/badge/license-MIT-111111?style=flat-square" alt="MIT license">
 </p>
@@ -105,8 +106,11 @@ Claude Code와 Codex 플러그인은 자그마한 Node.js 라이프사이클 훅
 
 ```
 /plugin marketplace add DietrichGebert/ponytail
+```
+```
 /plugin install ponytail@ponytail
 ```
+(설치가 되려면 두 프롬프트를 따로 보내야 한다)
 
 데스크톱 앱에는 `/plugin` 명령이 없다. 대신 UI에서 설치한다: Customize, 개인 플러그인 옆의 +, Create plugin and add marketplace, Add from repository, 그다음 저장소 URL 입력(감사합니다 @NiklasDHahn, #98).
 
@@ -151,7 +155,13 @@ pi install git:github.com/DietrichGebert/ponytail
 
 ### OpenCode
 
-이 저장소를 체크아웃한 곳에서 OpenCode를 돌리고(플러그인이 저장소의 `hooks/`와 `skills/`를 그대로 쓴다), `opencode.json`에 다음을 더한다:
+`opencode.json`에 다음을 더한다:
+
+```json
+{ "plugin": ["@dietrichgebert/ponytail"] }
+```
+
+체크아웃에서 직접 돌려도 된다(플러그인이 `hooks/`와 `skills/`를 그대로 쓴다):
 
 ```json
 { "plugin": ["./.opencode/plugins/ponytail.mjs"] }
@@ -160,8 +170,6 @@ pi install git:github.com/DietrichGebert/ponytail
 매 턴마다 지금 레벨의 룰셋을 주입하고, `/ponytail` 명령들을 붙여 준다([Commands](#commands) 참고). OpenCode는 이 저장소의 `AGENTS.md`도 알아서 불러오니, 플러그인이 없어도 규칙은 살아 있다. 플러그인은 `lite/full/ultra/off` 레벨을 얹어 준다.
 
 `./` 경로는 프로젝트의 `opencode.json`을 기준으로 풀린다. 체크아웃 하나를 여러 프로젝트에서 같이 쓰려면, 대신 `.mjs`의 절대 경로를 가리키면 된다(그 파일은 제 위치를 기준으로 `hooks/`와 `skills/`를 찾는다).
-
-플러그인 경로는 룰셋을 어디서나 불러오지만, `/ponytail` 명령들은 `.opencode/command/`에 따로 있는 파일이라 OpenCode가 프로젝트나 전역 명령 디렉터리에서만 찾아낸다. 이 체크아웃 밖에서도 쓰려면 한 번만 링크해 두면 된다: `ln -sf /absolute/path/to/ponytail/.opencode/command/* ~/.config/opencode/command/`.
 
 ### Gemini CLI
 
@@ -185,6 +193,20 @@ agy plugin install https://github.com/DietrichGebert/ponytail
 ### CodeWhale
 
 프로젝트 루트의 `AGENTS.md`를 읽고, 설정은 전혀 필요 없다. [`AGENTS.md`](AGENTS.md)를 프로젝트에 복사하거나, 이 저장소를 체크아웃한 곳에서 `codewhale`을 돌리면 된다. 그게 끝이다.
+
+### Swival
+
+먼저 컬렉션을 라이브러리에 스테이징한 다음, 원하는 스킬을 더한다:
+
+```bash
+swival skills add --global https://github.com/DietrichGebert/ponytail  # ~/.config/swival/library에 스테이징
+swival skills add ponytail                                             # 이 프로젝트에 컬렉션 설치
+swival skills add --global ponytail                                    # 또는 모든 프로젝트에서 켜기
+```
+
+Swival도 프로젝트 루트의 `AGENTS.md`와 전역의 `~/.config/swival/AGENTS.md`를 읽는다. 지시문 전용 폴백이다.
+
+명령줄에서는 `$` 접두사로 스킬을 명시적으로 켠다. 예: `$ponytail-review`.
 
 ### OpenClaw
 
