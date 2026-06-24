@@ -23,7 +23,11 @@ test.before(async () => {
   const url = pathToFileURL(path.join(__dirname, '..', '.opencode', 'plugins', 'ponytail.mjs'));
   const mod = await import(url);
   loadPlugin = mod.default;
-  parseCommandFile = mod.parseCommandFile;
+  // The frontmatter parser used to be exported from the plugin module itself.
+  // OpenCode's legacy loader treats every exported function as a plugin and
+  // tried to invoke it with the plugin context object, which crashed. The
+  // parser now lives in its own .cjs sibling; require it directly.
+  parseCommandFile = require(path.join(__dirname, '..', '.opencode', 'plugins', 'ponytail-frontmatter.cjs')).parseCommandFile;
 });
 
 function transform(hooks) {
