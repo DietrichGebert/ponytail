@@ -42,9 +42,10 @@ function writeMode(mode) {
   fs.writeFileSync(statePath, mode);
 }
 
-function parseCommandFile(filePath) {
+export function parseCommandFile(filePath) {
   const content = fs.readFileSync(filePath, 'utf8');
-  const match = content.match(/^---\n([\s\S]*?)\n---\n([\s\S]*)$/);
+  // Tolerate CRLF: a Windows checkout (autocrlf) delivers \r\n, npm ships \n.
+  const match = content.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n([\s\S]*)$/);
   if (!match) return null;
   const description = match[1].match(/description:\s*(.+)/)?.[1]?.trim();
   return { description, template: match[2].trim() };

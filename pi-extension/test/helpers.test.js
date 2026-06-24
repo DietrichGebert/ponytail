@@ -31,6 +31,13 @@ test("resolveSessionMode prefers latest persisted session mode", () => {
   assert.equal(resolveSessionMode(entries, "full"), "ultra");
 });
 
+test("resolveSessionMode returns fallback when entries is not an array", () => {
+  assert.equal(resolveSessionMode(null, "ultra"), "ultra");
+  assert.equal(resolveSessionMode(undefined, "lite"), "lite");
+  assert.equal(resolveSessionMode({}, "full"), "full");
+  assert.equal(resolveSessionMode("not an array"), "full"); // DEFAULT_MODE fallback
+});
+
 test("readDefaultMode and writeDefaultMode use XDG config path", () => {
   const tempDir = mkdtempSync(join(tmpdir(), "ponytail-config-"));
   const previousXdg = process.env.XDG_CONFIG_HOME;
