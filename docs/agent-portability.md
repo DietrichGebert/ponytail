@@ -16,6 +16,7 @@ to load in a given agent.
 | Cursor | `.cursor/rules/ponytail.mdc` | Always-on project rule. |
 | Windsurf | `.windsurf/rules/ponytail.md` | Project rule. |
 | Cline | `.clinerules/ponytail.md` | Project rule. |
+| Kilo Code (VS Code) | `.kilocode/rules/ponytail.md` | Project rule. Copy to `~/.kilocode/rules/` for global. Instruction-tier. |
 | GitHub Copilot | `.github/copilot-instructions.md` | Repository instruction file. |
 | GitHub Copilot CLI | `.github/plugin/`, `AGENTS.md`, `.github/copilot-instructions.md`, `~/.copilot/copilot-instructions.md` | Plugin-supported (`copilot plugin marketplace add DietrichGebert/ponytail` + `copilot plugin install ponytail@ponytail`). Fallback instruction mode remains: per-project from `AGENTS.md` or `.github/copilot-instructions.md`, or globally from `~/.copilot/copilot-instructions.md` (instruction-tier, no `/ponytail` levels or hooks). |
 | Antigravity | `AGENTS.md` | Reads `AGENTS.md` at the repo root as always-on rules (like `.cursorrules`/`CLAUDE.md`); `.agents/rules/` also works for workspace rules. Instruction-tier. |
