@@ -41,7 +41,13 @@ Say "stop ponytail" or "normal mode". Resume anytime with `/ponytail`.
 
 ## Configure Default Mode
 
-Default mode = `full`, auto-active every session. Change it:
+On hook-capable hosts such as Claude Code, Codex, and OpenCode, Ponytail
+auto-activates each session at the default mode (`full` unless configured).
+GitHub Copilot CLI's instruction-file fallback is instruction-tier only: run
+the namespaced plugin command (`/ponytail:ponytail`) each session, or copy the
+rules into `~/.copilot/copilot-instructions.md` for always-on fallback behavior.
+
+Change the default mode:
 
 **Environment variable** (highest priority):
 ```bash

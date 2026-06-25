@@ -37,3 +37,19 @@ test('every registered command ships an OpenCode .opencode/command/*.md', () => 
     );
   }
 });
+
+test('ponytail-help qualifies session auto-activation for Copilot CLI', () => {
+  const helpCard = fs.readFileSync(path.join(root, 'skills', 'ponytail-help', 'SKILL.md'), 'utf8');
+
+  assert.doesNotMatch(helpCard, /Default mode = `full`, auto-active every session/);
+  assert.match(helpCard, /hook-capable hosts such as Claude Code, Codex, and OpenCode/);
+  assert.match(helpCard, /GitHub Copilot CLI's instruction-file fallback is instruction-tier only/);
+  assert.match(helpCard, /\/ponytail:ponytail/);
+  assert.match(helpCard, /~\/\.copilot\/copilot-instructions\.md/);
+
+  for (const relPath of ['commands/ponytail-help.toml', '.opencode/command/ponytail-help.md']) {
+    const text = fs.readFileSync(path.join(root, relPath), 'utf8');
+    assert.match(text, /GitHub Copilot CLI's instruction-file fallback is instruction-tier only/);
+    assert.match(text, /\/ponytail:ponytail/);
+  }
+});
