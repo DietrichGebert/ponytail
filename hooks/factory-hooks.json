@@ -1,5 +1,5 @@
 {
-  "description": "ponytail - Factory Droid lifecycle hooks. Injects the ruleset at SessionStart (filtered to the active level) and tracks /ponytail mode switches on UserPromptSubmit. PONYTAIL_HOST=factory tells ponytail-runtime to keep state under ~/.factory and emit the hookSpecificOutput JSON shape Factory reads.",
+  "description": "ponytail - Factory Droid lifecycle hooks. Injects the ruleset at SessionStart (filtered to the active level) and tracks /ponytail mode switches on UserPromptSubmit. Factory's DROID_PLUGIN_ROOT tells ponytail-runtime to keep state under ~/.factory and emit the hookSpecificOutput JSON shape Factory reads.",
   "hooks": {
     "SessionStart": [
       {
@@ -7,7 +7,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "PONYTAIL_HOST=factory node \"${DROID_PLUGIN_ROOT}/hooks/ponytail-activate.js\"; exit 0",
+            "command": "node \"${DROID_PLUGIN_ROOT}/hooks/ponytail-activate.js\"",
             "timeout": 5
           }
         ]
@@ -18,7 +18,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "PONYTAIL_HOST=factory node \"${DROID_PLUGIN_ROOT}/hooks/ponytail-mode-tracker.js\"; exit 0",
+            "command": "node \"${DROID_PLUGIN_ROOT}/hooks/ponytail-mode-tracker.js\"",
             "timeout": 5
           }
         ]

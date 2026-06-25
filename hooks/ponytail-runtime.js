@@ -5,9 +5,9 @@ const { getClaudeDir, getFactoryDir } = require('./ponytail-config');
 const STATE_FILE = '.ponytail-active';
 const isCopilot = Boolean(process.env.COPILOT_PLUGIN_DATA);
 const isCodex = !isCopilot && Boolean(process.env.PLUGIN_DATA);
-// Factory Droid: hooks/factory-hooks.json sets PONYTAIL_HOST=factory, and Factory
-// exports DROID_PLUGIN_ROOT to plugin hook processes. Either signal selects the
-// Factory branch (state under ~/.factory, hookSpecificOutput JSON output).
+// Factory Droid exports DROID_PLUGIN_ROOT to plugin hook processes. PONYTAIL_HOST
+// remains as a test/dev override. Either signal selects the Factory branch
+// (state under ~/.factory, hookSpecificOutput JSON output).
 const isFactory =
   !isCopilot &&
   !isCodex &&
