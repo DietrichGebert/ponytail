@@ -15,7 +15,7 @@
   <img src="https://img.shields.io/github/stars/DietrichGebert/ponytail?style=flat-square&color=111111&label=stars" alt="Stars">
   <img src="https://img.shields.io/github/v/release/DietrichGebert/ponytail?style=flat-square&color=111111&label=release" alt="Release">
   <img src="https://img.shields.io/npm/v/@dietrichgebert/ponytail?style=flat-square&color=111111&label=npm" alt="npm">
-  <img src="https://img.shields.io/badge/works%20with-14%20agents-111111?style=flat-square" alt="Works with 14 agents">
+  <img src="https://img.shields.io/badge/works%20with-15%20agents-111111?style=flat-square" alt="Works with 15 agents">
   <img src="https://img.shields.io/badge/license-MIT-111111?style=flat-square" alt="MIT license">
 </p>
 
@@ -131,6 +131,17 @@ open `/hooks`, review and trust its two lifecycle hooks, and start a new thread.
 
 This same install also covers the Codex desktop app: restart the app after installing and it picks up the plugin.
 
+### Factory Droid
+
+```bash
+droid plugin marketplace add DietrichGebert/ponytail
+droid plugin install ponytail@ponytail --scope user   # or --scope project
+```
+
+Factory is Claude Code plugin compatible, so the same `skills/` and `hooks/` power it; `hooks/factory-hooks.json` uses `${DROID_PLUGIN_ROOT}` and sets `PONYTAIL_HOST=factory`, so the live mode flag lands in `~/.factory` and the ruleset is injected each session at the active level. Start a new session, then review/trust the hooks in `/hooks`. `node` must be on your PATH (Nix/nvm users: the non-interactive shell's PATH).
+
+Instruction-only fallback (no hooks): copy `AGENTS.md` and `skills/` into `~/.factory/` (or `.factory/` in a project) — the rules hold, without `lite/full/ultra` persistence.
+
 ### GitHub Copilot CLI
 
 ```bash
@@ -243,6 +254,7 @@ Which files map to which agent: [Agent portability](docs/agent-portability.md).
 |------|---------|
 | Claude Code | `/plugin remove ponytail` |
 | Codex | `codex plugin remove ponytail` |
+| Factory Droid | `droid plugin uninstall ponytail@ponytail` |
 | Pi agent | `pi uninstall ponytail` |
 | Cursor / Windsurf / Cline / etc. | Delete the copied rule file |
 
@@ -259,7 +271,7 @@ These remove the plugin's own files. They leave behind a small amount of state p
 | `/ponytail-gain` | Show the measured impact scoreboard (less code, less cost, more speed) from the benchmark. |
 | `/ponytail-help` | Quick reference for the commands above. |
 
-Commands need a skill-capable host (Claude Code, Codex, OpenCode, Gemini, pi, Swival). In Codex they're skills, invoke with `@` (`@ponytail-review`). The instruction-only adapters (Cursor, Windsurf, Cline, Copilot, Kiro, Antigravity) load the always-on ruleset without the commands.
+Commands need a skill-capable host (Claude Code, Codex, Factory Droid, OpenCode, Gemini, pi, Swival). In Codex they're skills, invoke with `@` (`@ponytail-review`). The instruction-only adapters (Cursor, Windsurf, Cline, Copilot, Kiro, Antigravity) load the always-on ruleset without the commands.
 
 ## Development
 
