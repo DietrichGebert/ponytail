@@ -35,6 +35,10 @@
 
 ---
 
+> [!NOTE]
+> **👀 Something new is coming.** The lazy senior dev has been building something. He won't say what yet.
+> **[Be the first to know →](https://ponytail.dev/soon)**
+
 You know him. Long ponytail. Oval glasses. Has been at the company longer than the version control. You show him fifty lines; he looks at them, says nothing, and replaces them with one.
 
 Ponytail puts him inside your AI agent.
