@@ -35,6 +35,11 @@
 
 ---
 
+<p align="center">
+  <strong>👀 새로운 것이 다가오고 있습니다.</strong> 아직 무엇인지 말하지 않습니다.<br>
+  <a href="https://ponytail.dev/soon"><img src="https://img.shields.io/badge/JOIN%20THE%20WAITLIST-e08a4a?style=for-the-badge" alt="대기자 명단 신청"></a>
+</p>
+
 이런 사람, 다들 알 거다. 긴 포니테일에 타원형 안경. 버전 관리 시스템보다 회사에 오래 있었다. 코드 쉰 줄을 들이밀면 잠깐 보더니, 말없이 한 줄로 바꿔 놓는다.
 
 Ponytail은 그를 당신의 AI 에이전트 안에 앉혀 둔다.

@@ -35,6 +35,11 @@
 
 ---
 
+<p align="center">
+  <strong>👀 Algo nuevo está por llegar.</strong> Aún no dirá qué.<br>
+  <a href="https://ponytail.dev/soon"><img src="https://img.shields.io/badge/JOIN%20THE%20WAITLIST-e08a4a?style=for-the-badge" alt="Únete a la lista"></a>
+</p>
+
 Lo conoces. Cola de caballo larga. Lentes ovalados. Lleva más tiempo en la empresa que el control de versiones. Le muestras cincuenta líneas; las mira, no dice nada, y las reemplaza por una.
 
 Ponytail lo pone dentro de tu agente de IA.
