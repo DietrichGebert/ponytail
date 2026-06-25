@@ -4,6 +4,7 @@ const require = createRequire(import.meta.url);
 const {
   DEFAULT_MODE,
   getDefaultMode,
+  getQuietStartup,
   normalizeMode,
   normalizeConfigMode,
   normalizePersistedMode,
@@ -14,6 +15,7 @@ const { getPonytailInstructions, filterSkillBodyForMode } = require("../hooks/po
 
 export { filterSkillBodyForMode };
 export const readDefaultMode = getDefaultMode;
+export const readQuietStartup = getQuietStartup;
 
 export function resolveSessionMode(entries, fallbackMode = DEFAULT_MODE) {
   const fallback = normalizePersistedMode(fallbackMode) || DEFAULT_MODE;
@@ -169,7 +171,9 @@ export default function ponytailExtension(pi) {
     configuredDefaultMode = getDefaultMode();
     currentMode = resolveSessionMode(entries, configuredDefaultMode);
     syncStatus(ctx);
-    ctx?.ui?.notify?.(`Ponytail loaded: ${currentMode}`, "info");
+    if (!getQuietStartup()) {
+      ctx?.ui?.notify?.(`Ponytail loaded: ${currentMode}`, "info");
+    }
   });
 
   pi.on("agent_start", async (_event, ctx) => {
