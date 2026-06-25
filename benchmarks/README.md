@@ -70,6 +70,10 @@ Versus baseline, ponytail writes **80-94% less code**, costs **42-75% less**, an
 > while the bare "one-liner" prompt drops a guard. That is the honest, defensible number. See
 > [results/2026-06-18-agentic.md](results/2026-06-18-agentic.md).
 
+## Additional results
+
+- [External DeepSWE/Pi stress test](results/2026-06-25-deepswe-pi.md): an independent 113-task repair benchmark contributed by [@Whamp](https://github.com/Whamp), showing smaller patches/tokens/cost but lower mean partial reward from over-pruning on some easy/medium tasks.
+
 ## Metrics
 
 | File | Metric | Behavior |
