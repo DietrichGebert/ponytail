@@ -56,6 +56,13 @@ test('/ponytail off persists off and transform injects nothing', async () => {
   assert.deepEqual(system, []);
 });
 
+test('unsupported /ponytail arguments do not reset the current mode', async () => {
+  const hooks = await loadPlugin({});
+  fs.writeFileSync(statePath, 'ultra');
+  await hooks['command.execute.before']({ command: 'ponytail', arguments: 'status', sessionID: 's' });
+  assert.equal(fs.readFileSync(statePath, 'utf8'), 'ultra');
+});
+
 test('unrelated commands do not touch the flag', async () => {
   try { fs.unlinkSync(statePath); } catch (e) {}
   const hooks = await loadPlugin({});
