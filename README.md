@@ -135,6 +135,13 @@ open `/hooks`, review and trust its two lifecycle hooks, and start a new thread.
 
 This same install also covers the Codex desktop app: restart the app after installing and it picks up the plugin.
 
+### Cursor
+
+Go to Agents → Customize → Browse Marketplace
+Open the Filter dropdown → Add Marketplace → From GitHub
+Paste the github repo URL
+Click Import, then install Ponytail.
+
 ### GitHub Copilot CLI
 
 ```bash
