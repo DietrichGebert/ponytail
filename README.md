@@ -140,6 +140,8 @@ droid plugin install ponytail@ponytail --scope user   # or --scope project
 
 Factory is Claude Code plugin compatible, so the same `skills/` and `hooks/` power it; `hooks/factory-hooks.json` uses `${DROID_PLUGIN_ROOT}`, so the live mode flag lands in `~/.factory` and the ruleset is injected each session at the active level. Start a new session, then review/trust the hooks in `/hooks`. `node` must be on your PATH (Nix/nvm users: the non-interactive shell's PATH).
 
+Factory's public hook docs expose `SubagentStop` but not `SubagentStart`, so Task-spawned sub-droids may not inherit ponytail automatically. The parent session, `/ponytail` mode switches, and slash-invoked skills still work.
+
 Instruction-only fallback (no hooks): copy `AGENTS.md` and `skills/` into `~/.factory/` (or `.factory/` in a project) — the rules hold, without `lite/full/ultra` persistence.
 
 ### GitHub Copilot CLI
