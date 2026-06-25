@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Smoke test for the Factory Droid adapter: the plugin manifest + marketplace
 // catalog parse, the hook map wires SessionStart/UserPromptSubmit at the shared
-// scripts via ${DROID_PLUGIN_ROOT} with PONYTAIL_HOST=factory, and ponytail-runtime
+// scripts via ${DROID_PLUGIN_ROOT}, and ponytail-runtime
 // under Factory writes state to ~/.factory and emits the hookSpecificOutput JSON
 // Factory reads (no systemMessage badge, no Claude statusline nudge). No live droid.
 
@@ -48,11 +48,11 @@ test('factory-hooks.json wires SessionStart + UserPromptSubmit at the shared scr
   const hooks = readJSON('hooks/factory-hooks.json').hooks;
   const session = hooks.SessionStart[0].hooks[0];
   assert.match(session.command, /\$\{DROID_PLUGIN_ROOT\}\/hooks\/ponytail-activate\.js/);
-  assert.match(session.command, /PONYTAIL_HOST=factory/);
+  assert.doesNotMatch(session.command, /PONYTAIL_HOST=factory/);
 
   const prompt = hooks.UserPromptSubmit[0].hooks[0];
   assert.match(prompt.command, /\$\{DROID_PLUGIN_ROOT\}\/hooks\/ponytail-mode-tracker\.js/);
-  assert.match(prompt.command, /PONYTAIL_HOST=factory/);
+  assert.doesNotMatch(prompt.command, /PONYTAIL_HOST=factory/);
 });
 
 test('activate under factory writes state to ~/.factory and emits hookSpecificOutput JSON', () => {
