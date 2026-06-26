@@ -82,7 +82,12 @@ export default async ({ client } = {}) => {
     'experimental.chat.system.transform': async (_input, output) => {
       const mode = readMode();
       if (mode === 'off') return;
-      output.system.push(getPonytailInstructions(mode));
+      const instructions = getPonytailInstructions(mode);
+      if (output.system.length) {
+        output.system[0] = `${output.system[0]}\n\n${instructions}`;
+      } else {
+        output.system.push(instructions);
+      }
     },
 
     // Persist `/ponytail <level>` so the next turn's injection follows it.

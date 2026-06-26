@@ -26,8 +26,8 @@ test.before(async () => {
   parseCommandFile = mod.parseCommandFile;
 });
 
-function transform(hooks) {
-  const output = { system: [] };
+function transform(hooks, system = []) {
+  const output = { system: [...system] };
   return hooks['experimental.chat.system.transform']({ model: {} }, output).then(() => output.system);
 }
 
@@ -37,6 +37,15 @@ test('system.transform injects the ruleset at the default mode (full)', async ()
   const system = await transform(hooks);
   assert.equal(system.length, 1);
   assert.match(system[0], /PONYTAIL MODE ACTIVE — level: full/);
+  assert.match(system[0], /lazy senior developer/);
+});
+
+test('system.transform merges into the existing OpenCode system prompt', async () => {
+  try { fs.unlinkSync(statePath); } catch (e) {}
+  const hooks = await loadPlugin({});
+  const system = await transform(hooks, ['opencode baseline']);
+  assert.equal(system.length, 1);
+  assert.match(system[0], /^opencode baseline\n\nPONYTAIL MODE ACTIVE/);
   assert.match(system[0], /lazy senior developer/);
 });
 
@@ -54,6 +63,7 @@ test('/ponytail off persists off and transform injects nothing', async () => {
   assert.equal(fs.readFileSync(statePath, 'utf8'), 'off');
   const system = await transform(hooks);
   assert.deepEqual(system, []);
+  assert.deepEqual(await transform(hooks, ['opencode baseline']), ['opencode baseline']);
 });
 
 test('unrelated commands do not touch the flag', async () => {
