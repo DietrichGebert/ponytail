@@ -34,6 +34,11 @@ function run(script, env, input = '') {
 delete process.env.CLAUDE_CONFIG_DIR;
 delete process.env.PLUGIN_DATA;
 delete process.env.COPILOT_PLUGIN_DATA;
+// Factory Droid signals (PONYTAIL_HOST=factory in dev/test shells, or
+// DROID_PLUGIN_ROOT exported to plugin hook processes) would likewise steer
+// writeHookOutput into the Factory branch and mis-fire the native assertions.
+delete process.env.PONYTAIL_HOST;
+delete process.env.DROID_PLUGIN_ROOT;
 
 const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'ponytail-hooks-'));
 // Runs on normal exit and on assertion-throw exit; force makes it idempotent.
