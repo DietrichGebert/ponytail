@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
@@ -52,6 +52,10 @@ test("readDefaultMode and writeDefaultMode use XDG config path", () => {
     assert.equal(readDefaultMode(), "ultra");
     assert.ok(existsSync(configPath));
     assert.deepEqual(JSON.parse(readFileSync(configPath, "utf8")), { defaultMode: "ultra" });
+
+    writeFileSync(configPath, JSON.stringify({ defaultMode: "lite", hideStatus: true }));
+    assert.equal(writeDefaultMode("full"), "full");
+    assert.deepEqual(JSON.parse(readFileSync(configPath, "utf8")), { defaultMode: "full", hideStatus: true });
   } finally {
     if (previousXdg === undefined) delete process.env.XDG_CONFIG_HOME;
     else process.env.XDG_CONFIG_HOME = previousXdg;
