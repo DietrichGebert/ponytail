@@ -1,4 +1,47 @@
 {
+  "name": "@dsolisp/gavel",
+  "version": "0.1.0",
+  "description": "The judge's hammer for test quality. Framework-adaptive QA automation toolkit for AI agents. One test. One verdict. Move on.",
+  "keywords": ["opencode-plugin", "opencode", "gavel", "qa", "testing", "playwright", "selenium", "cypress", "webdriverio", "pytest", "junit", "cucumber", "pi-package", "pi", "skills", "test-constitution", "page-object-model"],
+  "license": "MIT",
+  "author": {
+    "name": "Daniel Solis",
+    "url": "https://github.com/dsolisp"
+  },
+  "homepage": "https://github.com/dsolisp/gavel",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dsolisp/gavel.git"
+  },
+  "bugs": {
+    "url": "https://github.com/dsolisp/gavel/issues"
+  },
+  "main": "./.opencode/plugins/gavel.mjs",
+  "exports": {
+    ".": "./.opencode/plugins/gavel.mjs",
+    "./plugin": "./.opencode/plugins/gavel.mjs"
+  },
+  "files": [
+    "AGENTS.md",
+    "hooks/",
+    "skills/",
+    ".opencode/",
+    "pi-extension/",
+    "assets/",
+    "LICENSE"
+  ],
+  "scripts": {
+    "test": "node --test tests/*.test.js && npm test --prefix pi-extension"
+  },
+  "pi": {
+    "extensions": ["./pi-extension/index.js"],
+    "skills": ["./skills"]
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}
+{
   "name": "@dietrichgebert/ponytail",
   "version": "4.8.3",
   "description": "Lazy senior dev mode for AI agents. The best code is the code you never wrote.",

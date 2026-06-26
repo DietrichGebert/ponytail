@@ -1,4 +1,10 @@
 {
+  "name": "gavel",
+  "version": "0.1.0",
+  "description": "QA test quality enforcer. Framework-adaptive QA discipline for AI agents. One test. One verdict. Move on.",
+  "contextFileName": "AGENTS.md"
+}
+{
   "name": "ponytail",
   "version": "4.8.3",
   "description": "Lazy senior dev mode. Forces the simplest, shortest solution that actually works: YAGNI, stdlib first, no unrequested abstractions.",

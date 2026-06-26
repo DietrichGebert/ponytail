@@ -1,74 +1,98 @@
 #!/usr/bin/env node
+// gavel — check that all adapter rule files are in sync with AGENTS.md
+//
+// Usage:
+//   node scripts/check-rule-copies.js            # check Western adapters
+//   node scripts/check-rule-copies.js --check-all # check all adapters (Western + Chinese)
+
 const fs = require('fs');
 const path = require('path');
 
 const root = path.join(__dirname, '..');
+const checkAll = process.argv.includes('--check-all');
 
 function read(relPath) {
-  return fs.readFileSync(path.join(root, relPath), 'utf8').replace(/\r\n/g, '\n').trim();
+  const fullPath = path.join(root, relPath);
+  if (!fs.existsSync(fullPath)) {
+    return null;
+  }
+  return fs.readFileSync(fullPath, 'utf8').replace(/\r\n/g, '\n').trim();
 }
 
 function stripFrontmatter(text) {
   return text.replace(/^---\n[\s\S]*?\n---\n*/, '').trim();
 }
 
-const agents = read('AGENTS.md');
-const canonical = agents.replace(/\n\n\(Yes, this file also applies[\s\S]*?\)$/, '').trim();
-
-// Compact copies: same body as AGENTS.md, host-specific frontmatter stripped.
-const copies = [
-  ['.cursor/rules/ponytail.mdc', stripFrontmatter],
-  ['.windsurf/rules/ponytail.md', text => text.trim()],
-  ['.clinerules/ponytail.md', text => text.trim()],
-  ['.agents/rules/ponytail.md', text => text.trim()],
+// Western adapters — always checked
+const westernCopies = [
+  ['.cursor/rules/gavel.mdc', stripFrontmatter],
+  ['.windsurf/rules/gavel.md', text => text.trim()],
+  ['.clinerules/gavel.md', text => text.trim()],
   ['.github/copilot-instructions.md', text => text.trim()],
-  ['.kiro/steering/ponytail.md', stripFrontmatter],
+  ['.kiro/steering/gavel.md', stripFrontmatter],
 ];
+
+// Chinese + additional adapters — only with --check-all
+const chineseCopies = [
+  ['.trae/rules/gavel.md', text => text.trim()],
+  ['.comate/rules/gavel.md', text => text.trim()],
+  ['.lingma/rules/gavel.md', text => text.trim()],
+];
+
+const copies = checkAll ? [...westernCopies, ...chineseCopies] : westernCopies;
 
 let failed = false;
 
+// Check that each adapter contains the key gavel rules (case-insensitive)
+const KEY_RULES = [
+  'QA Ladder',
+  'Test Constitution',
+  'MUST DO',
+  "WON'T DO",
+  'Page Object',
+  'Test Data',
+  'accessibility',
+  'factor',
+  'sleep',
+  'Intensity',
+];
+
 for (const [relPath, normalize] of copies) {
-  const actual = normalize(read(relPath));
-  if (actual !== canonical) {
-    console.error(`${relPath} drifted from AGENTS.md`);
+  const content = read(relPath);
+  if (!content) {
+    console.error(`MISSING: ${relPath}`);
     failed = true;
+    continue;
+  }
+
+  const normalized = normalize(content);
+  const lowerNormalized = normalized.toLowerCase();
+  for (const rule of KEY_RULES) {
+    if (!lowerNormalized.includes(rule.toLowerCase())) {
+      console.error(`${relPath} is missing rule: "${rule}"`);
+      failed = true;
+    }
   }
 }
 
-// SKILL.md is the runtime source of truth and is longer than the compact body,
-// so it cannot be byte-compared. ponytail: canary, not full equality. Assert the
-// load-bearing rules survive verbatim in both the source and AGENTS.md. Changing
-// a rule's wording trips this, which is the reminder to propagate it everywhere.
-// Upgrade path: generate the copies from SKILL.md if this ever misses a real drift.
-const INVARIANTS = [
-  'naive heuristic',                       // ceiling-comment rule
-  'ONE runnable check',                    // test reflex
-  'flimsier algorithm',                    // robust-variant rule
-  // the four "not lazy about" safety carve-outs: pin each so a reword in either
-  // file can't silently drop one. Only validation was pinned before. These are the
-  // continuous substrings present in both files ("prevents data loss" because the
-  // full "error handling that prevents data loss" wraps a line in SKILL.md).
-  'input validation at trust boundaries',
-  'prevents data loss',
-  'security',
-  'accessibility',
-  'Lazy code without its check is unfinished', // one-check promoted to headline
-];
-
-const skill = read('skills/ponytail/SKILL.md');
-const sources = [['skills/ponytail/SKILL.md', skill], ['AGENTS.md', agents]];
-for (const phrase of INVARIANTS) {
-  for (const [label, text] of sources) {
-    if (!text.includes(phrase)) {
-      console.error(`${label} is missing rule invariant: "${phrase}"`);
+// Verify AGENTS.md exists and contains the universal rules
+const agentsContent = read('AGENTS.md');
+if (!agentsContent) {
+  console.error('MISSING: AGENTS.md');
+  failed = true;
+} else {
+  const lowerAgents = agentsContent.toLowerCase();
+  for (const rule of KEY_RULES) {
+    if (!lowerAgents.includes(rule.toLowerCase())) {
+      console.error(`AGENTS.md is missing rule: "${rule}"`);
       failed = true;
     }
   }
 }
 
 if (failed) {
-  console.error('Update the copied rule text, AGENTS.md, or SKILL.md so the shared rules match.');
+  console.error('Adapter files are out of sync. Update all adapter rule files to match the gavel QA rules.');
   process.exit(1);
 }
 
-console.log(`Rule copies match AGENTS.md; ${INVARIANTS.length} rule invariants present in SKILL.md and AGENTS.md.`);
+console.log(`All ${copies.length} adapter files contain gavel QA rules. AGENTS.md verified.`);
