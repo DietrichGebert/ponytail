@@ -6,6 +6,7 @@ const { getDefaultMode, isDeactivationCommand } = require('./ponytail-config');
 const { clearMode, setMode, writeHookOutput } = require('./ponytail-runtime');
 
 let input = '';
+process.stdin.on('error', () => process.exit(0)); // broken pipe / parent crash: exit clean, never block session
 process.stdin.on('data', chunk => { input += chunk; });
 process.stdin.on('end', () => {
   try {
