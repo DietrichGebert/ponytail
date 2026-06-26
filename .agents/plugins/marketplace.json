@@ -1,21 +1,21 @@
 {
-  "name": "ponytail",
+  "name": "gavel",
   "interface": {
-    "displayName": "Ponytail"
+    "displayName": "Gavel"
   },
   "plugins": [
     {
-      "name": "ponytail",
+      "name": "gavel",
       "source": {
         "source": "url",
-        "url": "https://github.com/DietrichGebert/ponytail.git",
+        "url": "https://github.com/dsolisp/gavel.git",
         "ref": "main"
       },
       "policy": {
         "installation": "AVAILABLE",
         "authentication": "ON_INSTALL"
       },
-      "category": "Productivity"
+      "category": "Testing"
     }
   ]
 }

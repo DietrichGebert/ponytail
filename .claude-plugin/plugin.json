@@ -1,10 +1,10 @@
 {
-  "name": "ponytail",
-  "version": "4.8.3",
-  "description": "Lazy senior dev mode. Forces the simplest, shortest solution that actually works: YAGNI, stdlib first, no unrequested abstractions.",
+  "name": "gavel",
+  "version": "0.1.0",
+  "description": "Minimalism + QA discipline for AI agents. YAGNI, stdlib first, framework-adaptive test quality enforcement.",
   "author": {
-    "name": "Dietrich Gebert",
-    "url": "https://github.com/DietrichGebert"
+    "name": "Daniel Solis",
+    "url": "https://github.com/dsolisp"
   },
   "hooks": "./hooks/claude-codex-hooks.json"
 }

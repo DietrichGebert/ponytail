@@ -1,17 +1,17 @@
 {
   "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
-  "name": "ponytail",
-  "description": "Lazy senior dev mode for AI agents. The best code is the code you never wrote.",
+  "name": "gavel",
+  "description": "Minimalism + QA discipline for AI agents. Framework-adaptive test quality enforcement.",
   "owner": {
-    "name": "Dietrich Gebert",
-    "url": "https://github.com/DietrichGebert"
+    "name": "Daniel Solis",
+    "url": "https://github.com/dsolisp"
   },
   "plugins": [
     {
-      "name": "ponytail",
-      "description": "Forces the laziest solution that works. YAGNI, stdlib first, one line over fifty.",
+      "name": "gavel",
+      "description": "YAGNI, stdlib first, framework-adaptive QA. One test, one verdict, move on.",
       "source": "./",
-      "category": "productivity"
+      "category": "testing"
     }
   ]
 }

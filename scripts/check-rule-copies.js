@@ -75,7 +75,7 @@ for (const [relPath, normalize] of copies) {
   }
 }
 
-// Verify AGENTS.md exists and contains the universal rules
+// Verify AGENTS.md exists and contains both minimalism + QA rules
 const agentsContent = read('AGENTS.md');
 if (!agentsContent) {
   console.error('MISSING: AGENTS.md');
@@ -87,6 +87,11 @@ if (!agentsContent) {
       console.error(`AGENTS.md is missing rule: "${rule}"`);
       failed = true;
     }
+  }
+  // AGENTS.md must also contain the minimalism ladder (ponytail heritage)
+  if (!lowerAgents.includes('minimalism')) {
+    console.error('AGENTS.md is missing the Minimalism Ladder section');
+    failed = true;
   }
 }
 

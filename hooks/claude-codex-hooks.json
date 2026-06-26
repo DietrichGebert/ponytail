@@ -22,6 +22,50 @@
             "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/gavel-subagent.js\"; exit 0",
             "commandWindows": "if (Get-Command node -ErrorAction SilentlyContinue) { node \"$env:CLAUDE_PLUGIN_ROOT\\hooks\\gavel-subagent.js\" }",
             "timeout": 5,
+            "statusMessage": "Injecting gavel QA rules into subagent..."
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/gavel-mode-tracker.js\"; exit 0",
+            "commandWindows": "if (Get-Command node -ErrorAction SilentlyContinue) { node \"$env:CLAUDE_PLUGIN_ROOT\\hooks\\gavel-mode-tracker.js\" }",
+            "timeout": 5,
+            "statusMessage": "Tracking gavel mode..."
+          }
+        ]
+      }
+    ]
+  }
+}
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup|resume|clear|compact",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/gavel-activate.js\"; exit 0",
+            "commandWindows": "if (Get-Command node -ErrorAction SilentlyContinue) { node \"$env:CLAUDE_PLUGIN_ROOT\\hooks\\gavel-activate.js\" }",
+            "timeout": 5,
+            "statusMessage": "Loading gavel QA rules..."
+          }
+        ]
+      }
+    ],
+    "SubagentStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/gavel-subagent.js\"; exit 0",
+            "commandWindows": "if (Get-Command node -ErrorAction SilentlyContinue) { node \"$env:CLAUDE_PLUGIN_ROOT\\hooks\\gavel-subagent.js\" }",
+            "timeout": 5,
             "statusMessage": "Loading gavel QA rules..."
           }
         ]

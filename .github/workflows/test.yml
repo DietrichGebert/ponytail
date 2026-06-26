@@ -16,6 +16,45 @@ jobs:
         with:
           node-version: '22'
 
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Check rule copies (all adapters in sync)
+        run: node scripts/check-rule-copies.js --check-all
+
+      - name: Check version consistency
+        run: node scripts/check-versions.js
+
+      - name: Verify AGENTS.md contains universal rules
+        run: node scripts/verify-agents-md.js
+
+      - name: Verify all skill and agent files exist
+        run: node scripts/verify-skills.js
+
+      - name: Run tests
+        run: npm test
+name: test
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
       - name: Install dependencies
         run: npm install
 

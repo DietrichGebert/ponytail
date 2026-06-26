@@ -1,16 +1,15 @@
 {
-  "name": "ponytail",
-  "description": "Lazy senior dev mode. Forces the simplest, shortest solution that actually works: YAGNI, stdlib first, no unrequested abstractions.",
-  "version": "4.8.3",
+  "name": "gavel",
+  "description": "Minimalism + QA discipline. YAGNI, stdlib first, framework-adaptive test quality enforcement.",
+  "version": "0.1.0",
   "author": {
-    "name": "Dietrich Gebert",
-    "url": "https://github.com/DietrichGebert"
+    "name": "Daniel Solis",
+    "url": "https://github.com/dsolisp"
   },
-  "homepage": "https://github.com/DietrichGebert/ponytail",
-  "repository": "https://github.com/DietrichGebert/ponytail",
+  "homepage": "https://github.com/dsolisp/gavel",
+  "repository": "https://github.com/dsolisp/gavel",
   "license": "MIT",
-  "keywords": ["yagni", "minimalism", "code-review", "productivity"],
-  "commands": "commands/",
+  "keywords": ["qa", "testing", "yagni", "playwright", "selenium", "test-constitution"],
   "skills": "skills/",
   "hooks": "hooks/copilot-hooks.json"
 }

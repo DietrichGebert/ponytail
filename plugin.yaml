@@ -1,3 +1,43 @@
+name: gavel
+version: 0.1.0
+description: Minimalism + QA discipline for AI agents. Framework-adaptive test quality enforcement with YAGNI at the core.
+author: Daniel Solis
+provides_hooks:
+  - pre_llm_call
+  - pre_gateway_dispatch
+provides_commands:
+  - gavel
+  - gavel-review
+  - gavel-audit
+  - gavel-debt
+  - gavel-gain
+  - gavel-help
+  - gavel-detect
+  - gavel-heal
+  - gavel-flake
+  - gavel-init
+provides_skills:
+  - gavel
+  - gavel-review
+  - gavel-audit
+  - gavel-debt
+  - gavel-gain
+  - gavel-help
+  - gavel-detect
+  - gavel-heal
+  - gavel-flake
+  - gavel-init
+  - gavel-e2e
+  - gavel-api
+  - gavel-plan
+  - gavel-run
+  - gavel-analyze
+  - gavel-bug
+  - gavel-triage
+  - gavel-close
+  - gavel-env
+  - gavel-auth
+  - gavel-ci
 name: ponytail
 version: 4.8.3
 description: Lazy senior dev mode for Hermes Agent, always-on context, bundled skills, and slash commands.

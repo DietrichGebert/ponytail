@@ -1,8 +1,8 @@
 {
   "name": "@dsolisp/gavel",
   "version": "0.1.0",
-  "description": "The judge's hammer for test quality. Framework-adaptive QA automation toolkit for AI agents. One test. One verdict. Move on.",
-  "keywords": ["opencode-plugin", "opencode", "gavel", "qa", "testing", "playwright", "selenium", "cypress", "webdriverio", "pytest", "junit", "cucumber", "pi-package", "pi", "skills", "test-constitution", "page-object-model"],
+  "description": "Minimalism + QA discipline for AI agents. Framework-adaptive test quality enforcement with YAGNI at the core.",
+  "keywords": ["opencode-plugin", "opencode", "gavel", "qa", "testing", "playwright", "selenium", "cypress", "webdriverio", "pytest", "junit", "cucumber", "skills", "test-constitution", "page-object-model"],
   "license": "MIT",
   "author": {
     "name": "Daniel Solis",
@@ -25,60 +25,13 @@
     "AGENTS.md",
     "hooks/",
     "skills/",
+    "agents/",
     ".opencode/",
-    "pi-extension/",
-    "assets/",
+    "examples/",
     "LICENSE"
   ],
   "scripts": {
-    "test": "node --test tests/*.test.js && npm test --prefix pi-extension"
-  },
-  "pi": {
-    "extensions": ["./pi-extension/index.js"],
-    "skills": ["./skills"]
-  },
-  "publishConfig": {
-    "access": "public"
-  }
-}
-{
-  "name": "@dietrichgebert/ponytail",
-  "version": "4.8.3",
-  "description": "Lazy senior dev mode for AI agents. The best code is the code you never wrote.",
-  "keywords": ["opencode-plugin", "opencode", "ponytail", "pi-package", "pi", "skills"],
-  "license": "MIT",
-  "author": {
-    "name": "Dietrich Gebert",
-    "url": "https://github.com/DietrichGebert"
-  },
-  "homepage": "https://github.com/DietrichGebert/ponytail",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/DietrichGebert/ponytail.git"
-  },
-  "bugs": {
-    "url": "https://github.com/DietrichGebert/ponytail/issues"
-  },
-  "main": "./.opencode/plugins/ponytail.mjs",
-  "exports": {
-    ".": "./.opencode/plugins/ponytail.mjs",
-    "./plugin": "./.opencode/plugins/ponytail.mjs"
-  },
-  "files": [
-    "AGENTS.md",
-    "hooks/",
-    "skills/",
-    ".opencode/",
-    "pi-extension/",
-    "assets/",
-    "LICENSE"
-  ],
-  "scripts": {
-    "test": "node --test tests/*.test.js && npm test --prefix pi-extension"
-  },
-  "pi": {
-    "extensions": ["./pi-extension/index.js"],
-    "skills": ["./skills"]
+    "test": "node scripts/check-rule-copies.js --check-all && node scripts/verify-agents-md.js && node scripts/verify-skills.js"
   },
   "publishConfig": {
     "access": "public"

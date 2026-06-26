@@ -8,6 +8,27 @@
         "powershell": "node \"${PLUGIN_ROOT}\\hooks\\gavel-activate.js\"",
         "timeoutSec": 5
       }
+    ],
+    "userPromptSubmitted": [
+      {
+        "type": "command",
+        "bash": "node \"${PLUGIN_ROOT}/hooks/gavel-mode-tracker.js\"",
+        "powershell": "node \"${PLUGIN_ROOT}\\hooks\\gavel-mode-tracker.js\"",
+        "timeoutSec": 5
+      }
+    ]
+  }
+}
+{
+  "version": 1,
+  "hooks": {
+    "sessionStart": [
+      {
+        "type": "command",
+        "bash": "node \"${PLUGIN_ROOT}/hooks/gavel-activate.js\"",
+        "powershell": "node \"${PLUGIN_ROOT}\\hooks\\gavel-activate.js\"",
+        "timeoutSec": 5
+      }
     ]
   }
 }
