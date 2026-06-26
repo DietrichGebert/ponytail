@@ -90,3 +90,12 @@ Running the benchmark requires **Python 3**, **pandas**, and **Node.js** (18+).
 - Caveman is a prose-compression skill (it leaves code "normal"), so it lands between baseline and ponytail on code size and wins mainly on prose tokens.
 - Cost reflects single-shot calls (one prompt, one completion), not real multi-turn agent sessions. In a session the ruleset re-injects and the ladder deliberates every turn across many turns, so per-session cost can come out higher or lower than these numbers. Prompt caching offsets some of the re-injection, but a measured agentic A/B ([#121](https://github.com/DietrichGebert/ponytail/issues/121)) found ponytail can also raise tool calls and cost on completion-forced tasks. Treat these as generation numbers, not a session-cost promise.
 - These are everyday tasks. For production-grade specs, where an unconstrained agent bloats much harder, see the writeups in `results/`.
+
+## Where ponytail saves vs. costs
+
+These numbers are single-shot completions. In multi-turn agentic runs the result is task-shaped, not universal:
+
+- **Snowball-prone or blocked tasks** (agent keeps adding, installs a dep, scaffolds "for later"): ponytail's restraint cuts the runaway work; this is where the cost win is largest.
+- **Large completion-forced tasks** (a full draft the agent must finish): ponytail's "understand before you write" discipline can add reading/exploration up front, so it may raise tool calls and tokens while shrinking the written output. Net cost can go either way.
+
+An independent Cursor-SDK A/B measuring this (isolated worktrees, toggling only the rule file) saw ponytail ON correlate with more tool calls and higher estimated cost but leaner drafts on completion-forced tasks, with per-model exceptions: [RicardoCostaGit/ponytail-benchmark-from-cursor](https://github.com/RicardoCostaGit/ponytail-benchmark-from-cursor) (#121). Note also that an SDK's startup `skillCount` is the count of skills *available* in the workspace, not skills the model read. Only a `read` of a `SKILL.md` is usage.
