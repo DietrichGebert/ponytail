@@ -29,6 +29,10 @@ Bug fix = root cause, not symptom: a report names a symptom. Grep every caller o
 - Pick the edge-case-correct option when two stdlib approaches are the same size.
 - Mark intentional simplifications with a `gavel:` comment naming the ceiling and upgrade path.
 
+## Ladder Conflict Rule
+
+When the Minimalism Ladder and the QA Ladder collide on test code, **the QA Ladder wins**. Minimalism is the default for production code; QA discipline is the override for test code because the cost of a missed assertion is a missed bug. Example: framework-native auto-retrying assertion (QA Ladder rung 3, 5 lines) wins over a hand-rolled wait + assert one-liner (Minimalism rung 6) when no semantic locator exists.
+
 ## The QA Ladder
 
 Before writing any test, stop at the first rung that holds:
@@ -62,6 +66,10 @@ Before writing any test, stop at the first rung that holds:
 5. No skipping verification
 6. No wrappers around the testing framework unless absolutely justified (YAGNI)
 7. No deep inheritance (max depth 1, prefer mixins or composition)
+
+## test.fail() Expiry Policy
+
+`test.fail()` markers are valid for **7 days**. After that, `gavel-fail-audit` escalates them: the test either becomes a real bug ticket, gets fixed, or gets deleted. A `test.fail()` marker without a bug reference or expiry is a code smell. Run `gavel-fail-audit` weekly to clear the rot.
 
 ## Page Object Discipline
 

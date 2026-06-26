@@ -102,3 +102,89 @@ npx playwright show-report               # View report
 | `@regression` | Broader coverage |
 | `@integration` | Cross-surface user journeys |
 | `@prod` | Read-only, non-mutating tests |
+| `@flaky:env` | Quarantined: environment-dependent flakiness |
+| `@flaky:data` | Quarantined: data/seed-dependent flakiness |
+| `@flaky:ui` | Quarantined: DOM/animation-dependent flakiness |
+
+## 2026 Native Features
+
+Use these instead of third-party tools where possible.
+
+### Accessibility (`toMatchAriaSnapshot`)
+
+```typescript
+// Built-in ARIA snapshot assertion. No axe-core dependency for the common cases.
+await expect(page.locator('main')).toMatchAriaSnapshot(`
+  - heading "Dashboard"
+  - button "Refresh"
+`);
+
+// For deeper WCAG audits, pair with @axe-core/playwright:
+import AxeBuilder from '@axe-core/playwright';
+await new AxeBuilder({ page }).analyze(); // run after expect.toPass()
+```
+
+### Visual Regression (`toHaveScreenshot`)
+
+```typescript
+// First run captures, subsequent runs compare.
+await expect(page).toHaveScreenshot('dashboard.png', { maxDiffPixels: 100 });
+
+// Element-only visual diff (use sparingly; full-page is usually right):
+await expect(page.locator('nav')).toHaveScreenshot('navbar.png');
+
+// Mask dynamic regions so the diff focuses on what changed:
+await expect(page).toHaveScreenshot('dashboard.png', {
+  mask: [page.locator('[data-testid="timestamp"]')],
+});
+```
+
+### Component Testing (no server)
+
+```typescript
+// Mount components in isolation, no backend needed.
+import { test, expect } from '@playwright/experimental-ct-react';
+test('button renders label', async ({ mount }) => {
+  const component = await mount(<Button label="Submit" />);
+  await expect(component.getByRole('button', { name: 'Submit' })).toBeVisible();
+});
+```
+
+### API Testing (`request` fixture, no browser)
+
+```typescript
+test('GET /api/users returns list', async ({ request }) => {
+  const response = await request.get('/api/users');
+  expect(response.status()).toBe(200);
+  const body = await response.json();
+  expect(body).toMatchSchema(usersSchema); // contract check
+});
+```
+
+### Polling & Retry (`expect.toPass`, `expect.poll`)
+
+```typescript
+// Poll a condition until it passes (or times out). Replaces flaky wait loops.
+await expect(async () => {
+  const status = await page.evaluate(() => fetch('/health').then(r => r.status));
+  expect(status).toBe(200);
+}).toPass({ timeout: 10_000, intervals: [500, 1000, 2000] });
+
+// Poll a value (use when a polling API exists, prefer toPass for actions).
+await expect.poll(async () => {
+  return await page.evaluate(() => document.title);
+}).toBe('Dashboard');
+```
+
+### Trace & Annotations
+
+```typescript
+test('critical user flow', async ({ page }, testInfo) => {
+  testInfo.annotations.push({ type: 'ticket', description: 'TBADM-42' });
+  // Trace is auto-captured on failure. Force-capture on pass for hard flows:
+  await testInfo.attach('trace-summary', {
+    body: await page.evaluate(() => performance.timing.toJSON()),
+    contentType: 'application/json',
+  });
+});
+```

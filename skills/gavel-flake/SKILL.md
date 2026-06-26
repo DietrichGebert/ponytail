@@ -98,3 +98,50 @@ For each category:
 - Do NOT increase timeouts as the first fix — find the real cause.
 - Reproduce before diagnosing. Need at least 3 runs to confirm flakiness.
 - One test at a time. Do NOT triage a whole suite — that's gavel-analyze.
+
+## Quarantine Policy
+
+A flaky test needs a home. The home is a quarantine tag, not a delete and not a silent retry.
+
+### Tag System
+
+| Tag | Meaning | Quarantine Action |
+|-----|---------|-------------------|
+| `@flaky:env` | Environment-dependent (network, DB seed timing) | Move to quarantine CI lane |
+| `@flaky:data` | Data/seed-dependent (shared rows, race conditions) | Move to quarantine CI lane |
+| `@flaky:ui` | DOM/animation-dependent (animation timing, virtualization) | Move to quarantine CI lane |
+| `@wip` | Test under construction, not yet reliable | Skip in CI, must remove before merge |
+
+### Quarantine Process
+
+1. Tag the test with the matching `@flaky:*` tag
+2. Link a bug ticket: `// gavel-flake: TBTRD-123 - shared seed race`
+3. Move the test to a quarantine file (`tests/quarantine/`) or quarantine CI lane
+4. Add to `gavel-flake` weekly report
+5. After 7 days: escalate to bug owner. No fix in 7 days → promote to `@wip` or delete
+
+### Quarantine CI Lane (recommended)
+
+```yaml
+# .github/workflows/test.yml
+jobs:
+  main:
+    steps:
+      - run: npx playwright test  # excludes @flaky:* by default
+
+  quarantine:
+    needs: main
+    steps:
+      - run: npx playwright test --grep "@flaky:"  # runs quarantined tests separately
+        # Quarantine lane is informational, never blocks merge
+```
+
+The quarantine lane catches regressions in flaky tests without blocking delivery. If a quarantined test starts passing reliably, move it back to main. If it starts failing more, escalate.
+
+### Weekly Cadence
+
+Run `gavel-flake` weekly. Output:
+- Number of tests per `@flaky:*` tag
+- Days since each was quarantined
+- Tests older than 7 days (escalate)
+- Suggested fixes (per root cause)
