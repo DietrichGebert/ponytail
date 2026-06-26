@@ -1,7 +1,7 @@
 {
   "name": "gavel",
   "version": "0.1.0",
-  "description": "Minimalism + QA discipline. YAGNI, stdlib first, framework-adaptive test quality enforcement.",
+  "description": "The judge's hammer for test quality. Minimalism + QA discipline — one test, one verdict, move on.",
   "author": {
     "name": "Daniel Solis",
     "url": "https://github.com/dsolisp"
@@ -14,8 +14,8 @@
   "hooks": "./hooks/claude-codex-hooks.json",
   "interface": {
     "displayName": "Gavel",
-    "shortDescription": "Minimalism + QA discipline",
-    "longDescription": "Framework-adaptive QA toolkit for AI agents. Enforces test quality via the QA Ladder and Test Constitution while preserving YAGNI minimalism.",
+    "shortDescription": "The judge's hammer for test quality",
+    "longDescription": "Framework-adaptive QA toolkit that delivers verdicts on test quality. Enforces the QA Ladder and Test Constitution while preserving YAGNI minimalism. One test, one verdict, move on.",
     "developerName": "Daniel Solis",
     "category": "Testing",
     "capabilities": ["Instructions", "Lifecycle hooks", "Skills"],

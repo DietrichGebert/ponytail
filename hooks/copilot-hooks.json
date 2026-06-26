@@ -6,7 +6,8 @@
         "type": "command",
         "bash": "node \"${PLUGIN_ROOT}/hooks/gavel-activate.js\"",
         "powershell": "node \"${PLUGIN_ROOT}\\hooks\\gavel-activate.js\"",
-        "timeoutSec": 5
+        "timeoutSec": 5,
+        "statusMessage": "Loading gavel — the judge's hammer..."
       }
     ],
     "userPromptSubmitted": [
@@ -14,41 +15,8 @@
         "type": "command",
         "bash": "node \"${PLUGIN_ROOT}/hooks/gavel-mode-tracker.js\"",
         "powershell": "node \"${PLUGIN_ROOT}\\hooks\\gavel-mode-tracker.js\"",
-        "timeoutSec": 5
-      }
-    ]
-  }
-}
-{
-  "version": 1,
-  "hooks": {
-    "sessionStart": [
-      {
-        "type": "command",
-        "bash": "node \"${PLUGIN_ROOT}/hooks/gavel-activate.js\"",
-        "powershell": "node \"${PLUGIN_ROOT}\\hooks\\gavel-activate.js\"",
-        "timeoutSec": 5
-      }
-    ]
-  }
-}
-{
-  "version": 1,
-  "hooks": {
-    "sessionStart": [
-      {
-        "type": "command",
-        "bash": "node \"${PLUGIN_ROOT}/hooks/ponytail-activate.js\"",
-        "powershell": "node \"${PLUGIN_ROOT}\\hooks\\ponytail-activate.js\"",
-        "timeoutSec": 5
-      }
-    ],
-    "userPromptSubmitted": [
-      {
-        "type": "command",
-        "bash": "node \"${PLUGIN_ROOT}/hooks/ponytail-mode-tracker.js\"",
-        "powershell": "node \"${PLUGIN_ROOT}\\hooks\\ponytail-mode-tracker.js\"",
-        "timeoutSec": 5
+        "timeoutSec": 5,
+        "statusMessage": "Tracking gavel verdict level..."
       }
     ]
   }

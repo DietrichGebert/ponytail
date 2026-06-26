@@ -1,6 +1,6 @@
 {
   "name": "gavel",
-  "description": "Minimalism + QA discipline for AI agents. Framework-adaptive test quality enforcement.",
+  "description": "The judge's hammer for test quality. Minimalism + QA discipline — one test, one verdict.",
   "owner": {
     "name": "Daniel Solis",
     "url": "https://github.com/dsolisp"

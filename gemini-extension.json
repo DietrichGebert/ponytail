@@ -1,6 +1,6 @@
 {
   "name": "gavel",
   "version": "0.1.0",
-  "description": "Minimalism + QA discipline for AI agents. YAGNI, stdlib first, framework-adaptive test quality enforcement.",
+  "description": "The judge's hammer for test quality. Minimalism + QA discipline — one test, one verdict, move on.",
   "contextFileName": "AGENTS.md"
 }

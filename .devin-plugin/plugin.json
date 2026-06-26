@@ -1,7 +1,7 @@
 {
   "name": "gavel",
   "version": "0.1.0",
-  "description": "Minimalism + QA discipline. YAGNI, stdlib first, framework-adaptive test quality enforcement.",
+  "description": "The judge's hammer for test quality. Minimalism + QA discipline — one test, one verdict, move on.",
   "author": {
     "name": "Daniel Solis",
     "url": "https://github.com/dsolisp"
