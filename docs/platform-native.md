@@ -86,6 +86,44 @@ const debounce = (fn, ms) => (...args) => { clearTimeout(t); t = setTimeout(() =
 
 ---
 
+## Swift / SwiftUI
+
+UI components people reach for a library or a custom view for.
+
+| You think you need | What the platform has |
+|---|---|
+| Date/time picker library | `DatePicker` |
+| Color picker library | `ColorPicker` |
+| Search bar + filtering | `.searchable(text:)` |
+| Pull-to-refresh library | `.refreshable { }` |
+| Swipe-to-delete / row actions | `.swipeActions { }` |
+| Async image loading + cache | `AsyncImage` |
+| Charting library | Swift Charts (`import Charts`) |
+| Markdown rendering | `Text(...)` markdown / `AttributedString(markdown:)` |
+| Share sheet wrapper | `ShareLink` |
+| Loading spinner | `ProgressView()` |
+| Photo picker | `PhotosPicker` |
+| Map SDK (basic) | `Map` (MapKit for SwiftUI) |
+| Grid layout library | `Grid` / `LazyVGrid` |
+
+Frameworks and stdlib that wrappers wrap.
+
+| You think you need | What the platform has |
+|---|---|
+| JSON library (SwiftyJSON) | `Codable` + `JSONDecoder` / `JSONEncoder` |
+| HTTP client (Alamofire, simple use) | `URLSession` async/await; Alamofire earns it for complex retry/multipart at scale |
+| Date/number/currency formatting | `.formatted()` / `FormatStyle` |
+| Regex library | Swift regex literals + `Regex` |
+| Crypto library (CryptoSwift) | `CryptoKit` |
+| Keychain wrapper | Security `SecItem`; a few lines, not a dependency |
+| Persistence / ORM | `SwiftData`, or `@AppStorage` for small key-values |
+| Logging library | `Logger` (`os.log`) |
+| UUID / Base64 helpers | `UUID()`, `Data(...).base64EncodedString()` |
+| Image downsampling | ImageIO `CGImageSourceCreateThumbnailAtIndex` |
+| Combine wrappers for async | async/await + `AsyncSequence` |
+
+---
+
 ## Node.js Standard Library
 
 Packages that wrap Node built-ins.

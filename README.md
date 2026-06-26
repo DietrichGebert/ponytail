@@ -15,7 +15,7 @@
   <img src="https://img.shields.io/github/stars/DietrichGebert/ponytail?style=flat-square&color=111111&label=stars" alt="Stars">
   <img src="https://img.shields.io/github/v/release/DietrichGebert/ponytail?style=flat-square&color=111111&label=release" alt="Release">
   <img src="https://img.shields.io/npm/v/@dietrichgebert/ponytail?style=flat-square&color=111111&label=npm" alt="npm">
-  <img src="https://img.shields.io/badge/works%20with-15%20agents-111111?style=flat-square" alt="Works with 15 agents">
+  <img src="https://img.shields.io/badge/works%20with-17%20agents-111111?style=flat-square" alt="Works with 17 agents">
   <img src="https://img.shields.io/badge/license-MIT-111111?style=flat-square" alt="MIT license">
 </p>
 
@@ -34,6 +34,10 @@
 </p>
 
 ---
+
+<p align="center">
+  <a href="https://ponytail.dev/soon"><img src="assets/waitlist-banner.png" alt="Something's coming, join the waitlist" width="760"></a>
+</p>
 
 You know him. Long ponytail. Oval glasses. Has been at the company longer than the version control. You show him fifty lines; he looks at them, says nothing, and replaces them with one.
 
@@ -208,6 +212,14 @@ agy plugin install https://github.com/DietrichGebert/ponytail
 
 It reuses this repo's `gemini-extension.json`. One difference: Antigravity converts the `/ponytail` commands into skills, so you type them into the chat (e.g. `/ponytail-review` as a message) instead of picking them from a slash menu. Until the migration completes (around June 18, 2026), `gemini extensions install` still works too. To run it as an always-on rule instead, drop the ruleset into `.agents/rules/`.
 
+### Hermes Agent
+
+```bash
+hermes plugins install DietrichGebert/ponytail --enable
+```
+
+Restart Hermes after installing. The plugin injects the active Ponytail mode before each LLM turn, registers the bundled skills as `ponytail:<skill>`, and adds `/ponytail`, `/ponytail-review`, `/ponytail-audit`, `/ponytail-debt`, `/ponytail-gain`, and `/ponytail-help`. In shared gateways, restrict `/ponytail` to trusted users with Hermes slash-command access controls; runtime mode is process-local.
+
 ### CodeWhale
 
 Reads `AGENTS.md` from the project root, zero setup. Copy [`AGENTS.md`](AGENTS.md) to your project, or run `codewhale` from a checkout of this repo. That's it.
@@ -225,6 +237,14 @@ swival skills add --global ponytail                                    # or acti
 Swival also reads `AGENTS.md` from the project root and `~/.config/swival/AGENTS.md` globally, the instruction-only fallback.
 
 On the command line, use a `$` prefix to explicitly activate a skill. For example: `$ponytail-review`.
+
+### Devin CLI
+
+```bash
+devin plugins install DietrichGebert/ponytail
+```
+
+Installs ponytail as a Devin plugin; skills are available as `/ponytail:ponytail`, `/ponytail:ponytail-review`, and so on.
 
 ### OpenClaw
 
@@ -257,6 +277,7 @@ Which files map to which agent: [Agent portability](docs/agent-portability.md).
 | Claude Code | `/plugin remove ponytail` |
 | Codex | `codex plugin remove ponytail` |
 | Factory Droid | `droid plugin uninstall ponytail@ponytail` |
+| Devin CLI | `devin plugins remove ponytail` |
 | Pi agent | `pi uninstall ponytail` |
 | Cursor / Windsurf / Cline / etc. | Delete the copied rule file |
 
@@ -273,7 +294,7 @@ These remove the plugin's own files. They leave behind a small amount of state p
 | `/ponytail-gain` | Show the measured impact scoreboard (less code, less cost, more speed) from the benchmark. |
 | `/ponytail-help` | Quick reference for the commands above. |
 
-Commands need a skill-capable host (Claude Code, Codex, Factory Droid, OpenCode, Gemini, pi, Swival). In Codex they're skills, invoke with `@` (`@ponytail-review`). The instruction-only adapters (Cursor, Windsurf, Cline, Copilot, Kiro, Antigravity) load the always-on ruleset without the commands.
+Commands need a skill-capable host (Claude Code, Codex, Factory Droid, Devin CLI, OpenCode, Gemini, pi, Swival, Hermes Agent). In Codex they're skills, invoke with `@` (`@ponytail-review`). The instruction-only adapters (Cursor, Windsurf, Cline, Copilot, Kiro, Antigravity) load the always-on ruleset without the commands.
 
 ## Development
 
@@ -301,6 +322,17 @@ The code you never wrote scales infinitely. Zero bugs, zero CVEs, 100% uptime si
 
 **Why "ponytail"?**
 You know exactly why.
+
+## Sponsors
+
+<p align="center">
+  <a href="https://greenpt.com/">
+    <picture>
+      <source media="(prefers-color-scheme: dark)" srcset="assets/logo-greenpt-dark.svg">
+      <img src="assets/logo-greenpt.svg" width="260" alt="GreenPT">
+    </picture>
+  </a>
+</p>
 
 ## License
 
