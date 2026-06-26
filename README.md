@@ -41,6 +41,8 @@ QA LADDER (test code):
 7. Only then: the minimum test that catches the real bug
 ```
 
+> **Ladder Conflict Rule:** When the two ladders collide on test code, **the QA Ladder wins**. Minimalism is the default for production code; QA discipline is the override for test code because the cost of a missed assertion is a missed bug.
+
 ## What it includes
 
 - **28 skills** — plan, e2e, api, heal, flake, audit, review, detect, init, analyze, bug, triage, close, env, auth, ci, hub, oms, and more
@@ -49,6 +51,9 @@ QA LADDER (test code):
 - **20+ IDE adapters** — Cursor, Cline, Windsurf, Kiro, Copilot, Trae, Comate, Lingma, Junie, Qoder, OpenCode, and more
 - **Hook system** — SessionStart activation, SubagentStart injection, mode tracking
 - **Test Constitution** — 9 MUST DO rules + 7 WON'T DO rules
+- **2026 testing patterns** — a11y snapshots, visual diffs, component testing, contract validation, 4-line verification gate, quarantine policy
+
+**New here?** Start with [QUICKSTART.md](QUICKSTART.md) — install → audit → heal → write, ten minutes to first verdict.
 
 ## Install
 
@@ -89,9 +94,10 @@ gemini extensions install https://github.com/dsolisp/gavel
 | `/gavel-review` | Review test diffs for constitution violations |
 | `/gavel-audit` | Whole-repo audit for test suite bloat |
 | `/gavel-debt` | Harvest `gavel:` deferred test decisions |
+| `/gavel-gain` | Show test quality scoreboard (pass rate, coverage, flake count) |
 | `/gavel-detect` | Auto-detect your test stack |
 | `/gavel-heal` | Diagnose a failing test |
-| `/gavel-flake` | Flaky test triage |
+| `/gavel-flake` | Flaky test triage + quarantine |
 | `/gavel-init` | Bootstrap a new QA project |
 | `/gavel-help` | Quick reference |
 
@@ -102,6 +108,7 @@ gemini extensions install https://github.com/dsolisp/gavel
 | **lite** | Suggest improvements, name the lazier alternative |
 | **full** (default) | Enforce all rules, block constitution violations |
 | **strict** | Zero tolerance — reject any violation |
+| **off** | Disable gavel; revert to base IDE behavior |
 
 ## Configuration
 
@@ -118,11 +125,54 @@ Gavel auto-detects your stack and adapts:
 
 | Framework | Patterns |
 |-----------|----------|
-| **Playwright** | web-first assertions, test.step(), fixture DI, mixin POM |
+| **Playwright** | web-first assertions, test.step(), fixture DI, mixin POM, `toMatchAriaSnapshot`, `toHaveScreenshot`, `request` fixture |
 | **Selenium** | WebDriverWait, pytest/JUnit fixtures, class-based POM |
 | **Cypress** | auto-retry assertions, custom commands, beforeEach |
 | **WebdriverIO** | waitForDisplayed(), service objects, browser.call() |
 | **Cucumber** | Gherkin features, step definitions, tag management |
+
+## 2026 Native Patterns
+
+Use the framework's own 2026 features instead of pulling in dependencies.
+
+| Pattern | When | Native API |
+|---------|------|-----------|
+| **Accessibility snapshot** | Verify ARIA tree without axe-core | `expect(locator).toMatchAriaSnapshot(...)` |
+| **Visual regression** | Catch unintended CSS drift | `expect(page).toHaveScreenshot(...)` |
+| **Component testing** | Mount React/Vue/Svelte in isolation | `mount(<Component />)` from `experimental-ct-*` |
+| **API testing in browser suite** | Quick contract check alongside UI | `test('...', ({ request }) => ...)` |
+| **Polling until pass** | Replace flaky wait loops | `await expect(() => ...).toPass({ timeout })` |
+| **Contract validation** | Catch schema drift on every API call | ajv + OpenAPI / Zod / TypeBox |
+
+## The 4-Line Verification Gate
+
+Before declaring work done, run all four. Any failure blocks the merge.
+
+```bash
+npx tsc --noEmit          # 1. type-check (TS) / mypy . / mvn compile
+npx eslint .             # 2. lint (ruff check / checkstyle)
+npx playwright test      # 3. the actual suite
+npx playwright test --coverage   # 4. coverage threshold (default 80%)
+```
+
+Coverage defaults to **80%**. Raise it for critical paths (auth, payment, tenant isolation). Lower it for throwaway code.
+
+## Quarantine Policy
+
+Flaky tests get a home, not a retry and not a delete.
+
+| Tag | Meaning | Action |
+|-----|---------|--------|
+| `@flaky:env` | Environment-dependent (network, seed timing) | Quarantine CI lane |
+| `@flaky:data` | Data/seed-dependent (shared rows, races) | Quarantine CI lane |
+| `@flaky:ui` | DOM/animation-dependent (animation, virtualization) | Quarantine CI lane |
+| `@wip` | Test under construction | Skip in CI, must remove before merge |
+
+Quarantined tests run in a separate CI lane that **never blocks merge**. They appear in the weekly `gavel-flake` report. After 7 days, an unfixed quarantine escalates: becomes a real bug ticket, gets fixed, or gets deleted.
+
+## test.fail() Expiry
+
+`test.fail()` markers are valid for **7 days**. Run `gavel-fail-audit` weekly to clear the rot: each marker either becomes a real bug ticket, gets fixed, or gets deleted. No permanent "this is broken" comments.
 
 ## How it relates to ponytail
 
