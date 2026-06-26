@@ -50,6 +50,6 @@ process.stdin.on('end', () => {
       writeHookOutput('UserPromptSubmit', 'off', 'PONYTAIL MODE OFF');
     }
   } catch (e) {
-    // Silent fail
+    process.stderr.write('[ponytail] mode-tracker: ' + e.message + '\n');
   }
 });

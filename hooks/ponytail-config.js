@@ -88,7 +88,7 @@ function getDefaultMode() {
       return config.defaultMode.toLowerCase();
     }
   } catch (e) {
-    // Config file doesn't exist or is invalid — fall through
+    process.stderr.write('[ponytail] config: ' + e.message + '\n');
   }
 
   // 3. Default
