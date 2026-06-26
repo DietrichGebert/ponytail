@@ -21,6 +21,39 @@ const {
 const claudeDir = getClaudeDir();
 const settingsPath = path.join(claudeDir, 'settings.json');
 
+// Known token-compression plugins that inject competing style instructions.
+// When detected, ponytail adds a conflict note so the model knows to
+// prioritize ponytail's code-shaping rules over competing prose-style rules.
+const COMPRESSION_PLUGIN_IDS = ['caveman', 'grill-me', 'grilling'];
+
+// Check if any known compression plugin is registered in settings.json.
+function detectCompressionConflict(settingsFile) {
+  try {
+    if (!fs.existsSync(settingsFile)) return false;
+    const raw = fs.readFileSync(settingsFile, 'utf8').replace(/^﻿/, '');
+    const settings = JSON.parse(raw);
+    const installed = settings.installed_plugins;
+    if (installed && typeof installed === 'object') {
+      for (const key of Object.keys(installed)) {
+        for (const id of COMPRESSION_PLUGIN_IDS) {
+          if (key.toLowerCase().includes(id)) return true;
+        }
+      }
+    }
+    const permissions = settings.permissions;
+    if (permissions && typeof permissions === 'object') {
+      for (const key of Object.keys(permissions)) {
+        for (const id of COMPRESSION_PLUGIN_IDS) {
+          if (key.toLowerCase().includes(id)) return true;
+        }
+      }
+    }
+    return false;
+  } catch (e) {
+    return false;
+  }
+}
+
 const mode = getDefaultMode();
 
 // "off" mode — skip activation entirely, don't write flag or emit rules
@@ -40,6 +73,19 @@ try {
 
 // 2. Emit the ponytail ruleset, filtered to the active intensity level.
 let output = getPonytailInstructions(mode);
+
+// 2b. If another compression plugin is active, add a conflict note so the
+// model knows ponytail governs code-shaping while the other plugin governs
+// prose style. Without this, the model receives contradictory instructions.
+const hasCompressionConflict = detectCompressionConflict(settingsPath);
+if (hasCompressionConflict) {
+  output += '\n\nCONCURRENT COMPRESSION PLUGIN DETECTED — another token-compression ' +
+    'plugin (e.g. caveman) is also active. Ponytail governs WHAT you build ' +
+    '(YAGNI, stdlib first, shortest diff). The other plugin governs HOW you ' +
+    'talk (terse prose, drop articles). These are complementary, not ' +
+    'contradictory. Apply both: ponytail for code decisions, the other ' +
+    'plugin for output style.';
+}
 
 // 3. Detect missing statusline config — nudge Claude to help set it up
 if (!isCodex && !isCopilot) try {
