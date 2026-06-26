@@ -241,15 +241,22 @@ clawhub install ponytail
 
 Installs ponytail as an OpenClaw skill from ClawHub; the review, audit, debt, gain, and help skills install the same way (`clawhub install ponytail-review`, and so on). OpenClaw applies it on coding tasks and also exposes it as a `/ponytail` command. Without ClawHub, copy [`.openclaw/skills/ponytail`](.openclaw/skills/) into `~/.openclaw/skills/`.
 
+### Kiro
+
+```bash
+git clone https://github.com/DietrichGebert/ponytail.git
+./ponytail/scripts/install-kiro.sh
+```
+
+Symlinks `.kiro/steering/ponytail.md` into `~/.kiro/steering/` so the ruleset loads globally in every Kiro session. Updates come from `git pull` in the cloned repo. To install per-project instead, copy `.kiro/steering/ponytail.md` into your project's `.kiro/steering/` directory.
+
 That was it. He'd be proud. He won't say it.
 
 Active every session, with a handful of commands (see [Commands](#commands)). `/ponytail ultra` exists for when the codebase has wronged you personally. Startup and mode-change text shows the current mode.
 
 Set the level for every new session with the `PONYTAIL_DEFAULT_MODE` env var (`lite`/`full`/`ultra`/`off`), or a `defaultMode` field in `~/.config/ponytail/config.json` (`%APPDATA%\ponytail\config.json` on Windows). The default is `full`.
 
-Cursor, Windsurf, Cline, GitHub Copilot (editor), Aider, Kiro, Zed, CodeWhale, Swival: copy the matching rules file from this repo ([`.cursor/rules/`](.cursor/rules/), [`.windsurf/rules/`](.windsurf/rules/), [`.clinerules/`](.clinerules/), [`.github/copilot-instructions.md`](.github/copilot-instructions.md), [`AGENTS.md`](AGENTS.md), [`.kiro/steering/`](.kiro/steering/)).
-
-Kiro: copy `.kiro/steering/ponytail.md` to `~/.kiro/steering/` (global) or `.kiro/steering/` in your project.
+Cursor, Windsurf, Cline, GitHub Copilot (editor), Aider, Zed, CodeWhale, Swival: copy the matching rules file from this repo ([`.cursor/rules/`](.cursor/rules/), [`.windsurf/rules/`](.windsurf/rules/), [`.clinerules/`](.clinerules/), [`.github/copilot-instructions.md`](.github/copilot-instructions.md), [`AGENTS.md`](AGENTS.md)).
 
 GitHub Copilot CLI fallback (instruction-only mode): it reads `AGENTS.md` and `.github/copilot-instructions.md` in a project, or copy the rules into `~/.copilot/copilot-instructions.md` to run ponytail in every project. This path keeps always-on guidance, but does not add plugin mode switches or hooks.
 
@@ -265,6 +272,7 @@ Which files map to which agent: [Agent portability](docs/agent-portability.md).
 | Codex | `codex plugin remove ponytail` |
 | Devin CLI | `devin plugins remove ponytail` |
 | Pi agent | `pi uninstall ponytail` |
+| Kiro | `rm ~/.kiro/steering/ponytail.md` |
 | Cursor / Windsurf / Cline / etc. | Delete the copied rule file |
 
 These remove the plugin's own files. They leave behind a small amount of state ponytail writes outside the plugin folder: the mode flag, `~/.config/ponytail/config.json`, and (if you accepted the setup nudge) a `statusLine` entry in `~/.claude/settings.json`. Run `node scripts/uninstall.js` to clean those up too. **Run it before the host remove command above** — the script is itself a plugin file, so removing the plugin first deletes it (or run it from a separate clone of this repo). It only removes the statusLine entry if it points at ponytail's own script, so a statusline you set up yourself is left untouched.
