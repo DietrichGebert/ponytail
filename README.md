@@ -15,7 +15,7 @@
   <img src="https://img.shields.io/github/stars/DietrichGebert/ponytail?style=flat-square&color=111111&label=stars" alt="Stars">
   <img src="https://img.shields.io/github/v/release/DietrichGebert/ponytail?style=flat-square&color=111111&label=release" alt="Release">
   <img src="https://img.shields.io/npm/v/@dietrichgebert/ponytail?style=flat-square&color=111111&label=npm" alt="npm">
-  <img src="https://img.shields.io/badge/works%20with-16%20agents-111111?style=flat-square" alt="Works with 16 agents">
+  <img src="https://img.shields.io/badge/works%20with-17%20agents-111111?style=flat-square" alt="Works with 17 agents">
   <img src="https://img.shields.io/badge/license-MIT-111111?style=flat-square" alt="MIT license">
 </p>
 
@@ -254,6 +254,8 @@ Kiro: copy `.kiro/steering/ponytail.md` to `~/.kiro/steering/` (global) or `.kir
 GitHub Copilot CLI fallback (instruction-only mode): it reads `AGENTS.md` and `.github/copilot-instructions.md` in a project, or copy the rules into `~/.copilot/copilot-instructions.md` to run ponytail in every project. This path keeps always-on guidance, but does not add plugin mode switches or hooks.
 
 VS Code with the Codex extension reads `AGENTS.md`, which this repo ships, so it works from the repo root with no setup (`~/.codex/AGENTS.md` makes Codex global).
+
+JetBrains Junie reads `AGENTS.md` from the project root, which this repo ships, so it works in any JetBrains IDE with no setup (`~/.junie/AGENTS.md` makes it global; `.junie/guidelines.md` is Junie's legacy path).
 
 Which files map to which agent: [Agent portability](docs/agent-portability.md).
 
