@@ -1,4 +1,5 @@
 <p align="center">
+  <img src="assets/gavel.png" alt="Gavel - The judge's hammer for test quality" width="280">
   <h1 align="center">Gavel</h1>
   <p align="center">
     <em>The judge's hammer for test quality.</em><br>
