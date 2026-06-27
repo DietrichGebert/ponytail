@@ -36,7 +36,20 @@ function filterSkillBodyForMode(body, mode) {
     .join('\n');
 }
 
-function getFallbackInstructions(mode) {
+// CJK detection — Chinese, Japanese, Korean Unicode ranges.
+// In CJK contexts, some English-specific style rules don't apply.
+// We add a CJK-specific note to adjust behavior.
+const CJK_RE = /[一-鿿　-〿ぁ-ヶ가-힣]/;
+
+const CJK_NOTE = '\n\n## CJK Context\n\n' +
+  'CJK (Chinese/Japanese/Korean) text detected. Apply these adjustments:\n' +
+  '- Chinese has no articles — do not strip English articles in mixed text (e.g. "a LLM 模型" keeps "a")\n' +
+  '- "Short synonyms" rule applies to English only; CJK characters are already compact\n' +
+  '- Output brevity: 简短回答，不用敬语，不用客套话\n' +
+  '- Code rules (YAGNI, stdlib first, shortest diff) are language-agnostic — apply fully';
+
+function getFallbackInstructions(mode, hasCJK) {
+  const cjkSuffix = hasCJK ? CJK_NOTE : '';
   return 'PONYTAIL MODE ACTIVE — level: ' + mode + '\n\n' +
     'You are a lazy senior developer. Lazy means efficient, not careless. The best code is the code never written.\n\n' +
     '## Persistence\n\n' +
@@ -67,23 +80,26 @@ function getFallbackInstructions(mode) {
     'security measures, accessibility basics, the calibration real hardware needs (the platform is never the spec ideal), anything the user explicitly asked to keep. ' +
     'Lazy code without its check is unfinished: non-trivial logic leaves ONE runnable check behind (assert-based demo/self-check or one small test file; no frameworks). Trivial one-liners need no test.\n\n' +
     '## Boundaries\n\n' +
-    'Ponytail governs what you build, not how you talk. "stop ponytail" or "normal mode": revert. Level persists until changed or session end.';
+    'Ponytail governs what you build, not how you talk. "stop ponytail" or "normal mode": revert. Level persists until changed or session end.' +
+    cjkSuffix;
 }
 
-function getPonytailInstructions(mode) {
+function getPonytailInstructions(mode, inputText) {
   const configuredMode = normalizePersistedMode(mode) || DEFAULT_MODE;
+  const hasCJK = inputText ? CJK_RE.test(inputText) : false;
 
   if (INDEPENDENT_MODES.has(configuredMode)) {
-    return 'PONYTAIL MODE ACTIVE — level: ' + configuredMode + '. Behavior defined by /ponytail-' + configuredMode + ' skill.';
+    return 'PONYTAIL MODE ACTIVE — level: ' + configuredMode + '. Behavior defined by /ponytail-' + configuredMode + ' skill.' + (hasCJK ? CJK_NOTE : '');
   }
 
   const effectiveMode = normalizeMode(configuredMode) || DEFAULT_MODE;
 
   try {
     return 'PONYTAIL MODE ACTIVE — level: ' + effectiveMode + '\n\n' +
-      filterSkillBodyForMode(fs.readFileSync(SKILL_PATH, 'utf8'), effectiveMode);
+      filterSkillBodyForMode(fs.readFileSync(SKILL_PATH, 'utf8'), effectiveMode) +
+      (hasCJK ? CJK_NOTE : '');
   } catch (e) {
-    return getFallbackInstructions(effectiveMode);
+    return getFallbackInstructions(effectiveMode, hasCJK);
   }
 }
 
