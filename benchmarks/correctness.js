@@ -28,7 +28,7 @@ function identifyTask(task) {
   if (t.includes('debounce')) return 'debounce';
   if (t.includes('csv') && t.includes('sum')) return 'csv';
   if (t.includes('countdown') && t.includes('react')) return 'countdown';
-  if (t.includes('rate limit') || t.includes('rate-limit')) return 'ratelimit';
+  if (t.includes('rate limit') || t.includes('rate-limit') || t.includes('rate limiting')) return 'ratelimit';
   return null;
 }
 
