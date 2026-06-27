@@ -41,7 +41,8 @@ def count_loc(text):
     """Non-blank, non-comment lines of code: fenced blocks, or the whole
     response when the model emitted bare code with no fence."""
     blocks = re.findall(r"```[a-zA-Z0-9_+\-]*\n([\s\S]*?)```", text)
-    lines = ("\n".join(blocks) if blocks else text).splitlines()
+    code = ("\n".join(blocks) if blocks else text).replace(/\/\*[\s\S]*?\*\//g, '')
+    lines = code.splitlines()
     return sum(
         1 for l in lines
         if l.strip()
