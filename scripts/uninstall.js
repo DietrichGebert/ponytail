@@ -31,7 +31,7 @@ try {
   // "ponytail-statusline" gets removed wholesale. Parse out only ponytail's part
   // if combined statuslines become common.
   if (typeof cmd === 'string' && cmd.includes('ponytail-statusline')) {
-    delete settings.statusLine;
+    delete settings.statusLine.command;
     fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2), 'utf8');
     console.log(`Removed ponytail statusLine entry from ${settingsPath}`);
   }
