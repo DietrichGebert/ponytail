@@ -9,6 +9,7 @@ import ponytailExtension from "../index.js";
 function createPiHarness() {
   const events = new Map();
   const commands = new Map();
+  const shortcuts = new Map();
   const appendedEntries = [];
   const sentUserMessages = [];
 
@@ -19,6 +20,9 @@ function createPiHarness() {
     registerCommand(name, options) {
       commands.set(name, options);
     },
+    registerShortcut(keyId, options) {
+      shortcuts.set(keyId, options);
+    },
     appendEntry(customType, data) {
       appendedEntries.push({ customType, data });
     },
@@ -28,7 +32,7 @@ function createPiHarness() {
   };
 
   ponytailExtension(pi);
-  return { events, commands, appendedEntries, sentUserMessages };
+  return { events, commands, shortcuts, appendedEntries, sentUserMessages };
 }
 
 function createCommandContext(overrides = {}) {
@@ -57,7 +61,36 @@ function withTempConfig(fn) {
 test("extension registers Ponytail commands", () => {
   const { commands } = createPiHarness();
 
-  assert.deepEqual([...commands.keys()].sort(), ["ponytail", "ponytail-audit", "ponytail-debt", "ponytail-gain", "ponytail-help", "ponytail-review"]);
+  assert.deepEqual(
+    [...commands.keys()].sort(),
+    [
+      "ponytail",
+      "ponytail-ask",
+      "ponytail-audit",
+      "ponytail-debt",
+      "ponytail-gain",
+      "ponytail-help",
+      "ponytail-jedi",
+      "ponytail-lightsaber",
+      "ponytail-plan",
+      "ponytail-review",
+    ]
+  );
+});
+
+test("extension registers Ponytail shortcuts", () => {
+  const { shortcuts } = createPiHarness();
+
+  assert.deepEqual(
+    [...shortcuts.keys()].sort(),
+    [
+      "ponytail:cycleMode",
+      "ponytail:modeFull",
+      "ponytail:modeLite",
+      "ponytail:modeOff",
+      "ponytail:modeUltra",
+    ]
+  );
 });
 
 test("/ponytail updates session mode and injects instructions", async () => withTempConfig(async () => {
