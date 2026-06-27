@@ -83,7 +83,8 @@ function getDefaultMode() {
   // 2. Config file
   try {
     const configPath = getConfigPath();
-    const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+    const raw = fs.readFileSync(configPath, 'utf8').replace(/^﻿/, '');
+    const config = JSON.parse(raw);
     if (config.defaultMode && VALID_MODES.includes(config.defaultMode.toLowerCase())) {
       return config.defaultMode.toLowerCase();
     }
