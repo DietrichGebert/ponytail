@@ -1,10 +1,15 @@
 // Generate examples/*.md verbatim from a real benchmark run (output.json):
 // each file shows the same task answered with no skill vs with ponytail, same model.
 //   node benchmarks/generate-examples.mjs
-import { readFileSync, writeFileSync } from 'node:fs';
+import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import loc from './loc.js';
 
-const j = JSON.parse(readFileSync(new URL('./output.json', import.meta.url), 'utf8'));
+const outputJson = new URL('./output.json', import.meta.url);
+if (!existsSync(outputJson)) {
+  console.error('benchmarks/output.json not found — run the promptfoo benchmark first: npx promptfoo eval -c benchmarks/promptfooconfig.yaml');
+  process.exit(1);
+}
+const j = JSON.parse(readFileSync(outputJson, 'utf8'));
 const isHaiku = (id) => id.includes('haiku');
 
 const meta = [
