@@ -147,7 +147,7 @@ print(json.dumps({'ctx': ctx}))
   const { ctx } = JSON.parse(output);
   assert.match(ctx, /PONYTAIL MODE ACTIVE — level: review/);
   assert.match(ctx, /Review diffs for unnecessary complexity/);
-  assert.match(ctx, /net: -<N> lines possible/);
+  assert.match(ctx, /net: -<N> lines possible\./);
   assert.doesNotMatch(ctx, /^---/);
 });
 
