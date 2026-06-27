@@ -122,10 +122,18 @@ def build_injected_context(mode: str | None = None) -> str:
         return _fallback_instructions(effective)
 
 
+_injected_sessions: set[str] = set()
+
 def _pre_llm_call(session_id: str = "", **_: Any) -> dict[str, str] | None:
+    if session_id and session_id in _injected_sessions:
+        return None
     mode = _current_mode or _default_mode()
     context = build_injected_context(mode)
-    return {"context": context} if context else None
+    if context:
+        if session_id:
+            _injected_sessions.add(session_id)
+        return {"context": context}
+    return None
 
 
 def _skill_prompt(command: str, args: str = "") -> str:
