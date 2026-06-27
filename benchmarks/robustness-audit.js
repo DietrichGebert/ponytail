@@ -20,7 +20,7 @@ function python() {
 }
 
 const N = Number(process.env.AUDIT_N) || 20;
-const MODEL = process.env.AUDIT_MODEL || 'gpt-5.4-mini';
+const MODEL = process.env.AUDIT_MODEL || 'gpt-4o-mini';
 const ROOT = path.join(__dirname, '..');
 let kv = {};
 try {
