@@ -62,7 +62,7 @@ Resolution: env var > config file > `full`.
 
 Enable auto-update once: open `/plugin`, go to Marketplaces, pick ponytail, Enable auto-update. Claude Code then pulls new versions at startup (run `/reload-plugins` when it prompts). Manual refresh: `/plugin marketplace update ponytail` then `/reload-plugins`.
 
-If `/plugin` is not recognized, your Claude Code is out of date. Update it (`npm install -g @anthropic-ai/claude-code@latest`, or `brew upgrade claude-code`) and restart. Other hosts use their own update flow.
+If `/plugin` is not recognized, your Claude Code is out of date. Update it (`npm install -g @anthropic-ai/code@latest`, or `brew upgrade claude-code`) and restart. Other hosts use their own update flow.
 
 ## More
 
