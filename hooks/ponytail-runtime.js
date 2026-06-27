@@ -13,8 +13,12 @@ if (isCopilot) stateDir = process.env.COPILOT_PLUGIN_DATA;
 const statePath = path.join(stateDir, STATE_FILE);
 
 function setMode(mode) {
-  fs.mkdirSync(path.dirname(statePath), { recursive: true });
-  fs.writeFileSync(statePath, mode);
+  try {
+    fs.mkdirSync(path.dirname(statePath), { recursive: true });
+    fs.writeFileSync(statePath, mode);
+  } catch (e) {
+    // Fail silently rather than crash the hook
+  }
 }
 
 function clearMode() {
