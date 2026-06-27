@@ -77,6 +77,19 @@ test("/ponytail updates session mode and injects instructions", async () => with
   assert.ok(result.systemPrompt.includes("ultra"));
 }));
 
+test("array systemPrompt is preserved, not comma-collapsed", async () => withTempConfig(async () => {
+  const { events } = createPiHarness();
+  const ctx = createCommandContext();
+
+  await events.get("session_start")({ reason: "startup" }, ctx);
+
+  const result = await events.get("before_agent_start")({ systemPrompt: ["SECTION_A", "SECTION_B"] }, ctx);
+  assert.ok(Array.isArray(result.systemPrompt));
+  // Base sections stay as their own elements; instructions append as the last.
+  assert.deepEqual(result.systemPrompt.slice(0, 2), ["SECTION_A", "SECTION_B"]);
+  assert.ok(result.systemPrompt.at(-1).includes("PONYTAIL MODE ACTIVE"));
+}));
+
 test("session_start restores latest persisted mode", async () => withTempConfig(async () => {
   const { events } = createPiHarness();
   const ctx = createCommandContext({

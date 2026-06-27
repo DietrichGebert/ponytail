@@ -184,6 +184,12 @@ export default function ponytailExtension(pi) {
 
   pi.on("before_agent_start", async (event) => {
     if (!currentMode || currentMode === "off") return;
-    return { systemPrompt: `${event.systemPrompt}\n\n${getPonytailInstructions(currentMode)}` };
+    const instructions = getPonytailInstructions(currentMode);
+    // Some hosts (e.g. Oh My Pi) pass systemPrompt as a string[]; others pass a
+    // string. Preserve the array's elements instead of stringifying it, which
+    // would comma-collapse the host's base prompt into a single section.
+    return Array.isArray(event.systemPrompt)
+      ? { systemPrompt: [...event.systemPrompt, instructions] }
+      : { systemPrompt: `${event.systemPrompt}\n\n${instructions}` };
   });
 }
