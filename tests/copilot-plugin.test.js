@@ -13,6 +13,8 @@ const REQUIRED_COMMAND_FILES = [
   'ponytail-review.toml',
   'ponytail-audit.toml',
   'ponytail-debt.toml',
+  'ponytail-gain.toml',
+  'ponytail-help.toml',
 ];
 
 function readJSON(relPath) {
