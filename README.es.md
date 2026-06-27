@@ -15,7 +15,7 @@
   <img src="https://img.shields.io/github/stars/DietrichGebert/ponytail?style=flat-square&color=111111&label=stars" alt="Stars">
   <img src="https://img.shields.io/github/v/release/DietrichGebert/ponytail?style=flat-square&color=111111&label=release" alt="Release">
   <img src="https://img.shields.io/npm/v/@dietrichgebert/ponytail?style=flat-square&color=111111&label=npm" alt="npm">
-  <img src="https://img.shields.io/badge/funciona%20con-15%20agentes-111111?style=flat-square" alt="Works with 15 agents">
+  <img src="https://img.shields.io/badge/funciona%20con-16%20agentes-111111?style=flat-square" alt="Works with 16 agents">
   <img src="https://img.shields.io/badge/licencia-MIT-111111?style=flat-square" alt="MIT license">
 </p>
 
