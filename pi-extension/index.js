@@ -63,8 +63,10 @@ export default function ponytailExtension(pi) {
   function syncStatus(ctx) {
     if (ctx) lastCtx = ctx;
     const c = ctx || lastCtx;
-    if (!c?.ui?.setStatus || !c.ui.theme?.fg) return;
-    const theme = c.ui.theme;
+    if (!c?.ui?.setStatus) return;
+    // ponytail: try/catch guards against pi-web theme proxy throwing before initTheme
+    let theme;
+    try { theme = c.ui.theme; if (!theme?.fg) return; } catch { return; }
     if (currentMode === "off") {
       c.ui.setStatus("ponytail", "");
       return;
