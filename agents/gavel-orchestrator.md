@@ -21,15 +21,15 @@ Before any agent writes a test, run the ladder:
 
 ## Test Constitution (MUST DO)
 
-1. DI via fixtures/dependency injection — never `new Service()` or `new PageObject(page)` in specs
-2. Locator priority: accessibility-first > data-testid > CSS > XPath (framework-specific selectors per active profile)
+1. DI via the stack's fixture/dependency mechanism — never direct service/page construction in specs
+2. Locator priority: semantic/accessibility > stable test ID > structural selector > XPath only when no alternative exists
 3. External test data via factories — never hardcoded
-4. Logical groupings wrapped in steps (test.step(), with(), describe blocks, etc.)
+4. Logical groupings wrapped in the runner's native step/subtest/grouping primitive
 5. Explore live app before writing locators
-6. Framework-native assertions: web-first for Playwright, auto-retry for Cypress, WebDriverWait for Selenium
+6. Native retrying/eventual assertions before custom waits, sleeps, or polling
 7. Every test must pass or be a bug — no workarounds for broken app behavior
 8. Write test by test — generate, run, verify each before proceeding
-9. Run verification after changes (tsc/eslint/pytest -m/compile)
+9. Run the repository's type, lint, and targeted-test gates after changes
 
 ## Test Constitution (WON'T DO)
 
@@ -61,12 +61,11 @@ Before any agent writes a test, run the ladder:
 
 ## Framework Adaptation
 
-On session start, run `gavel-detect` to identify the stack. Then activate the matching profile:
-- Playwright → gavel-playwright rules
-- Selenium → gavel-selenium rules
-- Cypress → gavel-cypress rules
-- WebdriverIO → gavel-webdriverio rules
-- Cucumber/BDD → gavel-cucumber rules
+On session start, run `gavel-detect` to identify stack capabilities. Activate only the smallest profile needed:
+- UI runner profile → locator, action, assertion, and evidence patterns
+- API runner profile → service client, auth, contract, and cleanup patterns
+- BDD profile → feature, step, tag, and scenario-outline patterns
+- CI profile → shard, report, retry, artifact, and quarantine patterns
 
 ## Context Passing
 

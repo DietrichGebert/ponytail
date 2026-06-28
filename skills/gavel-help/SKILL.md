@@ -47,7 +47,6 @@ Level sticks until changed or session end.
 | **gavel-env** | `/gavel-env` | Start and verify local testing environment. |
 | **gavel-auth** | `/gavel-auth` | Multi-tenant authentication for tests. |
 | **gavel-hub** | `/gavel-hub` | Hub/external API integration test setup. |
-| **gavel-oms** | `/gavel-oms` | OMS/account lifecycle testing. |
 | **gavel-ci** | `/gavel-ci` | Cloud CI automation runner. |
 
 ## Diagnostic Skills
@@ -56,18 +55,18 @@ Level sticks until changed or session end.
 |-------|---------|--------------|
 | **gavel-heal** | `/gavel-heal` | Diagnose failing test: test bug, app bug, or env issue? |
 | **gavel-flake** | `/gavel-flake` | Flaky test triage: races, shared state, timing. |
-| **gavel-detect** | `/gavel-detect` | Auto-detect project stack (Playwright/Selenium/Cypress/etc). |
+| **gavel-detect** | `/gavel-detect` | Auto-detect runner, language, locator, assertion, report, and CI capabilities. |
 | **gavel-init** | `/gavel-init` | Bootstrap new QA project: scaffold POM, fixtures, factories. |
 
-## Framework Profiles
+## Capability Profiles
 
-| Profile | Activated when detected |
-|---------|------------------------|
-| **gavel-playwright** | Playwright in package.json / playwright.config.* |
-| **gavel-selenium** | selenium in requirements.txt / pom.xml / build.gradle |
-| **gavel-cypress** | cypress in package.json / cypress.config.* |
-| **gavel-webdriverio** | @wdio/cli in package.json / wdio.conf.* |
-| **gavel-cucumber** | *.feature files / cucumber in dependencies |
+| Profile type | Activated when detected |
+|--------------|------------------------|
+| **UI runner** | Browser automation runner, locator API, and visual/evidence artifacts. |
+| **API runner** | HTTP client, schema validation, auth fixtures, and cleanup hooks. |
+| **BDD runner** | Feature files, step bindings, scenario outlines, and tag filters. |
+| **Unit/component runner** | Component mount harness, mocks, fixtures, and coverage outputs. |
+| **CI runner** | Sharding, artifacts, retries, quarantine lane, and reports. |
 
 ## Deactivate
 
