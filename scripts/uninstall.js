@@ -36,5 +36,5 @@ try {
     console.log(`Removed ponytail statusLine entry from ${settingsPath}`);
   }
 } catch (e) {
-  if (e.code !== 'ENOENT') throw e;
+  if (e.code !== 'ENOENT' && !(e instanceof SyntaxError) throw e;
 }
