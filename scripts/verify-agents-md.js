@@ -25,7 +25,7 @@ const REQUIRED_SECTIONS = [
   'Assertion',
   'Workflow Routing',
   'Verification',
-  'Framework',
+  'Capability',
 ];
 
 let failed = false;

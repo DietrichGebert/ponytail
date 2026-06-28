@@ -39,23 +39,23 @@ Before writing any test, stop at the first rung that holds:
 
 1. Does this test need to exist at all? Is there already coverage for this path? (YAGNI)
 2. Does it already exist in this test suite? Reuse the fixture, factory, POM method, or assertion pattern.
-3. Does the framework handle it? Use the framework's native assertions, waits, and locators over custom code.
-4. Does a native locator strategy cover it? Accessibility-first over CSS over XPath.
+3. Does the stack handle it? Use the runner/client's native assertions, waits, locators, fixtures, and reports over custom code.
+4. Does a semantic locator strategy cover it? Accessibility-first over stable test IDs over structural selectors over XPath.
 5. Does an existing page object or action class cover it? Extend, don't create new.
 6. Can one assertion capture the bug? One assertion.
 7. Only then: write the minimum test that catches the real bug.
 
 ## Test Constitution (MUST DO)
 
-1. DI via fixtures — never `new Service()`, `new PageObject(page)` in specs. Use the framework's DI (Playwright fixtures, pytest fixtures, JUnit @ExtendWith, etc.)
-2. Semantic locators first — getByRole > getByLabel > getByPlaceholder > getByText > getByTestId. Never CSS/XPath when a semantic option exists.
-3. External test data via factories — `AccountFactory.create()`, never hardcoded strings, IDs, URLs, or credentials in test bodies.
-4. Logical grouping — `test.step()` (Playwright), `with self.subTest()` (pytest), or equivalent for all logical groupings.
+1. DI via the stack's fixture/dependency mechanism — never direct service/page construction in specs.
+2. Semantic locators first — accessibility role/label/name > stable test ID > structural selector > XPath only when no alternative exists.
+3. External test data via factories — `EntityFactory.create()`, never hardcoded strings, IDs, URLs, or credentials in test bodies.
+4. Logical grouping — use the runner's native step/subtest/grouping primitive for all logical groupings.
 5. Explore live app before writing locators — no guessing at DOM or API shapes.
-6. Web-first assertions — framework-native retrying assertions. Never manual waits + manual checks.
-7. Every test must pass or be a bug — no workarounds for broken app behavior. If the app is broken, mark it `test.fail()` with a bug reference.
+6. Native retrying/eventual assertions — never manual waits + manual checks.
+7. Every test must pass or be a bug — no workarounds for broken app behavior. If the app is broken, use the suite's expected-failure marker with a bug reference.
 8. Write test by test — generate one, run it, verify it, then proceed.
-9. Verification gate — run type-checking and linting after any code changes.
+9. Verification gate — run the repository's type, lint, targeted-test, and configured coverage gates after code changes.
 
 ## Test Constitution (WON'T DO)
 
@@ -67,9 +67,9 @@ Before writing any test, stop at the first rung that holds:
 6. No wrappers around the testing framework unless absolutely justified (YAGNI)
 7. No deep inheritance (max depth 1, prefer mixins or composition)
 
-## test.fail() Expiry Policy
+## Expected-Failure Expiry Policy
 
-`test.fail()` markers are valid for **7 days**. After that, `gavel-fail-audit` escalates them: the test either becomes a real bug ticket, gets fixed, or gets deleted. A `test.fail()` marker without a bug reference or expiry is a code smell. Run `gavel-fail-audit` weekly to clear the rot.
+Expected-failure markers are valid for **7 days**. After that, `gavel-fail-audit` escalates them: the test either becomes a real bug ticket, gets fixed, or gets deleted. A marker without a bug reference or expiry is a code smell. Run `gavel-fail-audit` weekly to clear the rot.
 
 ## Page Object Discipline
 
@@ -80,30 +80,28 @@ Before writing any test, stop at the first rung that holds:
 
 ## Test Data Discipline
 
-- Factories create test data. `UserFactory.create()`, `OrderFactory.create()`.
+- Factories create test data. `EntityFactory.create()`, `UserFactory.create()`.
 - No hardcoded data in test bodies. Names, emails, IDs, URLs — all from factories or fixtures.
 - Test independence — every test starts from a clean state. No shared mutable state. No execution order dependency.
 - Idempotent cleanup — API cleanup in afterEach/after hooks must be idempotent.
 
 ## Locator Priority
 
-1. Accessibility-first: getByRole, getByLabel, getByPlaceholder
-2. Text content: getByText, getByAltText, getByTitle
-3. Test ID: getByTestId (last resort for semantic)
-4. CSS selector: only when no semantic option exists
-5. XPath: never, unless the framework has no alternative
+1. Accessibility-first: role, label, name, placeholder, alt text, title
+2. User-visible text when it represents stable behavior
+3. Stable test ID only when semantic locators do not exist
+4. Structural selector only when no semantic option exists
+5. XPath: never, unless the stack has no alternative
 
 ## Assertion Discipline
 
-- Use the framework's native retrying/waiting assertions.
-- Playwright: `await expect(locator).toBeVisible()`, `await expect(response).toBeOK()`
-- Selenium: `WebDriverWait(driver, 10).until(EC.visibility_of(locator))` + assert
-- Cypress: `cy.get(locator).should('be.visible')`
-- WebdriverIO: `await expect(locator).toBeDisplayed()`
-- pytest: `assert condition` (with retry via `polling` or `tenacity` if needed)
-- JUnit/TestNG: `Assertions.assertTrue(condition)` with `Awaitility`
+- Use the stack's native retrying/waiting assertions and existing matchers.
+- UI: assert user-visible state through semantic locators and runner-native eventual assertions.
+- API: assert status, schema/body shape, relevant headers, and one business outcome through injected clients/matchers.
+- BDD: assert behavior in steps, but keep step definitions thin and backed by reusable actions/services.
+- Component/unit: assert public behavior through the project's existing mount, fixture, or mock harness.
 
-Never: manual wait + manual check. Always: framework-native auto-retrying assertion.
+Never: manual wait + manual check. Always: native retrying/eventual assertion tied to observable behavior.
 
 ## Workflow Routing
 
@@ -120,22 +118,16 @@ Never: manual wait + manual check. Always: framework-native auto-retrying assert
 
 ## Verification Gate
 
-After any TypeScript/JavaScript changes:
+Run the repository's own gates before considering work done:
+
 ```bash
-npx tsc --noEmit && npx eslint .
+<project type-check or compile>
+<project lint or style check>
+<targeted affected test>
+<coverage gate when configured>
 ```
 
-After any Python changes:
-```bash
-mypy . && ruff check .
-```
-
-After any Java changes:
-```bash
-mvn compile && mvn checkstyle:check
-```
-
-Run the relevant gate before considering the work done.
+Prefer existing package scripts, CI commands, Make targets, or documented test commands over hardcoded tooling.
 
 ## Intensity Levels
 
@@ -152,17 +144,18 @@ No essays, no feature tours, no design notes. If the explanation is longer than 
 
 Pattern: `[code] → skipped: [X], add when [Y].`
 
-## Framework Adaptation
+## Capability Adaptation
 
-Gavel detects your stack and adapts patterns automatically:
+Gavel adapts by capability, not by brand. Detect the stack, then use the smallest native profile needed:
 
-- **Playwright** (TS/JS): web-first assertions, test.step(), fixture DI, mixin POM
-- **Selenium** (Python/Java): WebDriverWait, pytest/JUnit fixtures, class-based POM
-- **Cypress** (JS): auto-retry assertions, custom commands, beforeEach setup
-- **WebdriverIO** (TS/JS): waitForDisplayed(), service objects, browser.call()
-- **Cucumber/Behave**: Gherkin feature files, step definitions, tag management
+- **Runner lifecycle**: fixture/hook model for DI, setup, cleanup, and isolation.
+- **Locator surface**: semantic/accessibility first, stable test IDs second, structural selectors only when needed.
+- **Assertion semantics**: built-in retrying/eventual assertions before custom polling or sleeps.
+- **Composition model**: existing fixtures, factories, service clients, page actions, or step definitions before new abstractions.
+- **Evidence output**: native traces, screenshots, videos, logs, reports, API responses, and failure artifacts before edits.
+- **Verification commands**: repository-native type, lint, targeted-test, and coverage gates.
 
-Run `/gavel-detect` to identify your stack, or it activates automatically.
+Run `/gavel-detect` to identify runner, language, locator, assertion, report, and CI capabilities. Do not resurrect legacy project-specific skills.
 
 ## When NOT to Simplify
 

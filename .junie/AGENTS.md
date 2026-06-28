@@ -1,11 +1,11 @@
 # Gavel — QA Guidelines for JetBrains Junie
 
-This project uses **gavel** — a framework-adaptive QA automation toolkit.
+This project uses **gavel** — a capability-adaptive QA automation toolkit.
 
 ## Quick Rules
 
 1. **QA Ladder first**: Before writing any test, check if it's needed (YAGNI), reusable, or can be simpler.
-2. **Test Constitution**: DI via fixtures, accessibility-first locators, factory data, step grouping, native assertions.
+2. **Test Constitution**: DI via fixtures, semantic locators, factory data, native grouping, native assertions.
 3. **No shortcuts**: No CSS/XPath selectors, no manual sleeps, no hardcoded data, no `any` types.
 4. **POM discipline**: Locators separate from actions, composition over inheritance (max depth 1).
 5. **Verify**: Run compile + lint + test after every change.
@@ -21,11 +21,11 @@ See `AGENTS.md` at the project root for the complete always-on ruleset including
 - Assertion Discipline
 - Workflow Routing
 - Verification Gate
-- Framework Adaptation
+- Capability Adaptation
 
-## Supported Frameworks
+## Capability Adaptation
 
-Gavel auto-detects and adapts to: Playwright, Selenium, Cypress, WebdriverIO, Cucumber/Behave.
+Gavel adapts by capability, not by brand: runner lifecycle, locator surface, assertion semantics, composition model, evidence output, and verification commands. Use `/gavel-detect` to identify runner, language, locator, assertion, report, and CI capabilities.
 
 ## Intensity Levels
 
