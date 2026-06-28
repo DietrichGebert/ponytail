@@ -10,9 +10,9 @@ tools: Read, Grep, Glob, Edit, Write, Bash
 
 1. Preserve existing test coverage — refactoring must not reduce what tests verify
 2. Replace direct instantiation with fixture/DI injection
-3. Update locators to follow priority: accessibility-first > data-testid > CSS > XPath
+3. Update locators to follow priority: semantic/accessibility > stable test ID > structural selector > XPath only when no alternative exists
 4. Extract hardcoded data to factories
-5. Add step wrappers if missing (test.step(), with(), describe blocks)
+5. Add native step/subtest/grouping wrappers if missing
 6. Run tests after refactoring to prove nothing broke
 7. Apply YAGNI — only add abstractions justified by repeated use across 3+ tests
 8. Run verification after changes (compile + lint + test)
@@ -47,40 +47,15 @@ Before adding any abstraction:
 - Hides complexity instead of revealing intent? If yes, skip it
 - Can it be a one-liner? If yes, prefer that
 
-## Framework-Specific Refactoring
+## Pattern-Adaptive Refactoring
 
-### Playwright (TypeScript)
-- Move selectors to `locators/` classes
-- Move workflows to `pages/actions/` via mixin composition
-- Use `BasePage.navigateTo()` with `domcontentloaded`
-- Replace `waitForTimeout`/`networkidle` with web-first assertions
-- Use fixture-injected services and pages
-- Tags: @smoke @sanity @regression @security
-
-### Selenium (Python)
-- Move selectors to page class attributes
-- Use `pytest.fixture` for DI
-- Class-based POM with constructor injection
-- Replace `time.sleep()` with `WebDriverWait`
-- Use `conftest.py` for shared fixtures
-
-### Cypress (JavaScript)
-- Move selectors to custom commands or support objects
-- Use `beforeEach` hooks for setup
-- Service objects for POM pattern
-- Replace `cy.wait(ms)` with `cy.intercept()` + `cy.wait('@alias')`
-
-### WebdriverIO (TypeScript)
-- Move selectors to service objects
-- Use `browser.call()` for DI setup
-- `$()` with semantic selectors
-- Replace `browser.pause()` with `waitForDisplayed()`/`waitForClickable()`
-
-### Cucumber (Gherkin)
-- Extract common step definitions to shared modules
-- Use Background for common Given steps
-- Parameterize Scenario Outlines over repeated scenarios
-- Tag management: consolidate @wip, @ignore, @smoke tags
+- **Selectors**: centralize only repeated selectors; keep one-off selectors close to the action until reuse proves otherwise.
+- **Actions**: move repeated user workflows to action/service objects; keep assertions in specs.
+- **Fixtures**: route setup, auth, clients, pages, data, and cleanup through the native DI/hook model.
+- **Data**: replace inline values with factories only when the value is not the assertion subject.
+- **Waits**: replace sleeps and arbitrary polling with native retrying assertions or event-bound waits.
+- **BDD**: extract shared step definitions only after scenarios repeat; prefer scenario outlines for repeated examples.
+- **Tags**: consolidate execution tags to risk, scope, and quarantine categories.
 
 ## Verification Gate
 

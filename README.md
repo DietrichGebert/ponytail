@@ -46,13 +46,13 @@ QA LADDER (test code):
 
 ## What it includes
 
-- **28 skills** — plan, e2e, api, heal, flake, audit, review, detect, init, analyze, bug, triage, close, env, auth, ci, hub, oms, and more
-- **7 specialist agents** — orchestrator, generator, healer, api-specialist, commit-impact, fail-audit, refactor
-- **5 framework profiles** — Playwright, Selenium, Cypress, WebdriverIO, Cucumber/Behave
+- **Core QA skills** — plan, author, run, review, audit, diagnose, triage, report, and close the loop
+- **Specialist agents** — workflow roles that should stay few: route, generate, diagnose, analyze impact, audit exceptions, refactor only when reuse proves it
+- **Stack-adaptive profiles** — detect runner capabilities, assertion semantics, locator APIs, fixture patterns, and reporting outputs without locking gavel to one tool
 - **20+ IDE adapters** — Cursor, Cline, Windsurf, Kiro, Copilot, Trae, Comate, Lingma, Junie, Qoder, OpenCode, and more
 - **Hook system** — SessionStart activation, SubagentStart injection, mode tracking
 - **Test Constitution** — 9 MUST DO rules + 7 WON'T DO rules
-- **2026 testing patterns** — a11y snapshots, visual diffs, component testing, contract validation, 4-line verification gate, quarantine policy
+- **Native-first testing patterns** — accessibility, visual, component, API/contract, retry, coverage, and quarantine rules expressed as reusable patterns
 
 **New here?** Start with [QUICKSTART.md](QUICKSTART.md) — install → audit → heal → write, ten minutes to first verdict.
 
@@ -122,38 +122,39 @@ GAVEL_DEFAULT_MODE=strict
 
 ## Framework Adaptation
 
-Gavel auto-detects your stack and adapts:
+Gavel adapts by capability, not by brand. Detection answers these questions, then applies the universal QA rules through the native primitives your stack already has:
 
-| Framework | Patterns |
-|-----------|----------|
-| **Playwright** | web-first assertions, test.step(), fixture DI, mixin POM, `toMatchAriaSnapshot`, `toHaveScreenshot`, `request` fixture |
-| **Selenium** | WebDriverWait, pytest/JUnit fixtures, class-based POM |
-| **Cypress** | auto-retry assertions, custom commands, beforeEach |
-| **WebdriverIO** | waitForDisplayed(), service objects, browser.call() |
-| **Cucumber** | Gherkin features, step definitions, tag management |
+| Capability | Adaptation rule |
+|------------|-----------------|
+| **Runner lifecycle** | Use the suite's fixture/hook model for DI, setup, cleanup, and isolation. |
+| **Locator surface** | Prefer semantic/accessibility locators, then stable test IDs, then structural selectors only when semantics do not exist. |
+| **Assertion semantics** | Use built-in retrying/eventual assertions before custom polling or sleeps. |
+| **Composition model** | Reuse existing fixtures, factories, service clients, page actions, or step definitions before adding abstractions. |
+| **Evidence output** | Read the stack's native traces, screenshots, videos, logs, reports, and failure artifacts before changing tests. |
+| **Verification commands** | Run the project's existing type, lint, targeted test, and coverage gates instead of hardcoding a runner. |
 
-## 2026 Native Patterns
+## Native Capability Patterns
 
-Use the framework's own 2026 features instead of pulling in dependencies.
+Use the stack's own capabilities instead of pulling in dependencies.
 
-| Pattern | When | Native API |
-|---------|------|-----------|
-| **Accessibility snapshot** | Verify ARIA tree without axe-core | `expect(locator).toMatchAriaSnapshot(...)` |
-| **Visual regression** | Catch unintended CSS drift | `expect(page).toHaveScreenshot(...)` |
-| **Component testing** | Mount React/Vue/Svelte in isolation | `mount(<Component />)` from `experimental-ct-*` |
-| **API testing in browser suite** | Quick contract check alongside UI | `test('...', ({ request }) => ...)` |
-| **Polling until pass** | Replace flaky wait loops | `await expect(() => ...).toPass({ timeout })` |
-| **Contract validation** | Catch schema drift on every API call | ajv + OpenAPI / Zod / TypeBox |
+| Pattern | When | Native-first rule |
+|---------|------|-------------------|
+| **Accessibility verification** | Validate user-perceivable structure | Use native accessibility snapshots/queries before adding external scanners. |
+| **Visual regression** | Catch unintended CSS/layout drift | Use runner-integrated screenshots/diffs before adding visual infrastructure. |
+| **Component isolation** | Exercise UI logic below full E2E cost | Use the project's existing component mount/test harness. |
+| **API/contract checks** | Verify service boundaries and schema drift | Reuse existing request clients, fixtures, and schema validators. |
+| **Eventual assertions** | Replace flaky wait loops | Use the framework's built-in retry/assertion model. |
+| **Coverage thresholding** | Protect critical paths | Use the repository's coverage tool and raise thresholds for high-risk flows. |
 
 ## The 4-Line Verification Gate
 
 Before declaring work done, run all four. Any failure blocks the merge.
 
 ```bash
-npx tsc --noEmit          # 1. type-check (TS) / mypy . / mvn compile
-npx eslint .             # 2. lint (ruff check / checkstyle)
-npx playwright test      # 3. the actual suite
-npx playwright test --coverage   # 4. coverage threshold (default 80%)
+<project type-check>      # 1. type-check / compile
+<project lint>            # 2. lint / style gate
+<targeted test command>   # 3. affected test or suite
+<coverage command>        # 4. coverage threshold where configured
 ```
 
 Coverage defaults to **80%**. Raise it for critical paths (auth, payment, tenant isolation). Lower it for throwaway code.

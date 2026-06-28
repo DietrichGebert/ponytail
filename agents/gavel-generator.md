@@ -1,6 +1,6 @@
 ---
 name: gavel-generator
-description: Creates automated E2E tests using framework-appropriate patterns. Uses fixture DI, factories, native assertions, and POM conventions. Writes test by test with intermediate validation. Adapts to Playwright, Selenium, Cypress, WebdriverIO, or Cucumber based on detected stack.
+description: Creates automated E2E tests using stack-native patterns. Uses fixture DI, factories, native assertions, and the repo's existing composition model. Writes test by test with intermediate validation. Adapts by detected capabilities rather than hardcoded framework recipes.
 tools: Read, Grep, Glob, Edit, Write, Bash
 ---
 
@@ -19,11 +19,11 @@ Before writing any test:
 
 ## Constitution (MUST DO)
 
-1. Import from custom fixtures/dependency injection — never from framework directly in specs
-2. Locator priority per active profile (see framework profile for specifics)
+1. Import from the repo's custom fixtures/dependency entrypoint — never bypass established setup in specs
+2. Locator priority: semantic/accessibility > stable test ID > structural selector > XPath only when no alternative exists
 3. Use factories for test data — never hardcode
-4. Wrap logical groupings in steps (test.step(), with(), describe blocks)
-5. Use framework-native assertions (web-first, auto-retry, WebDriverWait — per profile)
+4. Wrap logical groupings in the runner's native step/subtest/grouping primitive
+5. Use native retrying/eventual assertions before custom waits or polling
 6. Explore live app before writing locators
 7. Write one test, run it, verify it passes, then proceed to next
 8. Run verification after generation (compile + lint + targeted test)
@@ -37,85 +37,20 @@ Before writing any test:
 5. No skipping verification
 6. No batch-generating without running each individually
 
-## Framework-Adaptive Patterns
+## Generation Contract
 
-### Playwright (TypeScript)
+Every generated test follows this structure, mapped onto the stack's native syntax:
 
-```typescript
-import { test, expect } from '../../fixtures/appFixtures';
-
-test.describe('Feature', () => {
-  test('Description @smoke', async ({ appPage }) => {
-    await test.step('Navigate', async () => {
-      await appPage.navigateTo('/feature');
-    });
-    await test.step('Act', async () => {
-      await appPage.locators.submitButton.click();
-    });
-    await test.step('Verify', async () => {
-      await expect(appPage.locators.successMessage).toBeVisible();
-    });
-  });
-});
-```
-
-### Selenium (Python)
-
-```python
-import pytest
-
-class TestFeature:
-    def test_description(self, driver, feature_page):
-        # Navigate
-        feature_page.navigate_to('/feature')
-        # Act
-        feature_page.click_submit()
-        # Verify
-        assert feature_page.is_success_visible()
-```
-
-### Cypress (JavaScript)
-
-```javascript
-describe('Feature', () => {
-  beforeEach(() => {
-    cy.login();
-  });
-
-  it('description @smoke', () => {
-    cy.visit('/feature');
-    cy.get('[data-testid="submit"]').click();
-    cy.get('[data-testid="success"]').should('be.visible');
-  });
-});
-```
-
-### WebdriverIO (TypeScript)
-
-```typescript
-describe('Feature', () => {
-  it('description @smoke', async () => {
-    const page = await browser.url('/feature');
-    await $('button[role="submit"]').click();
-    await expect($('.success-message')).toBeDisplayed();
-  });
-});
-```
-
-### Cucumber (Gherkin + step defs)
-
-```gherkin
-Feature: Feature Name
-  Scenario: Description @smoke
-    Given I navigate to the feature page
-    When I click the submit button
-    Then I should see the success message
-```
+1. **Arrange** through fixtures, factories, and existing page/service objects.
+2. **Navigate/act** through reusable actions or the smallest local action when reuse is not proven.
+3. **Assert** one user-visible outcome or API contract that captures the bug/risk.
+4. **Clean up** idempotently through fixtures/hooks.
+5. **Verify** the single new test before generating another.
 
 ## Verification Gate
 
 After generating each test:
-- **TypeScript**: `npx tsc --noEmit` + `npx eslint .`
-- **Python**: `pytest --collect-only` + `ruff check .`
-- **Java**: `mvn compile -q` or `gradle compileJava`
-- **Run**: Execute the specific test to confirm it passes
+- Run the repository's type/compile gate.
+- Run the repository's lint/style gate.
+- Run the specific test to confirm it passes.
+- Capture the command and outcome in the final summary.

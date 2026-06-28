@@ -11,9 +11,9 @@ tools: Read, Grep, Glob, Edit, Write, Bash
 1. Diagnose root cause before fixing — never treat symptoms
 2. Every test must pass or be a bug — if app is broken, report bug, don't work around
 3. Run test after each fix to confirm
-4. Inspect DOM via browser tools / screenshots / traces before updating selectors
-5. Use framework-native assertions — never add manual sleeps
-6. Locator priority per active profile (accessibility-first > data-testid > CSS > XPath)
+4. Inspect live evidence — DOM/API response, traces, screenshots, videos, logs, or reports — before updating tests
+5. Use native retrying/eventual assertions — never add manual sleeps
+6. Locator priority: semantic/accessibility > stable test ID > structural selector > XPath only when no alternative exists
 7. Run verification after each fix (compile + lint + test)
 8. Fix one test at a time — verify before moving to next
 
@@ -46,43 +46,24 @@ tools: Read, Grep, Glob, Edit, Write, Bash
 5. **Verify**: run test + compile + lint
 6. **Iterate**: fix one error at a time
 
-## Framework-Specific Debugging
+## Capability-Based Debugging
 
-### Playwright
-- Check `test-results/` for traces, screenshots, videos
-- Use `npx playwright show-trace` to inspect
-- Selector priority: getByRole > getByLabel > getByPlaceholder > getByText > getByTestId
-
-### Selenium
-- Check screenshot files and driver logs
-- Use explicit waits (WebDriverWait) — never Thread.sleep
-- Selector priority: By.CSS_SELECTOR with semantic attrs > data-testid > XPath
-
-### Cypress
-- Check Cypress screenshots and videos folders
-- Use Time Travel in Cypress dashboard
-- Selector priority: cy.get('[role=...]') > cy.get('[data-testid=...]') > cy.contains()
-
-### WebdriverIO
-- Check `output/` for screenshots
-- Use waitForDisplayed() / waitForClickable() — never browser.pause()
-- Selector priority: $() with semantic attrs > $() with data-testid > XPath
-
-### Cucumber
-- Check step definition match: is the regex/annotation still matching?
-- Check hook execution order (Before/After)
-- Verify feature file syntax and indentation
+- **UI evidence**: inspect rendered DOM, accessibility tree, screenshots, videos, traces, and browser logs before changing locators.
+- **API evidence**: compare status, headers, body, schema, auth context, tenant context, and server logs before changing assertions.
+- **BDD evidence**: verify scenario text, step binding, tag filters, hook order, and fixture setup before editing steps.
+- **Timing evidence**: replace sleeps with the runner's native retry/assertion/wait primitive tied to a user-visible condition.
+- **Isolation evidence**: confirm factories, seeds, cleanup, worker count, and shared state before blaming the product.
 
 ## Common Failure Patterns
 
-| Pattern | Framework | Root Cause | Fix |
-|---------|-----------|------------|-----|
-| Token expiration | Any | Auth token expired | Check auth fixture/setup |
-| Session exhaustion | Playwright | Too many workers | Limit workers |
-| Schema changes | Any API | Response format changed | Update service/assertion |
-| Navigation changes | Any UI | DOM structure changed | Update locators via inspection |
-| Race condition | Any | Shared state between tests | Add factory isolation |
-| Stale element | Selenium | DOM re-rendered | Re-find element after action |
+| Pattern | Root Cause | Fix |
+|---------|------------|-----|
+| Token expiration | Auth/session fixture drift | Refresh auth setup and tenant scope |
+| Session exhaustion | Parallelism exceeds environment capacity | Reduce workers or isolate sessions |
+| Schema changes | Response contract changed | Update service assertions after confirming contract |
+| Navigation changes | User flow or route changed | Update action flow and locators via inspection |
+| Race condition | Shared state between tests | Add factory isolation and idempotent cleanup |
+| Stale element | DOM re-rendered after action | Re-query through the stack's locator model |
 
 ## Escalation
 

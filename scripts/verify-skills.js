@@ -31,7 +31,6 @@ const EXPECTED_SKILLS = [
   'gavel-env',
   'gavel-auth',
   'gavel-hub',
-  'gavel-oms',
   'gavel-ci',
   'gavel-heal',
   'gavel-flake',
