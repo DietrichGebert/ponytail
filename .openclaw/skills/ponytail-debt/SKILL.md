@@ -5,19 +5,19 @@ homepage: https://github.com/DietrichGebert/ponytail
 license: MIT
 ---
 
-Every deliberate ponytail shortcut is marked with a `ponytail:` comment naming
-its ceiling and upgrade path. This collects them into one ledger so a deferral
-can't quietly become permanent.
+Every deliberate shortcut is marked with a `ponytail:` or `defer:` comment
+naming its ceiling and upgrade path. This collects them into one ledger so a
+deferral can't quietly become permanent.
 
 ## Scan
 
 Grep the repo for comment markers, skipping `node_modules`, `.git`, and build
 output:
 
-`grep -rnE '(#|//) ?ponytail:' .`  (add other comment prefixes if your stack uses them)
+`grep -rnE '(#|//) ?(ponytail|defer):' .`  (add other comment prefixes if your stack uses them)
 
-Each hit is one ledger row. The comment prefix keeps prose that merely mentions
-the convention out of the ledger.
+Each hit is one ledger row. The comment prefix (`ponytail:` or `defer:`) keeps
+prose that merely mentions the convention out of the ledger.
 
 ## Output
 
@@ -29,10 +29,14 @@ The convention is `ponytail: <ceiling>, <upgrade path>`, so pull the ceiling
 and the trigger straight from the comment. Want an owner per row too? add
 `git blame -L<line>,<line>`.
 
-Flag the rot risk: any `ponytail:` comment that names no upgrade path or
-trigger gets a `no-trigger` tag, those are the ones that silently rot.
+Flag the rot risk: any `ponytail:` or `defer:` comment that names no upgrade
+path, no trigger condition, or no ceiling gets a `⚠ no-trigger` tag — these
+are the ones that silently rot into permanent shortcuts.
 
-End with `<N> markers, <M> with no trigger.` Nothing found: `No ponytail: debt. Clean ledger.`
+Well-formed: `// defer: global lock. ceiling: single-tenant only. upgrade when: multi-tenant needed.`
+Missing trigger: `// ponytail: using simple loop` ⚠ no-trigger — no ceiling or upgrade path named.
+
+End with `<N> markers, <M> with no trigger.` Nothing found: `No debt markers. Clean ledger.`
 
 ## Boundaries
 
