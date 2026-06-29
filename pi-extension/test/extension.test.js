@@ -152,6 +152,20 @@ test("status bar renders the mode and flips active on agent_start", async () => 
   assert.match(statusWrites.at(-1).text, /●.*ULTRA/);
 }));
 
+test("status bar renders persisted review mode", async () => withTempConfig(async () => {
+  const { events } = createPiHarness();
+  const statusWrites = [];
+  const ctx = createCommandContext({
+    sessionManager: { getEntries: () => [{ type: "custom", customType: "ponytail-mode", data: { mode: "review" } }] },
+    ui: { notify() {}, setStatus: (key, text) => statusWrites.push({ key, text }), theme: { fg: (_color, text) => text } },
+  });
+
+  await events.get("session_start")({ reason: "resume" }, ctx);
+
+  assert.equal(statusWrites.at(-1).key, "ponytail");
+  assert.match(statusWrites.at(-1).text, /○.*🔎 REVIEW/);
+}));
+
 test("status bar stays silent when ui lacks a theme", async () => withTempConfig(async () => {
   const { events } = createPiHarness();
   const calls = [];
