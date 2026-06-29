@@ -4,7 +4,9 @@
 module.exports = (output) => {
   const text = String(output || '');
   const blocks = [...text.matchAll(/```[a-zA-Z0-9_+-]*\n([\s\S]*?)```/g)].map((m) => m[1]);
-  const code = blocks.length ? blocks.join('\n') : text;
+  // Drop /* ... */ block comments before counting; the line filter below only
+  // caught `*`-aligned JSDoc, so plain block comments were miscounted as code.
+  const code = (blocks.length ? blocks.join('\n') : text).replace(/\/\*[\s\S]*?\*\//g, '');
   const loc = code
     .split('\n')
     .map((l) => l.trim())

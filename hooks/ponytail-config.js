@@ -42,6 +42,15 @@ function isDeactivationCommand(text) {
   return t === 'stop ponytail' || t === 'normal mode';
 }
 
+// ponytail: only embed the plugin install path in a statusline shell command when
+// it's made of ordinary path characters. An allowlist beats escaping every shell's
+// metacharacters; a hostile clone path (quotes, &, $, backtick, ;, etc.) falls back
+// to manual setup instead. Allows : \ / for normal Windows and POSIX paths. Full
+// per-shell escaper only if a real need appears.
+function isShellSafe(p) {
+  return typeof p === 'string' && /^[A-Za-z0-9 _.\-:/\\~]+$/.test(p);
+}
+
 function getConfigDir() {
   if (process.env.XDG_CONFIG_HOME) {
     return path.join(process.env.XDG_CONFIG_HOME, 'ponytail');
@@ -104,6 +113,7 @@ module.exports = {
   getConfigDir,
   getConfigPath,
   getClaudeDir,
+  isShellSafe,
   normalizeMode,
   normalizeConfigMode,
   normalizePersistedMode,

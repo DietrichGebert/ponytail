@@ -1,14 +1,43 @@
 {
-  "name": "ponytail",
-  "version": "0.1.0",
+  "name": "@dietrichgebert/ponytail",
+  "version": "4.8.4",
   "description": "Lazy senior dev mode for AI agents. The best code is the code you never wrote.",
-  "keywords": ["pi-package", "pi", "skills", "ponytail"],
+  "keywords": ["opencode-plugin", "opencode", "ponytail", "pi-package", "pi", "skills"],
   "license": "MIT",
+  "author": {
+    "name": "Dietrich Gebert",
+    "url": "https://github.com/DietrichGebert"
+  },
+  "homepage": "https://github.com/DietrichGebert/ponytail",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/DietrichGebert/ponytail.git"
+  },
+  "bugs": {
+    "url": "https://github.com/DietrichGebert/ponytail/issues"
+  },
+  "main": "./.opencode/plugins/ponytail.mjs",
+  "exports": {
+    ".": "./.opencode/plugins/ponytail.mjs",
+    "./plugin": "./.opencode/plugins/ponytail.mjs"
+  },
+  "files": [
+    "AGENTS.md",
+    "hooks/",
+    "skills/",
+    ".opencode/",
+    "pi-extension/",
+    "assets/",
+    "LICENSE"
+  ],
   "scripts": {
     "test": "node --test tests/*.test.js && npm test --prefix pi-extension"
   },
   "pi": {
     "extensions": ["./pi-extension/index.js"],
     "skills": ["./skills"]
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }

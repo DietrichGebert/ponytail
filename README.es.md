@@ -14,8 +14,14 @@
 <p align="center">
   <img src="https://img.shields.io/github/stars/DietrichGebert/ponytail?style=flat-square&color=111111&label=stars" alt="Stars">
   <img src="https://img.shields.io/github/v/release/DietrichGebert/ponytail?style=flat-square&color=111111&label=release" alt="Release">
-  <img src="https://img.shields.io/badge/funciona%20con-14%20agentes-111111?style=flat-square" alt="Works with 14 agents">
+  <img src="https://img.shields.io/npm/v/@dietrichgebert/ponytail?style=flat-square&color=111111&label=npm" alt="npm">
+  <img src="https://img.shields.io/badge/funciona%20con-15%20agentes-111111?style=flat-square" alt="Works with 15 agents">
   <img src="https://img.shields.io/badge/licencia-MIT-111111?style=flat-square" alt="MIT license">
+</p>
+
+<p align="center">
+  <a href="https://trendshift.io/repositories/50668" target="_blank" rel="noopener noreferrer"><img src="https://trendshift.io/api/badge/trendshift/repositories/50668/daily" alt="DietrichGebert/ponytail | Trendshift" width="250" height="55"/></a>
+  <a href="https://trendshift.io/repositories/50668" target="_blank" rel="noopener noreferrer"><img src="https://trendshift.io/api/badge/trendshift/repositories/50668/weekly" alt="DietrichGebert/ponytail | Trendshift" width="250" height="55"/></a>
 </p>
 
 <p align="center">
@@ -28,6 +34,10 @@
 </p>
 
 ---
+
+<p align="center">
+  <a href="https://ponytail.dev/soon"><img src="assets/waitlist-banner-es.png" alt="Algo nuevo está por llegar, únete a la lista" width="760"></a>
+</p>
 
 Lo conoces. Cola de caballo larga. Lentes ovalados. Lleva más tiempo en la empresa que el control de versiones. Le muestras cincuenta líneas; las mira, no dice nada, y las reemplaza por una.
 
@@ -83,12 +93,15 @@ Antes de escribir código, el agente se detiene en el primer peldaño que aguant
 
 ```
 1. ¿Necesita existir esto?        → no: omitirlo (YAGNI)
-2. ¿Lo hace la stdlib?            → úsala
-3. ¿Es una feature nativa?        → úsala
-4. ¿Una dependencia ya instalada? → úsala
-5. ¿Cabe en una línea?            → una línea
-6. Solo entonces: el mínimo que funciona
+2. ¿Ya existe en este código?     → reúsalo, no lo reescribas
+3. ¿Lo hace la stdlib?            → úsala
+4. ¿Es una feature nativa?        → úsala
+5. ¿Una dependencia ya instalada? → úsala
+6. ¿Cabe en una línea?            → una línea
+7. Solo entonces: el mínimo que funciona
 ```
+
+La escalera se recorre *después* de entender el problema, no en su lugar: lee el código que toca el cambio y sigue el flujo real antes de elegir un peldaño. Flojo en la solución, nunca en la lectura.
 
 Flojo, no negligente: la validación en límites de confianza, el manejo de pérdida de datos, la seguridad y la accesibilidad nunca están en riesgo.
 
@@ -147,7 +160,13 @@ pi install git:github.com/DietrichGebert/ponytail
 
 ### OpenCode
 
-Ejecuta OpenCode desde un checkout de este repo (el plugin reutiliza sus `hooks/` y `skills/`), y agrega esto a `opencode.json`:
+Agrega esto a `opencode.json`:
+
+```json
+{ "plugin": ["@dietrichgebert/ponytail"] }
+```
+
+O ejecútalo desde un checkout (el plugin reutiliza sus `hooks/` y `skills/`):
 
 ```json
 { "plugin": ["./.opencode/plugins/ponytail.mjs"] }
@@ -178,6 +197,14 @@ Reutiliza el `gemini-extension.json` de este repo. Una diferencia: Antigravity c
 ### CodeWhale
 
 Lee `AGENTS.md` desde la raíz del proyecto, sin configuración. Copia [`AGENTS.md`](AGENTS.md) a tu proyecto, o ejecuta `codewhale` desde un checkout de este repo. Eso es todo.
+
+### Devin CLI
+
+```bash
+devin plugins install DietrichGebert/ponytail
+```
+
+Instala ponytail como plugin de Devin; los skills quedan disponibles como `/ponytail:ponytail`, `/ponytail:ponytail-review`, etc.
 
 ### OpenClaw
 
@@ -213,7 +240,7 @@ Qué archivos corresponden a qué agente: [Portabilidad de agentes](docs/agent-p
 | `/ponytail-debt` | Recolecta los atajos marcados con `ponytail:` que dejaste pendientes en un registro, para que "después" no se convierta en "nunca". |
 | `/ponytail-help` | Referencia rápida de los comandos anteriores. |
 
-Los comandos requieren un host compatible con skills (Claude Code, Codex, OpenCode, Gemini, pi). En Codex son skills; se invocan con `@` (`@ponytail-review`). Los adaptadores de solo instrucciones (Cursor, Windsurf, Cline, Copilot, Kiro, Antigravity) cargan el ruleset permanente sin los comandos.
+Los comandos requieren un host compatible con skills (Claude Code, Codex, Devin CLI, OpenCode, Gemini, pi, Swival). En Codex son skills; se invocan con `@` (`@ponytail-review`). Los adaptadores de solo instrucciones (Cursor, Windsurf, Cline, Copilot, Kiro, Antigravity) cargan el ruleset permanente sin los comandos.
 
 ## Desarrollo
 
@@ -242,6 +269,27 @@ El código que nunca escribiste escala infinitamente. Cero bugs, cero CVEs, 100%
 **¿Por qué "ponytail"?**
 Ya sabes exactamente por qué.
 
+## Patrocinadores
+
+<p align="center">
+  <a href="https://greenpt.com/">
+    <picture>
+      <source media="(prefers-color-scheme: dark)" srcset="assets/logo-greenpt-dark.svg">
+      <img src="assets/logo-greenpt.svg" width="260" alt="GreenPT">
+    </picture>
+  </a>
+</p>
+
 ## Licencia
 
 [MIT](LICENSE). La licencia más corta que funciona.
+
+## Historial de estrellas
+
+<a href="https://www.star-history.com/dietrichgebert/ponytail#history">
+ <picture>
+   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=DietrichGebert/ponytail&type=Date&theme=dark" />
+   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=DietrichGebert/ponytail&type=Date" />
+   <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=DietrichGebert/ponytail&type=Date" />
+ </picture>
+</a>

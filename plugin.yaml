@@ -1,0 +1,21 @@
+name: ponytail
+version: 4.8.4
+description: Lazy senior dev mode for Hermes Agent, always-on context, bundled skills, and slash commands.
+author: Salaamdev
+provides_hooks:
+  - pre_llm_call
+  - pre_gateway_dispatch
+provides_commands:
+  - ponytail
+  - ponytail-review
+  - ponytail-audit
+  - ponytail-debt
+  - ponytail-gain
+  - ponytail-help
+provides_skills:
+  - ponytail
+  - ponytail-review
+  - ponytail-audit
+  - ponytail-debt
+  - ponytail-gain
+  - ponytail-help

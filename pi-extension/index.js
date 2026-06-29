@@ -56,6 +56,25 @@ export { writeDefaultMode };
 export default function ponytailExtension(pi) {
   let currentMode = DEFAULT_MODE;
   let configuredDefaultMode = getDefaultMode();
+  let isActive = false;
+  let lastCtx = null;
+
+  // -- Status bar --
+  function syncStatus(ctx) {
+    if (ctx) lastCtx = ctx;
+    const c = ctx || lastCtx;
+    if (!c?.ui?.setStatus || !c.ui.theme?.fg) return;
+    const theme = c.ui.theme;
+    if (currentMode === "off") {
+      c.ui.setStatus("ponytail", "");
+      return;
+    }
+    const levelIcons = { lite: "🌿", full: "⚡", ultra: "🔥" };
+    const icon = levelIcons[currentMode] || "";
+    const label = currentMode.toUpperCase();
+    const indicator = isActive ? theme.fg("accent", "●") : theme.fg("dim", "○");
+    c.ui.setStatus("ponytail", indicator + " 🐴 " + theme.fg("muted", "ponytail: ") + theme.fg("text", icon + " " + label));
+  }
 
   const setMode = (mode, ctx) => {
     const normalized = normalizePersistedMode(mode);
@@ -63,6 +82,7 @@ export default function ponytailExtension(pi) {
 
     currentMode = normalized;
     pi.appendEntry("ponytail-mode", { mode: normalized });
+    syncStatus(ctx);
     ctx?.ui?.notify?.(`Ponytail mode set to ${normalized}.`, "info");
   };
 
@@ -148,6 +168,18 @@ export default function ponytailExtension(pi) {
     const entries = ctx?.sessionManager?.getBranch?.() || ctx?.sessionManager?.getEntries?.() || [];
     configuredDefaultMode = getDefaultMode();
     currentMode = resolveSessionMode(entries, configuredDefaultMode);
+    syncStatus(ctx);
+    ctx?.ui?.notify?.(`Ponytail loaded: ${currentMode}`, "info");
+  });
+
+  pi.on("agent_start", async (_event, ctx) => {
+    isActive = true;
+    syncStatus(ctx);
+  });
+
+  pi.on("agent_end", async (_event, ctx) => {
+    isActive = false;
+    syncStatus(ctx);
   });
 
   pi.on("before_agent_start", async (event) => {

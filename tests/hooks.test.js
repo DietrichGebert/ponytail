@@ -8,6 +8,16 @@ const { spawnSync } = require('child_process');
 
 const root = path.join(__dirname, '..');
 
+// isShellSafe gates the statusline setup snippet (issue #200): ordinary install
+// paths pass, paths carrying shell metacharacters are rejected so they never get
+// embedded in a shell command.
+const { isShellSafe } = require('../hooks/ponytail-config');
+assert.equal(isShellSafe('C:\\Users\\x\\.claude\\plugins\\ponytail\\hooks\\ponytail-statusline.ps1'), true);
+assert.equal(isShellSafe('/home/u/.claude/plugins/ponytail/hooks/ponytail-statusline.sh'), true);
+assert.equal(isShellSafe('/tmp/a"&calc.exe&"/x.sh'), false);
+assert.equal(isShellSafe('/tmp/$(calc)/x.sh'), false);
+assert.equal(isShellSafe('/tmp/a;rm -rf/x.sh'), false);
+
 function run(script, env, input = '') {
   return spawnSync(process.execPath, [path.join(root, 'hooks', script)], {
     env: { ...process.env, ...env },
@@ -16,11 +26,19 @@ function run(script, env, input = '') {
   });
 }
 
-// Keep the base env clean so the default-dir checks are deterministic; the
-// CLAUDE_CONFIG_DIR case sets it explicitly.
+// Keep the base env clean so the default-dir / native-Claude checks are
+// deterministic; the CLAUDE_CONFIG_DIR and codex/copilot cases set these
+// explicitly where needed. run() spreads process.env, so a PLUGIN_DATA /
+// COPILOT_PLUGIN_DATA leaked from the dev or CI shell would otherwise steer
+// writeHookOutput into the wrong branch and mis-fire the native assertions.
 delete process.env.CLAUDE_CONFIG_DIR;
+delete process.env.PLUGIN_DATA;
+delete process.env.COPILOT_PLUGIN_DATA;
 
 const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'ponytail-hooks-'));
+// Runs on normal exit and on assertion-throw exit; force makes it idempotent.
+process.on('exit', () => fs.rmSync(temp, { recursive: true, force: true }));
+
 const home = path.join(temp, 'home');
 const pluginData = path.join(temp, 'plugin-data');
 fs.mkdirSync(home, { recursive: true });
@@ -233,5 +251,40 @@ assert.equal(
 output = JSON.parse(result.stdout);
 assert.deepEqual(output, {});
 
-fs.rmSync(temp, { recursive: true, force: true });
+// SubagentStart hook: when ponytail mode is active it injects the ruleset into
+// each subagent (issue #252). Native Claude must get the hookSpecificOutput JSON
+// form, not raw stdout, or the context is dropped.
+const subHome = path.join(temp, 'sub-home');
+const subFlag = path.join(subHome, '.claude', '.ponytail-active');
+fs.mkdirSync(path.dirname(subFlag), { recursive: true });
+const subEnv = { HOME: subHome, USERPROFILE: subHome };
+
+fs.writeFileSync(subFlag, 'full');
+result = run('ponytail-subagent.js', subEnv);
+assert.equal(result.status, 0, result.stderr);
+output = JSON.parse(result.stdout);
+assert.equal(output.hookSpecificOutput.hookEventName, 'SubagentStart');
+assert.match(
+  output.hookSpecificOutput.additionalContext,
+  /PONYTAIL MODE ACTIVE — level: full/,
+);
+
+// No flag → ponytail off → inject nothing (empty stdout, no failure).
+fs.unlinkSync(subFlag);
+result = run('ponytail-subagent.js', subEnv);
+assert.equal(result.status, 0, result.stderr);
+assert.equal(result.stdout, '', 'SubagentStart must stay silent when ponytail is off');
+
+// Codex shares claude-codex-hooks.json, so SubagentStart is reachable under Codex
+// too — assert the codex branch emits the badge plus hookSpecificOutput.
+const subCodex = path.join(temp, 'sub-codex');
+fs.mkdirSync(subCodex, { recursive: true });
+fs.writeFileSync(path.join(subCodex, '.ponytail-active'), 'full');
+result = run('ponytail-subagent.js', { HOME: subHome, USERPROFILE: subHome, PLUGIN_DATA: subCodex });
+assert.equal(result.status, 0, result.stderr);
+output = JSON.parse(result.stdout);
+assert.equal(output.systemMessage, 'PONYTAIL:FULL');
+assert.equal(output.hookSpecificOutput.hookEventName, 'SubagentStart');
+assert.match(output.hookSpecificOutput.additionalContext, /PONYTAIL MODE ACTIVE — level: full/);
+
 console.log('hook compatibility checks passed');
