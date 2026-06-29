@@ -10,8 +10,8 @@ const isCodex = !isCursor && !isCopilot && Boolean(process.env.PLUGIN_DATA);
 
 let stateDir = getClaudeDir();
 if (isCodex) stateDir = process.env.PLUGIN_DATA;
-if (isCursor) stateDir = path.join(os.homedir(), '.cursor');
 if (isCopilot) stateDir = process.env.COPILOT_PLUGIN_DATA;
+if (isCursor) stateDir = path.join(os.homedir(), '.cursor');
 
 const statePath = path.join(stateDir, STATE_FILE);
 

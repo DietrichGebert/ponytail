@@ -1,0 +1,65 @@
+name: Sync upstream
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 */6 * * *"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: sync-upstream
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout fork
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Merge upstream main
+        id: merge
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git remote add upstream https://github.com/DietrichGebert/ponytail.git
+          git fetch upstream main
+          before="$(git rev-parse HEAD)"
+          if ! git merge --no-edit upstream/main; then
+            git merge --abort
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "conflict=true" >> "$GITHUB_OUTPUT"
+            echo "::warning::Upstream sync hit a merge conflict. Resolve locally, then push the merge."
+            exit 0
+          fi
+          after="$(git rev-parse HEAD)"
+          if [ "$before" != "$after" ]; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          fi
+          echo "conflict=false" >> "$GITHUB_OUTPUT"
+
+      - name: Bump Cursor plugin version
+        if: steps.merge.outputs.changed == 'true'
+        run: |
+          node scripts/bump-cursor-plugin-version.js
+          git add .cursor-plugin/plugin.json
+          git commit -m "chore: bump Cursor plugin version"
+
+      - name: Check plugin adapters
+        if: steps.merge.outputs.conflict != 'true'
+        run: |
+          node tests/hooks.test.js
+          node tests/opencode-plugin.test.js
+          node scripts/check-rule-copies.js
+
+      - name: Push synced fork
+        if: steps.merge.outputs.conflict != 'true'
+        run: |
+          git pull --rebase origin main
+          git push origin HEAD:main
