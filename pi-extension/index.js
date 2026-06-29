@@ -155,6 +155,63 @@ export default function ponytailExtension(pi) {
     handler: (_args, ctx) => sendAlias("/skill:ponytail-help", "", ctx),
   });
 
+  pi.registerCommand("ponytail-jedi", {
+    description: "Run /skill:ponytail-jedi",
+    handler: (_args, ctx) => sendAlias("/skill:ponytail-jedi", "", ctx),
+  });
+
+  pi.registerCommand("ponytail-lightsaber", {
+    description: "Run /skill:ponytail-jedi (research)",
+    handler: (_args, ctx) => sendAlias("/skill:ponytail-jedi", "", ctx),
+  });
+
+  pi.registerCommand("ponytail-plan", {
+    description: "Run /skill:ponytail-plan",
+    handler: (_args, ctx) => sendAlias("/skill:ponytail-plan", "", ctx),
+  });
+
+  pi.registerCommand("ponytail-ask", {
+    description: "Run /skill:ponytail-ask",
+    handler: (_args, ctx) => sendAlias("/skill:ponytail-ask", "", ctx),
+  });
+
+  pi.registerShortcut("ponytail:cycleMode", {
+    description: "Cycle ponytail modes (off -> lite -> full -> ultra -> off)",
+    handler: async (ctx) => {
+      const nextModes = { off: "lite", lite: "full", full: "ultra", ultra: "off" };
+      const nextMode = nextModes[currentMode] || "full";
+      setMode(nextMode, ctx);
+    },
+  });
+
+  pi.registerShortcut("ponytail:modeLite", {
+    description: "Set ponytail mode to lite",
+    handler: async (ctx) => {
+      setMode("lite", ctx);
+    },
+  });
+
+  pi.registerShortcut("ponytail:modeFull", {
+    description: "Set ponytail mode to full",
+    handler: async (ctx) => {
+      setMode("full", ctx);
+    },
+  });
+
+  pi.registerShortcut("ponytail:modeUltra", {
+    description: "Set ponytail mode to ultra",
+    handler: async (ctx) => {
+      setMode("ultra", ctx);
+    },
+  });
+
+  pi.registerShortcut("ponytail:modeOff", {
+    description: "Turn ponytail mode off",
+    handler: async (ctx) => {
+      setMode("off", ctx);
+    },
+  });
+
   pi.on("input", async (event) => {
     if (event?.source === "extension") return;
 

@@ -1,0 +1,5 @@
+---
+description: Research SOTA open source solutions instead of starting from scratch
+---
+
+Perform deep open-source SOTA (State of the Art) research for the given task. Do not start from scratch: search, rank, clone, modify, extract, or connect to world-class trusted repositories that can do part or all of the work. Find and reuse existing high-quality, trusted open-source code rather than reinventing the wheel.

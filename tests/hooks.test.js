@@ -209,4 +209,37 @@ assert.equal(output.systemMessage, 'PONYTAIL:FULL');
 assert.equal(output.hookSpecificOutput.hookEventName, 'SubagentStart');
 assert.match(output.hookSpecificOutput.additionalContext, /PONYTAIL MODE ACTIVE — level: full/);
 
+// Droid hook: assert the droid branch emits the badge plus hookSpecificOutput and writes state to ~/.factory/.ponytail-active.
+const droidEnv = {
+  HOME: home,
+  USERPROFILE: home,
+  DROID_PLUGIN_ROOT: '/path/to/droid/plugin',
+  PONYTAIL_DEFAULT_MODE: 'full',
+};
+const droidState = path.join(home, '.factory', '.ponytail-active');
+
+try { fs.unlinkSync(droidState); } catch (e) {}
+
+result = run('ponytail-activate.js', droidEnv);
+assert.equal(result.status, 0, result.stderr);
+assert.equal(fs.readFileSync(droidState, 'utf8'), 'full');
+output = JSON.parse(result.stdout);
+assert.equal(output.systemMessage, 'PONYTAIL:FULL');
+assert.equal(output.hookSpecificOutput.hookEventName, 'SessionStart');
+assert.match(
+  output.hookSpecificOutput.additionalContext,
+  /PONYTAIL MODE ACTIVE — level: full/,
+);
+
+result = run(
+  'ponytail-mode-tracker.js',
+  droidEnv,
+  JSON.stringify({ prompt: '/ponytail ultra' }),
+);
+assert.equal(result.status, 0, result.stderr);
+assert.equal(fs.readFileSync(droidState, 'utf8'), 'ultra');
+output = JSON.parse(result.stdout);
+assert.equal(output.systemMessage, 'PONYTAIL:ULTRA');
+assert.equal(output.hookSpecificOutput.hookEventName, 'UserPromptSubmit');
+
 console.log('hook compatibility checks passed');

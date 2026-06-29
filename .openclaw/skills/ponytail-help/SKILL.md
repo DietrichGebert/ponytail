@@ -26,12 +26,15 @@ Level sticks until changed or session end.
 |-------|---------|--------------|
 | **ponytail** | `/ponytail` | Lazy mode itself. Simplest solution that works. |
 | **ponytail-review** | `/ponytail-review` | Over-engineering review: `L42: yagni: factory, one product. Inline.` |
+| **ponytail-audit** | `/ponytail-audit` | Whole-repo audit for over-engineering, ranked list of what to delete. |
+| **ponytail-debt** | `/ponytail-debt` | Harvest every ponytail: shortcut comment into one debt ledger. |
 | **ponytail-gain** | `/ponytail-gain` | Measured-impact scoreboard: less code, less cost, more speed. |
+| **ponytail-jedi** | `/ponytail-jedi` | SOTA research: search, rank, clone, modify, reuse trusted repos. |
+| **ponytail-plan** | `/ponytail-plan` | Create or simplify implementation plans to be clean, simple, and minimal. |
+| **ponytail-ask** | `/ponytail-ask` | Clarify requirements and ask targeted questions to avoid spec building. |
 | **ponytail-help** | `/ponytail-help` | This card. |
 
-Codex uses `@ponytail`, `@ponytail-review`, and `@ponytail-help`; Claude Code
-and OpenCode use the slash-command forms above (OpenCode ships `/ponytail` and
-`/ponytail-review`).
+Codex uses `@ponytail`, `@ponytail-review`, etc.; Claude Code, OpenCode, and Droid use the slash-command forms.
 
 ## Deactivate
 
