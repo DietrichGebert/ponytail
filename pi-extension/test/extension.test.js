@@ -93,6 +93,17 @@ test("session_start restores latest persisted mode", async () => withTempConfig(
   assert.ok(result.systemPrompt.includes("lite"));
 }));
 
+test("missing systemPrompt does not prepend undefined", async () => withTempConfig(async () => {
+  const { events } = createPiHarness();
+  const ctx = createCommandContext();
+
+  await events.get("session_start")({ reason: "startup" }, ctx);
+  const result = await events.get("before_agent_start")({}, ctx);
+
+  assert.match(result.systemPrompt, /PONYTAIL MODE ACTIVE/);
+  assert.doesNotMatch(result.systemPrompt, /^undefined/);
+}));
+
 test("skill alias commands delegate to Pi skill commands", async () => {
   const { commands, sentUserMessages } = createPiHarness();
   const ctx = createCommandContext();
