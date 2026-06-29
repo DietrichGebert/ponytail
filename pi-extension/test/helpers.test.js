@@ -18,6 +18,7 @@ test("parsePonytailCommand falls back to full when invoked bare and default is o
 
 test("parsePonytailCommand parses modes, status, and default subcommand", () => {
   assert.deepEqual(parsePonytailCommand("ultra", "full"), { type: "set-mode", mode: "ultra" });
+  assert.deepEqual(parsePonytailCommand("review", "full"), { type: "set-mode", mode: "review" });
   assert.deepEqual(parsePonytailCommand("status", "full"), { type: "status" });
   assert.deepEqual(parsePonytailCommand("default lite", "full"), { type: "set-default", mode: "lite" });
 });

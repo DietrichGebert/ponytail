@@ -47,7 +47,7 @@ export function parsePonytailCommand(text, defaultMode = DEFAULT_MODE) {
     return mode ? { type: "set-default", mode } : { type: "invalid", reason: "invalid-default-mode" };
   }
 
-  const mode = normalizeMode(primary);
+  const mode = normalizePersistedMode(primary);
   return mode ? { type: "set-mode", mode } : { type: "invalid", reason: "invalid-mode", mode: primary };
 }
 
