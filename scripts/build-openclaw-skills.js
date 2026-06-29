@@ -23,6 +23,7 @@ const DESCRIPTIONS = {
   'ponytail-debt': 'Harvest every ponytail: shortcut comment into one debt ledger, so deferrals get tracked instead of forgotten. One-shot report.',
   'ponytail-gain': 'Show ponytail measured impact as a scoreboard: less code, less cost, more speed, from the benchmark medians. One-shot display.',
   'ponytail-help': "Quick reference for ponytail's modes, skills, and commands. One-shot display.",
+  'ponytail-playbook': 'Implementation ladder for minimal code, adapted for projects with their own test framework. Defers test discipline to host project rules.',
 };
 
 const NAMES = Object.keys(DESCRIPTIONS);

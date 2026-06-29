@@ -12,6 +12,7 @@ provides_commands:
   - ponytail-debt
   - ponytail-gain
   - ponytail-help
+  - ponytail-playbook
 provides_skills:
   - ponytail
   - ponytail-review
@@ -19,3 +20,4 @@ provides_skills:
   - ponytail-debt
   - ponytail-gain
   - ponytail-help
+  - ponytail-playbook
