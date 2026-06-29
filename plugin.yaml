@@ -1,5 +1,5 @@
 name: ponytail
-version: 4.8.3
+version: 4.8.4
 description: Lazy senior dev mode for Hermes Agent, always-on context, bundled skills, and slash commands.
 author: Salaamdev
 provides_hooks:
