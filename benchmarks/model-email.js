@@ -4,7 +4,7 @@ const { checkPy, pyBlock, TASKS } = require('./robustness-audit.js');
 const skill = fs.readFileSync(path.join(__dirname, '..', 'skills', 'ponytail', 'SKILL.md'), 'utf8');
 const email = TASKS.find(t => t.name === 'email');
 const N = Number(process.env.ME_N) || 100;
-const MODELS = (process.env.ME_MODELS || 'gpt-4.1-mini,gpt-5.4-mini').split(',');
+const MODELS = (process.env.ME_MODELS || 'gpt-4o-mini,gpt-4o').split(',');
 
 const kv = Object.fromEntries(fs.readFileSync(path.join(__dirname, '..', '.env'), 'utf8')
   .split(/\r?\n/).filter(l => l.includes('=') && !l.trim().startsWith('#'))
