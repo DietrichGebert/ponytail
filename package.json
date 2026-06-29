@@ -31,7 +31,8 @@
     "LICENSE"
   ],
   "scripts": {
-    "test": "node scripts/check-rule-copies.js --check-all && node scripts/verify-agents-md.js && node scripts/verify-skills.js"
+    "verify": "node scripts/check-rule-copies.js --check-all && node scripts/verify-agents-md.js && node scripts/verify-skills.js && node scripts/check-versions.js",
+    "test": "npm run verify"
   },
   "publishConfig": {
     "access": "public"

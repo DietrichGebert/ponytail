@@ -13,6 +13,7 @@ if (!fs.existsSync(agentsPath)) {
 }
 
 const content = fs.readFileSync(agentsPath, 'utf8');
+const lowerContent = content.toLowerCase();
 
 const REQUIRED_SECTIONS = [
   'QA Ladder',
@@ -20,6 +21,10 @@ const REQUIRED_SECTIONS = [
   'MUST DO',
   "WON'T DO",
   'Page Object',
+  'Selector Boundary',
+  'selector leakage',
+  'querySelector',
+  'find_element',
   'Test Data',
   'Locator',
   'Assertion',
@@ -31,7 +36,7 @@ const REQUIRED_SECTIONS = [
 let failed = false;
 
 for (const section of REQUIRED_SECTIONS) {
-  if (!content.includes(section)) {
+  if (!lowerContent.includes(section.toLowerCase())) {
     console.error(`AGENTS.md missing section: "${section}"`);
     failed = true;
   }

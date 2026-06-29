@@ -15,11 +15,17 @@ const VERSION_FILES = [
   '.github/plugin/plugin.json',
   'gemini-extension.json',
   'package.json',
+  'plugin.yaml',
 ];
 
 function readVersion(relPath) {
   try {
     const raw = fs.readFileSync(path.join(root, relPath), 'utf8').replace(/^\uFEFF/, '');
+    if (relPath.endsWith('.yaml')) {
+      const match = raw.match(/^version:\s*([^\s#]+)/m);
+      if (!match) throw new Error('missing top-level version');
+      return match[1];
+    }
     return JSON.parse(raw).version;
   } catch (e) {
     throw new Error(`${relPath}: ${e.message}`);

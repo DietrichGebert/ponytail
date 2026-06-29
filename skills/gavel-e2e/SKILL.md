@@ -28,6 +28,7 @@ E2E test authoring workflow. Framework-adaptive via active profile.
 ### Step 2: Create/Update Locator Classes
 
 Add selectors using semantic locators (framework-specific, see active profile).
+This includes nested, parent, row, and dynamic elements: never leave raw selectors in action chains via `locator.locator`, `querySelector`, `closest`, `.find()`, `$`, `$$`, or equivalent APIs.
 
 ### Step 3: Create/Update Action Classes
 
@@ -48,6 +49,7 @@ Run type-checking, linting, then the test. Verify pass before proceeding.
 ## Test Structure Best Practices
 
 - **Specs should be thin**: behavior-focused, no inline selectors
+- **No selector leakage**: actions/pages/specs call named locators only, even for child or dynamic elements
 - **Use web-first assertions**: auto-retrying, no manual waits
 - **Prefer real UI navigation**: through sidebar/menus, not direct URL (unless route tests)
 - **One test = one user journey**: independent, no shared state

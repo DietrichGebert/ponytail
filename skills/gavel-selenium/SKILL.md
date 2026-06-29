@@ -29,6 +29,10 @@ driver.findElement(By.xpath("//button[@aria-label='Submit']"));
 // Prefer: By.id with semantic IDs, By.cssSelector with role/aria
 ```
 
+## Selector Boundary
+
+Only locator classes/attributes may call `driver.find_element`, `element.find_element`, `By.cssSelector`, `By.xpath`, or equivalents. Actions/pages/specs call named locator properties only; nested/dynamic elements become named locator methods such as `delete_button_for_row(name)`.
+
 ## Assertions (explicit wait + assert)
 
 ```python

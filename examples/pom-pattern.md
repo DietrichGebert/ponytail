@@ -69,21 +69,23 @@ class BasePage:
 # pages/dashboard_page.py
 from selenium.webdriver.common.by import By
 
+class DashboardLocators:
+    WELCOME = (By.CSS_SELECTOR, 'h1[role="heading"]')
+    BALANCE = (By.CSS_SELECTOR, '[data-testid="account-balance"]')
+    TRADE_BTN = (By.CSS_SELECTOR, 'button[data-testid="new-trade"]')
+
 class DashboardPage(BasePage):
-    # Locators
-    _WELCOME = (By.CSS_SELECTOR, 'h1[role="heading"]')
-    _BALANCE = (By.CSS_SELECTOR, '[data-testid="account-balance"]')
-    _TRADE_BTN = (By.CSS_SELECTOR, 'button[data-testid="new-trade"]')
+    locators = DashboardLocators
 
     # Actions
     def get_welcome_text(self):
-        return self.wait_for_visible(self._WELCOME).text
+        return self.wait_for_visible(self.locators.WELCOME).text
 
     def get_balance(self):
-        return self.wait_for_visible(self._BALANCE).text
+        return self.wait_for_visible(self.locators.BALANCE).text
 
     def click_new_trade(self):
-        self.wait_for_visible(self._TRADE_BTN).click()
+        self.wait_for_visible(self.locators.TRADE_BTN).click()
 
 # conftest.py — pytest fixture DI
 import pytest
@@ -99,7 +101,7 @@ def test_dashboard_shows_balance(dashboard_page):
     assert balance
 ```
 
-**Pattern**: Class-based POM with inheritance from BasePage. Locators as class attributes (tuples). Actions as methods. pytest fixture for DI.
+**Pattern**: Class-based POM with inheritance from BasePage. Locators in a dedicated class. Actions call named locators. pytest fixture for DI.
 
 ## Cypress — Custom Commands + Service Objects
 
@@ -112,21 +114,27 @@ Cypress.Commands.add('login', (email, password) => {
 });
 
 // pages/dashboard.js — service object pattern
+const dashboardLocators = {
+  welcomeMessage: () => cy.get('h1[role="heading"]'),
+  accountBalance: () => cy.get('[data-testid="account-balance"]'),
+  tradeButton: () => cy.get('button[data-testid="new-trade"]'),
+};
+
 export class DashboardPage {
   visit() {
     cy.visit('/dashboard');
   }
 
   getWelcomeText() {
-    return cy.get('h1[role="heading"]').invoke('text');
+    return dashboardLocators.welcomeMessage().invoke('text');
   }
 
   getBalance() {
-    return cy.get('[data-testid="account-balance"]').invoke('text');
+    return dashboardLocators.accountBalance().invoke('text');
   }
 
   clickNewTrade() {
-    cy.get('button[data-testid="new-trade"]').click();
+    dashboardLocators.tradeButton().click();
   }
 }
 
@@ -147,7 +155,7 @@ describe('Dashboard', () => {
 });
 ```
 
-**Pattern**: Custom commands for shared actions. Service objects for page interactions. `beforeEach` for setup. No class inheritance.
+**Pattern**: Custom commands for shared actions. Locator helpers own selectors. Service objects call named locators. No class inheritance.
 
 ## WebdriverIO — Service Objects
 
@@ -160,10 +168,17 @@ export class BasePage {
 }
 
 // pageobjects/dashboard.page.ts
-export class DashboardPage extends BasePage {
+class DashboardLocators {
   get welcomeMessage() { return $('h1[role="heading"]'); }
   get accountBalance() { return $('[data-testid="account-balance"]'); }
   get tradeButton() { return $('button[data-testid="new-trade"]'); }
+}
+
+export class DashboardPage extends BasePage {
+  private locators = new DashboardLocators();
+  get welcomeMessage() { return this.locators.welcomeMessage; }
+  get accountBalance() { return this.locators.accountBalance; }
+  get tradeButton() { return this.locators.tradeButton; }
 
   async getBalanceText(): Promise<string> {
     await this.accountBalance.waitForDisplayed();
@@ -205,5 +220,5 @@ describe('Dashboard', () => {
 |-----------|----------------|------------|-------------|
 | Playwright | Separate `Locators` class | `test.extend()` fixtures | Mixin (constructor injection) |
 | Selenium | Class attributes (By tuples) | `pytest.fixture` | Inheritance (BasePage) |
-| Cypress | Inline in service objects | `beforeEach` hooks | Custom commands |
-| WebdriverIO | Getter properties in page class | Direct instantiation | Service objects |
+| Cypress | Locator helpers | `beforeEach` hooks | Custom commands |
+| WebdriverIO | Separate locator class | Direct instantiation | Service objects |

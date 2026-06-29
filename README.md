@@ -58,6 +58,22 @@ QA LADDER (test code):
 
 ## Install
 
+Pick one path. Hosted plugins update through their host; copied rule files update by replacing the copied files from this repo.
+
+### OpenCode (npm package)
+```json
+{
+  "plugin": ["@dsolisp/gavel"]
+}
+```
+
+For a local checkout while developing gavel:
+```json
+{
+  "plugin": ["./.opencode/plugins/gavel.mjs"]
+}
+```
+
 ### Qoder
 ```
 # Copy skills/ to .qoder/skills/ and agents/ to .qoder/agents/
@@ -70,22 +86,49 @@ QA LADDER (test code):
 ```
 
 ### Cursor / Windsurf / Cline / Copilot / Kiro
-Copy the matching adapter from this repo:
+Copy the matching adapter from this repo into the target project:
 - `.cursor/rules/gavel.mdc`
 - `.clinerules/gavel.md`
 - `.windsurf/rules/gavel.md`
 - `.kiro/steering/gavel.md`
 - `.github/copilot-instructions.md`
 
-### OpenCode
-```json
-{ "plugin": ["./.opencode/plugins/gavel.mjs"] }
-```
-
 ### Gemini CLI
 ```bash
 gemini extensions install https://github.com/dsolisp/gavel
 ```
+
+## Upgrade
+
+### If you installed a hosted plugin/package
+
+Use the host's normal update flow, then restart the IDE/session so the prompt injection reloads. For OpenCode, update the npm package version used by your environment; for Claude/Gemini, update or reinstall through their plugin/extension manager.
+
+### If you copied adapter files
+
+Replace the copied files with the same paths from the new gavel release:
+
+```bash
+# example from a checkout of this repo
+cp .cursor/rules/gavel.mdc /path/to/project/.cursor/rules/gavel.mdc
+cp .github/copilot-instructions.md /path/to/project/.github/copilot-instructions.md
+```
+
+If you customized a copied file, diff first and keep local project-specific rules below the gavel block.
+
+### After every upgrade
+
+1. Restart the IDE/agent session.
+2. Run `/gavel full` or your preferred mode.
+3. Run `/gavel-detect` in the test repo.
+4. Run `/gavel-review` on one changed test diff to confirm the new rules load.
+
+### Publishing a new gavel version
+
+1. Bump every manifest version together (`package.json`, plugin manifests, `gemini-extension.json`).
+2. Run `npm run verify` from `gavel/`.
+3. Tag the release as `vX.Y.Z` only after `scripts/check-versions.js` passes.
+4. Publish through the configured package/plugin release flow.
 
 ## Commands
 
@@ -192,7 +235,7 @@ node scripts/check-rule-copies.js --check-all  # verify adapter sync
 node scripts/check-versions.js                  # version consistency
 node scripts/verify-agents-md.js                # AGENTS.md sections
 node scripts/verify-skills.js                   # all skills/agents exist
-npm test                                        # all checks
+npm run verify                                  # all repository checks; no build step required
 ```
 
 ## License

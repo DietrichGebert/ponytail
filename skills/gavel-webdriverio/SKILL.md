@@ -20,12 +20,16 @@ $('[data-testid="submit-btn"]')                  // testid (last resort)
 // NEVER: $('.btn-primary') or $('div > span')
 ```
 
+## Selector Boundary
+
+Only locator getters may call `$`, `$$`, `element.$`, or `element.$$`. Actions/pages/specs call named locator getters only; nested/dynamic elements become named getters or methods such as `navItem(section)`.
+
 ## Assertions (built-in wait)
 
 ```typescript
-await expect($('[role="alert"]')).toBeDisplayed();
-await expect($('[role="alert"]')).toHaveText('Success');
-await expect($('input')).toBeEnabled();
+await expect(locators.alert).toBeDisplayed();
+await expect(locators.alert).toHaveText('Success');
+await expect(locators.emailInput).toBeEnabled();
 await expect(browser).toHaveUrl(/\/dashboard/);
 ```
 
@@ -43,12 +47,16 @@ before: async function() {
 ## POM: Service Objects
 
 ```typescript
-class AdminDashboardPage {
-  async open() { await browser.url('/admin/dashboard'); }
+class AdminDashboardLocators {
   get metricsCard() { return $('[data-testid="metrics"]'); }
-  async navigateTo(section: string) {
-    await $('[role="navigation"]').$(section).click();
-  }
+  navItem(section: string) { return $(`[role="navigation"]=${section}`); }
+}
+
+class AdminDashboardPage {
+  locators = new AdminDashboardLocators();
+  async open() { await browser.url('/admin/dashboard'); }
+  get metricsCard() { return this.locators.metricsCard; }
+  async navigateTo(section: string) { await this.locators.navItem(section).click(); }
 }
 ```
 

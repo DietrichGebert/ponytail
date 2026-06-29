@@ -73,10 +73,16 @@ Expected-failure markers are valid for **7 days**. After that, `gavel-fail-audit
 
 ## Page Object Discipline
 
-- Locator classes own selectors only. No assertions, no navigation logic.
+- Locator classes own every element-targeting expression. No assertions, no navigation logic.
 - Action classes own user workflows. They receive locator classes, never raw pages.
 - Page objects compose locators + actions via mixins or composition. Max depth 1.
 - Specs are thin. One assertion per line. No inline selectors. No logic that belongs in actions.
+
+## Selector Boundary Rule
+
+- Selector leakage is still leakage when chained from a locator or element: no raw `locator.locator('...')`, `querySelector(All)`, `closest`, `matches`, `$`, `$$`, `find_element`, `.find()`, or equivalent outside locator classes.
+- Actions/pages/specs may call named locator properties or methods only. If a child, parent, row, or dynamic element is needed, expose it as a named locator like `deleteButtonForRow(name)`.
+- Reading state such as `getAttribute('href')` is allowed; using attributes or DOM traversal to discover another element belongs in the locator layer.
 
 ## Test Data Discipline
 

@@ -15,10 +15,14 @@ Cypress-specific patterns that supplement the universal Test Constitution.
 ```javascript
 // PRIORITY ORDER:
 cy.get('[role="button"]').contains('Submit')    // semantic + text
-cy.get('label').contains('Email').parent().find('input')  // label association
+cy.get('[aria-label="Email"]')                  // labeled control
 cy.get('[data-testid="submit-btn"]')            // testid (last resort)
 // NEVER: cy.get('.btn-primary') or cy.get('div > span')
 ```
+
+## Selector Boundary
+
+Selectors belong in custom commands or locator helpers, not specs/actions. Do not hide raw selectors in chains like `.find('...')`, `.closest('...')`, `.filter('...')`, or `cy.contains(selector, text)` outside that locator boundary.
 
 ## Assertions (auto-retry, built-in)
 
@@ -51,10 +55,15 @@ Cypress.Commands.add('adminDashboard', () => {
 
 ```javascript
 // pages/AdminDashboardPage.js
+const dashboardLocators = {
+  metricsCard: () => cy.get('[data-testid="metrics"]'),
+  navItem: (section) => cy.contains('[role="navigation"] a', section),
+};
+
 export class AdminDashboardPage {
   visit() { cy.visit('/admin/dashboard'); }
-  get metricsCard() { return cy.get('[data-testid="metrics"]'); }
-  navigateTo(section) { cy.get('[role="navigation"]').contains(section).click(); }
+  get metricsCard() { return dashboardLocators.metricsCard(); }
+  navigateTo(section) { dashboardLocators.navItem(section).click(); }
 }
 ```
 
@@ -62,7 +71,7 @@ export class AdminDashboardPage {
 
 Cypress auto-retries assertions. NEVER use `cy.wait(2000)`. Use:
 ```javascript
-cy.get('.loading').should('not.exist');        // wait for loading to disappear
+cy.get('[role="status"]').should('not.exist'); // wait for loading to disappear
 cy.intercept('GET', '/api/data').as('data');
 cy.wait('@data');                               // wait for specific network call
 ```

@@ -22,6 +22,7 @@ Tags:
 
 - `over-test:` multiple assertions checking the same state. Replacement: one focused assertion.
 - `fat-spec:` logic, selectors, or data in the spec that belongs in POM/actions/factories. Replacement: thin spec + extracted helper.
+- `selector-leak:` raw selector introduced outside the locator layer, including chained locator/WebElement/DOM traversal. Replacement: named locator getter/method.
 - `css-loc:` CSS or XPath selector used. Replacement: semantic locator (getByRole, getByLabel, etc.).
 - `hardcoded:` string, ID, URL, or credential in test body. Replacement: factory or fixture.
 - `no-step:` logical grouping without test.step() / subTest / equivalent. Replacement: wrap in step.
@@ -37,6 +38,7 @@ Bad: "This test might have too many assertions, consider reducing them."
 Good:
 - `L12-28: over-test: 5 assertions all check the same modal is visible. One toBeVisible() on the modal container.`
 - `L8: css-loc: page.locator('.submit-btn'). Click via getByRole('button', { name: 'Submit' }).`
+- `L18: selector-leak: locators.modal.locator('button.close'). Move closeButton to the locator class.`
 - `L15: hardcoded: 'test@example.com' in test body. UserFactory.create() for test data.`
 - `L3-20: fat-spec: inline selectors and navigation logic. Extract to AdminChallengesPage POM.`
 - `L5: no-step: 30-line test with no logical grouping. Wrap navigation, action, and assertion in test.step().`

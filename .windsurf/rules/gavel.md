@@ -42,6 +42,12 @@ Before writing any test, stop at the first rung that holds:
 - Composition via mixins or constructor injection, not deep inheritance
 - Max depth 1 — prefer flat composition
 
+## Selector Boundary Rule
+
+- Locator classes own every element-targeting expression.
+- No selector leakage through chained APIs outside locator classes: `locator.locator('...')`, `querySelector(All)`, `closest`, `matches`, `$`, `$$`, `find_element`, `.find()`, or equivalents.
+- Actions/pages/specs call named locators only; child, parent, row, or dynamic elements become named locator methods like `deleteButtonForRow(name)`.
+
 ## Test Data Discipline
 
 - Factories for all test data — `Factory.create()` pattern

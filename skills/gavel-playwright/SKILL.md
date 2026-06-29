@@ -22,6 +22,10 @@ page.getByTestId('submit-btn')                        // 5th: testid (last resor
 // NEVER: page.locator('.btn') or page.locator('//div')
 ```
 
+## Selector Boundary
+
+Only locator classes may create or refine element targets. Actions/pages/specs must not call `locator.locator('...')`, `page.$`, `$eval`, `evaluate()` with `querySelector(All)`, `closest`, or `matches`. Expose nested/dynamic targets as named locators such as `deleteButtonForRow(name)`.
+
 ## Assertions (web-first, auto-retrying)
 
 ```typescript
@@ -114,7 +118,7 @@ Use these instead of third-party tools where possible.
 
 ```typescript
 // Built-in ARIA snapshot assertion. No axe-core dependency for the common cases.
-await expect(page.locator('main')).toMatchAriaSnapshot(`
+await expect(locators.main).toMatchAriaSnapshot(`
   - heading "Dashboard"
   - button "Refresh"
 `);
@@ -131,11 +135,11 @@ await new AxeBuilder({ page }).analyze(); // run after expect.toPass()
 await expect(page).toHaveScreenshot('dashboard.png', { maxDiffPixels: 100 });
 
 // Element-only visual diff (use sparingly; full-page is usually right):
-await expect(page.locator('nav')).toHaveScreenshot('navbar.png');
+await expect(locators.nav).toHaveScreenshot('navbar.png');
 
 // Mask dynamic regions so the diff focuses on what changed:
 await expect(page).toHaveScreenshot('dashboard.png', {
-  mask: [page.locator('[data-testid="timestamp"]')],
+  mask: [locators.timestamp],
 });
 ```
 

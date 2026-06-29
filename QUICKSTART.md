@@ -4,13 +4,20 @@ The judge's hammer for test quality. Five commands and one audit. Ten minutes fr
 
 ## 1. Install (1 minute)
 
+OpenCode/npm:
+```json
+{ "plugin": ["@dsolisp/gavel"] }
+```
+
+Claude Code:
 ```bash
-# Claude Code
 /plugin marketplace add dsolisp/gavel
 /plugin install gavel@gavel
 ```
 
-For other IDEs: see [README.md](README.md). The plugin auto-loads the QA Constitution on every session.
+For Cursor, Windsurf, Cline, Copilot, Kiro, Gemini, and copied adapters: see [README.md#install](README.md#install). The plugin auto-loads the QA Constitution on every session.
+
+Upgrade later through your host's plugin/package update flow, or replace copied adapter files from the new release. See [README.md#upgrade](README.md#upgrade).
 
 ## 2. Open your test repo (1 minute)
 

@@ -21,6 +21,7 @@ Same categories as gavel-review, plus suite-level findings:
 - `dup-factory:` factory that duplicates another factory's output. Replacement: consolidate.
 - `orphan-test:` test with no matching feature/ticket, or testing removed functionality. Replacement: delete or verify relevance.
 - `css-loc:` CSS/XPath selector count in the suite. Replacement: semantic locators.
+- `selector-leak:` chained raw selector count outside locator classes (`locator.locator`, `querySelector`, `closest`, `.find()`, `$`, `find_element`). Replacement: named locators.
 - `hardcoded:` hardcoded data count in test bodies. Replacement: factories.
 - `no-step:` tests without logical grouping. Replacement: test.step().
 - `manual-wait:` manual wait/sleep count. Replacement: web-first assertions.
@@ -34,7 +35,7 @@ Scan for:
 2. Dead locator getters (grep for getter usage across actions/specs)
 3. Duplicate factories (compare factory outputs)
 4. Orphan tests (tests referencing removed features or tickets)
-5. Constitution violations by count (CSS locators, hardcoded data, manual waits, missing steps)
+5. Constitution violations by count (CSS locators, selector leaks, hardcoded data, manual waits, missing steps)
 6. Flake risk indicators (shared accounts, no cleanup, execution-order tests)
 
 ## Output
