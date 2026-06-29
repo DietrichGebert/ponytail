@@ -13,14 +13,14 @@ const { pathToFileURL } = require('url');
 // plugin resolves its state path once at load (as it does under a real OpenCode
 // process, where XDG_CONFIG_HOME is already set). The dynamic import below runs
 // after this assignment, so the ordering holds.
-const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'ponytail-opencode-'));
+const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'graybeard-opencode-'));
 process.env.XDG_CONFIG_HOME = tmp;
-delete process.env.PONYTAIL_DEFAULT_MODE;
-const statePath = path.join(tmp, 'opencode', '.ponytail-active');
+delete process.env.GRAYBEARD_DEFAULT_MODE;
+const statePath = path.join(tmp, 'opencode', '.graybeard-active');
 
 let loadPlugin, parseCommandFile;
 test.before(async () => {
-  const url = pathToFileURL(path.join(__dirname, '..', '.opencode', 'plugins', 'ponytail.mjs'));
+  const url = pathToFileURL(path.join(__dirname, '..', '.opencode', 'plugins', 'graybeard.mjs'));
   const mod = await import(url);
   loadPlugin = mod.default;
   parseCommandFile = mod.parseCommandFile;
@@ -31,26 +31,26 @@ function transform(hooks) {
   return hooks['experimental.chat.system.transform']({ model: {} }, output).then(() => output.system);
 }
 
-test('system.transform injects the ruleset at the default mode (full)', async () => {
+test('system.transform injects the ruleset at the default mode (balanced)', async () => {
   try { fs.unlinkSync(statePath); } catch (e) {}
   const hooks = await loadPlugin({});
   const system = await transform(hooks);
   assert.equal(system.length, 1);
-  assert.match(system[0], /PONYTAIL MODE ACTIVE — level: full/);
-  assert.match(system[0], /lazy senior developer/);
+  assert.match(system[0], /GRAYBEARD MODE ACTIVE — level: balanced/);
+  assert.match(system[0], /stack-native/);
 });
 
-test('command.execute.before persists /ponytail ultra, transform follows it', async () => {
+test('command.execute.before persists /graybeard strict, transform follows it', async () => {
   const hooks = await loadPlugin({});
-  await hooks['command.execute.before']({ command: 'ponytail', arguments: 'ultra', sessionID: 's' });
-  assert.equal(fs.readFileSync(statePath, 'utf8'), 'ultra');
+  await hooks['command.execute.before']({ command: 'graybeard', arguments: 'strict', sessionID: 's' });
+  assert.equal(fs.readFileSync(statePath, 'utf8'), 'strict');
   const system = await transform(hooks);
-  assert.match(system[0], /PONYTAIL MODE ACTIVE — level: ultra/);
+  assert.match(system[0], /GRAYBEARD MODE ACTIVE — level: strict/);
 });
 
-test('/ponytail off persists off and transform injects nothing', async () => {
+test('/graybeard off persists off and transform injects nothing', async () => {
   const hooks = await loadPlugin({});
-  await hooks['command.execute.before']({ command: 'ponytail', arguments: 'off', sessionID: 's' });
+  await hooks['command.execute.before']({ command: 'graybeard', arguments: 'off', sessionID: 's' });
   assert.equal(fs.readFileSync(statePath, 'utf8'), 'off');
   const system = await transform(hooks);
   assert.deepEqual(system, []);

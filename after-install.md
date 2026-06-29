@@ -1,22 +1,17 @@
-# Ponytail for Hermes installed
+# Graybeard Installed
 
-Enable it if you did not install with `--enable`:
-
-```bash
-hermes plugins enable ponytail
-```
-
-Restart Hermes or the gateway after enabling.
-
-In shared gateways, restrict `/ponytail` to trusted users with Hermes slash-command access controls; runtime mode is process-local.
+Graybeard is active in `balanced` mode by default.
 
 Commands:
 
-- `/ponytail [lite|full|ultra|off]`
-- `/ponytail-review [target]`
-- `/ponytail-audit [target]`
-- `/ponytail-debt`
-- `/ponytail-gain`
-- `/ponytail-help`
+- `/graybeard advisory`
+- `/graybeard balanced`
+- `/graybeard strict`
+- `/graybeard off`
+- `/graybeard-review`
+- `/graybeard-audit`
+- `/graybeard-help`
 
-Bundled skills are available as `ponytail:ponytail`, `ponytail:ponytail-review`, `ponytail:ponytail-audit`, `ponytail:ponytail-debt`, `ponytail:ponytail-gain`, and `ponytail:ponytail-help`.
+Bundled skills are available as `graybeard:graybeard`,
+`graybeard:graybeard-review`, `graybeard:graybeard-audit`, and
+`graybeard:graybeard-help`.

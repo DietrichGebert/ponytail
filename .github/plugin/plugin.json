@@ -1,15 +1,15 @@
 {
-  "name": "ponytail",
-  "description": "Lazy senior dev mode. Forces the simplest, shortest solution that actually works: YAGNI, stdlib first, no unrequested abstractions.",
+  "name": "graybeard",
+  "description": "Stack-aware senior dev mode for AI agents.",
   "version": "4.8.4",
   "author": {
-    "name": "Dietrich Gebert",
-    "url": "https://github.com/DietrichGebert"
+    "name": "Allan Monge",
+    "url": "https://github.com/allanmongej"
   },
-  "homepage": "https://github.com/DietrichGebert/ponytail",
-  "repository": "https://github.com/DietrichGebert/ponytail",
+  "homepage": "https://github.com/allanmongej/graybeard",
+  "repository": "https://github.com/allanmongej/graybeard",
   "license": "MIT",
-  "keywords": ["yagni", "minimalism", "code-review", "productivity"],
+  "keywords": ["yagni", "minimalism", "code-review", "productivity", "best-practices"],
   "commands": "commands/",
   "skills": "skills/",
   "hooks": "hooks/copilot-hooks.json"

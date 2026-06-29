@@ -17,24 +17,24 @@ function runUninstall(env) {
 
 delete process.env.CLAUDE_CONFIG_DIR;
 
-const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'ponytail-uninstall-'));
+const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'graybeard-uninstall-'));
 process.on('exit', () => fs.rmSync(temp, { recursive: true, force: true }));
 
 const home = path.join(temp, 'home');
 const claudeDir = path.join(home, '.claude');
 fs.mkdirSync(claudeDir, { recursive: true });
 
-const flagPath = path.join(claudeDir, '.ponytail-active');
-fs.writeFileSync(flagPath, 'full');
+const flagPath = path.join(claudeDir, '.graybeard-active');
+fs.writeFileSync(flagPath, 'balanced');
 
-const configDir = path.join(temp, 'config-home', 'ponytail');
+const configDir = path.join(temp, 'config-home', 'graybeard');
 fs.mkdirSync(configDir, { recursive: true });
 const configPath = path.join(configDir, 'config.json');
-fs.writeFileSync(configPath, JSON.stringify({ defaultMode: 'ultra' }));
+fs.writeFileSync(configPath, JSON.stringify({ defaultMode: 'strict' }));
 
 const settingsPath = path.join(claudeDir, 'settings.json');
 fs.writeFileSync(settingsPath, JSON.stringify({
-  statusLine: { type: 'command', command: 'bash /some/path/ponytail-statusline.sh' },
+  statusLine: { type: 'command', command: 'bash /some/path/graybeard-statusline.sh' },
 }));
 
 const env = {
@@ -52,7 +52,7 @@ const settingsAfter = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
 assert.equal(
   settingsAfter.statusLine,
   undefined,
-  'ponytail statusLine entry must be removed',
+  'graybeard statusLine entry must be removed',
 );
 
 // A user's own, unrelated statusLine must survive untouched.

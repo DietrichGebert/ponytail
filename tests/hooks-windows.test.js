@@ -16,7 +16,7 @@ const HOST_PLUGIN_MANIFESTS = [
   '.claude-plugin/plugin.json',
   '.codex-plugin/plugin.json',
 ];
-// cmd.exe variable syntax (%FOO%); PowerShell leaves it literal, breaking the path.
+// cmd.exe variable syntax (%FOO%); PowerShell leaves it advisoryral, breaking the path.
 const CMD_VAR_SYNTAX = /%[A-Za-z_][A-Za-z0-9_]*%/;
 // PowerShell 5.1 rejects these POSIX shell guards when a host runs `command`.
 const POSIX_GUARD_SYNTAX = /\bcommand\s+-v\b|&&|\|\||>\/dev\/null|2>&1/;
@@ -58,7 +58,7 @@ test('shared hook commands keep lifecycle hooks non-blocking', () => {
     .filter(Boolean);
   assert.ok(commands.length > 0, 'expected at least one shared command entry');
   for (const cmd of commands) {
-    assert.match(cmd, /;\s*exit 0$/, `command must exit successfully if node or the hook script fails: ${cmd}`);
+    assert.match(cmd, /;\s*exit 0$/, `command must exit successbalancedy if node or the hook script fails: ${cmd}`);
   }
 });
 

@@ -1,6 +1,6 @@
 {
-  "name": "ponytail",
+  "name": "graybeard",
   "version": "4.8.4",
-  "description": "Lazy senior dev mode. Forces the simplest, shortest solution that actually works: YAGNI, stdlib first, no unrequested abstractions.",
+  "description": "Stack-aware senior dev mode for AI agents.",
   "contextFileName": "AGENTS.md"
 }

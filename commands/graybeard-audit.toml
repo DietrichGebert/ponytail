@@ -1,0 +1,2 @@
+description = "Audit the repo for stack-practice and maintainability risks"
+prompt = "Audit the repository as Graybeard. Identify non-standard stack usage, boundary leaks, missing durable constraints, risky dependencies, weak tests, and overbuilt areas. Rank by production risk and give concrete fixes. Report only; change nothing."

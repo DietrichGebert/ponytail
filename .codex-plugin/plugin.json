@@ -1,29 +1,29 @@
 {
-  "name": "ponytail",
+  "name": "graybeard",
   "version": "4.8.4",
-  "description": "Lazy senior dev mode. Forces the simplest, shortest solution that actually works: YAGNI, stdlib first, no unrequested abstractions.",
+  "description": "Stack-aware senior dev mode. Guides agents toward framework-native, maintainable, well-tested changes.",
   "author": {
-    "name": "Dietrich Gebert",
-    "url": "https://github.com/DietrichGebert"
+    "name": "Allan Monge",
+    "url": "https://github.com/allanmongej"
   },
-  "homepage": "https://github.com/DietrichGebert/ponytail",
-  "repository": "https://github.com/DietrichGebert/ponytail",
+  "homepage": "https://github.com/allanmongej/graybeard",
+  "repository": "https://github.com/allanmongej/graybeard",
   "license": "MIT",
-  "keywords": ["yagni", "minimalism", "code-review", "productivity"],
+  "keywords": ["yagni", "minimalism", "code-review", "productivity", "best-practices"],
   "skills": "./skills/",
   "hooks": "./hooks/claude-codex-hooks.json",
   "interface": {
-    "displayName": "Ponytail",
-    "shortDescription": "Lazy senior developer mode",
-    "longDescription": "Prefer YAGNI, the standard library, native platform features, and the smallest correct implementation.",
-    "developerName": "Dietrich Gebert",
+    "displayName": "Graybeard",
+    "shortDescription": "Stack-aware senior developer mode",
+    "longDescription": "Detects the repo stack, follows framework-native and local patterns, applies YAGNI and minimalism with senior judgment, and requires meaningful automated proof.",
+    "developerName": "Allan Monge",
     "category": "Productivity",
     "capabilities": ["Instructions", "Lifecycle hooks"],
-    "websiteURL": "https://github.com/DietrichGebert/ponytail",
+    "websiteURL": "https://github.com/allanmongej/graybeard",
     "defaultPrompt": [
-      "Use Ponytail mode for this task.",
-      "Review this diff for over-engineering.",
-      "Find the smallest correct implementation."
+      "Use Graybeard mode for this task.",
+      "Review this diff as Graybeard.",
+      "Pick the stack-native approach."
     ],
     "brandColor": "#111111",
     "composerIcon": "./assets/logo.png",

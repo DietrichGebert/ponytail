@@ -6,10 +6,10 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/ponytail-activate.js\"; exit 0",
-            "commandWindows": "if (Get-Command node -ErrorAction SilentlyContinue) { node \"$env:CLAUDE_PLUGIN_ROOT\\hooks\\ponytail-activate.js\" }",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/graybeard-activate.js\"; exit 0",
+            "commandWindows": "if (Get-Command node -ErrorAction SilentlyContinue) { node \"$env:CLAUDE_PLUGIN_ROOT\\hooks\\graybeard-activate.js\" }",
             "timeout": 5,
-            "statusMessage": "Loading ponytail mode..."
+            "statusMessage": "Loading graybeard mode..."
           }
         ]
       }
@@ -19,10 +19,10 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/ponytail-subagent.js\"; exit 0",
-            "commandWindows": "if (Get-Command node -ErrorAction SilentlyContinue) { node \"$env:CLAUDE_PLUGIN_ROOT\\hooks\\ponytail-subagent.js\" }",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/graybeard-subagent.js\"; exit 0",
+            "commandWindows": "if (Get-Command node -ErrorAction SilentlyContinue) { node \"$env:CLAUDE_PLUGIN_ROOT\\hooks\\graybeard-subagent.js\" }",
             "timeout": 5,
-            "statusMessage": "Loading ponytail mode..."
+            "statusMessage": "Loading graybeard mode..."
           }
         ]
       }
@@ -32,10 +32,10 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/ponytail-mode-tracker.js\"; exit 0",
-            "commandWindows": "if (Get-Command node -ErrorAction SilentlyContinue) { node \"$env:CLAUDE_PLUGIN_ROOT\\hooks\\ponytail-mode-tracker.js\" }",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/graybeard-mode-tracker.js\"; exit 0",
+            "commandWindows": "if (Get-Command node -ErrorAction SilentlyContinue) { node \"$env:CLAUDE_PLUGIN_ROOT\\hooks\\graybeard-mode-tracker.js\" }",
             "timeout": 5,
-            "statusMessage": "Tracking ponytail mode..."
+            "statusMessage": "Tracking graybeard mode..."
           }
         ]
       }

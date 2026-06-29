@@ -38,7 +38,7 @@ if (slugs.length === 0) {
   process.exit(1);
 }
 
-// "ponytail-review" -> "Ponytail Review"
+// "graybeard-review" -> "Graybeard Review"
 const displayName = (slug) =>
   slug.split('-').map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
 

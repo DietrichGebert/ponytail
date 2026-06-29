@@ -1,6 +1,6 @@
 # Platform-Native Solutions
 
-The lazy senior dev's first question is always: *does the platform already do this?*
+The stack-aware senior dev's first question is often: *does the platform already do this?*
 
 This document answers that question for the most common cases. Before reaching for a package, scan here. The platform ships with your app for free, doesn't break on updates, and was written by people whose job is exactly that problem.
 
@@ -79,7 +79,7 @@ Libraries people install that the runtime already ships.
 
 **Debounce one-liner** (no library):
 ```js
-// ponytail: 3 lines beats a dependency
+// graybeard: 3 lines beats a dependency
 let t;
 const debounce = (fn, ms) => (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), ms); };
 ```

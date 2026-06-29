@@ -1,0 +1,5 @@
+---
+description: Quick reference for Graybeard modes and commands
+---
+
+Show the Graybeard quick reference. One shot, change nothing. Modes: /graybeard advisory, /graybeard balanced, /graybeard strict, /graybeard off. Commands: /graybeard-review, /graybeard-audit, /graybeard-help. Default: balanced. Config: GRAYBEARD_DEFAULT_MODE or ~/.config/graybeard/config.json.

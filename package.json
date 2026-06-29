@@ -1,25 +1,25 @@
 {
-  "name": "@dietrichgebert/ponytail",
+  "name": "@allanmongej/graybeard",
   "version": "4.8.4",
-  "description": "Lazy senior dev mode for AI agents. The best code is the code you never wrote.",
-  "keywords": ["opencode-plugin", "opencode", "ponytail", "pi-package", "pi", "skills"],
+  "description": "Stack-aware senior dev mode for AI agents.",
+  "keywords": ["opencode-plugin", "opencode", "graybeard", "pi-package", "pi", "skills", "yagni", "minimalism", "code-review", "productivity"],
   "license": "MIT",
   "author": {
-    "name": "Dietrich Gebert",
-    "url": "https://github.com/DietrichGebert"
+    "name": "Allan Monge",
+    "url": "https://github.com/allanmongej"
   },
-  "homepage": "https://github.com/DietrichGebert/ponytail",
+  "homepage": "https://github.com/allanmongej/graybeard",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/DietrichGebert/ponytail.git"
+    "url": "git+https://github.com/allanmongej/graybeard.git"
   },
   "bugs": {
-    "url": "https://github.com/DietrichGebert/ponytail/issues"
+    "url": "https://github.com/allanmongej/graybeard/issues"
   },
-  "main": "./.opencode/plugins/ponytail.mjs",
+  "main": "./.opencode/plugins/graybeard.mjs",
   "exports": {
-    ".": "./.opencode/plugins/ponytail.mjs",
-    "./plugin": "./.opencode/plugins/ponytail.mjs"
+    ".": "./.opencode/plugins/graybeard.mjs",
+    "./plugin": "./.opencode/plugins/graybeard.mjs"
   },
   "files": [
     "AGENTS.md",

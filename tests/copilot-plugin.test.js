@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Smoke test for the Copilot plugin adapter: keep command wiring minimal and
-// ensure the debt command is part of the shared command surface.
+// ensure the shared command surface is present.
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -9,19 +9,19 @@ const path = require('path');
 
 const root = path.join(__dirname, '..');
 const REQUIRED_COMMAND_FILES = [
-  'ponytail.toml',
-  'ponytail-review.toml',
-  'ponytail-audit.toml',
-  'ponytail-debt.toml',
+  'graybeard.toml',
+  'graybeard-review.toml',
+  'graybeard-audit.toml',
+  'graybeard-help.toml',
 ];
 
 function readJSON(relPath) {
   return JSON.parse(fs.readFileSync(path.join(root, relPath), 'utf8'));
 }
 
-test('copilot plugin command directory includes ponytail-debt', () => {
+test('copilot plugin command directory includes shared commands', () => {
   const manifest = readJSON('.github/plugin/plugin.json');
-  assert.equal(manifest.name, 'ponytail');
+  assert.equal(manifest.name, 'graybeard');
   assert.equal(manifest.commands, 'commands/');
 
   for (const file of REQUIRED_COMMAND_FILES) {

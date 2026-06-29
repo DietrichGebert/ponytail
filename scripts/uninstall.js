@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// ponytail — removes state ponytail wrote outside the plugin's own files:
+// graybeard — removes state graybeard wrote outside the plugin's own files:
 // the mode flag, the config file, and the statusLine entry it added to
 // settings.json. Plugin files themselves are removed by each host's own
 // uninstall command (see README); this only cleans up what those commands
@@ -7,7 +7,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const { getConfigPath, getClaudeDir } = require('../hooks/ponytail-config');
+const { getConfigPath, getClaudeDir } = require('../hooks/graybeard-config');
 
 function removeIfExists(filePath, label) {
   try {
@@ -18,7 +18,7 @@ function removeIfExists(filePath, label) {
   }
 }
 
-removeIfExists(path.join(getClaudeDir(), '.ponytail-active'), 'mode flag');
+removeIfExists(path.join(getClaudeDir(), '.graybeard-active'), 'mode flag');
 removeIfExists(getConfigPath(), 'config file');
 
 const settingsPath = path.join(getClaudeDir(), 'settings.json');
@@ -26,14 +26,14 @@ try {
   const raw = fs.readFileSync(settingsPath, 'utf8').replace(/^\uFEFF/, '');
   const settings = JSON.parse(raw);
   const cmd = settings.statusLine && settings.statusLine.command;
-  // ponytail: substring-match the script name, then drop the whole statusLine
-  // key. A combined statusline (e.g. caveman+ponytail) whose command contains
-  // "ponytail-statusline" gets removed wholesale. Parse out only ponytail's part
+  // graybeard: substring-match the script name, then drop the whole statusLine
+  // key. A combined statusline whose command contains
+  // "graybeard-statusline" gets removed wholesale. Parse out only graybeard's part
   // if combined statuslines become common.
-  if (typeof cmd === 'string' && cmd.includes('ponytail-statusline')) {
+  if (typeof cmd === 'string' && cmd.includes('graybeard-statusline')) {
     delete settings.statusLine;
     fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2), 'utf8');
-    console.log(`Removed ponytail statusLine entry from ${settingsPath}`);
+    console.log(`Removed graybeard statusLine entry from ${settingsPath}`);
   }
 } catch (e) {
   if (e.code !== 'ENOENT') throw e;

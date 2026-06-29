@@ -1,7 +1,7 @@
 #!/usr/bin/env node
-// Every ponytail command the pi extension registers must also ship as a
+// Every graybeard command the pi extension registers must also ship as a
 // file-based command for the hosts that need one: Claude Code (commands/*.toml,
-// which Gemini CLI reuses) and OpenCode (.opencode/command/*.md). /ponytail-help
+// which Gemini CLI reuses) and OpenCode (.opencode/command/*.md). /graybeard-help
 // was advertised in the README and the help card but missing both files; this
 // guards that drift -- a registered command with no adapter file fails here.
 
@@ -17,7 +17,7 @@ const piSource = fs.readFileSync(path.join(root, 'pi-extension', 'index.js'), 'u
 const commands = [...piSource.matchAll(/registerCommand\(["']([\w-]+)["']/g)].map((m) => m[1]);
 
 test('pi registers at least the base command', () => {
-  assert.ok(commands.includes('ponytail'), 'expected pi to register a ponytail command');
+  assert.ok(commands.includes('graybeard'), 'expected pi to register a graybeard command');
 });
 
 test('every registered command ships a Claude commands/*.toml', () => {
