@@ -10,10 +10,17 @@ const os = require('os');
 const path = require('path');
 const { spawnSync } = require('child_process');
 
-const commands = ['ponytail', 'ponytail-review', 'ponytail-audit', 'ponytail-debt', 'ponytail-gain', 'ponytail-help'];
-const skillCommands = commands.filter((name) => name !== 'ponytail');
-
 const root = path.join(__dirname, '..');
+const commands = fs.readdirSync(path.join(root, 'commands'))
+  .filter((name) => name.endsWith('.toml'))
+  .map((name) => path.basename(name, '.toml'))
+  .sort();
+
+function skillDirs() {
+  return fs.readdirSync(path.join(root, 'skills'))
+    .filter((name) => fs.existsSync(path.join(root, 'skills', name, 'SKILL.md')))
+    .sort();
+}
 
 function python(script, env = {}) {
   const result = spawnSync('python3', ['-c', script], {
@@ -32,14 +39,11 @@ test('Hermes plugin manifest matches runtime skills, hooks, commands, and packag
   assert.ok(fs.existsSync(manifestPath), 'missing root plugin.yaml');
   const manifest = fs.readFileSync(manifestPath, 'utf8');
   const packageJson = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
-  const skillDirs = fs.readdirSync(path.join(root, 'skills'))
-    .filter((name) => fs.existsSync(path.join(root, 'skills', name, 'SKILL.md')))
-    .sort();
 
   assert.match(manifest, /^name:\s*ponytail$/m);
   assert.match(manifest, new RegExp(`^version:\\s*${packageJson.version}$`, 'm'));
   assert.deepEqual(commands.filter((name) => manifest.includes(`  - ${name}`)), commands);
-  assert.deepEqual(skillDirs.filter((name) => manifest.includes(`  - ${name}`)), skillDirs);
+  assert.deepEqual(skillDirs().filter((name) => manifest.includes(`  - ${name}`)), skillDirs());
   assert.match(manifest, /pre_llm_call/);
   assert.match(manifest, /pre_gateway_dispatch/);
 });
@@ -66,18 +70,10 @@ mod.register(ctx)
 print(json.dumps({'skills': ctx.skills, 'hooks': ctx.hooks, 'commands': ctx.commands}, sort_keys=True))
 `);
   const data = JSON.parse(output);
-  assert.deepEqual(data.skills.map(([name]) => name).sort(), [
-    'ponytail',
-    'ponytail-audit',
-    'ponytail-debt',
-    'ponytail-gain',
-    'ponytail-help',
-    'ponytail-review',
-  ]);
+  assert.deepEqual(data.skills.map(([name]) => name).sort(), skillDirs());
   assert.ok(data.skills.every(([, skillPath]) => skillPath.endsWith('/SKILL.md')));
   assert.ok(data.hooks.includes('pre_llm_call'));
-  assert.ok(data.commands.includes('ponytail'));
-  assert.ok(data.commands.includes('ponytail-review'));
+  assert.deepEqual(data.commands.sort(), commands);
 });
 
 test('Hermes plugin builds mode-aware injected context from the canonical skill', () => {
@@ -207,16 +203,16 @@ spec.loader.exec_module(mod)
 class Event:
     def __init__(self, text): self.text = text
 cases = {}
-for text in ['/ponytail-review x', '/ponytail_audit repo', '/ponytail-debt', '/ponytail-help', '/status', 'hello']:
+for text in ${JSON.stringify(commands.filter((name) => name !== 'ponytail').map((name) => `/${name} target`))} + ['/status', 'hello']:
     cases[text] = mod.rewrite_gateway_command(event=Event(text))
 print(json.dumps(cases, sort_keys=True))
 `);
   const data = JSON.parse(output);
-  assert.match(data['/ponytail-review x'].text, /ponytail-review/);
-  assert.match(data['/ponytail_audit repo'].text, /ponytail-audit/);
-  assert.match(data['/ponytail_audit repo'].text, /repo/);
-  assert.match(data['/ponytail-debt'].text, /ponytail-debt/);
-  assert.match(data['/ponytail-help'].text, /ponytail-help/);
+  for (const name of commands.filter((command) => command !== 'ponytail')) {
+    const key = `/${name} target`;
+    assert.match(data[key].text, new RegExp(name));
+    assert.match(data[key].text, /target/);
+  }
   assert.equal(data['/status'], null);
   assert.equal(data.hello, null);
 });
