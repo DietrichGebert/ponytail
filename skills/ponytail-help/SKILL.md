@@ -27,6 +27,8 @@ Level sticks until changed or session end.
 |-------|---------|--------------|
 | **ponytail** | `/ponytail` | Lazy mode itself. Simplest solution that works. |
 | **ponytail-review** | `/ponytail-review` | Over-engineering review: `L42: yagni: factory, one product. Inline.` |
+| **ponytail-audit** | `/ponytail-audit` | Repo-wide over-engineering scan: ranked findings, aggregate net-lines metric. |
+| **ponytail-debt** | `/ponytail-debt` | Harvest `ponytail:` comments into a debt ledger, flag entries with no upgrade trigger. |
 | **ponytail-gain** | `/ponytail-gain` | Measured-impact scoreboard: less code, less cost, more speed. |
 | **ponytail-help** | `/ponytail-help` | This card. |
 
