@@ -25,7 +25,7 @@ from pathlib import Path
 
 # Real-repo fixture: tiangolo/full-stack-fastapi-template @ cd83fc1 (v0.10.0, MIT), cloned locally.
 # Reproduce: git clone https://github.com/tiangolo/full-stack-fastapi-template && git -C ... checkout cd83fc1
-_TMPL = r"D:\dev\fullstack-fastapi-template"
+_TMPL = os.environ.get("PONYTASK_TEMPLATE_DIR") or r"D:\dev\fullstack-fastapi-template"
 
 # --- helpers ---
 _imp_n = 0

@@ -250,6 +250,7 @@ else:
     const hasFastAPI = /fastapi|FastAPI|app\s*=|@app\./.test(src);
 
     const failures = [];
+    if (!hasTimeTracking) failures.push('no time tracking (time./datetime/asyncio)');
     if (!hasLimitLogic) failures.push('no rate limit logic');
     if (!hasFastAPI) failures.push('no FastAPI usage');
 
