@@ -83,7 +83,7 @@ Versus baseline, ponytail writes **80-94% less code**, costs **42-75% less**, an
 
 ### Prerequisites
 
-Running the benchmark requires **Python 3**, **pandas**, and **Node.js** (18+).
+Running the benchmark requires **Python 3** and **Node.js** (18+). The CSV correctness check includes its own tiny pandas shim, so local pandas is not required.
 
 ## Notes
 

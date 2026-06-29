@@ -175,7 +175,26 @@ setTimeout(() => {
 
     // Create a test CSV and wrap the generated code so it reads it.
     const csvContent = 'name,amount\nAlice,100.5\nBob,200.0\nCharlie,50.5\n';
-    const csvPath = tmpFile('.csv', csvContent).replace(/\\/g, '/');
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ponytail-csv-'));
+    const csvPath = path.join(dir, 'sales.csv').replace(/\\/g, '/');
+    fs.writeFileSync(csvPath, csvContent);
+    fs.writeFileSync(path.join(dir, 'pandas.py'), `
+import csv
+
+class _Series(list):
+    def sum(self):
+        return sum(float(v) for v in self)
+
+class _Frame:
+    def __init__(self, rows):
+        self.rows = rows
+    def __getitem__(self, name):
+        return _Series(row[name] for row in self.rows)
+
+def read_csv(path):
+    with open(path, newline='') as f:
+        return _Frame(list(csv.DictReader(f)))
+`);
 
     // The generated code likely reads 'sales.csv'; patch the filename.
     let patched = code.code.replace(/['"]sales\.csv['"]/g, `'${csvPath}'`);
@@ -211,10 +230,10 @@ else:
     print("FAIL: output was: " + repr(output[:200]))
     sys.exit(1)
 `;
-    const f = tmpFile('.py', harness);
+    const f = path.join(dir, 'check.py');
+    fs.writeFileSync(f, harness);
     const result = exec(`${python()} "${f}"`);
-    try { fs.unlinkSync(f); } catch (e) {}
-    try { fs.unlinkSync(csvPath); } catch (e) {}
+    try { fs.rmSync(dir, { recursive: true, force: true }); } catch (e) {}
     if (result.ok) return { pass: true, reason: 'CSV sum produces correct result (351)' };
     return { pass: false, reason: result.stderr || 'CSV sum failed' };
   },

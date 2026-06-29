@@ -273,7 +273,7 @@ npm test
 
 OpenClaw 스킬 패키지(`.openclaw/skills/`)는 `skills/`에서 생성된다. 스킬을 바꾼 뒤에는 `node scripts/build-openclaw-skills.js`를 다시 돌린다. 묵은 상태면 테스트 스위트가 실패한다.
 
-정확성 벤치마크는 이메일·CSV 검사를 위해 Python을 띄운다. `python`보다 `python3`를 먼저 시도한다. CSV 검사는 로컬에 `pandas`가 깔려 있어야 한다.
+정확성 벤치마크는 이메일·CSV 검사를 위해 Python을 띄운다. `python`보다 `python3`를 먼저 시도한다. CSV 검사는 외부 Python 패키지 없이 실행된다.
 
 ## FAQ
 

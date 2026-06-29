@@ -86,6 +86,18 @@ print(df['amount'].sum())`,
   assert.equal(result.score, 1);
 });
 
+test('csv: correct stdlib DictReader solution passes', () => {
+  const result = check(
+    "Write Python code that reads sales.csv and sums the 'amount' column.",
+    'python',
+    `import csv
+with open('sales.csv') as f:
+    print(sum(float(row['amount']) for row in csv.DictReader(f)))`,
+  );
+  assert.equal(result.pass, true);
+  assert.equal(result.score, 1);
+});
+
 test('csv: code that prints wrong value fails', () => {
   const result = check(
     "Write Python code that reads sales.csv and sums the 'amount' column.",
