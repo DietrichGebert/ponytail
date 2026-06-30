@@ -1,335 +1,243 @@
 <p align="center">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="assets/logo-dark.png">
-    <img src="assets/logo.png" width="220" alt="Ponytail, the lazy senior dev">
-  </picture>
-</p>
-
-<h1 align="center">Ponytail</h1>
-
-<p align="center">
-  <em>He says nothing. He writes one line. It works.</em>
-</p>
-
-<p align="center">
-  <img src="https://img.shields.io/github/stars/DietrichGebert/ponytail?style=flat-square&color=111111&label=stars" alt="Stars">
-  <img src="https://img.shields.io/github/v/release/DietrichGebert/ponytail?style=flat-square&color=111111&label=release" alt="Release">
-  <img src="https://img.shields.io/npm/v/@dietrichgebert/ponytail?style=flat-square&color=111111&label=npm" alt="npm">
-  <img src="https://img.shields.io/badge/works%20with-16%20agents-111111?style=flat-square" alt="Works with 16 agents">
-  <img src="https://img.shields.io/badge/license-MIT-111111?style=flat-square" alt="MIT license">
-</p>
-
-<p align="center">
-  <a href="https://trendshift.io/repositories/50668" target="_blank" rel="noopener noreferrer"><img src="https://trendshift.io/api/badge/trendshift/repositories/50668/daily" alt="DietrichGebert/ponytail | Trendshift" width="250" height="55"/></a>
-  <a href="https://trendshift.io/repositories/50668" target="_blank" rel="noopener noreferrer"><img src="https://trendshift.io/api/badge/trendshift/repositories/50668/weekly" alt="DietrichGebert/ponytail | Trendshift" width="250" height="55"/></a>
-</p>
-
-<p align="center">
-  <strong>~54% less code (up to 94%) &middot; ~20% cheaper &middot; ~27% faster &middot; 100% safe</strong><br>
-  <sub>Measured on real Claude Code sessions editing a real open-source repo (FastAPI + React), against the same agent with no skill. ~54% is the mean across 12 feature tasks (Haiku 4.5, n=4); it reaches 94% where an agent over-builds (a date picker) and is near zero where the code is already minimal. ponytail keeps every safety guard while a bare "write one-liners" prompt drops one. (The earlier single-shot benchmark reported 80-94% as a flat figure; against a fair agentic baseline that is the per-task ceiling, not the average.) <a href="benchmarks/results/2026-06-18-agentic.md">Full writeup</a> &middot; <a href="benchmarks/">reproduce it</a>.</sub>
-</p>
-
-<p align="center">
-  <sub><a href="README.es.md">Español</a> &middot; <a href="README.ko.md">한국어</a></sub>
+  <img src="assets/gavel.png" alt="Gavel - The judge's hammer for test quality" width="280">
+  <h1 align="center">Gavel</h1>
+  <p align="center">
+    <em>The judge's hammer for test quality.</em><br>
+    <em>Minimalism + QA discipline for AI agents.</em>
+  </p>
+  <p align="center">
+    <img src="https://img.shields.io/github/v/release/dsolisp/gavel?style=flat-square&label=release" alt="Release">
+    <img src="https://img.shields.io/badge/works%20with-20%2B%20IDEs-blue?style=flat-square" alt="Works with 20+ IDEs">
+    <img src="https://img.shields.io/badge/license-MIT-blue?style=flat-square" alt="MIT license">
+  </p>
 </p>
 
 ---
 
-<p align="center">
-  <a href="https://ponytail.dev/soon"><img src="assets/waitlist-banner.png" alt="Something's coming, join the waitlist" width="760"></a>
-</p>
+Gavel is a fork of [ponytail](https://github.com/DietrichGebert/ponytail) mutated into a **QA automation toolkit** that preserves ponytail's minimalism core while adding framework-adaptive test quality enforcement.
 
-You know him. Long ponytail. Oval glasses. Has been at the company longer than the version control. You show him fifty lines; he looks at them, says nothing, and replaces them with one.
+**The idea:** the best code is the code you never wrote (ponytail). The best test is the test that catches the real bug — no more, no less (gavel). Both ladders run on every decision.
 
-Ponytail puts him inside your AI agent.
+## What it does
 
-## Before / after
-
-You ask for a date picker. Your agent installs flatpickr, writes a wrapper component, adds a stylesheet, and starts a discussion about timezones.
-
-With ponytail:
-
-```html
-<!-- ponytail: browser has one -->
-<input type="date">
-```
-
-More survivors in [examples/](examples/).
-
-## Numbers
-
-The honest measurement is a real agent doing real work: a headless Claude Code session editing [tiangolo's full-stack-fastapi-template](https://github.com/fastapi/full-stack-fastapi-template) (a real FastAPI + React repo), scored on the `git diff` it leaves behind. Twelve feature tickets, the same agent with and without the skill, n=4, Haiku 4.5.
-
-<p align="center">
-  <img src="assets/benchmark-agentic.svg" width="860" alt="Each arm as a percent of the no-skill baseline across LOC, tokens, cost and time (Haiku 4.5). ponytail is lowest on every metric (LOC 46%, tokens 78%, cost 80%, time 73%); caveman rises above 100% on tokens, cost and time; yagni-oneliner LOC 67%. Safety, separate adversarial tier: baseline, caveman and ponytail 100%, yagni-oneliner 95%.">
-</p>
-
-| vs no-skill baseline | LOC | tokens | cost | time | safe |
-|---|--:|--:|--:|--:|--:|
-| **ponytail** | **-54%** | **-22%** | **-20%** | **-27%** | **100%** |
-| caveman (terse-prose control) | -20% | +7% | +3% | +2% | 100% |
-| "YAGNI + one-liners" prompt | -33% | -14% | -21% | -30% | 95% |
-
-ponytail is the only arm that cuts every metric, and the only one that stays fully safe while doing it. The cut is biggest where there is a real over-build trap (date picker 404 to 23 lines, color picker 287 to 23, because it reaches for a native `<input>` instead of a component) and near zero on code that is already minimal. Full method, per-task tables, and limitations: [benchmarks/results/2026-06-18-agentic.md](benchmarks/results/2026-06-18-agentic.md).
-
-<details>
-<summary><strong>Older single-shot numbers (isolated generation)</strong></summary>
-
-Five everyday tasks, three models, three arms (no skill, [caveman](https://github.com/JuliusBrussee/caveman), ponytail), ten runs, median reported. One prompt, one completion, counting lines of the answer:
-
-<p align="center">
-  <img src="assets/benchmark-3model.svg" width="860" alt="Median lines of code per arm across Haiku, Sonnet and Opus">
-</p>
-
-This showed **80-94% less code**. [#126](https://github.com/DietrichGebert/ponytail/issues/126) fairly pointed out that the bare-model baseline pads its answer with prose and options, so that gap is partly a conversational-baseline artifact. The agentic numbers above are the corrected, defensible version. Reproduce the single-shot run with `npx promptfoo eval -c benchmarks/promptfooconfig.yaml`.
-
-</details>
-
-**The rule was never "fewest tokens."** It is: write only what the task needs, and never cut validation, error handling, security, or accessibility. The code ends up small because it is necessary, not golfed. Lower cost and latency are a side effect on the models that follow the ladder; a terse reasoning model that spends thinking tokens deliberating the rungs can go the other way (on GPT-5.5 it does).
-
-## How it works
-
-Before writing code, the agent stops at the first rung that holds:
+Before writing any code, gavel's agent climbs two ladders:
 
 ```
-1. Does this need to exist?   → no: skip it (YAGNI)
-2. Already in this codebase?  → reuse it, don't rewrite
-3. Stdlib does it?            → use it
-4. Native platform feature?   → use it
-5. Installed dependency?      → use it
-6. One line?                  → one line
+MINIMALISM LADDER (all code):
+1. Does this need to exist?        → skip (YAGNI)
+2. Already in this codebase?       → reuse it
+3. Stdlib does it?                 → use it
+4. Native platform feature?        → use it
+5. Installed dependency?           → use it
+6. One line?                       → one line
 7. Only then: the minimum that works
+
+QA LADDER (test code):
+1. Does this test need to exist?   → skip (YAGNI)
+2. Already in this test suite?     → reuse fixture/factory/POM
+3. Framework handles it?           → use native assertions/waits
+4. Native locator covers it?       → semantic > CSS > XPath
+5. Existing POM covers it?         → extend, don't create new
+6. One assertion?                  → one assertion
+7. Only then: the minimum test that catches the real bug
 ```
 
-The ladder runs *after* it understands the problem, not instead of it: it reads the code the change touches and traces the real flow before picking a rung. Lazy about the solution, never about reading.
+> **Ladder Conflict Rule:** When the two ladders collide on test code, **the QA Ladder wins**. Minimalism is the default for production code; QA discipline is the override for test code because the cost of a missed assertion is a missed bug.
 
-Lazy, not negligent: trust-boundary validation, data-loss handling, security, and accessibility are never on the chopping block.
+## What it includes
+
+- **Core QA skills** — plan, author, run, review, audit, diagnose, triage, report, and close the loop
+- **Specialist agents** — workflow roles that should stay few: route, generate, diagnose, analyze impact, audit exceptions, refactor only when reuse proves it
+- **Stack-adaptive profiles** — detect runner capabilities, assertion semantics, locator APIs, fixture patterns, and reporting outputs without locking gavel to one tool
+- **20+ IDE adapters** — Cursor, Cline, Windsurf, Kiro, Copilot, Trae, Comate, Lingma, Junie, Qoder, OpenCode, and more
+- **Hook system** — SessionStart activation, SubagentStart injection, mode tracking
+- **Test Constitution** — 9 MUST DO rules + 7 WON'T DO rules
+- **Native-first testing patterns** — accessibility, visual, component, API/contract, retry, coverage, and quarantine rules expressed as reusable patterns
+
+**New here?** Start with [QUICKSTART.md](QUICKSTART.md) — install → audit → heal → write, ten minutes to first verdict.
 
 ## Install
 
-The most effort ponytail will ever ask of you:
+Pick one path. Hosted plugins update through their host; copied rule files update by replacing the copied files from this repo.
 
-The Claude Code and Codex plugins run two tiny Node.js lifecycle hooks, so `node` needs to be on your PATH (note for Nix/nvm users: it must be on the non-interactive shell's PATH). If it isn't, the skills still work, the always-on activation just stays quiet instead of erroring on every prompt.
+### OpenCode (npm package)
+```json
+{
+  "plugin": ["@dsolisp/gavel"]
+}
+```
+
+For a local checkout while developing gavel:
+```json
+{
+  "plugin": ["./.opencode/plugins/gavel.mjs"]
+}
+```
+
+### Qoder
+```
+# Copy skills/ to .qoder/skills/ and agents/ to .qoder/agents/
+```
 
 ### Claude Code
-
 ```
-/plugin marketplace add DietrichGebert/ponytail
-```
-```
-/plugin install ponytail@ponytail
-```
-(You have to send two separate prompts for the install to work) 
-
-The desktop app has no `/plugin` command. Install it from the UI instead: Customize, the + by personal plugins, Create plugin and add marketplace, Add from repository, then enter the repo URL (thanks @NiklasDHahn, #98).
-
-### Codex
-
-```bash
-codex plugin marketplace add DietrichGebert/ponytail
-codex
+/plugin marketplace add dsolisp/gavel
+/plugin install gavel@gavel
 ```
 
-Open `/plugins`, select the Ponytail marketplace, and install Ponytail. Then
-open `/hooks`, review and trust its two lifecycle hooks, and start a new thread.
-
-This same install also covers the Codex desktop app: restart the app after installing and it picks up the plugin.
-
-### GitHub Copilot CLI
-
-```bash
-copilot plugin marketplace add DietrichGebert/ponytail
-copilot plugin install ponytail@ponytail
-```
-
-In an interactive Copilot CLI session, use the slash equivalents:
-
-```
-/plugin marketplace add DietrichGebert/ponytail
-/plugin install ponytail@ponytail
-```
-
-Copilot CLI namespaces plugin commands by plugin name. For example:
-
-```text
-/ponytail:ponytail ultra
-/ponytail:ponytail-review
-```
-
-### Pi agent harness
-
-```
-pi install git:github.com/DietrichGebert/ponytail
-```
-
-### OpenCode
-
-Add to `opencode.json`:
-
-```json
-{ "plugin": ["@dietrichgebert/ponytail"] }
-```
-
-Run from a checkout instead (the plugin reuses `hooks/` and `skills/`):
-
-```json
-{ "plugin": ["./.opencode/plugins/ponytail.mjs"] }
-```
-
-Injects the ruleset every turn at the active level; adds the `/ponytail` commands (see [Commands](#commands)). OpenCode also auto-loads this repo's `AGENTS.md`, so the rules hold even without the plugin. The plugin adds the `lite/full/ultra/off` levels.
-
-The `./` path resolves against your project's `opencode.json`; to share one checkout across projects, point it at the absolute path of the `.mjs` instead (it finds its `hooks/` and `skills/` relative to its own file).
+### Cursor / Windsurf / Cline / Copilot / Kiro
+Copy the matching adapter from this repo into the target project:
+- `.cursor/rules/gavel.mdc`
+- `.clinerules/gavel.md`
+- `.windsurf/rules/gavel.md`
+- `.kiro/steering/gavel.md`
+- `.github/copilot-instructions.md`
 
 ### Gemini CLI
-
 ```bash
-gemini extensions install https://github.com/DietrichGebert/ponytail
+gemini extensions install https://github.com/dsolisp/gavel
 ```
 
-Loads the ruleset as always-on context every session and registers the `/ponytail` commands; the `skills/` ship too, activated when a task needs them.
-The Gemini adapter intentionally does not ship a root `hooks/hooks.json`: Gemini auto-loads that path, while Ponytail's lifecycle hooks use Claude/Codex event names.
+## Upgrade
 
-### Antigravity CLI
+### If you installed a hosted plugin/package
 
-Google is renaming Gemini CLI to Antigravity CLI (the `agy` binary); the same extension installs there:
+Use the host's normal update flow, then restart the IDE/session so the prompt injection reloads. For OpenCode, update the npm package version used by your environment; for Claude/Gemini, update or reinstall through their plugin/extension manager.
 
-```bash
-agy plugin install https://github.com/DietrichGebert/ponytail
-```
+### If you copied adapter files
 
-It reuses this repo's `gemini-extension.json`. One difference: Antigravity converts the `/ponytail` commands into skills, so you type them into the chat (e.g. `/ponytail-review` as a message) instead of picking them from a slash menu. Until the migration completes (around June 18, 2026), `gemini extensions install` still works too. To run it as an always-on rule instead, drop the ruleset into `.agents/rules/`.
-
-### Hermes Agent
+Replace the copied files with the same paths from the new gavel release:
 
 ```bash
-hermes plugins install DietrichGebert/ponytail --enable
+# example from a checkout of this repo
+cp .cursor/rules/gavel.mdc /path/to/project/.cursor/rules/gavel.mdc
+cp .github/copilot-instructions.md /path/to/project/.github/copilot-instructions.md
 ```
 
-Restart Hermes after installing. The plugin injects the active Ponytail mode before each LLM turn, registers the bundled skills as `ponytail:<skill>`, and adds `/ponytail`, `/ponytail-review`, `/ponytail-audit`, `/ponytail-debt`, `/ponytail-gain`, and `/ponytail-help`. In shared gateways, restrict `/ponytail` to trusted users with Hermes slash-command access controls; runtime mode is process-local.
+If you customized a copied file, diff first and keep local project-specific rules below the gavel block.
 
-### CodeWhale
+### After every upgrade
 
-Reads `AGENTS.md` from the project root, zero setup. Copy [`AGENTS.md`](AGENTS.md) to your project, or run `codewhale` from a checkout of this repo. That's it.
+1. Restart the IDE/agent session.
+2. Run `/gavel full` or your preferred mode.
+3. Run `/gavel-detect` in the test repo.
+4. Run `/gavel-review` on one changed test diff to confirm the new rules load.
 
-### Swival
+### Publishing a new gavel version
 
-Stage the collection in your library first, then add the skills you want:
-
-```bash
-swival skills add --global https://github.com/DietrichGebert/ponytail  # stage into ~/.config/swival/library
-swival skills add ponytail                                             # install the collection into this project
-swival skills add --global ponytail                                    # or activate it in every project
-```
-
-Swival also reads `AGENTS.md` from the project root and `~/.config/swival/AGENTS.md` globally, the instruction-only fallback.
-
-On the command line, use a `$` prefix to explicitly activate a skill. For example: `$ponytail-review`.
-
-### Devin CLI
-
-```bash
-devin plugins install DietrichGebert/ponytail
-```
-
-Installs ponytail as a Devin plugin; skills are available as `/ponytail:ponytail`, `/ponytail:ponytail-review`, and so on.
-
-### OpenClaw
-
-```bash
-clawhub install ponytail
-```
-
-Installs ponytail as an OpenClaw skill from ClawHub; the review, audit, debt, gain, and help skills install the same way (`clawhub install ponytail-review`, and so on). OpenClaw applies it on coding tasks and also exposes it as a `/ponytail` command. Without ClawHub, copy [`.openclaw/skills/ponytail`](.openclaw/skills/) into `~/.openclaw/skills/`.
-
-That was it. He'd be proud. He won't say it.
-
-Active every session, with a handful of commands (see [Commands](#commands)). `/ponytail ultra` exists for when the codebase has wronged you personally. Startup and mode-change text shows the current mode.
-
-Set the level for every new session with the `PONYTAIL_DEFAULT_MODE` env var (`lite`/`full`/`ultra`/`off`), or a `defaultMode` field in `~/.config/ponytail/config.json` (`%APPDATA%\ponytail\config.json` on Windows). The default is `full`.
-
-Cursor, Windsurf, Cline, GitHub Copilot (editor), Aider, Kiro, Zed, CodeWhale, Swival: copy the matching rules file from this repo ([`.cursor/rules/`](.cursor/rules/), [`.windsurf/rules/`](.windsurf/rules/), [`.clinerules/`](.clinerules/), [`.github/copilot-instructions.md`](.github/copilot-instructions.md), [`AGENTS.md`](AGENTS.md), [`.kiro/steering/`](.kiro/steering/)).
-
-Kiro: copy `.kiro/steering/ponytail.md` to `~/.kiro/steering/` (global) or `.kiro/steering/` in your project.
-
-GitHub Copilot CLI fallback (instruction-only mode): it reads `AGENTS.md` and `.github/copilot-instructions.md` in a project, or copy the rules into `~/.copilot/copilot-instructions.md` to run ponytail in every project. This path keeps always-on guidance, but does not add plugin mode switches or hooks.
-
-VS Code with the Codex extension reads `AGENTS.md`, which this repo ships, so it works from the repo root with no setup (`~/.codex/AGENTS.md` makes Codex global).
-
-Which files map to which agent: [Agent portability](docs/agent-portability.md).
-
-### Uninstall
-
-| Host | Command |
-|------|---------|
-| Claude Code | `/plugin remove ponytail` |
-| Codex | `codex plugin remove ponytail` |
-| Devin CLI | `devin plugins remove ponytail` |
-| Pi agent | `pi uninstall ponytail` |
-| Cursor / Windsurf / Cline / etc. | Delete the copied rule file |
-
-These remove the plugin's own files. They leave behind a small amount of state ponytail writes outside the plugin folder: the mode flag, `~/.config/ponytail/config.json`, and (if you accepted the setup nudge) a `statusLine` entry in `~/.claude/settings.json`. Run `node scripts/uninstall.js` to clean those up too. **Run it before the host remove command above** — the script is itself a plugin file, so removing the plugin first deletes it (or run it from a separate clone of this repo). It only removes the statusLine entry if it points at ponytail's own script, so a statusline you set up yourself is left untouched.
+1. Bump every manifest version together (`package.json`, plugin manifests, `gemini-extension.json`).
+2. Run `npm run verify` from `gavel/`.
+3. Tag the release as `vX.Y.Z` only after `scripts/check-versions.js` passes.
+4. Publish through the configured package/plugin release flow.
 
 ## Commands
 
 | Command | What it does |
-|---------|--------------|
-| `/ponytail [lite \| full \| ultra \| off]` | Set the intensity, or turn it off. No argument reports the current level. |
-| `/ponytail-review` | Review the current diff for over-engineering, hands back a delete-list. |
-| `/ponytail-audit` | Audit the whole repo for over-engineering, not just the diff. |
-| `/ponytail-debt` | Harvest the `ponytail:` shortcuts you've deferred into a ledger, so "later" doesn't become "never". |
-| `/ponytail-gain` | Show the measured impact scoreboard (less code, less cost, more speed) from the benchmark. |
-| `/ponytail-help` | Quick reference for the commands above. |
+|---------|-------------|
+| `/gavel [lite \| full \| strict \| off]` | Set intensity level |
+| `/gavel-review` | Review test diffs for constitution violations |
+| `/gavel-audit` | Whole-repo audit for test suite bloat |
+| `/gavel-debt` | Harvest `gavel:` deferred test decisions |
+| `/gavel-gain` | Show test quality scoreboard (pass rate, coverage, flake count) |
+| `/gavel-detect` | Auto-detect your test stack |
+| `/gavel-heal` | Diagnose a failing test |
+| `/gavel-flake` | Flaky test triage + quarantine |
+| `/gavel-init` | Bootstrap a new QA project |
+| `/gavel-help` | Quick reference |
 
-Commands need a skill-capable host (Claude Code, Codex, Devin CLI, OpenCode, Gemini, pi, Swival, Hermes Agent). In Codex they're skills, invoke with `@` (`@ponytail-review`). The instruction-only adapters (Cursor, Windsurf, Cline, Copilot, Kiro, Antigravity) load the always-on ruleset without the commands.
+## Intensity Levels
+
+| Level | What changes |
+|-------|-------------|
+| **lite** | Suggest improvements, name the lazier alternative |
+| **full** (default) | Enforce all rules, block constitution violations |
+| **strict** | Zero tolerance — reject any violation |
+| **off** | Disable gavel; revert to base IDE behavior |
+
+## Configuration
+
+Set default mode via env var or config file:
+```bash
+GAVEL_DEFAULT_MODE=strict
+# or
+~/.config/gavel/config.json  # { "defaultMode": "strict" }
+```
+
+## Framework Adaptation
+
+Gavel adapts by capability, not by brand. Detection answers these questions, then applies the universal QA rules through the native primitives your stack already has:
+
+| Capability | Adaptation rule |
+|------------|-----------------|
+| **Runner lifecycle** | Use the suite's fixture/hook model for DI, setup, cleanup, and isolation. |
+| **Locator surface** | Prefer semantic/accessibility locators, then stable test IDs, then structural selectors only when semantics do not exist. |
+| **Assertion semantics** | Use built-in retrying/eventual assertions before custom polling or sleeps. |
+| **Composition model** | Reuse existing fixtures, factories, service clients, page actions, or step definitions before adding abstractions. |
+| **Evidence output** | Read the stack's native traces, screenshots, videos, logs, reports, and failure artifacts before changing tests. |
+| **Verification commands** | Run the project's existing type, lint, targeted test, and coverage gates instead of hardcoding a runner. |
+
+## Native Capability Patterns
+
+Use the stack's own capabilities instead of pulling in dependencies.
+
+| Pattern | When | Native-first rule |
+|---------|------|-------------------|
+| **Accessibility verification** | Validate user-perceivable structure | Use native accessibility snapshots/queries before adding external scanners. |
+| **Visual regression** | Catch unintended CSS/layout drift | Use runner-integrated screenshots/diffs before adding visual infrastructure. |
+| **Component isolation** | Exercise UI logic below full E2E cost | Use the project's existing component mount/test harness. |
+| **API/contract checks** | Verify service boundaries and schema drift | Reuse existing request clients, fixtures, and schema validators. |
+| **Eventual assertions** | Replace flaky wait loops | Use the framework's built-in retry/assertion model. |
+| **Coverage thresholding** | Protect critical paths | Use the repository's coverage tool and raise thresholds for high-risk flows. |
+
+## The 4-Line Verification Gate
+
+Before declaring work done, run all four. Any failure blocks the merge.
+
+```bash
+<project type-check>      # 1. type-check / compile
+<project lint>            # 2. lint / style gate
+<targeted test command>   # 3. affected test or suite
+<coverage command>        # 4. coverage threshold where configured
+```
+
+Coverage defaults to **80%**. Raise it for critical paths (auth, payment, tenant isolation). Lower it for throwaway code.
+
+## Quarantine Policy
+
+Flaky tests get a home, not a retry and not a delete.
+
+| Tag | Meaning | Action |
+|-----|---------|--------|
+| `@flaky:env` | Environment-dependent (network, seed timing) | Quarantine CI lane |
+| `@flaky:data` | Data/seed-dependent (shared rows, races) | Quarantine CI lane |
+| `@flaky:ui` | DOM/animation-dependent (animation, virtualization) | Quarantine CI lane |
+| `@wip` | Test under construction | Skip in CI, must remove before merge |
+
+Quarantined tests run in a separate CI lane that **never blocks merge**. They appear in the weekly `gavel-flake` report. After 7 days, an unfixed quarantine escalates: becomes a real bug ticket, gets fixed, or gets deleted.
+
+## test.fail() Expiry
+
+`test.fail()` markers are valid for **7 days**. Run `gavel-fail-audit` weekly to clear the rot: each marker either becomes a real bug ticket, gets fixed, or gets deleted. No permanent "this is broken" comments.
+
+## How it relates to ponytail
+
+Gavel is a [fork](https://github.com/DietrichGebert/ponytail) that keeps ponytail's minimalism philosophy as the foundation and adds QA discipline on top. The upstream remote is preserved for syncing ponytail improvements:
+
+```bash
+git fetch upstream
+git merge upstream/main
+```
 
 ## Development
 
-When changing the compact rule text, keep the agent copies aligned:
-
 ```bash
-node scripts/check-rule-copies.js
-npm test
+node scripts/check-rule-copies.js --check-all  # verify adapter sync
+node scripts/check-versions.js                  # version consistency
+node scripts/verify-agents-md.js                # AGENTS.md sections
+node scripts/verify-skills.js                   # all skills/agents exist
+npm run verify                                  # all repository checks; no build step required
 ```
-
-The OpenClaw skill package (`.openclaw/skills/`) is generated from `skills/`; rerun `node scripts/build-openclaw-skills.js` after changing a skill, the test suite fails if it is stale. To publish the skills to ClawHub, run `clawhub login` once, then `node scripts/publish-openclaw-skills.js` (it publishes all six at the `package.json` version; pass `--dry-run` to preview).
-
-The correctness benchmark spawns Python for email and CSV checks; `python3` is tried before `python`. CSV checks need `pandas` installed locally.
-
-## FAQ
-
-**Does it need a config file?**
-No. An optional `~/.config/ponytail/config.json` or `PONYTAIL_DEFAULT_MODE` env var can set the default level, but nothing is required.
-
-**What if I really need the 120-line cache class?**
-You don't. Insist anyway and he'll build it. Slowly. Correctly. While looking at you.
-
-**Does it scale?**
-The code you never wrote scales infinitely. Zero bugs, zero CVEs, 100% uptime since forever.
-
-**Why "ponytail"?**
-You know exactly why.
-
-## Sponsors
-
-<p align="center">
-  <a href="https://greenpt.com/">
-    <picture>
-      <source media="(prefers-color-scheme: dark)" srcset="assets/logo-greenpt-dark.svg">
-      <img src="assets/logo-greenpt.svg" width="260" alt="GreenPT">
-    </picture>
-  </a>
-</p>
 
 ## License
 
-[MIT](LICENSE). The shortest license that works.
-
-## Star History
-
-<a href="https://www.star-history.com/dietrichgebert/ponytail#history">
- <picture>
-   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=DietrichGebert/ponytail&type=Date&theme=dark" />
-   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=DietrichGebert/ponytail&type=Date" />
-   <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=DietrichGebert/ponytail&type=Date" />
- </picture>
-</a>
+[MIT](LICENSE). Based on [ponytail](https://github.com/DietrichGebert/ponytail) by Dietrich Gebert.

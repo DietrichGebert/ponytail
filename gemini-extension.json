@@ -1,6 +1,6 @@
 {
-  "name": "ponytail",
-  "version": "4.8.4",
-  "description": "Lazy senior dev mode. Forces the simplest, shortest solution that actually works: YAGNI, stdlib first, no unrequested abstractions.",
+  "name": "gavel",
+  "version": "0.1.0",
+  "description": "The judge's hammer for test quality. Minimalism + QA discipline — one test, one verdict, move on.",
   "contextFileName": "AGENTS.md"
 }

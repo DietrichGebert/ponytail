@@ -6,10 +6,10 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/ponytail-activate.js\"; exit 0",
-            "commandWindows": "if (Get-Command node -ErrorAction SilentlyContinue) { node \"$env:CLAUDE_PLUGIN_ROOT\\hooks\\ponytail-activate.js\" }",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/gavel-activate.js\"; exit 0",
+            "commandWindows": "if (Get-Command node -ErrorAction SilentlyContinue) { node \"$env:CLAUDE_PLUGIN_ROOT\\hooks\\gavel-activate.js\" }",
             "timeout": 5,
-            "statusMessage": "Loading ponytail mode..."
+            "statusMessage": "Loading gavel — the judge's hammer for test quality..."
           }
         ]
       }
@@ -19,10 +19,10 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/ponytail-subagent.js\"; exit 0",
-            "commandWindows": "if (Get-Command node -ErrorAction SilentlyContinue) { node \"$env:CLAUDE_PLUGIN_ROOT\\hooks\\ponytail-subagent.js\" }",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/gavel-subagent.js\"; exit 0",
+            "commandWindows": "if (Get-Command node -ErrorAction SilentlyContinue) { node \"$env:CLAUDE_PLUGIN_ROOT\\hooks\\gavel-subagent.js\" }",
             "timeout": 5,
-            "statusMessage": "Loading ponytail mode..."
+            "statusMessage": "Injecting gavel QA verdict rules into subagent..."
           }
         ]
       }
@@ -32,10 +32,10 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/ponytail-mode-tracker.js\"; exit 0",
-            "commandWindows": "if (Get-Command node -ErrorAction SilentlyContinue) { node \"$env:CLAUDE_PLUGIN_ROOT\\hooks\\ponytail-mode-tracker.js\" }",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/gavel-mode-tracker.js\"; exit 0",
+            "commandWindows": "if (Get-Command node -ErrorAction SilentlyContinue) { node \"$env:CLAUDE_PLUGIN_ROOT\\hooks\\gavel-mode-tracker.js\" }",
             "timeout": 5,
-            "statusMessage": "Tracking ponytail mode..."
+            "statusMessage": "Tracking gavel verdict level..."
           }
         ]
       }

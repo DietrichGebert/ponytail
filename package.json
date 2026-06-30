@@ -1,41 +1,38 @@
 {
-  "name": "@dietrichgebert/ponytail",
-  "version": "4.8.4",
-  "description": "Lazy senior dev mode for AI agents. The best code is the code you never wrote.",
-  "keywords": ["opencode-plugin", "opencode", "ponytail", "pi-package", "pi", "skills"],
+  "name": "@dsolisp/gavel",
+  "version": "0.1.0",
+  "description": "Minimalism + QA discipline for AI agents. Framework-adaptive test quality enforcement with YAGNI at the core.",
+  "keywords": ["opencode-plugin", "opencode", "gavel", "qa", "testing", "playwright", "selenium", "cypress", "webdriverio", "pytest", "junit", "cucumber", "skills", "test-constitution", "page-object-model"],
   "license": "MIT",
   "author": {
-    "name": "Dietrich Gebert",
-    "url": "https://github.com/DietrichGebert"
+    "name": "Daniel Solis",
+    "url": "https://github.com/dsolisp"
   },
-  "homepage": "https://github.com/DietrichGebert/ponytail",
+  "homepage": "https://github.com/dsolisp/gavel",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/DietrichGebert/ponytail.git"
+    "url": "git+https://github.com/dsolisp/gavel.git"
   },
   "bugs": {
-    "url": "https://github.com/DietrichGebert/ponytail/issues"
+    "url": "https://github.com/dsolisp/gavel/issues"
   },
-  "main": "./.opencode/plugins/ponytail.mjs",
+  "main": "./.opencode/plugins/gavel.mjs",
   "exports": {
-    ".": "./.opencode/plugins/ponytail.mjs",
-    "./plugin": "./.opencode/plugins/ponytail.mjs"
+    ".": "./.opencode/plugins/gavel.mjs",
+    "./plugin": "./.opencode/plugins/gavel.mjs"
   },
   "files": [
     "AGENTS.md",
     "hooks/",
     "skills/",
+    "agents/",
     ".opencode/",
-    "pi-extension/",
-    "assets/",
+    "examples/",
     "LICENSE"
   ],
   "scripts": {
-    "test": "node --test tests/*.test.js && npm test --prefix pi-extension"
-  },
-  "pi": {
-    "extensions": ["./pi-extension/index.js"],
-    "skills": ["./skills"]
+    "verify": "node scripts/check-rule-copies.js --check-all && node scripts/verify-agents-md.js && node scripts/verify-skills.js && node scripts/check-versions.js",
+    "test": "npm run verify"
   },
   "publishConfig": {
     "access": "public"

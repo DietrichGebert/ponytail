@@ -1,4 +1,4 @@
 {
   "$schema": "https://opencode.ai/config.json",
-  "plugin": ["./.opencode/plugins/ponytail.mjs"]
+  "plugin": ["./.opencode/plugins/gavel.mjs"]
 }
