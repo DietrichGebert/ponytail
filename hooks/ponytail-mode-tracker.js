@@ -21,7 +21,7 @@ process.stdin.on('end', () => {
 
       let mode = null;
 
-      if (cmd === '/ponytail-review' || cmd === '/ponytail:ponytail-review') {
+      if (cmd === '/ponytail-review' || cmd === '/ponytail:review') {
         mode = 'review';
       } else if (cmd === '/ponytail' || cmd === '/ponytail:ponytail') {
         if (arg === 'lite') mode = 'lite';
