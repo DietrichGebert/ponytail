@@ -13,6 +13,8 @@ const cases = [
   ['inline block comment keeps its code line', score('```js\nconst x = 1; /* note */\nconst y = 2;\n```'), 2],
   ['line comments still stripped', score('```js\n// header\nconst x = 1;\n```'), 1],
   ['plain code unchanged', score('```js\nconst a = 1;\nconst b = 2;\n```'), 2],
+  // CRLF-fenced output must still find the block, not fall back to the whole text.
+  ['crlf fences count only the code', score('Here:\r\n```js\r\nconst a = 1;\r\nconst b = 2;\r\n```\r\nDone.'), 2],
 ];
 for (const [name, got, want] of cases) {
   assert.strictEqual(got, want, `FAILED: ${name} (got ${got}, want ${want})`);
