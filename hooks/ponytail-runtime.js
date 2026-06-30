@@ -1,14 +1,17 @@
 const fs = require('fs');
 const path = require('path');
+const os = require('os');
 const { getClaudeDir } = require('./ponytail-config');
 
 const STATE_FILE = '.ponytail-active';
+const isCursor = Boolean(process.env.CURSOR_PLUGIN_ROOT);
 const isCopilot = Boolean(process.env.COPILOT_PLUGIN_DATA);
-const isCodex = !isCopilot && Boolean(process.env.PLUGIN_DATA);
+const isCodex = !isCursor && !isCopilot && Boolean(process.env.PLUGIN_DATA);
 
 let stateDir = getClaudeDir();
 if (isCodex) stateDir = process.env.PLUGIN_DATA;
 if (isCopilot) stateDir = process.env.COPILOT_PLUGIN_DATA;
+if (isCursor) stateDir = path.join(os.homedir(), '.cursor');
 
 const statePath = path.join(stateDir, STATE_FILE);
 
@@ -31,6 +34,10 @@ function readMode() {
 }
 
 function writeHookOutput(event, mode, context = '') {
+  if (isCursor) {
+    process.stdout.write(context ? JSON.stringify({ additional_context: context }) : '{}');
+    return;
+  }
   if (isCopilot) {
     // Copilot reads additionalContext on SessionStart; ignores output elsewhere.
     process.stdout.write(JSON.stringify(
@@ -62,6 +69,7 @@ module.exports = {
   clearMode,
   isCodex,
   isCopilot,
+  isCursor,
   readMode,
   setMode,
   writeHookOutput,
