@@ -48,9 +48,10 @@ function writeHookOutput(event, mode, context = '') {
     process.stdout.write(JSON.stringify(output));
     return;
   }
-  // Native Claude: SessionStart accepts raw stdout, but SubagentStart needs the
-  // hookSpecificOutput JSON form or the context is dropped.
-  if (event === 'SubagentStart') {
+  // Native Claude: SessionStart accepts raw stdout, but SubagentStart and
+  // UserPromptSubmit need the hookSpecificOutput JSON form or the context
+  // replaces the user's prompt instead of supplementing it.
+  if (event === 'SubagentStart' || event === 'UserPromptSubmit') {
     process.stdout.write(JSON.stringify(
       { hookSpecificOutput: { hookEventName: event, additionalContext: context } }));
     return;
