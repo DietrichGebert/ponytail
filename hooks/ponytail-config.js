@@ -95,6 +95,28 @@ function getDefaultMode() {
   return DEFAULT_MODE;
 }
 
+function getQuietStartup() {
+  // 1. Environment variable (highest priority)
+  const envValue = process.env.PONYTAIL_QUIET_STARTUP;
+  if (typeof envValue === 'string') {
+    const v = envValue.trim().toLowerCase();
+    if (v === '1' || v === 'true' || v === 'yes' || v === 'on') return true;
+    if (v === '0' || v === 'false' || v === 'no' || v === 'off') return false;
+  }
+
+  // 2. Config file
+  try {
+    const configPath = getConfigPath();
+    const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+    if (typeof config.quietStartup === 'boolean') return config.quietStartup;
+  } catch (e) {
+    // Config file doesn't exist or is invalid — fall through
+  }
+
+  // 3. Default: show the startup notification
+  return false;
+}
+
 function writeDefaultMode(mode) {
   const normalized = normalizeConfigMode(mode);
   if (!normalized) return null;
@@ -119,4 +141,5 @@ module.exports = {
   normalizePersistedMode,
   isDeactivationCommand,
   writeDefaultMode,
+  getQuietStartup,
 };

@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
@@ -8,6 +8,7 @@ import {
   filterSkillBodyForMode,
   parsePonytailCommand,
   readDefaultMode,
+  readQuietStartup,
   resolveSessionMode,
   writeDefaultMode,
 } from "../index.js";
@@ -57,6 +58,38 @@ test("readDefaultMode and writeDefaultMode use XDG config path", () => {
     else process.env.XDG_CONFIG_HOME = previousXdg;
     if (previousDefault === undefined) delete process.env.PONYTAIL_DEFAULT_MODE;
     else process.env.PONYTAIL_DEFAULT_MODE = previousDefault;
+    rmSync(tempDir, { recursive: true, force: true });
+  }
+});
+
+test("readQuietStartup resolves env var, config file, and default in that order", () => {
+  const tempDir = mkdtempSync(join(tmpdir(), "ponytail-quiet-"));
+  const previousXdg = process.env.XDG_CONFIG_HOME;
+  const previousEnv = process.env.PONYTAIL_QUIET_STARTUP;
+  const configDir = join(tempDir, "ponytail");
+  const configPath = join(configDir, "config.json");
+  process.env.XDG_CONFIG_HOME = tempDir;
+  delete process.env.PONYTAIL_QUIET_STARTUP;
+
+  try {
+    // No env, no config -> default false (toast still shows)
+    assert.equal(readQuietStartup(), false);
+
+    // Config file true -> respected
+    mkdirSync(configDir, { recursive: true });
+    writeFileSync(configPath, JSON.stringify({ quietStartup: true }), "utf8");
+    assert.equal(readQuietStartup(), true);
+
+    // Env var overrides config
+    process.env.PONYTAIL_QUIET_STARTUP = "false";
+    assert.equal(readQuietStartup(), false);
+    process.env.PONYTAIL_QUIET_STARTUP = "1";
+    assert.equal(readQuietStartup(), true);
+  } finally {
+    if (previousXdg === undefined) delete process.env.XDG_CONFIG_HOME;
+    else process.env.XDG_CONFIG_HOME = previousXdg;
+    if (previousEnv === undefined) delete process.env.PONYTAIL_QUIET_STARTUP;
+    else process.env.PONYTAIL_QUIET_STARTUP = previousEnv;
     rmSync(tempDir, { recursive: true, force: true });
   }
 });
