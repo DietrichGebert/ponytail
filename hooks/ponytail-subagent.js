@@ -17,6 +17,6 @@ if (!mode || mode === 'off') {
 
 try {
   writeHookOutput('SubagentStart', mode, getPonytailInstructions(mode));
-} catch (e) {
-  // Silent fail — a stdout error at hook exit must not surface as a hook failure.
-}
+  } catch (e) {
+    process.stderr.write('[ponytail] subagent: ' + e.message + '\n');
+  }

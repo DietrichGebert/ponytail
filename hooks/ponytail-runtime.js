@@ -18,7 +18,7 @@ function setMode(mode) {
 }
 
 function clearMode() {
-  try { fs.unlinkSync(statePath); } catch (e) {}
+  try { fs.unlinkSync(statePath); } catch (e) { process.stderr.write('[ponytail] clearMode: ' + e.message + '\n'); }
 }
 
 // Live mode written by activate/mode-tracker. Absent flag = ponytail off.

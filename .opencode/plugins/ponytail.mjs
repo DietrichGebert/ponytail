@@ -53,7 +53,7 @@ export function parseCommandFile(filePath) {
 
 export default async ({ client } = {}) => {
   const log = (level, message) => {
-    try { client && client.app && client.app.log({ body: { service: 'ponytail', level, message } }); } catch (e) {}
+    try { client && client.app && client.app.log({ body: { service: 'ponytail', level, message } }); } catch (e) { process.stderr.write('[ponytail] log: ' + e.message + '\n'); }
   };
 
   const ponytailSkillsDir = path.resolve(__dirname, '../../skills');
@@ -69,7 +69,7 @@ export default async ({ client } = {}) => {
           const parsed = parseCommandFile(path.join(commandDir, file));
           if (parsed) config.command[name] = parsed;
         }
-      } catch (e) {}
+      } catch (e) { process.stderr.write('[ponytail] commandDir: ' + e.message + '\n'); }
 
       config.skills = config.skills || {};
       config.skills.paths = config.skills.paths || [];

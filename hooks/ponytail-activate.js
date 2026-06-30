@@ -35,7 +35,7 @@ if (mode === 'off') {
 try {
   setMode(mode);
 } catch (e) {
-  // Silent fail -- flag is best-effort, don't block the hook
+  process.stderr.write('[ponytail] setMode: ' + e.message + '\n');
 }
 
 // 2. Emit the ponytail ruleset, filtered to the active intensity level.
@@ -80,12 +80,12 @@ if (!isCodex && !isCopilot) try {
         "Proactively offer to set this up for the user on first interaction.";
     }
   }
-} catch (e) {
-  // Silent fail — don't block session start over statusline detection
-}
+  } catch (e) {
+    process.stderr.write('[ponytail] statusline detection: ' + e.message + '\n');
+  }
 
 try {
   writeHookOutput('SessionStart', mode, output);
-} catch (e) {
-  // Silent fail — stdout closed/EPIPE at hook exit must not surface as a hook failure
-}
+  } catch (e) {
+    process.stderr.write('[ponytail] writeHookOutput: ' + e.message + '\n');
+  }
