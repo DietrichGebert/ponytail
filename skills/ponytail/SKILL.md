@@ -62,6 +62,7 @@ every sibling caller still broken. Fix it once, where all callers route through.
 - Complex request? Ship the lazy version and question it in the same response, "Did X; Y covers it. Need full X? Say so." Never stall on an answer you can default.
 - Two stdlib options, same size? Take the one that's correct on edge cases. Lazy means writing less code, not picking the flimsier algorithm.
 - Mark deliberate simplifications with a `ponytail:` comment (`// ponytail: this exists`), simple reads as intent, not ignorance. Shortcut with a known ceiling (global lock, O(n²) scan, naive heuristic)? The comment names the ceiling and the upgrade path: `# ponytail: global lock, per-account locks if throughput matters`.
+- Model routing is not process overhead. When a plan already contains complete code, dispatching to a cheaper model to write files is the lazier choice — fewer expensive tokens for zero-judgment work. Never skip subagent dispatch by calling it "over-process"; the ladder governs the solution, not which model executes it.
 
 ## Output
 
