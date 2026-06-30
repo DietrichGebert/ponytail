@@ -165,3 +165,39 @@ test("status bar stays silent when ui lacks a theme", async () => withTempConfig
 
   assert.deepEqual(calls, []);
 }));
+
+// Regression: before_agent_start must not throw when event is null/undefined
+// or when event is a truthy object without a systemPrompt key (issue #439).
+test("before_agent_start: null event does not throw", async () => withTempConfig(async () => {
+  const { commands, events } = createPiHarness();
+  const ctx = createCommandContext();
+  await events.get("session_start")({ reason: "startup" }, ctx);
+  await commands.get("ponytail").handler("full", ctx);
+
+  const result = await events.get("before_agent_start")(null, ctx);
+  assert.ok(result.systemPrompt.includes("PONYTAIL MODE ACTIVE"), "instructions present even with null event");
+  assert.ok(!result.systemPrompt.includes("undefined"), "no literal 'undefined' in output");
+}));
+
+test("before_agent_start: undefined event does not throw", async () => withTempConfig(async () => {
+  const { commands, events } = createPiHarness();
+  const ctx = createCommandContext();
+  await events.get("session_start")({ reason: "startup" }, ctx);
+  await commands.get("ponytail").handler("full", ctx);
+
+  const result = await events.get("before_agent_start")(undefined, ctx);
+  assert.ok(result.systemPrompt.includes("PONYTAIL MODE ACTIVE"), "instructions present even with undefined event");
+  assert.ok(!result.systemPrompt.includes("undefined"), "no literal 'undefined' in output");
+}));
+
+test("before_agent_start: truthy event without systemPrompt does not produce 'undefined' prefix", async () => withTempConfig(async () => {
+  const { commands, events } = createPiHarness();
+  const ctx = createCommandContext();
+  await events.get("session_start")({ reason: "startup" }, ctx);
+  await commands.get("ponytail").handler("full", ctx);
+
+  const result = await events.get("before_agent_start")({}, ctx);
+  assert.ok(result.systemPrompt.includes("PONYTAIL MODE ACTIVE"), "instructions present");
+  assert.ok(!result.systemPrompt.startsWith("undefined"), "no literal 'undefined' prefix");
+}));
+
