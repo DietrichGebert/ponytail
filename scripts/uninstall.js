@@ -36,5 +36,12 @@ try {
     console.log(`Removed ponytail statusLine entry from ${settingsPath}`);
   }
 } catch (e) {
-  if (e.code !== 'ENOENT') throw e;
+  if (e.code === 'ENOENT') {
+    // no settings.json — nothing to clean
+  } else if (e instanceof SyntaxError) {
+    // ponytail: malformed settings.json — can't safely edit it; leave intact, warn
+    console.warn(`settings.json is malformed — could not remove the ponytail statusLine entry. Remove it manually from: ${settingsPath} (${e.message})`);
+  } else {
+    throw e;
+  }
 }

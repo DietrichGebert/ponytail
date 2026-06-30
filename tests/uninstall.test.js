@@ -69,6 +69,28 @@ assert.equal(
   "a user's own statusLine must not be touched",
 );
 
+// A malformed settings.json must not crash the script (issue #434): the ponytail
+// statusLine entry can't be auto-removed (can't safely edit invalid JSON), so the
+// script warns and leaves the file byte-for-byte intact.
+const malformedSettings = '{ "statusLine": { "command": "ponytail-statusline.sh", broken';
+fs.writeFileSync(settingsPath, malformedSettings);
+
+result = runUninstall(env);
+assert.equal(
+  result.status,
+  0,
+  `expected exit 0 on malformed settings.json, got:\n${result.stdout}${result.stderr}`,
+);
+assert.ok(
+  /malformed/i.test(result.stdout + result.stderr),
+  'must warn that the statusLine entry could not be removed',
+);
+assert.equal(
+  fs.readFileSync(settingsPath, 'utf8'),
+  malformedSettings,
+  'malformed settings.json must be left unchanged',
+);
+
 // Running on an already-clean machine must not throw.
 result = runUninstall({ HOME: path.join(temp, 'home-empty'), USERPROFILE: path.join(temp, 'home-empty') });
 assert.equal(result.status, 0, result.stderr);
