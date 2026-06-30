@@ -204,7 +204,7 @@ sys.stdout = _stdout
 # Check output contains the number 351 (100.5 + 200.0 + 50.5)
 # Match as a standalone number (not as substring of e.g. 13510)
 import re
-if re.search(r'(?<![\\d])351(?:\\.0)?(?![\\d])', output):
+if re.search(r'(?<!\d)351(?:\.0)?(?!\d)', output):
     print("PASS")
 else:
     # Try running it differently: maybe it defines a function
