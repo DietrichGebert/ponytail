@@ -23,6 +23,7 @@
   },
   "files": [
     "AGENTS.md",
+    "commands/",
     "hooks/",
     "skills/",
     ".opencode/",
