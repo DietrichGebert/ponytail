@@ -69,6 +69,21 @@ assert.equal(
   "a user's own statusLine must not be touched",
 );
 
+// #374: a combined statusline (another plugin && ponytail) must keep the other
+// plugin's part — uninstall must not nuke the whole command or leave a husk.
+fs.writeFileSync(settingsPath, JSON.stringify({
+  statusLine: { type: 'command', command: 'bash ~/caveman-statusline.sh && bash /p/ponytail-statusline.sh' },
+}));
+
+result = runUninstall(env);
+assert.equal(result.status, 0, result.stderr);
+const settingsAfter3 = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
+assert.equal(
+  settingsAfter3.statusLine.command,
+  'bash ~/caveman-statusline.sh && bash /p/ponytail-statusline.sh',
+  'a combined statusLine must be left untouched, not partially destroyed',
+);
+
 // Running on an already-clean machine must not throw.
 result = runUninstall({ HOME: path.join(temp, 'home-empty'), USERPROFILE: path.join(temp, 'home-empty') });
 assert.equal(result.status, 0, result.stderr);
