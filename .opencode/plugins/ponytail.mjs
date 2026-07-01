@@ -51,7 +51,7 @@ export function parseCommandFile(filePath) {
   return { description, template: match[2].trim() };
 }
 
-export default async ({ client } = {}) => {
+const ponytailPlugin = async ({ client } = {}) => {
   const log = (level, message) => {
     try { client && client.app && client.app.log({ body: { service: 'ponytail', level, message } }); } catch (e) {}
   };
@@ -98,3 +98,18 @@ export default async ({ client } = {}) => {
     },
   };
 };
+
+// opencode's plugin loader (per docs at https://opencode.ai/docs/plugins/)
+// imports a module and expects a NAMED export of a plugin function
+// (e.g. `export const MyPlugin = async (ctx) => ({ ... })`). Every documented
+// example uses a named export. A bare `export default` is NOT recognized as a
+// loadable plugin and raises: failed to load plugin: path must be a string or a
+// file descriptor. See https://github.com/DietrichGebert/ponytail issue ???.
+//
+// Keep the default export for hosts that prefer it (e.g. Claude Code, pi), and
+// additionally expose named exports so the OpenCode loader succeeds. This is
+// fully additive and non-breaking.
+export { ponytailPlugin as ponytail };
+export { ponytailPlugin as Ponytail };
+export { ponytailPlugin as PonytailPlugin };
+export default ponytailPlugin;
