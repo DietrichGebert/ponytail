@@ -77,6 +77,29 @@ test("/ponytail updates session mode and injects instructions", async () => with
   assert.ok(result.systemPrompt.includes("ultra"));
 }));
 
+test("before_agent_start guards missing event and missing systemPrompt (#439, #440)", async () => withTempConfig(async () => {
+  const { events } = createPiHarness();
+  const ctx = createCommandContext();
+  await events.get("session_start")({ reason: "startup" }, ctx); // currentMode -> default (full)
+
+  // #439: a null/undefined event must not crash, and still injects the ruleset.
+  for (const bad of [undefined, null]) {
+    const r = await events.get("before_agent_start")(bad, ctx);
+    assert.ok(r.systemPrompt.includes("PONYTAIL MODE ACTIVE"));
+    assert.ok(!r.systemPrompt.includes("undefined"), "must not contain the literal 'undefined'");
+  }
+
+  // #440: an event without a systemPrompt must not prepend the literal "undefined".
+  const empty = await events.get("before_agent_start")({}, ctx);
+  assert.ok(empty.systemPrompt.includes("PONYTAIL MODE ACTIVE"));
+  assert.ok(!empty.systemPrompt.startsWith("undefined"), "must not start with 'undefined'");
+
+  // A real base prompt is still preserved and prepended.
+  const withBase = await events.get("before_agent_start")({ systemPrompt: "BASE" }, ctx);
+  assert.ok(withBase.systemPrompt.startsWith("BASE\n\n"));
+  assert.ok(withBase.systemPrompt.includes("PONYTAIL MODE ACTIVE"));
+}));
+
 test("session_start restores latest persisted mode", async () => withTempConfig(async () => {
   const { events } = createPiHarness();
   const ctx = createCommandContext({
