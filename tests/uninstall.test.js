@@ -84,6 +84,28 @@ assert.equal(
   'a combined statusLine must be left untouched, not partially destroyed',
 );
 
+// #434: a malformed settings.json must not crash the script mid-cleanup. It
+// can't be safely edited, so uninstall warns and leaves the file byte-for-byte
+// intact instead of throwing a SyntaxError after other state was already removed.
+const malformedSettings = '{ "statusLine": { "command": "ponytail-statusline.sh", broken';
+fs.writeFileSync(settingsPath, malformedSettings);
+
+result = runUninstall(env);
+assert.equal(
+  result.status,
+  0,
+  `expected exit 0 on malformed settings.json, got:\n${result.stdout}${result.stderr}`,
+);
+assert.ok(
+  /malformed/i.test(result.stdout + result.stderr),
+  'must warn that the statusLine entry could not be removed',
+);
+assert.equal(
+  fs.readFileSync(settingsPath, 'utf8'),
+  malformedSettings,
+  'malformed settings.json must be left unchanged',
+);
+
 // Running on an already-clean machine must not throw.
 result = runUninstall({ HOME: path.join(temp, 'home-empty'), USERPROFILE: path.join(temp, 'home-empty') });
 assert.equal(result.status, 0, result.stderr);
