@@ -16,7 +16,7 @@ if (!mode || mode === 'off') {
 }
 
 try {
-  writeHookOutput('SubagentStart', mode, getPonytailInstructions(mode));
+writeHookOutput('SubagentStart', mode, getPonytailInstructions(mode));
 } catch (e) {
   // Silent fail — a stdout error at hook exit must not surface as a hook failure.
 }
