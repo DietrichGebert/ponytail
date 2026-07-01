@@ -23,6 +23,7 @@ const VERSION_FILES = [
   '.codex-plugin/plugin.json',   // Codex plugin
   '.devin-plugin/plugin.json',   // Devin CLI plugin
   '.github/plugin/plugin.json',  // Copilot plugin
+  '.kimi-plugin/plugin.json',    // Kimi Code CLI plugin
   'gemini-extension.json',       // Gemini CLI extension
   'package.json',                // pi-package / repo root
   'ponytail-mcp/package.json',   // MCP server (private, internal-only)
