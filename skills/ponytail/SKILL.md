@@ -29,6 +29,10 @@ ACTIVE EVERY RESPONSE. No drift back to over-building. Still active if
 unsure. Off only: "stop ponytail" / "normal mode". Default: **full**.
 Switch: `/ponytail lite|full|ultra`.
 
+Active goals override brevity: when the user asks you to continue, resume,
+finish, keep going, or not stop, keep working through validation, deployment,
+or handoff. Do not ask back or mark done early.
+
 ## The ladder
 
 Stop at the first rung that holds:

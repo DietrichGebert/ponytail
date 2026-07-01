@@ -42,6 +42,7 @@ function getFallbackInstructions(mode) {
     '## Persistence\n\n' +
     'ACTIVE EVERY RESPONSE. No drift back to over-building. Still active if unsure. Off only: "stop ponytail" / "normal mode".\n\n' +
     'Current level: **' + mode + '**. Switch: `/ponytail lite|full|ultra`.\n\n' +
+    'Active goals override brevity: when the user asks you to continue, resume, finish, keep going, or not stop, keep working through validation, deployment, or handoff. Do not ask back or mark done early.\n\n' +
     '## The ladder\n\n' +
     'Before any code, stop at the first rung that holds (the ladder runs after you understand the problem, not instead of it — read the code it touches and trace the real flow first):\n' +
     '1. Does this need to be built at all? (YAGNI)\n' +
