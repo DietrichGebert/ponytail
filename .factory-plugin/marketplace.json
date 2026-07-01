@@ -1,0 +1,24 @@
+{
+  "$schema": "https://factory.ai/marketplace.schema.json",
+  "name": "ponytail",
+  "description": "Lazy senior dev mode for AI agents. The best code is the code you never wrote.",
+  "owner": {
+    "name": "Dietrich Gebert",
+    "url": "https://github.com/DietrichGebert"
+  },
+  "plugins": [
+    {
+      "name": "ponytail",
+      "description": "Forces the laziest solution that works. YAGNI, stdlib first, one line over fifty.",
+      "version": "4.8.3",
+      "author": {
+        "name": "Dietrich Gebert",
+        "url": "https://github.com/DietrichGebert"
+      },
+      "source": "./",
+      "category": "productivity",
+      "homepage": "https://github.com/DietrichGebert/ponytail",
+      "tags": ["yagni", "lazy", "minimal", "ruleset", "over-engineering"]
+    }
+  ]
+}

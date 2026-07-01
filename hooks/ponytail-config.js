@@ -73,6 +73,12 @@ function getClaudeDir() {
   return process.env.CLAUDE_CONFIG_DIR || path.join(os.homedir(), '.claude');
 }
 
+function getFactoryDir() {
+  // Factory Droid's config root is ~/.factory (no CLAUDE_CONFIG_DIR-style override).
+  // ponytail: host-agnostic state dir — the live mode flag lives with Factory's state.
+  return path.join(os.homedir(), '.factory');
+}
+
 function getDefaultMode() {
   // 1. Environment variable (highest priority)
   const envMode = process.env.PONYTAIL_DEFAULT_MODE;
@@ -114,6 +120,7 @@ module.exports = {
   getConfigDir,
   getConfigPath,
   getClaudeDir,
+  getFactoryDir,
   isShellSafe,
   normalizeMode,
   normalizeConfigMode,
