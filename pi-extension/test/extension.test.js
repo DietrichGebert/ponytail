@@ -77,6 +77,16 @@ test("/ponytail updates session mode and injects instructions", async () => with
   assert.ok(result.systemPrompt.includes("ultra"));
 }));
 
+test("before_agent_start ignores missing event", async () => withTempConfig(async () => {
+  const { events } = createPiHarness();
+  const ctx = createCommandContext();
+
+  await events.get("session_start")({ reason: "startup" }, ctx);
+
+  assert.equal(await events.get("before_agent_start")(undefined, ctx), undefined);
+  assert.equal(await events.get("before_agent_start")(null, ctx), undefined);
+}));
+
 test("session_start restores latest persisted mode", async () => withTempConfig(async () => {
   const { events } = createPiHarness();
   const ctx = createCommandContext({
