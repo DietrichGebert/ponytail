@@ -66,9 +66,28 @@ for (const phrase of INVARIANTS) {
   }
 }
 
+// Check that the inline FALLBACK_RULES in the Amp plugin contains the same
+// load-bearing invariants. The fallback is only reached on system-wide installs
+// where SKILL.md isn't on disk; stale wording there is low-risk, but a dropped
+// safety rule would silently weaken the system-wide install.
+const ampPlugin = read('.amp/plugins/ponytail.ts');
+const fallbackMatch = ampPlugin.match(/const FALLBACK_RULES = `([\s\S]*?)`/);
+if (!fallbackMatch) {
+  console.error('.amp/plugins/ponytail.ts: FALLBACK_RULES constant not found');
+  failed = true;
+} else {
+  const fallback = fallbackMatch[1];
+  for (const phrase of INVARIANTS) {
+    if (!fallback.includes(phrase)) {
+      console.error(`.amp/plugins/ponytail.ts FALLBACK_RULES drifted — missing: "${phrase}"`);
+      failed = true;
+    }
+  }
+}
+
 if (failed) {
   console.error('Update the copied rule text, AGENTS.md, or SKILL.md so the shared rules match.');
   process.exit(1);
 }
 
-console.log(`Rule copies match AGENTS.md; ${INVARIANTS.length} rule invariants present in SKILL.md and AGENTS.md.`);
+console.log(`Rule copies match AGENTS.md; ${INVARIANTS.length} rule invariants present in SKILL.md, AGENTS.md, and Amp FALLBACK_RULES.`);

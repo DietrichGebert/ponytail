@@ -180,6 +180,28 @@ Injects the ruleset every turn at the active level; adds the `/ponytail` command
 
 The `./` path resolves against your project's `opencode.json`; to share one checkout across projects, point it at the absolute path of the `.mjs` instead (it finds its `hooks/` and `skills/` relative to its own file).
 
+### Ampcode
+
+```bash
+# System-wide — active in every project (recommended)
+mkdir -p ~/.config/amp/plugins
+curl -fsSL https://raw.githubusercontent.com/DietrichGebert/ponytail/main/.amp/plugins/ponytail.ts \
+  -o ~/.config/amp/plugins/ponytail.ts
+```
+
+Then open Amp and run `plugins: reload` from the command palette (`Ctrl+O`).
+
+```bash
+# Project-level — scoped to one project
+mkdir -p .amp/plugins
+curl -fsSL https://raw.githubusercontent.com/DietrichGebert/ponytail/main/.amp/plugins/ponytail.ts \
+  -o .amp/plugins/ponytail.ts
+```
+
+Commands work two ways: type `/ponytail ultra` in the chat, or open the command palette (`Ctrl+O`) and search `ponytail` to pick from the six commands. The mode is persisted in `~/.config/ponytail/config.json` and shared with Claude, OpenCode, and other platforms.
+
+The system-wide install works fully without the checkout — it uses built-in fallback instructions that are functionally equivalent.
+
 ### Gemini CLI
 
 ```bash
