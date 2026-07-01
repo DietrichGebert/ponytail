@@ -52,13 +52,14 @@ test('shared hook commands avoid POSIX-only guard syntax', () => {
   }
 });
 
-test('shared hook commands keep lifecycle hooks non-blocking', () => {
+test('shared hook commands exec node instead of leaving a wrapper shell behind', () => {
   const commands = commandHooks()
     .map((h) => h.command)
     .filter(Boolean);
   assert.ok(commands.length > 0, 'expected at least one shared command entry');
   for (const cmd of commands) {
-    assert.match(cmd, /;\s*exit 0$/, `command must exit successfully if node or the hook script fails: ${cmd}`);
+    assert.match(cmd, /^exec node\s+/, `command must replace the shell with node: ${cmd}`);
+    assert.doesNotMatch(cmd, /;\s*exit 0$/, `command must not leave a shell wrapper waiting on node: ${cmd}`);
   }
 });
 
