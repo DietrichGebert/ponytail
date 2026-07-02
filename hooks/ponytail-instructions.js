@@ -3,7 +3,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const { DEFAULT_MODE, normalizeMode, normalizePersistedMode } = require('./ponytail-config');
+const { DEFAULT_MODE, normalizeMode, normalizePersistedMode, detectCompressionPlugins } = require('./ponytail-config');
 
 const INDEPENDENT_MODES = new Set(['review']);
 const SKILL_PATH = path.join(__dirname, '..', 'skills', 'ponytail', 'SKILL.md');
@@ -70,6 +70,16 @@ function getFallbackInstructions(mode) {
     'Ponytail governs what you build, not how you talk. "stop ponytail" or "normal mode": revert. Level persists until changed or session end.';
 }
 
+function getCompressionDeconfliction() {
+  const peers = detectCompressionPlugins();
+  if (peers.length === 0) return '';
+  return '\n\n## Compression plugin coexistence\n\n' +
+    'Detected: ' + peers.join(', ') + '. ' +
+    'Ponytail governs WHAT to build (the ladder, YAGNI, stdlib-first, minimal diffs). ' +
+    'Defer to the other plugin for output STYLE (brevity, tone, formatting). ' +
+    'If rules conflict, the structural rule (ponytail) wins for code decisions; the style rule (peer plugin) wins for prose and formatting.';
+}
+
 function getPonytailInstructions(mode) {
   const configuredMode = normalizePersistedMode(mode) || DEFAULT_MODE;
 
@@ -78,12 +88,13 @@ function getPonytailInstructions(mode) {
   }
 
   const effectiveMode = normalizeMode(configuredMode) || DEFAULT_MODE;
+  const deconfliction = getCompressionDeconfliction();
 
   try {
     return 'PONYTAIL MODE ACTIVE — level: ' + effectiveMode + '\n\n' +
-      filterSkillBodyForMode(fs.readFileSync(SKILL_PATH, 'utf8'), effectiveMode);
+      filterSkillBodyForMode(fs.readFileSync(SKILL_PATH, 'utf8'), effectiveMode) + deconfliction;
   } catch (e) {
-    return getFallbackInstructions(effectiveMode);
+    return getFallbackInstructions(effectiveMode) + deconfliction;
   }
 }
 

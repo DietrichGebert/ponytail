@@ -95,6 +95,24 @@ function getDefaultMode() {
   return DEFAULT_MODE;
 }
 
+const KNOWN_COMPRESSION_PLUGINS = ['caveman'];
+
+function detectCompressionPlugins() {
+  try {
+    const settingsPath = path.join(getClaudeDir(), 'settings.json');
+    const raw = fs.readFileSync(settingsPath, 'utf8').replace(/^﻿/, '');
+    const settings = JSON.parse(raw);
+    const found = [];
+    const blob = JSON.stringify(settings).toLowerCase();
+    for (const name of KNOWN_COMPRESSION_PLUGINS) {
+      if (blob.includes(name)) found.push(name);
+    }
+    return found;
+  } catch (e) {
+    return [];
+  }
+}
+
 function writeDefaultMode(mode) {
   const normalized = normalizeConfigMode(mode);
   if (!normalized) return null;
@@ -109,6 +127,7 @@ module.exports = {
   DEFAULT_MODE,
   VALID_MODES,
   RUNTIME_MODES,
+  detectCompressionPlugins,
   getDefaultMode,
   getConfigDir,
   getConfigPath,

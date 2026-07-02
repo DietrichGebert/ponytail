@@ -209,4 +209,48 @@ assert.equal(output.systemMessage, 'PONYTAIL:FULL');
 assert.equal(output.hookSpecificOutput.hookEventName, 'SubagentStart');
 assert.match(output.hookSpecificOutput.additionalContext, /PONYTAIL MODE ACTIVE — level: full/);
 
+// Compression-plugin deconfliction (issue #332): when caveman is in settings.json
+// the instructions must include a deconfliction paragraph.
+const { detectCompressionPlugins } = require('../hooks/ponytail-config');
+const { getPonytailInstructions } = require('../hooks/ponytail-instructions');
+
+const deconflictHome = path.join(temp, 'deconflict-home');
+const deconflictClaudeDir = path.join(deconflictHome, '.claude');
+fs.mkdirSync(deconflictClaudeDir, { recursive: true });
+
+const cavemanSettings = {
+  hooks: {
+    SessionStart: [{ hooks: [{ type: 'command', command: 'node /path/to/caveman/activate.js' }] }],
+  },
+};
+fs.writeFileSync(path.join(deconflictClaudeDir, 'settings.json'), JSON.stringify(cavemanSettings));
+
+const prevConfigDir = process.env.CLAUDE_CONFIG_DIR;
+process.env.CLAUDE_CONFIG_DIR = deconflictClaudeDir;
+
+const peers = detectCompressionPlugins();
+assert.ok(peers.includes('caveman'), 'detectCompressionPlugins must find caveman in settings.json');
+const instructions = getPonytailInstructions('full');
+assert.ok(
+  instructions.includes('Compression plugin coexistence'),
+  'instructions must include deconfliction paragraph when caveman detected',
+);
+assert.ok(
+  instructions.includes('caveman'),
+  'deconfliction paragraph must name the detected plugin',
+);
+
+// Without caveman: no deconfliction paragraph.
+fs.writeFileSync(path.join(deconflictClaudeDir, 'settings.json'), JSON.stringify({}));
+const noPeers = detectCompressionPlugins();
+assert.deepEqual(noPeers, [], 'no compression plugins detected without caveman');
+const cleanInstructions = getPonytailInstructions('full');
+assert.ok(
+  !cleanInstructions.includes('Compression plugin coexistence'),
+  'instructions must not include deconfliction paragraph without caveman',
+);
+
+if (prevConfigDir === undefined) delete process.env.CLAUDE_CONFIG_DIR;
+else process.env.CLAUDE_CONFIG_DIR = prevConfigDir;
+
 console.log('hook compatibility checks passed');
