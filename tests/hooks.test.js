@@ -209,4 +209,16 @@ assert.equal(output.systemMessage, 'PONYTAIL:FULL');
 assert.equal(output.hookSpecificOutput.hookEventName, 'SubagentStart');
 assert.match(output.hookSpecificOutput.additionalContext, /PONYTAIL MODE ACTIVE — level: full/);
 
+// CJK language paragraph (issue #333): instructions must include CJK guidance.
+const { getPonytailInstructions } = require('../hooks/ponytail-instructions');
+const cjkInstructions = getPonytailInstructions('full');
+assert.ok(
+  cjkInstructions.includes('CJK languages'),
+  'instructions must include CJK language section',
+);
+assert.ok(
+  cjkInstructions.includes('article dropping'),
+  'CJK section must mention skipping article-dropping for CJK',
+);
+
 console.log('hook compatibility checks passed');
