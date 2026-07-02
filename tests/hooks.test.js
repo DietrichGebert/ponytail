@@ -11,7 +11,7 @@ const root = path.join(__dirname, '..');
 // isShellSafe gates the statusline setup snippet (issue #200): ordinary install
 // paths pass, paths carrying shell metacharacters are rejected so they never get
 // embedded in a shell command.
-const { isShellSafe } = require('../hooks/ponytail-config');
+const { isShellSafe, writeDefaultMode, getConfigDir } = require('../hooks/ponytail-config');
 assert.equal(isShellSafe('C:\\Users\\x\\.claude\\plugins\\ponytail\\hooks\\ponytail-statusline.ps1'), true);
 assert.equal(isShellSafe('/home/u/.claude/plugins/ponytail/hooks/ponytail-statusline.sh'), true);
 assert.equal(isShellSafe('/tmp/a"&calc.exe&"/x.sh'), false);
@@ -208,5 +208,24 @@ output = JSON.parse(result.stdout);
 assert.equal(output.systemMessage, 'PONYTAIL:FULL');
 assert.equal(output.hookSpecificOutput.hookEventName, 'SubagentStart');
 assert.match(output.hookSpecificOutput.additionalContext, /PONYTAIL MODE ACTIVE — level: full/);
+
+// writeDefaultMode must merge into existing config, not overwrite it.
+const mergeHome = path.join(temp, 'merge-home');
+const mergeConfigDir = path.join(mergeHome, '.config', 'ponytail');
+fs.mkdirSync(mergeConfigDir, { recursive: true });
+const mergeConfigPath = path.join(mergeConfigDir, 'config.json');
+fs.writeFileSync(mergeConfigPath, JSON.stringify({ defaultMode: 'full', customSetting: 42 }, null, 2));
+
+const prevXdg = process.env.XDG_CONFIG_HOME;
+process.env.XDG_CONFIG_HOME = path.join(mergeHome, '.config');
+try {
+  writeDefaultMode('ultra');
+  const merged = JSON.parse(fs.readFileSync(mergeConfigPath, 'utf8'));
+  assert.equal(merged.defaultMode, 'ultra', 'writeDefaultMode must update defaultMode');
+  assert.equal(merged.customSetting, 42, 'writeDefaultMode must preserve existing config fields');
+} finally {
+  if (prevXdg === undefined) delete process.env.XDG_CONFIG_HOME;
+  else process.env.XDG_CONFIG_HOME = prevXdg;
+}
 
 console.log('hook compatibility checks passed');
