@@ -8,6 +8,8 @@
 //      - ~/.config/ponytail/config.json (macOS / Linux fallback)
 //      - %APPDATA%\ponytail\config.json (Windows fallback)
 //   3. 'full'
+//
+// Status indicator hiding uses PONYTAIL_HIDE_STATUS=1 or config.hideStatus=true.
 
 const fs = require('fs');
 const path = require('path');
@@ -96,13 +98,26 @@ function getDefaultMode() {
   return DEFAULT_MODE;
 }
 
+function getHideStatus() {
+  if (process.env.PONYTAIL_HIDE_STATUS === '1') return true;
+
+  try {
+    const config = JSON.parse(fs.readFileSync(getConfigPath(), 'utf8'));
+    return config.hideStatus === true;
+  } catch (e) {
+    return false;
+  }
+}
+
 function writeDefaultMode(mode) {
   const normalized = normalizeConfigMode(mode);
   if (!normalized) return null;
 
   const configPath = getConfigPath();
   fs.mkdirSync(path.dirname(configPath), { recursive: true });
-  fs.writeFileSync(configPath, JSON.stringify({ defaultMode: normalized }, null, 2), 'utf8');
+  let config = {};
+  try { config = JSON.parse(fs.readFileSync(configPath, 'utf8')); } catch (e) {}
+  fs.writeFileSync(configPath, JSON.stringify({ ...config, defaultMode: normalized }, null, 2), 'utf8');
   return normalized;
 }
 
@@ -114,6 +129,7 @@ module.exports = {
   getConfigDir,
   getConfigPath,
   getClaudeDir,
+  getHideStatus,
   isShellSafe,
   normalizeMode,
   normalizeConfigMode,

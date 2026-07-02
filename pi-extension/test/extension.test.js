@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
@@ -43,13 +43,17 @@ function createCommandContext(overrides = {}) {
 function withTempConfig(fn) {
   const tempConfigHome = mkdtempSync(join(tmpdir(), "ponytail-test-"));
   const previousXdg = process.env.XDG_CONFIG_HOME;
+  const previousHideStatus = process.env.PONYTAIL_HIDE_STATUS;
   process.env.XDG_CONFIG_HOME = tempConfigHome;
+  delete process.env.PONYTAIL_HIDE_STATUS;
 
   return Promise.resolve()
     .then(fn)
     .finally(() => {
       if (previousXdg === undefined) delete process.env.XDG_CONFIG_HOME;
       else process.env.XDG_CONFIG_HOME = previousXdg;
+      if (previousHideStatus === undefined) delete process.env.PONYTAIL_HIDE_STATUS;
+      else process.env.PONYTAIL_HIDE_STATUS = previousHideStatus;
       rmSync(tempConfigHome, { recursive: true, force: true });
     });
 }
@@ -164,4 +168,21 @@ test("status bar stays silent when ui lacks a theme", async () => withTempConfig
   await events.get("agent_start")({}, ctx);
 
   assert.deepEqual(calls, []);
+}));
+
+test("status bar can be hidden while instructions stay active", async () => withTempConfig(async () => {
+  mkdirSync(join(process.env.XDG_CONFIG_HOME, "ponytail"), { recursive: true });
+  writeFileSync(join(process.env.XDG_CONFIG_HOME, "ponytail", "config.json"), JSON.stringify({ hideStatus: true }));
+  const { events } = createPiHarness();
+  const statusWrites = [];
+  const ctx = createCommandContext({
+    ui: { notify() {}, setStatus: (key, text) => statusWrites.push({ key, text }), theme: { fg: (_color, text) => text } },
+  });
+
+  await events.get("session_start")({ reason: "startup" }, ctx);
+  await events.get("agent_start")({}, ctx);
+  const injected = await events.get("before_agent_start")({ systemPrompt: "BASE" }, ctx);
+
+  assert.deepEqual(statusWrites, []);
+  assert.match(injected.systemPrompt, /PONYTAIL MODE ACTIVE/);
 }));
