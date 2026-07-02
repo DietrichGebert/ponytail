@@ -15,6 +15,7 @@ const root = path.join(__dirname, '..');
 const HOOKS_JSON = 'hooks/claude-codex-hooks.json';
 const HOST_PLUGIN_MANIFESTS = [
   '.claude-plugin/plugin.json',
+  '.codebuddy-plugin/plugin.json',
   '.codex-plugin/plugin.json',
 ];
 // cmd.exe variable syntax (%FOO%); PowerShell leaves it literal, breaking the path.

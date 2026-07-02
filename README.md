@@ -123,6 +123,15 @@ The Claude Code and Codex plugins run two tiny Node.js lifecycle hooks, so `node
 
 The desktop app has no `/plugin` command. Install it from the UI instead: Customize, the + by personal plugins, Create plugin and add marketplace, Add from repository, then enter the repo URL (thanks @NiklasDHahn, #98).
 
+### CodeBuddy
+
+```bash
+codebuddy plugin marketplace add DietrichGebert/ponytail
+codebuddy plugin install ponytail@ponytail
+```
+
+Reuses the Claude Code hooks (`hooks/claude-codex-hooks.json`), so the lifecycle activation, mode tracking, commands, and statusline all work the same way.
+
 ### Codex
 
 ```bash
@@ -262,6 +271,7 @@ Which files map to which agent: [Agent portability](docs/agent-portability.md).
 | Host | Command |
 |------|---------|
 | Claude Code | `/plugin remove ponytail` |
+| CodeBuddy | `/plugin remove ponytail` |
 | Codex | `codex plugin remove ponytail` |
 | Devin CLI | `devin plugins remove ponytail` |
 | Pi agent | `pi uninstall ponytail` |
@@ -280,7 +290,7 @@ These remove the plugin's own files. They leave behind a small amount of state p
 | `/ponytail-gain` | Show the measured impact scoreboard (less code, less cost, more speed) from the benchmark. |
 | `/ponytail-help` | Quick reference for the commands above. |
 
-Commands need a skill-capable host (Claude Code, Codex, Devin CLI, OpenCode, Gemini, pi, Swival, Hermes Agent). In Codex they're skills, invoke with `@` (`@ponytail-review`). The instruction-only adapters (Cursor, Windsurf, Cline, Copilot, Kiro, Antigravity) load the always-on ruleset without the commands.
+Commands need a skill-capable host (Claude Code, CodeBuddy, Codex, Devin CLI, OpenCode, Gemini, pi, Swival, Hermes Agent). In Codex they're skills, invoke with `@` (`@ponytail-review`). The instruction-only adapters (Cursor, Windsurf, Cline, Copilot, Kiro, Antigravity) load the always-on ruleset without the commands.
 
 ## Development
 
