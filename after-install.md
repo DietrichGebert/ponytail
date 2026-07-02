@@ -19,4 +19,4 @@ Commands:
 - `/ponytail-gain`
 - `/ponytail-help`
 
-Bundled skills are available as `ponytail:ponytail`, `ponytail:ponytail-review`, `ponytail:ponytail-audit`, `ponytail:ponytail-debt`, `ponytail:ponytail-gain`, and `ponytail:ponytail-help`.
+Commands are available as the slash commands listed above (e.g. /ponytail, /ponytail-review).
