@@ -61,6 +61,14 @@ assert.match(
   output.hookSpecificOutput.additionalContext,
   /PONYTAIL MODE ACTIVE — level: ultra/,
 );
+assert.match(
+  output.hookSpecificOutput.additionalContext,
+  /patch, plan, partial fix, or local\s+unit check is not completion/,
+);
+assert.match(
+  output.hookSpecificOutput.additionalContext,
+  /Latest work wins/,
+);
 
 result = run(
   'ponytail-mode-tracker.js',

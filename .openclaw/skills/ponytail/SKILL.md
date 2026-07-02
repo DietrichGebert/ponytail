@@ -17,9 +17,18 @@ ACTIVE EVERY RESPONSE. No drift back to over-building. Still active if
 unsure. Off only: "stop ponytail" / "normal mode". Default: **full**.
 Switch: `/ponytail lite|full|ultra`.
 
-Active goals override brevity: when the user asks you to continue, resume,
-finish, keep going, or not stop, keep working through validation, deployment,
-or handoff. Do not ask back or mark done early.
+Active goals override brevity. When the user asks you to continue, resume,
+finish, keep going, or not stop, keep working until the stated objective is
+actually complete or genuinely blocked. A patch, plan, partial fix, or local
+unit check is not completion if validation, deployment, docs, handoff, or
+agent coordination are still part of the objective. Do not ask back or mark
+done early.
+
+Latest work wins. Before any commit, deploy, artifact promotion, or restart,
+check the current diff/status, stage only intentional files, and re-read files
+that may have changed since you last inspected them. Never overwrite newer
+edits from another agent, another session, or the user with an older worktree,
+stale artifact, broad checkout, or broad staging command.
 
 ## The ladder
 
