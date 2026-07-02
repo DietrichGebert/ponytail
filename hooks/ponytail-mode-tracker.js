@@ -2,7 +2,7 @@
 // ponytail — UserPromptSubmit hook to track which ponytail mode is active
 // Inspects user input for /ponytail commands and writes mode to flag file
 
-const { getDefaultMode, isDeactivationCommand } = require('./ponytail-config');
+const { getDefaultMode, isDeactivationCommand, writeDefaultMode } = require('./ponytail-config');
 const { clearMode, setMode, writeHookOutput } = require('./ponytail-runtime');
 
 let input = '';
@@ -36,6 +36,7 @@ function finish() {
 
       if (mode && mode !== 'off') {
         setMode(mode);
+        if (mode !== 'review') try { writeDefaultMode(mode); } catch (_) {}
         writeHookOutput(
           'UserPromptSubmit',
           mode,
@@ -43,6 +44,7 @@ function finish() {
         );
       } else if (mode === 'off') {
         clearMode();
+        try { writeDefaultMode('off'); } catch (_) {}
         writeHookOutput('UserPromptSubmit', 'off', 'PONYTAIL MODE OFF');
       }
     }
@@ -50,6 +52,7 @@ function finish() {
     // Detect deactivation
     if (isDeactivationCommand(prompt)) {
       clearMode();
+      writeDefaultMode('off');
       writeHookOutput('UserPromptSubmit', 'off', 'PONYTAIL MODE OFF');
     }
   } catch (e) {
