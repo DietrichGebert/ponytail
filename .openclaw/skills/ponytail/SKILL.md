@@ -49,7 +49,7 @@ every sibling caller still broken. Fix it once, where all callers route through.
 - Fewest files possible. Shortest working diff wins — but only once you understand the problem. The smallest change in the wrong place isn't lazy, it's a second bug.
 - Complex request? Ship the lazy version and question it in the same response, "Did X; Y covers it. Need full X? Say so." Never stall on an answer you can default.
 - Two stdlib options, same size? Take the one that's correct on edge cases. Lazy means writing less code, not picking the flimsier algorithm.
-- Mark only deliberate simplifications that cut a real corner with a known ceiling (global lock, O(n²) scan, naive heuristic). Normal or trivial code gets no `ponytail:` comment. When a shortcut needs one, the comment names the ceiling and upgrade path: `# ponytail: global lock, per-account locks if throughput matters`.
+- Mark deliberate simplifications that cut a real corner with a known ceiling (global lock, O(n²) scan, naive heuristic) with a comment naming the ceiling and upgrade path.
 
 ## Output
 
