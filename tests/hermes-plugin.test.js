@@ -15,8 +15,21 @@ const skillCommands = commands.filter((name) => name !== 'ponytail');
 
 const root = path.join(__dirname, '..');
 
+// ponytail: probe once; on Windows `python3` is the Store-alias stub that fails
+// even when Python is installed, so fall back to `python` (mirrors benchmarks/correctness.js).
+let pythonCmd;
+function pythonExe() {
+  if (pythonCmd) return pythonCmd;
+  for (const cmd of ['python3', 'python']) {
+    if (spawnSync(cmd, ['-c', 'import sys'], { encoding: 'utf8' }).status === 0) {
+      return (pythonCmd = cmd);
+    }
+  }
+  return (pythonCmd = 'python3');
+}
+
 function python(script, env = {}) {
-  const result = spawnSync('python3', ['-c', script], {
+  const result = spawnSync(pythonExe(), ['-c', script], {
     cwd: root,
     env: { ...process.env, ...env },
     encoding: 'utf8',
