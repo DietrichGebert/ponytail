@@ -241,6 +241,26 @@ clawhub install ponytail
 
 Installs ponytail as an OpenClaw skill from ClawHub; the review, audit, debt, gain, and help skills install the same way (`clawhub install ponytail-review`, and so on). OpenClaw applies it on coding tasks and also exposes it as a `/ponytail` command. Without ClawHub, copy [`.openclaw/skills/ponytail`](.openclaw/skills/) into `~/.openclaw/skills/`.
 
+### Autohand Code
+
+Autohand Code can load the bundled `SKILL.md` files directly. For a global install:
+
+```bash
+git clone https://github.com/DietrichGebert/ponytail.git
+mkdir -p ~/.autohand/skills/
+cp -R ponytail/skills/* ~/.autohand/skills/
+```
+
+For a workspace install:
+
+```bash
+git clone https://github.com/DietrichGebert/ponytail.git
+mkdir -p .autohand/skills/
+cp -R ponytail/skills/* .autohand/skills/
+```
+
+Then ask Autohand to use a skill by name, for example `Use ponytail-review on this diff`. Autohand also provides `autohand --skill-install` for cataloged skills, with `--project` for workspace-level installs; use the direct copy path above until ponytail is listed in that catalog.
+
 That was it. He'd be proud. He won't say it.
 
 Active every session, with a handful of commands (see [Commands](#commands)). `/ponytail ultra` exists for when the codebase has wronged you personally. Startup and mode-change text shows the current mode.
@@ -280,7 +300,7 @@ These remove the plugin's own files. They leave behind a small amount of state p
 | `/ponytail-gain` | Show the measured impact scoreboard (less code, less cost, more speed) from the benchmark. |
 | `/ponytail-help` | Quick reference for the commands above. |
 
-Commands need a skill-capable host (Claude Code, Codex, Devin CLI, OpenCode, Gemini, pi, Swival, Hermes Agent). In Codex they're skills, invoke with `@` (`@ponytail-review`). The instruction-only adapters (Cursor, Windsurf, Cline, Copilot, Kiro, Antigravity) load the always-on ruleset without the commands.
+Commands need a skill-capable host (Claude Code, Codex, Devin CLI, OpenCode, Gemini, pi, Swival, Hermes Agent, Autohand Code). In Codex they're skills, invoke with `@` (`@ponytail-review`). The instruction-only adapters (Cursor, Windsurf, Cline, Copilot, Kiro, Antigravity) load the always-on ruleset without the commands.
 
 ## Development
 
