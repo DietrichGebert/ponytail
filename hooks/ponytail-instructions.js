@@ -70,6 +70,13 @@ function getFallbackInstructions(mode) {
     'Ponytail governs what you build, not how you talk. "stop ponytail" or "normal mode": revert. Level persists until changed or session end.';
 }
 
+const CJK_PARAGRAPH =
+  '\n\n## CJK languages\n\n' +
+  'When the conversation is in Chinese, Japanese, or Korean: ' +
+  'skip English-specific brevity rules (article dropping, synonym shortening — CJK has no articles and is already compact). ' +
+  'The ladder, YAGNI, stdlib-first, shortest diff, and all structural rules still apply. ' +
+  'Keep code comments and identifiers in whichever language the codebase already uses.';
+
 function getPonytailInstructions(mode) {
   const configuredMode = normalizePersistedMode(mode) || DEFAULT_MODE;
 
@@ -81,9 +88,9 @@ function getPonytailInstructions(mode) {
 
   try {
     return 'PONYTAIL MODE ACTIVE — level: ' + effectiveMode + '\n\n' +
-      filterSkillBodyForMode(fs.readFileSync(SKILL_PATH, 'utf8'), effectiveMode);
+      filterSkillBodyForMode(fs.readFileSync(SKILL_PATH, 'utf8'), effectiveMode) + CJK_PARAGRAPH;
   } catch (e) {
-    return getFallbackInstructions(effectiveMode);
+    return getFallbackInstructions(effectiveMode) + CJK_PARAGRAPH;
   }
 }
 
