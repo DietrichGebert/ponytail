@@ -4,6 +4,7 @@ const require = createRequire(import.meta.url);
 const {
   DEFAULT_MODE,
   getDefaultMode,
+  getHideStatus,
   normalizeMode,
   normalizeConfigMode,
   normalizePersistedMode,
@@ -64,6 +65,8 @@ export default function ponytailExtension(pi) {
     if (ctx) lastCtx = ctx;
     const c = ctx || lastCtx;
     if (!c?.ui?.setStatus || !c.ui.theme?.fg) return;
+    // ponytail: hide status via PONYTAIL_HIDE_STATUS env or hideStatus config (#324).
+    if (getHideStatus()) return;
     const theme = c.ui.theme;
     if (currentMode === "off") {
       c.ui.setStatus("ponytail", "");

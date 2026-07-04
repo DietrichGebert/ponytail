@@ -96,6 +96,15 @@ function getDefaultMode() {
   return DEFAULT_MODE;
 }
 
+function getHideStatus() {
+  if (process.env.PONYTAIL_HIDE_STATUS) return true;
+  try {
+    const configPath = getConfigPath();
+    const config = JSON.parse(fs.readFileSync(configPath, 'utf8').replace(/^\uFEFF/, ''));
+    return config.hideStatus === true;
+  } catch (_) { return false; }
+}
+
 function writeDefaultMode(mode) {
   const normalized = normalizeConfigMode(mode);
   if (!normalized) return null;
@@ -114,6 +123,7 @@ module.exports = {
   getConfigDir,
   getConfigPath,
   getClaudeDir,
+  getHideStatus,
   isShellSafe,
   normalizeMode,
   normalizeConfigMode,
