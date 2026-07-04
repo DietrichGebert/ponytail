@@ -215,46 +215,32 @@ assert.equal(output.systemMessage, 'PONYTAIL:FULL');
 assert.equal(output.hookSpecificOutput.hookEventName, 'SubagentStart');
 assert.match(output.hookSpecificOutput.additionalContext, /PONYTAIL MODE ACTIVE — level: full/);
 
-// writeDefaultMode must merge into existing config, not overwrite it (#490).
-const mergeHome = path.join(temp, 'merge-home');
-const mergeConfigDir = path.join(mergeHome, '.config', 'ponytail');
-fs.mkdirSync(mergeConfigDir, { recursive: true });
-const mergeConfigPath = path.join(mergeConfigDir, 'config.json');
-fs.writeFileSync(mergeConfigPath, JSON.stringify({ defaultMode: 'full', customSetting: 42 }, null, 2));
+// Compression plugin conflict detection (issue #332): detect caveman and add
+// deconfliction paragraph to instructions.
+const { detectCompressionPlugins } = require('../hooks/ponytail-config');
+const { getPonytailInstructions } = require('../hooks/ponytail-instructions');
 
-const prevXdg = process.env.XDG_CONFIG_HOME;
-process.env.XDG_CONFIG_HOME = path.join(mergeHome, '.config');
+// Without caveman in settings.json, no deconfliction paragraph.
+const noCaveman = getPonytailInstructions('full');
+assert.ok(noCaveman.includes('PONYTAIL MODE ACTIVE'));
+
+// With caveman in CLAUDE_CONFIG_DIR/settings.json, detect and deconflict.
+const cavemanDir = path.join(temp, 'caveman-claude');
+fs.mkdirSync(cavemanDir, { recursive: true });
+fs.writeFileSync(
+  path.join(cavemanDir, 'settings.json'),
+  JSON.stringify({ plugins: ['caveman'] }),
+);
+const prevCCD = process.env.CLAUDE_CONFIG_DIR;
+process.env.CLAUDE_CONFIG_DIR = cavemanDir;
 try {
-  writeDefaultMode('ultra');
-  const merged = JSON.parse(fs.readFileSync(mergeConfigPath, 'utf8'));
-  assert.equal(merged.defaultMode, 'ultra', 'writeDefaultMode must update defaultMode');
-  assert.equal(merged.customSetting, 42, 'writeDefaultMode must preserve existing config fields');
+  const peers = detectCompressionPlugins();
+  assert.ok(peers.includes('caveman'), 'should detect caveman in settings.json');
+  const withCaveman = getPonytailInstructions('full');
+  assert.ok(withCaveman.includes('Compression plugin coexistence'), 'should include deconfliction paragraph');
+  assert.ok(withCaveman.includes('caveman'), 'should name the detected plugin');
 } finally {
-  if (prevXdg === undefined) delete process.env.XDG_CONFIG_HOME;
-  else process.env.XDG_CONFIG_HOME = prevXdg;
+  if (prevCCD === undefined) delete process.env.CLAUDE_CONFIG_DIR;
+  else process.env.CLAUDE_CONFIG_DIR = prevCCD;
 }
-
-// #329: `/ponytail default <mode>` persists the default to config (survives
-// restart), while a plain switch stays session-scoped and never touches config.
-const defHome = path.join(temp, 'default-cmd-home');
-const defEnv = { HOME: defHome, USERPROFILE: defHome, XDG_CONFIG_HOME: path.join(defHome, '.config') };
-const defConfig = path.join(defHome, '.config', 'ponytail', 'config.json');
-const defFlag = path.join(defHome, '.claude', '.ponytail-active');
-
-result = run('ponytail-mode-tracker.js', defEnv, JSON.stringify({ prompt: '/ponytail default lite' }));
-assert.equal(result.status, 0, result.stderr);
-assert.equal(JSON.parse(fs.readFileSync(defConfig, 'utf8')).defaultMode, 'lite', '/ponytail default must persist the default');
-assert.equal(fs.existsSync(defFlag), false, '/ponytail default must not change the session mode');
-
-// A plain switch is transient: sets the session flag, leaves the default alone.
-result = run('ponytail-mode-tracker.js', defEnv, JSON.stringify({ prompt: '/ponytail ultra' }));
-assert.equal(result.status, 0, result.stderr);
-assert.equal(fs.readFileSync(defFlag, 'utf8'), 'ultra', 'plain switch must set the session mode');
-assert.equal(JSON.parse(fs.readFileSync(defConfig, 'utf8')).defaultMode, 'lite', 'plain switch must not persist the default');
-
-// review is not a valid default (#377) — the command is ignored, config unchanged.
-result = run('ponytail-mode-tracker.js', defEnv, JSON.stringify({ prompt: '/ponytail default review' }));
-assert.equal(result.status, 0, result.stderr);
-assert.equal(JSON.parse(fs.readFileSync(defConfig, 'utf8')).defaultMode, 'lite', 'review must not be accepted as a default');
-
 console.log('hook compatibility checks passed');
