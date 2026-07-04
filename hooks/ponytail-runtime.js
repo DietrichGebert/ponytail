@@ -40,10 +40,10 @@ function writeHookOutput(event, mode, context = '') {
   if (isCodex) {
     const output = { systemMessage: `PONYTAIL:${mode.toUpperCase()}` };
     if (context) {
-      output.hookSpecificOutput = {
-        hookEventName: event,
-        additionalContext: context,
-      };
+      // ponytail: Codex CLI expects additionalContext at top level, not nested
+      // under hookSpecificOutput. The hookSpecificOutput wrapper is for Claude
+      // Code's SubagentStart. See issue #505.
+      output.additionalContext = context;
     }
     process.stdout.write(JSON.stringify(output));
     return;

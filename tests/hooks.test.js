@@ -58,9 +58,10 @@ assert.equal(fs.readFileSync(codexState, 'utf8'), 'ultra');
 let output = JSON.parse(result.stdout);
 assert.equal(output.systemMessage, 'PONYTAIL:ULTRA');
 assert.match(
-  output.hookSpecificOutput.additionalContext,
+  output.additionalContext,
   /PONYTAIL MODE ACTIVE — level: ultra/,
 );
+assert.equal(output.hookSpecificOutput, undefined, 'Codex should not use hookSpecificOutput (#505)');
 
 result = run(
   'ponytail-mode-tracker.js',
@@ -206,7 +207,7 @@ result = run('ponytail-subagent.js', { HOME: subHome, USERPROFILE: subHome, PLUG
 assert.equal(result.status, 0, result.stderr);
 output = JSON.parse(result.stdout);
 assert.equal(output.systemMessage, 'PONYTAIL:FULL');
-assert.equal(output.hookSpecificOutput.hookEventName, 'SubagentStart');
-assert.match(output.hookSpecificOutput.additionalContext, /PONYTAIL MODE ACTIVE — level: full/);
+assert.ok(output.additionalContext, 'Codex SubagentStart should have additionalContext at top level (#505)');
+assert.match(output.additionalContext, /PONYTAIL MODE ACTIVE — level: full/);
 
 console.log('hook compatibility checks passed');
