@@ -2,7 +2,7 @@
 // weak model. 12 tasks with classic edge-case traps. Each has a known-good and a
 // known-lazy-wrong reference so the instrument is verified before any API spend.
 //   node robustness-audit.js --selftest   # no API: prove every check is correct
-//   node robustness-audit.js              # baseline vs ponytail, gpt-5.4-mini, n=20
+//   node robustness-audit.js              # baseline vs ponytail, gpt-4o-mini, n=20
 const { execSync } = require('child_process');
 const fs = require('fs');
 const os = require('os');
@@ -20,7 +20,7 @@ function python() {
 }
 
 const N = Number(process.env.AUDIT_N) || 20;
-const MODEL = process.env.AUDIT_MODEL || 'gpt-5.4-mini';
+const MODEL = process.env.AUDIT_MODEL || 'gpt-4o-mini';
 const ROOT = path.join(__dirname, '..');
 let kv = {};
 try {
