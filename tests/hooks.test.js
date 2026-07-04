@@ -209,4 +209,33 @@ assert.equal(output.systemMessage, 'PONYTAIL:FULL');
 assert.equal(output.hookSpecificOutput.hookEventName, 'SubagentStart');
 assert.match(output.hookSpecificOutput.additionalContext, /PONYTAIL MODE ACTIVE — level: full/);
 
+// /ponytail off must persist across sessions — issue #329.
+// After `/ponytail off`, the next SessionStart should honour the persisted default
+// instead of re-activating with the hardcoded "full" fallback.
+const persistHome = path.join(temp, 'persist-home');
+fs.mkdirSync(persistHome, { recursive: true });
+const persistEnv = { HOME: persistHome, USERPROFILE: persistHome };
+
+// Activate first (creates flag file, mode = full by default)
+result = run('ponytail-activate.js', persistEnv);
+assert.equal(result.status, 0, result.stderr);
+const persistFlag = path.join(persistHome, '.claude', '.ponytail-active');
+assert.equal(fs.readFileSync(persistFlag, 'utf8'), 'full');
+
+// Now /ponytail off — should persist "off" to config.json
+result = run(
+  'ponytail-mode-tracker.js',
+  persistEnv,
+  JSON.stringify({ prompt: '/ponytail off' }),
+);
+assert.equal(result.status, 0, result.stderr);
+assert.equal(fs.existsSync(persistFlag), false, 'flag should be cleared');
+const persistConfig = path.join(persistHome, '.config', 'ponytail', 'config.json');
+assert.equal(fs.existsSync(persistConfig), true, 'config.json should be created');
+assert.equal(
+  JSON.parse(fs.readFileSync(persistConfig, 'utf8')).defaultMode,
+  'off',
+  'defaultMode should be persisted as off',
+);
+
 console.log('hook compatibility checks passed');
