@@ -34,6 +34,8 @@ function run(script, env, input = '') {
 delete process.env.CLAUDE_CONFIG_DIR;
 delete process.env.PLUGIN_DATA;
 delete process.env.COPILOT_PLUGIN_DATA;
+// A leaked subagent allowlist would scope the unscoped-by-default assertions.
+delete process.env.PONYTAIL_SUBAGENT_AGENTS;
 
 const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'ponytail-hooks-'));
 // Runs on normal exit and on assertion-throw exit; force makes it idempotent.
@@ -208,5 +210,66 @@ output = JSON.parse(result.stdout);
 assert.equal(output.systemMessage, 'PONYTAIL:FULL');
 assert.equal(output.hookSpecificOutput.hookEventName, 'SubagentStart');
 assert.match(output.hookSpecificOutput.additionalContext, /PONYTAIL MODE ACTIVE — level: full/);
+
+// SubagentStart scoping (issue #506): consumers can opt in to limiting the
+// persona injection to specific agent types via PONYTAIL_SUBAGENT_AGENTS or
+// the subagentAgents config field. Unconfigured keeps the inject-everywhere
+// behavior asserted above.
+const scopeHome = path.join(temp, 'scope-home');
+const scopeFlag = path.join(scopeHome, '.claude', '.ponytail-active');
+fs.mkdirSync(path.dirname(scopeFlag), { recursive: true });
+fs.writeFileSync(scopeFlag, 'full');
+const scopeEnv = {
+  HOME: scopeHome,
+  USERPROFILE: scopeHome,
+  PONYTAIL_SUBAGENT_AGENTS: 'general-purpose, Plan',
+};
+
+// Allowlisted agent type → inject; names match case-insensitively.
+result = run('ponytail-subagent.js', scopeEnv, JSON.stringify({ agent_type: 'General-Purpose' }));
+assert.equal(result.status, 0, result.stderr);
+output = JSON.parse(result.stdout);
+assert.equal(output.hookSpecificOutput.hookEventName, 'SubagentStart');
+assert.match(output.hookSpecificOutput.additionalContext, /PONYTAIL MODE ACTIVE — level: full/);
+
+// Agent type outside the allowlist → stay silent.
+result = run('ponytail-subagent.js', scopeEnv, JSON.stringify({ agent_type: 'Explore' }));
+assert.equal(result.status, 0, result.stderr);
+assert.equal(result.stdout, '', 'scoped SubagentStart must skip agent types outside the allowlist');
+
+// Payload without agent_type → the platform doesn't send it; keep the
+// issue-#252 behavior and inject rather than silently dropping the persona.
+result = run('ponytail-subagent.js', scopeEnv, JSON.stringify({}));
+assert.equal(result.status, 0, result.stderr);
+output = JSON.parse(result.stdout);
+assert.match(output.hookSpecificOutput.additionalContext, /PONYTAIL MODE ACTIVE — level: full/);
+
+// Allowlist can come from the config file's subagentAgents array.
+const scopeConfigDir = path.join(temp, 'scope-config');
+fs.mkdirSync(path.join(scopeConfigDir, 'ponytail'), { recursive: true });
+fs.writeFileSync(
+  path.join(scopeConfigDir, 'ponytail', 'config.json'),
+  JSON.stringify({ subagentAgents: ['code-reviewer'] }),
+);
+const scopeFileEnv = { HOME: scopeHome, USERPROFILE: scopeHome, XDG_CONFIG_HOME: scopeConfigDir };
+
+result = run('ponytail-subagent.js', scopeFileEnv, JSON.stringify({ agent_type: 'code-reviewer' }));
+assert.equal(result.status, 0, result.stderr);
+output = JSON.parse(result.stdout);
+assert.equal(output.hookSpecificOutput.hookEventName, 'SubagentStart');
+
+result = run('ponytail-subagent.js', scopeFileEnv, JSON.stringify({ agent_type: 'Explore' }));
+assert.equal(result.status, 0, result.stderr);
+assert.equal(result.stdout, '', 'config-file allowlist must scope the injection too');
+
+// Env var beats the config file, matching getDefaultMode precedence.
+result = run(
+  'ponytail-subagent.js',
+  { ...scopeFileEnv, PONYTAIL_SUBAGENT_AGENTS: 'explore' },
+  JSON.stringify({ agent_type: 'Explore' }),
+);
+assert.equal(result.status, 0, result.stderr);
+output = JSON.parse(result.stdout);
+assert.equal(output.hookSpecificOutput.hookEventName, 'SubagentStart');
 
 console.log('hook compatibility checks passed');

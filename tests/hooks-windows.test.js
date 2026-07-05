@@ -96,6 +96,36 @@ test('ponytail-mode-tracker self-exits when stdin never closes (no freeze)', asy
   assert.equal(code, 0, 'hook must exit cleanly when stdin never closes');
 });
 
+// The SubagentStart hook reads stdin for agent_type (issue #506), so it is
+// exposed to the same swallowed-stdin deadlock — even mid-injection with the
+// mode flag present, it must self-exit.
+test('ponytail-subagent self-exits when stdin never closes (no freeze)', async () => {
+  const os = require('os');
+  const home = fs.mkdtempSync(path.join(os.tmpdir(), 'ponytail-sub-freeze-'));
+  fs.mkdirSync(path.join(home, '.claude'), { recursive: true });
+  fs.writeFileSync(path.join(home, '.claude', '.ponytail-active'), 'full');
+
+  const hook = path.join(root, 'hooks', 'ponytail-subagent.js');
+  const child = spawn(process.execPath, [hook], {
+    env: { ...process.env, HOME: home, USERPROFILE: home },
+    stdio: ['pipe', 'ignore', 'ignore'],
+  });
+
+  try {
+    const code = await new Promise((resolve, reject) => {
+      const guard = setTimeout(() => {
+        child.kill('SIGKILL');
+        reject(new Error('hook hung on open stdin — it would freeze the session'));
+      }, 3000);
+      child.on('exit', (c) => { clearTimeout(guard); resolve(c); });
+      child.on('error', reject);
+    });
+    assert.equal(code, 0, 'hook must exit cleanly when stdin never closes');
+  } finally {
+    fs.rmSync(home, { recursive: true, force: true });
+  }
+});
+
 test('Claude and Codex manifests point at the shared host-specific hook config', () => {
   for (const rel of HOST_PLUGIN_MANIFESTS) {
     const manifest = JSON.parse(fs.readFileSync(path.join(root, rel), 'utf8'));
