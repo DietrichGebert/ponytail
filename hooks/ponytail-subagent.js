@@ -24,28 +24,49 @@ if (!mode || mode === 'off') {
 // Set PONYTAIL_SUBAGENT_MATCHER to a regex matching the agent types to inject.
 // Upgrade path: if many users set this, promote to config.json.
 const matcher = process.env.PONYTAIL_SUBAGENT_MATCHER;
-const matcherRe = matcher ? new RegExp(matcher, 'i') : null;
+let matcherRe = null;
+try {
+  if (matcher) matcherRe = new RegExp(matcher, 'i');
+} catch (_) {
+  // Invalid regex must not crash the hook — fall back to injecting everywhere.
+}
 
-let input = '';
-
-process.stdin.on('data', chunk => { input += chunk; });
-process.stdin.on('end', () => {
-  if (matcherRe) {
-    try {
-      const data = JSON.parse(input.replace(/^\uFEFF/, ''));
-      const agentType = (data.agent_type || data.agentType || '').trim();
-      if (!matcherRe.test(agentType)) process.exit(0);
-    } catch (_) {
-      // Can't parse input or missing agent_type — inject to be safe.
-    }
-  }
+function inject() {
   try {
     writeHookOutput('SubagentStart', mode, getPonytailInstructions(mode));
   } catch (e) {
     // Silent fail — a stdout error at hook exit must not surface as a hook failure.
   }
-});
+}
 
-// Mirror the safety timeout from mode-tracker so the hook never blocks.
-process.stdin.on('error', () => { process.exit(0); });
-setTimeout(() => { process.exit(0); }, 1000).unref();
+// No matcher: keep the original synchronous, stdin-independent behavior. On
+// Windows the PowerShell `if {}` wrapper can swallow stdin so 'end' never fires
+// (#443), so the default path must not depend on reading stdin.
+if (!matcherRe) {
+  inject();
+  process.exit(0);
+}
+
+// Matcher set: read agent_type from stdin, skip injection only on a definite
+// non-match. Fail OPEN (inject) on unparseable input, stdin error, or timeout.
+let input = '';
+let done = false;
+
+function finish() {
+  if (done) return;
+  done = true;
+  try {
+    const data = JSON.parse(input.replace(/^\uFEFF/, ''));
+    const agentType = (data.agent_type || '').trim();
+    if (agentType && !matcherRe.test(agentType)) process.exit(0);
+  } catch (_) {
+    // Can't parse input or missing agent_type — inject to be safe.
+  }
+  inject();
+}
+
+process.stdin.on('data', chunk => { input += chunk; });
+process.stdin.on('end', finish);
+// Mirror mode-tracker's never-block contract: recover on error/timeout too.
+process.stdin.on('error', () => { finish(); process.exit(0); });
+setTimeout(() => { finish(); process.exit(0); }, 1000).unref();

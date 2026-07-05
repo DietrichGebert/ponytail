@@ -247,6 +247,8 @@ Active every session, with a handful of commands (see [Commands](#commands)). `/
 
 Set the level for every new session with the `PONYTAIL_DEFAULT_MODE` env var (`lite`/`full`/`ultra`/`off`), or a `defaultMode` field in `~/.config/ponytail/config.json` (`%APPDATA%\ponytail\config.json` on Windows). The default is `full`.
 
+Claude Code / Codex subagent scoping (opt-in): `PONYTAIL_SUBAGENT_MATCHER` limits the ponytail ruleset to specific subagent types. Set it to an unanchored, case-insensitive regex tested against the subagent's `agent_type` (e.g. `explore|general`). Use `^…$` for an exact match; plugin agent types look like `plugin:name`. Unset = inject into all subagents (default).
+
 Cursor, Windsurf, Cline, GitHub Copilot (editor), Aider, Kiro, Zed, CodeWhale, Swival: copy the matching rules file from this repo ([`.cursor/rules/`](.cursor/rules/), [`.windsurf/rules/`](.windsurf/rules/), [`.clinerules/`](.clinerules/), [`.github/copilot-instructions.md`](.github/copilot-instructions.md), [`AGENTS.md`](AGENTS.md), [`.kiro/steering/`](.kiro/steering/)).
 
 Kiro: copy `.kiro/steering/ponytail.md` to `~/.kiro/steering/` (global) or `.kiro/steering/` in your project.

@@ -242,4 +242,18 @@ assert.equal(result.status, 0, result.stderr);
 output = JSON.parse(result.stdout);
 assert.ok(output.hookSpecificOutput, 'should inject when no matcher is set');
 
+// Invalid regex → must not crash the hook; fail open (inject).
+result = run('ponytail-subagent.js', { ...matcherEnv, PONYTAIL_SUBAGENT_MATCHER: '[' },
+  JSON.stringify({ agent_type: 'explore' }));
+assert.equal(result.status, 0, result.stderr);
+output = JSON.parse(result.stdout);
+assert.ok(output.hookSpecificOutput, 'invalid matcher regex should inject, not crash');
+
+// Matcher set but agent_type absent → inject to be safe.
+result = run('ponytail-subagent.js', { ...matcherEnv, PONYTAIL_SUBAGENT_MATCHER: 'general' },
+  JSON.stringify({}));
+assert.equal(result.status, 0, result.stderr);
+output = JSON.parse(result.stdout);
+assert.ok(output.hookSpecificOutput, 'absent agent_type should inject to be safe');
+
 console.log('hook compatibility checks passed');
