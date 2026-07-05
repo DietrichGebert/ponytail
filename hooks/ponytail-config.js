@@ -96,32 +96,6 @@ function getDefaultMode() {
   return DEFAULT_MODE;
 }
 
-// Issue #506: opt-in allowlist scoping the SubagentStart persona injection to
-// specific agent types. PONYTAIL_SUBAGENT_AGENTS (comma-separated) beats the
-// config file's subagentAgents array, matching getDefaultMode precedence.
-// Returns lowercased names, or null when unconfigured → inject everywhere.
-function getSubagentAgents() {
-  const parse = (names) => {
-    const cleaned = names
-      .map((n) => String(n).trim().toLowerCase())
-      .filter(Boolean);
-    return cleaned.length ? cleaned : null;
-  };
-
-  const env = process.env.PONYTAIL_SUBAGENT_AGENTS;
-  if (env) return parse(env.split(','));
-
-  try {
-    const config = JSON.parse(
-      fs.readFileSync(getConfigPath(), 'utf8').replace(/^\uFEFF/, ''));
-    if (Array.isArray(config.subagentAgents)) return parse(config.subagentAgents);
-  } catch (e) {
-    // Config file doesn't exist or is invalid — fall through
-  }
-
-  return null;
-}
-
 function writeDefaultMode(mode) {
   const normalized = normalizeConfigMode(mode);
   if (!normalized) return null;
@@ -140,7 +114,6 @@ module.exports = {
   getConfigDir,
   getConfigPath,
   getClaudeDir,
-  getSubagentAgents,
   isShellSafe,
   normalizeMode,
   normalizeConfigMode,
