@@ -34,6 +34,8 @@ function run(script, env, input = '') {
 delete process.env.CLAUDE_CONFIG_DIR;
 delete process.env.PLUGIN_DATA;
 delete process.env.COPILOT_PLUGIN_DATA;
+// A leaked matcher would scope the inject-into-every-subagent assertions.
+delete process.env.PONYTAIL_SUBAGENT_MATCHER;
 
 const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'ponytail-hooks-'));
 // Runs on normal exit and on assertion-throw exit; force makes it idempotent.
@@ -255,5 +257,24 @@ result = run('ponytail-subagent.js', { ...matcherEnv, PONYTAIL_SUBAGENT_MATCHER:
 assert.equal(result.status, 0, result.stderr);
 output = JSON.parse(result.stdout);
 assert.ok(output.hookSpecificOutput, 'absent agent_type should inject to be safe');
+
+// Case-insensitive, unanchored match → inject ('General-purpose' matches 'general').
+result = run('ponytail-subagent.js', { ...matcherEnv, PONYTAIL_SUBAGENT_MATCHER: 'general|plan' },
+  JSON.stringify({ agent_type: 'General-purpose' }));
+assert.equal(result.status, 0, result.stderr);
+output = JSON.parse(result.stdout);
+assert.ok(output.hookSpecificOutput, 'matcher should be case-insensitive and unanchored');
+
+// Anchored regex → exact match only; a superset agent_type is rejected.
+result = run('ponytail-subagent.js', { ...matcherEnv, PONYTAIL_SUBAGENT_MATCHER: '^general$' },
+  JSON.stringify({ agent_type: 'general-purpose' }));
+assert.equal(result.status, 0, result.stderr);
+assert.equal(result.stdout, '', 'anchored matcher must not match a superset agent_type');
+
+// No matcher + empty stdin → default path injects without waiting on stdin (#443).
+result = run('ponytail-subagent.js', matcherEnv, '');
+assert.equal(result.status, 0, result.stderr);
+output = JSON.parse(result.stdout);
+assert.ok(output.hookSpecificOutput, 'no-matcher path must not depend on stdin');
 
 console.log('hook compatibility checks passed');
