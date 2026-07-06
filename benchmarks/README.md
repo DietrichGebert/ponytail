@@ -70,6 +70,22 @@ Versus baseline, ponytail writes **80-94% less code**, costs **42-75% less**, an
 > while the bare "one-liner" prompt drops a guard. That is the honest, defensible number. See
 > [results/2026-06-18-agentic.md](results/2026-06-18-agentic.md).
 
+## Independent benchmarks
+
+Run by other people, not by us, on their own harnesses and machines. Linked for
+transparency: the numbers are theirs, may shift between runs, and are corroboration
+rather than official figures. Only plugin-installed runs are listed, since pasting
+`SKILL.md` into a prompt is a rough approximation of `full` and skews the result.
+
+| Source | Method | Headline | Date |
+|---|---|---|---|
+| [KuldeepB19](https://kuldeepb19.github.io/ponytail-benchmark/) | Installed plugin, 24 tasks, no-skill vs Lite/Full/Ultra, 5 runs each (480 builds), Opus 4.8, graded by executing the code | ~44% less code (53% fewer statements), no correctness or security regression; trims everyday bad-input handling on 5/24 tasks | 2026-06-24 |
+| [RicardoCostaGit](https://github.com/RicardoCostaGit/ponytail-benchmark-from-cursor) | Multi-turn agentic runs via the Cursor SDK, isolated git worktrees, rule file toggled per run | Leaner output but higher process cost (more tool calls/tokens) on large completion-forced tasks; savings land on blocked/snowball-prone tasks | 2026-06-16 |
+
+Both land on the same split as the honesty note above: ponytail reliably writes less
+code, and whether that *saves money* depends on the workload (big win on
+over-build and blocked tasks, can cost more on large completion-forced agentic runs).
+
 ## Metrics
 
 | File | Metric | Behavior |
