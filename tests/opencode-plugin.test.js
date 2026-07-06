@@ -56,6 +56,16 @@ test('/ponytail off persists off and transform injects nothing', async () => {
   assert.deepEqual(system, []);
 });
 
+test('system.transform merges into existing system entry (Qwen compat, #296)', async () => {
+  try { fs.unlinkSync(statePath); } catch (e) {}
+  const hooks = await loadPlugin({});
+  const output = { system: ['You are a helpful assistant.'] };
+  await hooks['experimental.chat.system.transform']({ model: {} }, output);
+  assert.equal(output.system.length, 1, 'must not add a second system entry');
+  assert.match(output.system[0], /You are a helpful assistant/);
+  assert.match(output.system[0], /PONYTAIL MODE ACTIVE/);
+});
+
 test('unrelated commands do not touch the flag', async () => {
   try { fs.unlinkSync(statePath); } catch (e) {}
   const hooks = await loadPlugin({});
