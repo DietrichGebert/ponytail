@@ -53,13 +53,24 @@ test('shared hook commands avoid POSIX-only guard syntax', () => {
   }
 });
 
-test('shared hook commands exec node instead of leaving a wrapper shell behind', () => {
+// Issue #461 added `exec node` here so POSIX shells replace the wrapper
+// process instead of forking a child, avoiding zombie pileup on Codex/zsh.
+// Issue #527: `exec` is a bash/zsh builtin with no PowerShell equivalent, and
+// VS Code Copilot always runs `command` through PowerShell on Windows — it
+// never reads commandWindows the way Claude Code and Codex do on Windows. Any
+// literal "exec" here makes every hook fail outright for Windows Copilot
+// users. That outweighs the narrower POSIX benefit, especially since
+// ponytail-mode-tracker.js separately self-exits on a stuck stdin (issue
+// #443/#477), which covered the unbounded-pileup half of #461. Plain
+// `node "..."` is the simplest command both shells run correctly.
+test('shared hook commands run node directly, without shell-only syntax', () => {
   const commands = commandHooks()
     .map((h) => h.command)
     .filter(Boolean);
   assert.ok(commands.length > 0, 'expected at least one shared command entry');
   for (const cmd of commands) {
-    assert.match(cmd, /^exec node\s+/, `command must replace the shell with node: ${cmd}`);
+    assert.match(cmd, /^node\s+/, `command must run node directly so PowerShell (VS Code Copilot on Windows) can execute it: ${cmd}`);
+    assert.doesNotMatch(cmd, /\bexec\b/, `command must avoid the POSIX-only "exec" builtin, which crashes under PowerShell: ${cmd}`);
     assert.doesNotMatch(cmd, /;\s*exit 0$/, `command must not leave a shell wrapper waiting on node: ${cmd}`);
   }
 });

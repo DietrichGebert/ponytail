@@ -3,12 +3,28 @@ const path = require('path');
 const { getClaudeDir } = require('./ponytail-config');
 
 const STATE_FILE = '.ponytail-active';
-const isCopilot = Boolean(process.env.COPILOT_PLUGIN_DATA);
+
+// VS Code Copilot's agent-plugin host never sets COPILOT_PLUGIN_DATA — it only
+// injects CLAUDE_PLUGIN_ROOT, pointed at its own install dir under
+// <home>/.vscode/agent-plugins/... . Without this fallback, ponytail mistakes
+// it for native Claude Code (issue #528): wrong hook output shape, and a
+// statusLine setup nudge for a settings.json VS Code Copilot never reads.
+function looksLikeVSCodeCopilotPluginRoot(pluginRoot) {
+  if (!pluginRoot) return false;
+  const segments = pluginRoot.split(/[\\/]+/);
+  return segments.includes('agent-plugins') &&
+    segments.some((s) => s.toLowerCase() === '.vscode');
+}
+
+const isCopilot = Boolean(process.env.COPILOT_PLUGIN_DATA) ||
+  looksLikeVSCodeCopilotPluginRoot(process.env.CLAUDE_PLUGIN_ROOT);
 const isCodex = !isCopilot && Boolean(process.env.PLUGIN_DATA);
 
 let stateDir = getClaudeDir();
 if (isCodex) stateDir = process.env.PLUGIN_DATA;
-if (isCopilot) stateDir = process.env.COPILOT_PLUGIN_DATA;
+// Only redirect state into COPILOT_PLUGIN_DATA when it's actually set — the
+// VS Code Copilot fallback above detects Copilot without it being present.
+if (process.env.COPILOT_PLUGIN_DATA) stateDir = process.env.COPILOT_PLUGIN_DATA;
 
 const statePath = path.join(stateDir, STATE_FILE);
 
