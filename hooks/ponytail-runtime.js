@@ -3,12 +3,17 @@ const path = require('path');
 const { getClaudeDir } = require('./ponytail-config');
 
 const STATE_FILE = '.ponytail-active';
-const isCopilot = Boolean(process.env.COPILOT_PLUGIN_DATA);
+const claudePluginRoot = process.env.CLAUDE_PLUGIN_ROOT || '';
+const isVSCodeCopilotPlugin = claudePluginRoot
+  .split(/[\\/]+/)
+  .some(part => part.toLowerCase() === 'agent-plugins') &&
+  claudePluginRoot.toLowerCase().includes('.vscode');
+const isCopilot = Boolean(process.env.COPILOT_PLUGIN_DATA) || isVSCodeCopilotPlugin;
 const isCodex = !isCopilot && Boolean(process.env.PLUGIN_DATA);
 
 let stateDir = getClaudeDir();
 if (isCodex) stateDir = process.env.PLUGIN_DATA;
-if (isCopilot) stateDir = process.env.COPILOT_PLUGIN_DATA;
+if (process.env.COPILOT_PLUGIN_DATA) stateDir = process.env.COPILOT_PLUGIN_DATA;
 
 const statePath = path.join(stateDir, STATE_FILE);
 
