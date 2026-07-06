@@ -11,7 +11,7 @@
 // Metric: `behavior` (1 = behavior present, 0 = absent).
 
 function codeOf(text) {
-  return [...String(text || '').matchAll(/```[\w-]*\n([\s\S]*?)```/g)].map((m) => m[1]).join('\n');
+  return [...String(text || '').matchAll(/```[\w-]*\r?\n([\s\S]*?)```/g)].map((m) => m[1]).join('\n');
 }
 
 function proseOf(text) {

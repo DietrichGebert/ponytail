@@ -71,6 +71,15 @@ test('onecheck: no check fails', () => {
   assert.equal(r.pass, false);
 });
 
+// --- CRLF: Windows line endings must not break code extraction (#533) ---
+
+test('hardware: CRLF code fences are correctly parsed', () => {
+  const r = check('hardware',
+    '```python\r\ndef read_c(beta=3950, r0=10000):\r\n    ...\r\n```\r\n' +
+    'Notes: beta/r0 drift part-to-part, measure your own r0 at a known temp.');
+  assert.equal(r.pass, true);
+});
+
 // --- unknown probe is skipped, not failed ---
 
 test('unknown probe is skipped', () => {
