@@ -201,17 +201,23 @@ It reuses this repo's `gemini-extension.json`. One difference: Antigravity conve
 
 ### Grok Build (TUI / CLI from xAI)
 
-```bash
-grok plugin install DietrichGebert/ponytail --trust
-```
-
-Or from a local checkout of this repo:
+This repo is treated as a **marketplace** (like for other agents).
 
 ```bash
-grok plugin install . --trust
+grok plugin marketplace add DietrichGebert/ponytail
+grok plugin install ponytail
 ```
 
-Registers the 6 skills (appear as `/ponytail`, `/ponytail-review`, etc.), loads `hooks/hooks.json` for SessionStart/UserPromptSubmit activation, and exposes the MCP server for `ponytail_instructions` tool. Grok's native AGENTS.md support also loads the rules when present in the project. Use `grok plugin list`, `/plugins`, or `grok inspect` to manage. Node is required for hooks and MCP. The MCP server (`ponytail_instructions` tool + prompt) auto-installs its dependencies on first use (via npm in the plugin dir). Skills and hooks work immediately. Set a longer startup timeout in `~/.grok/config.toml` if needed on slow networks: `[mcp_servers.ponytail] startup_timeout_sec = 120`.
+(Use `--trust` if prompted for the plugin install.)
+
+Or from a local checkout:
+
+```bash
+grok plugin marketplace add .
+grok plugin install ponytail
+```
+
+It registers the 6 skills (appear as `/ponytail`, `/ponytail-review`, etc.), loads `hooks/hooks.json` for SessionStart/UserPromptSubmit activation, and exposes the MCP server for `ponytail_instructions` tool. The repo follows the xAI plugin-marketplace structure (`.grok-plugin/marketplace.json`, `scripts/generate-plugin-index.py`, `plugins/`, `external_plugins/`). Grok's native AGENTS.md support also loads the rules when present in the project. Use `grok plugin list`, `/plugins`, or `grok inspect` to manage. Node is required for hooks and MCP. The MCP server auto-installs its dependencies on first use (via launcher). Skills and hooks work immediately.
 
 ### Hermes Agent
 

@@ -1,0 +1,22 @@
+{
+  "name": "ponytail",
+  "description": "Lazy senior dev mode for AI agents. The best code is the code you never wrote.",
+  "owner": {
+    "name": "Dietrich Gebert",
+    "url": "https://github.com/DietrichGebert"
+  },
+  "plugins": [
+    {
+      "name": "ponytail",
+      "description": "Lazy senior dev mode. Forces the laziest solution that actually works: YAGNI, stdlib first, no unrequested abstractions. Includes review, audit, debt, gain and help skills.",
+      "category": "development",
+      "source": {
+        "type": "local",
+        "path": "."
+      },
+      "homepage": "https://github.com/DietrichGebert/ponytail",
+      "keywords": ["yagni", "minimalism", "code-quality", "productivity", "lazy"],
+      "tags": ["productivity", "code-review"]
+    }
+  ]
+}

@@ -1,0 +1,51 @@
+{
+  "generated_from": ".grok-plugin/marketplace.json",
+  "plugins": {
+    "ponytail": {
+      "hooks": [
+        {
+          "description": "startup|resume|clear|compact",
+          "name": "SessionStart"
+        },
+        {
+          "name": "SubagentStart"
+        },
+        {
+          "name": "UserPromptSubmit"
+        }
+      ],
+      "mcpServers": [
+        {
+          "description": "stdio",
+          "name": "ponytail"
+        }
+      ],
+      "skills": [
+        {
+          "description": "Forces the laziest solution that actually works, simplest, shortest, most minimal. Channels a senior dev who has seen e\u2026",
+          "name": "ponytail"
+        },
+        {
+          "description": "Whole-repo audit for over-engineering. Like ponytail-review, but scans the entire codebase instead of a diff: a ranked\u2026",
+          "name": "ponytail-audit"
+        },
+        {
+          "description": "Harvest every `ponytail:` comment in the codebase into a debt ledger, so the deliberate shortcuts and deferrals ponytai\u2026",
+          "name": "ponytail-debt"
+        },
+        {
+          "description": "Show ponytail's measured impact as a compact scoreboard: less code, less cost, more speed, from the benchmark medians.\u2026",
+          "name": "ponytail-gain"
+        },
+        {
+          "description": "Quick-reference card for all ponytail modes, skills, and commands. One-shot display, not a persistent mode. Trigger: /p\u2026",
+          "name": "ponytail-help"
+        },
+        {
+          "description": "Code review focused exclusively on over-engineering. Finds what to delete: reinvented standard library, unneeded depend\u2026",
+          "name": "ponytail-review"
+        }
+      ]
+    }
+  }
+}
