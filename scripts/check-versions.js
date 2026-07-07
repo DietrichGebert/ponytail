@@ -22,6 +22,7 @@ const VERSION_FILES = [
   '.claude-plugin/plugin.json',  // Claude Code plugin — what users install
   '.codex-plugin/plugin.json',   // Codex plugin
   '.devin-plugin/plugin.json',   // Devin CLI plugin
+  '.factory-plugin/plugin.json', // Factory Droid plugin
   '.github/plugin/plugin.json',  // Copilot plugin
   'gemini-extension.json',       // Gemini CLI extension
   'package.json',                // pi-package / repo root

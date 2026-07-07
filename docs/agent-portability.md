@@ -13,6 +13,7 @@ to load in a given agent.
 | OpenCode | `.opencode/plugins/ponytail.mjs`, `.opencode/command/`, `hooks/`, `skills/` | Server plugin injects the ruleset each turn via `experimental.chat.system.transform` and persists `/ponytail` switches; reuses the shared instruction builder. |
 | pi | `pi-extension/`, `skills/`, `hooks/` | Package extension: injects the ruleset each turn through the shared instruction builder and registers the `/ponytail` commands. |
 | Hermes Agent | `plugin.yaml`, `__init__.py`, `skills/` | Native Hermes plugin: injects active mode through `pre_llm_call`, rewrites gateway `/ponytail-*` skill commands into agent prompts, registers `/ponytail` mode switching, and exposes bundled skills as `ponytail:<skill>`. |
+| Factory Droid | `.factory-plugin/plugin.json`, `hooks/droid-hooks.json`, `hooks/`, `skills/` | Plugin install with lifecycle hooks (SessionStart, SubagentStart, UserPromptSubmit) for mode activation and tracking. Uses `DROID_PLUGIN_ROOT` instead of `CLAUDE_PLUGIN_ROOT`. POSIX-only (Linux/Mac); no Windows `commandWindows` needed. |
 | Gemini CLI | `gemini-extension.json`, `AGENTS.md`, `commands/`, `skills/` | Extension manifest points `contextFileName` at `AGENTS.md` for always-on rules, and reuses the existing `commands/*.toml` and `skills/`, which Gemini CLI auto-discovers. The Claude/Codex hook map is not placed at Gemini's auto-discovered `hooks/hooks.json` path. |
 | Cursor | `.cursor/rules/ponytail.mdc` | Always-on project rule. |
 | Windsurf | `.windsurf/rules/ponytail.md` | Project rule. |
