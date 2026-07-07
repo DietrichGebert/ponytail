@@ -4,6 +4,7 @@ const require = createRequire(import.meta.url);
 const {
   DEFAULT_MODE,
   getDefaultMode,
+  getHideStatus,
   normalizeMode,
   normalizeConfigMode,
   normalizePersistedMode,
@@ -56,6 +57,7 @@ export { writeDefaultMode };
 export default function ponytailExtension(pi) {
   let currentMode = DEFAULT_MODE;
   let configuredDefaultMode = getDefaultMode();
+  let hideStatus = getHideStatus();
   let isActive = false;
   let lastCtx = null;
 
@@ -63,6 +65,8 @@ export default function ponytailExtension(pi) {
   function syncStatus(ctx) {
     if (ctx) lastCtx = ctx;
     const c = ctx || lastCtx;
+    // ponytail: hide the indicator but keep the ruleset active (#324).
+    if (hideStatus) return;
     if (!c?.ui?.setStatus || !c.ui.theme?.fg) return;
     const theme = c.ui.theme;
     if (currentMode === "off") {
@@ -167,6 +171,7 @@ export default function ponytailExtension(pi) {
   pi.on("session_start", async (_event, ctx) => {
     const entries = ctx?.sessionManager?.getBranch?.() || ctx?.sessionManager?.getEntries?.() || [];
     configuredDefaultMode = getDefaultMode();
+    hideStatus = getHideStatus();
     currentMode = resolveSessionMode(entries, configuredDefaultMode);
     syncStatus(ctx);
     ctx?.ui?.notify?.(`Ponytail loaded: ${currentMode}`, "info");

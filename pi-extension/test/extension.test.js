@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
@@ -43,13 +43,17 @@ function createCommandContext(overrides = {}) {
 function withTempConfig(fn) {
   const tempConfigHome = mkdtempSync(join(tmpdir(), "ponytail-test-"));
   const previousXdg = process.env.XDG_CONFIG_HOME;
+  const previousHide = process.env.PONYTAIL_HIDE_STATUS;
   process.env.XDG_CONFIG_HOME = tempConfigHome;
+  delete process.env.PONYTAIL_HIDE_STATUS;
 
   return Promise.resolve()
     .then(fn)
     .finally(() => {
       if (previousXdg === undefined) delete process.env.XDG_CONFIG_HOME;
       else process.env.XDG_CONFIG_HOME = previousXdg;
+      if (previousHide === undefined) delete process.env.PONYTAIL_HIDE_STATUS;
+      else process.env.PONYTAIL_HIDE_STATUS = previousHide;
       rmSync(tempConfigHome, { recursive: true, force: true });
     });
 }
@@ -187,4 +191,53 @@ test("status bar stays silent when ui lacks a theme", async () => withTempConfig
   await events.get("agent_start")({}, ctx);
 
   assert.deepEqual(calls, []);
+}));
+
+test("PONYTAIL_HIDE_STATUS hides the indicator but keeps ponytail active (#324)", async () => withTempConfig(async () => {
+  process.env.PONYTAIL_HIDE_STATUS = "1";
+  const { events } = createPiHarness();
+  const statusWrites = [];
+  const ctx = createCommandContext({
+    sessionManager: { getEntries: () => [{ type: "custom", customType: "ponytail-mode", data: { mode: "ultra" } }] },
+    ui: { notify() {}, setStatus: (key, text) => statusWrites.push({ key, text }), theme: { fg: (_c, t) => t } },
+  });
+
+  await events.get("session_start")({ reason: "resume" }, ctx);
+  await events.get("agent_start")({}, ctx);
+  const injected = await events.get("before_agent_start")({ systemPrompt: "BASE" }, ctx);
+
+  assert.deepEqual(statusWrites, [], "status bar must not be drawn when hidden");
+  assert.match(injected.systemPrompt, /PONYTAIL MODE ACTIVE/, "ruleset must still inject while status is hidden");
+}));
+
+test("config.hideStatus hides the indicator but keeps ponytail active (#324)", async () => withTempConfig(async () => {
+  mkdirSync(join(process.env.XDG_CONFIG_HOME, "ponytail"), { recursive: true });
+  writeFileSync(join(process.env.XDG_CONFIG_HOME, "ponytail", "config.json"), JSON.stringify({ hideStatus: true }));
+  const { events } = createPiHarness();
+  const statusWrites = [];
+  const ctx = createCommandContext({
+    ui: { notify() {}, setStatus: (key, text) => statusWrites.push({ key, text }), theme: { fg: (_c, t) => t } },
+  });
+
+  await events.get("session_start")({ reason: "startup" }, ctx);
+  await events.get("agent_start")({}, ctx);
+  const injected = await events.get("before_agent_start")({ systemPrompt: "BASE" }, ctx);
+
+  assert.deepEqual(statusWrites, [], "config.hideStatus must suppress the status bar");
+  assert.match(injected.systemPrompt, /PONYTAIL MODE ACTIVE/, "ruleset must still inject while status is hidden");
+}));
+
+test("PONYTAIL_HIDE_STATUS=0 does not hide the indicator", async () => withTempConfig(async () => {
+  process.env.PONYTAIL_HIDE_STATUS = "0";
+  const { events } = createPiHarness();
+  const statusWrites = [];
+  const ctx = createCommandContext({
+    sessionManager: { getEntries: () => [{ type: "custom", customType: "ponytail-mode", data: { mode: "ultra" } }] },
+    ui: { notify() {}, setStatus: (key, text) => statusWrites.push({ key, text }), theme: { fg: (_c, t) => t } },
+  });
+
+  await events.get("session_start")({ reason: "resume" }, ctx);
+  await events.get("agent_start")({}, ctx);
+
+  assert.ok(statusWrites.length > 0, "0 must be treated as 'do not hide'");
 }));

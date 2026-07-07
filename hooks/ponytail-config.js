@@ -96,6 +96,23 @@ function getDefaultMode() {
   return DEFAULT_MODE;
 }
 
+// Hide the status-bar indicator while keeping ponytail active (#324).
+// PONYTAIL_HIDE_STATUS=1 (or any truthy value; 0/false/empty mean "don't hide")
+// takes precedence, else config.hideStatus === true.
+function getHideStatus() {
+  const env = process.env.PONYTAIL_HIDE_STATUS;
+  if (env !== undefined) {
+    const v = env.trim().toLowerCase();
+    return v !== '' && v !== '0' && v !== 'false' && v !== 'no';
+  }
+  try {
+    const config = JSON.parse(fs.readFileSync(getConfigPath(), 'utf8').replace(/^\uFEFF/, ''));
+    return config.hideStatus === true;
+  } catch (_) {
+    return false;
+  }
+}
+
 function writeDefaultMode(mode) {
   const normalized = normalizeConfigMode(mode);
   if (!normalized) return null;
@@ -120,6 +137,7 @@ module.exports = {
   getConfigDir,
   getConfigPath,
   getClaudeDir,
+  getHideStatus,
   isShellSafe,
   normalizeMode,
   normalizeConfigMode,
