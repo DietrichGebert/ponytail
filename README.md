@@ -241,6 +241,10 @@ clawhub install ponytail
 
 Installs ponytail as an OpenClaw skill from ClawHub; the review, audit, debt, gain, and help skills install the same way (`clawhub install ponytail-review`, and so on). OpenClaw applies it on coding tasks and also exposes it as a `/ponytail` command. Without ClawHub, copy [`.openclaw/skills/ponytail`](.openclaw/skills/) into `~/.openclaw/skills/`.
 
+### Kilo Code
+
+Kilo Code reads `AGENTS.md` from the project root, so ponytail works from this repo with no setup. For a dedicated agent profile, select [`.kilo/agents/ponytail.md`](.kilo/agents/ponytail.md) from the Kilo agent picker after opening this repo. Kilo also discovers skills from `.agents/skills/`.
+
 That was it. He'd be proud. He won't say it.
 
 Active every session, with a handful of commands (see [Commands](#commands)). `/ponytail ultra` exists for when the codebase has wronged you personally. Startup and mode-change text shows the current mode.
