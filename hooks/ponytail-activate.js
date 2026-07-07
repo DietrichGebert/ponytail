@@ -1,10 +1,10 @@
 #!/usr/bin/env node
-// ponytail — Claude Code SessionStart activation hook
+// ponytail — SessionStart activation hook (multi-host: Claude, Codex, Copilot, Grok, etc.)
 //
 // Runs on every session start:
-//   1. Writes flag file at $CLAUDE_CONFIG_DIR/.ponytail-active (defaults to ~/.claude; statusline reads this)
-//   2. Emits ponytail ruleset as hidden SessionStart context
-//   3. Detects missing statusline config and emits setup nudge
+//   1. Writes flag file for mode persistence (using host-specific PLUGIN_DATA or ~/.claude)
+//   2. Emits ponytail ruleset as context for the host
+//   3. (Claude only) Detects missing statusline config and emits setup nudge
 
 const fs = require('fs');
 const path = require('path');
@@ -14,19 +14,17 @@ const {
   clearMode,
   isCodex,
   isCopilot,
+  isGrok,
   setMode,
   writeHookOutput,
 } = require('./ponytail-runtime');
-
-const claudeDir = getClaudeDir();
-const settingsPath = path.join(claudeDir, 'settings.json');
 
 const mode = getDefaultMode();
 
 // "off" mode — skip activation entirely, don't write flag or emit rules
 if (mode === 'off') {
   clearMode();
-  const hookOutput = (isCodex || isCopilot) ? '' : 'OK';
+  const hookOutput = (isCodex || isCopilot || isGrok) ? '' : 'OK';
   writeHookOutput('SessionStart', 'off', hookOutput);
   process.exit(0);
 }
@@ -41,8 +39,10 @@ try {
 // 2. Emit the ponytail ruleset, filtered to the active intensity level.
 let output = getPonytailInstructions(mode);
 
-// 3. Detect missing statusline config — nudge Claude to help set it up
-if (!isCodex && !isCopilot) try {
+// 3. Detect missing statusline config — nudge Claude to help set it up (skip for Grok and other hosts)
+if (!isCodex && !isCopilot && !isGrok) try {
+  const claudeDir = getClaudeDir();
+  const settingsPath = path.join(claudeDir, 'settings.json');
   let hasStatusline = false;
   if (fs.existsSync(settingsPath)) {
     // Strip UTF-8 BOM some editors prepend on Windows (breaks JSON.parse)
