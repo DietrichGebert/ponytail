@@ -234,4 +234,27 @@ try {
   else process.env.XDG_CONFIG_HOME = prevXdg;
 }
 
+// #329: `/ponytail default <mode>` persists the default to config (survives
+// restart), while a plain switch stays session-scoped and never touches config.
+const defHome = path.join(temp, 'default-cmd-home');
+const defEnv = { HOME: defHome, USERPROFILE: defHome, XDG_CONFIG_HOME: path.join(defHome, '.config') };
+const defConfig = path.join(defHome, '.config', 'ponytail', 'config.json');
+const defFlag = path.join(defHome, '.claude', '.ponytail-active');
+
+result = run('ponytail-mode-tracker.js', defEnv, JSON.stringify({ prompt: '/ponytail default lite' }));
+assert.equal(result.status, 0, result.stderr);
+assert.equal(JSON.parse(fs.readFileSync(defConfig, 'utf8')).defaultMode, 'lite', '/ponytail default must persist the default');
+assert.equal(fs.existsSync(defFlag), false, '/ponytail default must not change the session mode');
+
+// A plain switch is transient: sets the session flag, leaves the default alone.
+result = run('ponytail-mode-tracker.js', defEnv, JSON.stringify({ prompt: '/ponytail ultra' }));
+assert.equal(result.status, 0, result.stderr);
+assert.equal(fs.readFileSync(defFlag, 'utf8'), 'ultra', 'plain switch must set the session mode');
+assert.equal(JSON.parse(fs.readFileSync(defConfig, 'utf8')).defaultMode, 'lite', 'plain switch must not persist the default');
+
+// review is not a valid default (#377) — the command is ignored, config unchanged.
+result = run('ponytail-mode-tracker.js', defEnv, JSON.stringify({ prompt: '/ponytail default review' }));
+assert.equal(result.status, 0, result.stderr);
+assert.equal(JSON.parse(fs.readFileSync(defConfig, 'utf8')).defaultMode, 'lite', 'review must not be accepted as a default');
+
 console.log('hook compatibility checks passed');
