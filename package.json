@@ -27,6 +27,7 @@
     "skills/",
     ".opencode/",
     "pi-extension/",
+    "scripts/uninstall.js",
     "assets/",
     "LICENSE"
   ],
