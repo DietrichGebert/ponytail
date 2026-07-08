@@ -114,13 +114,17 @@ export default function ponytailExtension(pi) {
       }
 
       if (parsed.type === "set-default") {
-        const written = writeDefaultMode(parsed.mode);
-        if (written) {
-          configuredDefaultMode = getDefaultMode();
-          const message = configuredDefaultMode === written
-            ? `Default Ponytail mode set to ${written}.`
-            : `Saved default ${written}, but env override keeps default at ${configuredDefaultMode}.`;
-          ctx?.ui?.notify?.(message, "info");
+        try {
+          const written = writeDefaultMode(parsed.mode);
+          if (written) {
+            configuredDefaultMode = getDefaultMode();
+            const message = configuredDefaultMode === written
+              ? `Default Ponytail mode set to ${written}.`
+              : `Saved default ${written}, but env override keeps default at ${configuredDefaultMode}.`;
+            ctx?.ui?.notify?.(message, "info");
+          }
+        } catch (e) {
+          ctx?.ui?.notify?.(`Failed to save default mode: ${e.message}`, "error");
         }
         return;
       }
