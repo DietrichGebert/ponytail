@@ -92,7 +92,7 @@ export default async ({ client } = {}) => {
     'command.execute.before': async (input) => {
       if (!input || input.command !== 'ponytail') return;
       // `off` is persisted like any mode; the transform reads it and stays silent.
-      const mode = normalizePersistedMode((input.arguments || '').trim()) || getDefaultMode();
+      const mode = normalizePersistedMode(String(input.arguments || '').trim()) || getDefaultMode();
       writeMode(mode);
       log('info', 'ponytail ' + mode);
     },
