@@ -3,6 +3,7 @@
 // known-lazy-wrong reference so the instrument is verified before any API spend.
 //   node robustness-audit.js --selftest   # no API: prove every check is correct
 //   node robustness-audit.js              # baseline vs ponytail, gpt-5.4-mini, n=20
+//   AUDIT_REPS=3 node robustness-audit.js # 3 reps to harden borderline verdicts
 const { execSync } = require('child_process');
 const fs = require('fs');
 const os = require('os');
@@ -20,6 +21,7 @@ function python() {
 }
 
 const N = Number(process.env.AUDIT_N) || 20;
+const REPS = Math.max(1, Number(process.env.AUDIT_REPS) || 1);
 const MODEL = process.env.AUDIT_MODEL || 'gpt-5.4-mini';
 const ROOT = path.join(__dirname, '..');
 let kv = {};
@@ -178,18 +180,21 @@ if (process.argv.includes('--selftest')) {
 }
 
 (async () => {
+  if (REPS > 1) console.log(`Running ${REPS} reps × ${N} trials per arm\n`);
   const arms = { baseline: null, ponytail: SKILL };
   const grid = {};
   for (const t of TASKS) {
     grid[t.name] = {};
     for (const arm of Object.keys(arms)) {
       let pass = 0, err = 0;
-      for (let i = 0; i < N; i++) {
-        const res = await call(arms[arm], t.prompt);
-        if (res.err) { err++; continue; }
-        if (checkPy(pyBlock(res.text), t)) pass++;
+      for (let rep = 0; rep < REPS; rep++) {
+        for (let i = 0; i < N; i++) {
+          const res = await call(arms[arm], t.prompt);
+          if (res.err) { err++; continue; }
+          if (checkPy(pyBlock(res.text), t)) pass++;
+        }
       }
-      grid[t.name][arm] = { pass, n: N - err };
+      grid[t.name][arm] = { pass, n: N * REPS - err };
     }
     const b = grid[t.name].baseline, p = grid[t.name].ponytail;
     const flag = p.pass < b.pass ? '  <-- PONYTAIL REGRESSION' : (p.pass < p.n ? '  (both imperfect)' : '');
