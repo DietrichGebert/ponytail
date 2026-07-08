@@ -2,7 +2,7 @@
   "mcpServers": {
     "ponytail": {
       "command": "node",
-      "args": ["${GROK_PLUGIN_ROOT}/ponytail-mcp/grok-start.js"],
+      "args": ["${GROK_PLUGIN_ROOT}/ponytail-mcp/index.js"],
       "env": {},
       "startup_timeout_sec": 90
     }

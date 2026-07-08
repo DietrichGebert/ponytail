@@ -217,7 +217,7 @@ grok plugin marketplace add .
 grok plugin install ponytail
 ```
 
-It registers the 6 skills (appear as `/ponytail`, `/ponytail-review`, etc.), loads `hooks/hooks.json` for SessionStart/UserPromptSubmit activation, and exposes the MCP server for `ponytail_instructions` tool. The repo follows the xAI plugin-marketplace structure (`.grok-plugin/marketplace.json`, `scripts/generate-plugin-index.py`, `plugins/`, `external_plugins/`). Grok's native AGENTS.md support also loads the rules when present in the project. Use `grok plugin list`, `/plugins`, or `grok inspect` to manage. Node is required for hooks and MCP. The MCP server auto-installs its dependencies on first use (via launcher). Skills and hooks work immediately.
+It registers the 6 skills (appear as `/ponytail`, `/ponytail-review`, etc.), loads hooks and MCP server for `ponytail_instructions` tool. Grok's native AGENTS.md support also loads the rules when present in the project. Use `grok plugin list`, `/plugins`, or `grok inspect` to manage. Node is required for hooks and MCP. Skills and hooks work immediately. (For remote sources, run `npm install` in `ponytail-mcp/` after first clone if needed.)
 
 ### Hermes Agent
 

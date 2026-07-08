@@ -26,8 +26,8 @@ const VERSIONED_MANIFESTS = [
 const REUSED_COMMANDS = ['commands/ponytail.toml', 'commands/ponytail-review.toml'];
 const REUSED_SKILLS = ['skills/ponytail/SKILL.md'];
 // Gemini CLI auto-loads this exact path for extension hooks. Ponytail's
-// hooks/hooks.json is now at root because the repo is a marketplace (source=".")
- // and Grok scans standard locations for components. The scripts are multi-host aware.
+// Claude/Codex hook map uses events Gemini does not support, so it must stay
+// behind the host-specific plugin manifests instead.
 const GEMINI_AUTO_HOOKS = 'hooks/hooks.json';
 // Same load-bearing phrases asserted by scripts/check-rule-copies.js: the file
 // contextFileName points at must actually carry the rules, not just exist.
@@ -82,12 +82,10 @@ test('the commands and skills the adapter reuses are present', () => {
   }
 });
 
-test('hooks/hooks.json may be present (multi-host support)', () => {
-  // Presence is now intentional for Grok (marketplace scan requires components at root when source=".").
-  // The hook scripts are multi-host aware and fall back gracefully.
-  const exists = fs.existsSync(path.join(root, GEMINI_AUTO_HOOKS));
-  if (exists) {
-    const content = read(GEMINI_AUTO_HOOKS);
-    assert.ok(content.includes('CLAUDE_PLUGIN_ROOT') || content.includes('GROK_PLUGIN_DATA'), 'hooks/hooks.json should reference compatible plugin roots');
-  }
+test('Gemini cannot auto-discover Claude/Codex hook events', () => {
+  assert.equal(
+    fs.existsSync(path.join(root, GEMINI_AUTO_HOOKS)),
+    false,
+    `${GEMINI_AUTO_HOOKS} is auto-loaded by Gemini CLI; keep Claude/Codex hooks on manifest paths`,
+  );
 });

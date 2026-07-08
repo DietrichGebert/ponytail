@@ -14,7 +14,7 @@ to load in a given agent.
 | pi | `pi-extension/`, `skills/`, `hooks/` | Package extension: injects the ruleset each turn through the shared instruction builder and registers the `/ponytail` commands. |
 | Hermes Agent | `plugin.yaml`, `__init__.py`, `skills/` | Native Hermes plugin: injects active mode through `pre_llm_call`, rewrites gateway `/ponytail-*` skill commands into agent prompts, registers `/ponytail` mode switching, and exposes bundled skills as `ponytail:<skill>`. |
 | Gemini CLI | `gemini-extension.json`, `AGENTS.md`, `commands/`, `skills/` | Extension manifest points `contextFileName` at `AGENTS.md` for always-on rules, and reuses the existing `commands/*.toml` and `skills/`, which Gemini CLI auto-discovers. The Claude/Codex hook map is not placed at Gemini's auto-discovered `hooks/hooks.json` path. |
-| Grok Build (xAI) | `hooks/hooks.json`, `.mcp.json`, `skills/`, `commands/`, `AGENTS.md` + `.grok-plugin/marketplace.json`, `scripts/` | Replicates xAI plugin-marketplace structure (.grok-plugin/ for catalog + plugin-index.json, scripts/ for generation). Added as marketplace first (`grok plugin marketplace add`), then `grok plugin install ponytail`. No top-level plugin.json (components discovered by scan). |
+| Grok Build (xAI) | `skills/`, `commands/`, `AGENTS.md` + `.grok-plugin/` (marketplace.json + index + Grok hooks/MCP configs), minimal `plugin.json` | Replicates minimal xAI plugin-marketplace structure for marketplace add + install. Components via root scan + manifest overrides (no root hooks/hooks.json or .mcp.json to avoid pollution). |
 | Cursor | `.cursor/rules/ponytail.mdc` | Always-on project rule. |
 | Windsurf | `.windsurf/rules/ponytail.md` | Project rule. |
 | Cline | `.clinerules/ponytail.md` | Project rule. |
