@@ -15,7 +15,7 @@
   <img src="https://img.shields.io/github/stars/DietrichGebert/ponytail?style=flat-square&color=111111&label=stars" alt="Stars">
   <img src="https://img.shields.io/github/v/release/DietrichGebert/ponytail?style=flat-square&color=111111&label=release" alt="Release">
   <img src="https://img.shields.io/npm/v/@dietrichgebert/ponytail?style=flat-square&color=111111&label=npm" alt="npm">
-  <img src="https://img.shields.io/badge/works%20with-15%20agents-111111?style=flat-square" alt="Works with 15 agents">
+  <img src="https://img.shields.io/badge/works%20with-16%20agents-111111?style=flat-square" alt="Works with 16 agents">
   <img src="https://img.shields.io/badge/license-MIT-111111?style=flat-square" alt="MIT license">
 </p>
 
@@ -198,6 +198,17 @@ agy plugin install https://github.com/DietrichGebert/ponytail
 ```
 
 이 저장소의 `gemini-extension.json`을 그대로 재사용한다. 차이는 하나다. Antigravity는 `/ponytail` 명령들을 스킬로 바꿔 버려서, 슬래시 메뉴에서 고르는 대신 채팅에 직접 친다(예: `/ponytail-review`를 메시지로). 전환이 마무리될 때까지(2026년 6월 18일경)는 `gemini extensions install`도 여전히 먹힌다. 늘 켜진 규칙으로 돌리고 싶으면, 룰셋을 `.agents/rules/`에 넣으면 된다.
+
+### Grok Build
+
+
+```bash
+grok plugin marketplace add DietrichGebert/ponytail
+grok plugin install ponytail
+```
+
+
+6개 스킬을 등록하고(`/ponytail`, `/ponytail-review` 등으로 보임), hooks와 `ponytail_instructions` 도구용 MCP 서버를 불러온다. Grok 네이티브 AGENTS.md 지원도 프로젝트에 있으면 규칙을 로드한다. 관리는 `grok plugin list`, `/plugins`, 또는 `grok inspect`. hooks와 MCP에는 Node가 필요하다. 스킬과 hooks는 바로 동작한다.
 
 ### CodeWhale
 
