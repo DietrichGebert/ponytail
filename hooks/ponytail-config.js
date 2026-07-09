@@ -145,6 +145,7 @@ module.exports = {
   getConfigDir,
   getConfigPath,
   getClaudeDir,
+  getGrokPluginDataDir,
   getHideStatus,
   isShellSafe,
   normalizeMode,
