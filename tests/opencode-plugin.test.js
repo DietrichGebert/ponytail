@@ -67,6 +67,15 @@ test('unsupported /ponytail arguments do not reset the current mode', async () =
   assert.equal(fs.readFileSync(statePath, 'utf8'), 'ultra');
 });
 
+test('non-string arguments (type coercion) do not crash command.execute.before (#553)', async () => {
+  const hooks = await loadPlugin({});
+  fs.writeFileSync(statePath, 'ultra');
+  await assert.doesNotReject(() =>
+    hooks['command.execute.before']({ command: 'ponytail', arguments: 5, sessionID: 's' }),
+  );
+  assert.equal(fs.readFileSync(statePath, 'utf8'), 'ultra', 'an unrecognized mode must not reset the current one');
+});
+
 test('unrelated commands do not touch the flag', async () => {
   try { fs.unlinkSync(statePath); } catch (e) {}
   const hooks = await loadPlugin({});
