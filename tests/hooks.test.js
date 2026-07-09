@@ -11,7 +11,7 @@ const root = path.join(__dirname, '..');
 // isShellSafe gates the statusline setup snippet (issue #200): ordinary install
 // paths pass, paths carrying shell metacharacters are rejected so they never get
 // embedded in a shell command.
-const { isShellSafe, writeDefaultMode } = require('../hooks/ponytail-config');
+const { DEFAULT_MODE, getDefaultMode, isShellSafe, writeDefaultMode } = require('../hooks/ponytail-config');
 assert.equal(isShellSafe('C:\\Users\\x\\.claude\\plugins\\ponytail\\hooks\\ponytail-statusline.ps1'), true);
 assert.equal(isShellSafe('/home/u/.claude/plugins/ponytail/hooks/ponytail-statusline.sh'), true);
 assert.equal(isShellSafe('/tmp/a"&calc.exe&"/x.sh'), false);
@@ -411,5 +411,30 @@ assert.equal(JSON.parse(fs.readFileSync(defConfig, 'utf8')).defaultMode, 'lite',
 result = run('ponytail-mode-tracker.js', defEnv, JSON.stringify({ prompt: '/ponytail default review' }));
 assert.equal(result.status, 0, result.stderr);
 assert.equal(JSON.parse(fs.readFileSync(defConfig, 'utf8')).defaultMode, 'lite', 'review must not be accepted as a default');
+
+// review must be refused as a default by the config functions too, not only the
+// mode-tracker command path (#377): writing it is a no-op, and a stray
+// PONYTAIL_DEFAULT_MODE=review falls back to the built-in default.
+const revHome = path.join(temp, 'review-default-home');
+const revConfigDir = path.join(revHome, '.config', 'ponytail');
+fs.mkdirSync(revConfigDir, { recursive: true });
+const revConfigPath = path.join(revConfigDir, 'config.json');
+fs.writeFileSync(revConfigPath, JSON.stringify({ defaultMode: 'lite' }, null, 2));
+
+const prevXdgRev = process.env.XDG_CONFIG_HOME;
+const prevEnvModeRev = process.env.PONYTAIL_DEFAULT_MODE;
+process.env.XDG_CONFIG_HOME = path.join(revHome, '.config');
+try {
+  assert.equal(writeDefaultMode('review'), null, 'writeDefaultMode must refuse review as a default (#377)');
+  assert.equal(JSON.parse(fs.readFileSync(revConfigPath, 'utf8')).defaultMode, 'lite', 'a refused review write must leave the config unchanged');
+
+  delete process.env.PONYTAIL_DEFAULT_MODE;
+  fs.rmSync(revConfigPath);
+  process.env.PONYTAIL_DEFAULT_MODE = 'review';
+  assert.equal(getDefaultMode(), DEFAULT_MODE, 'PONYTAIL_DEFAULT_MODE=review must fall back to the built-in default');
+} finally {
+  if (prevXdgRev === undefined) delete process.env.XDG_CONFIG_HOME; else process.env.XDG_CONFIG_HOME = prevXdgRev;
+  if (prevEnvModeRev === undefined) delete process.env.PONYTAIL_DEFAULT_MODE; else process.env.PONYTAIL_DEFAULT_MODE = prevEnvModeRev;
+}
 
 console.log('hook compatibility checks passed');

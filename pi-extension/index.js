@@ -8,7 +8,6 @@ const {
   getQuietStartup,
   getHideStatus,
   normalizeMode,
-  normalizeConfigMode,
   normalizePersistedMode,
   isDeactivationCommand,
   writeDefaultMode,
@@ -50,7 +49,8 @@ export function parsePonytailCommand(text, defaultMode = DEFAULT_MODE) {
   if (primary === "status") return { type: "status" };
 
   if (primary === "default") {
-    const mode = normalizeConfigMode(secondary);
+    // ponytail: a default must be a runtime level; review is session-only (#377).
+    const mode = normalizeMode(secondary);
     return mode ? { type: "set-default", mode } : { type: "invalid", reason: "invalid-default-mode" };
   }
 

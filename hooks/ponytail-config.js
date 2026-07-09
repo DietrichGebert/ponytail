@@ -76,7 +76,10 @@ function getClaudeDir() {
 function getDefaultMode() {
   // 1. Environment variable (highest priority)
   const envMode = process.env.PONYTAIL_DEFAULT_MODE;
-  if (envMode && VALID_MODES.includes(envMode.toLowerCase())) {
+  // ponytail: a default must be a runtime level (off/lite/full/ultra); review is
+  // a session-only mode, never a valid default (#377). Validate against
+  // RUNTIME_MODES so a stray env var or config can't make review the default.
+  if (envMode && RUNTIME_MODES.includes(envMode.toLowerCase())) {
     return envMode.toLowerCase();
   }
 
@@ -85,7 +88,7 @@ function getDefaultMode() {
     const configPath = getConfigPath();
     // Strip UTF-8 BOM (common on Windows-saved files) so JSON.parse doesn't choke
     const config = JSON.parse(fs.readFileSync(configPath, 'utf8').replace(/^\uFEFF/, ''));
-    if (config.defaultMode && VALID_MODES.includes(config.defaultMode.toLowerCase())) {
+    if (config.defaultMode && RUNTIME_MODES.includes(config.defaultMode.toLowerCase())) {
       return config.defaultMode.toLowerCase();
     }
   } catch (e) {
@@ -131,7 +134,8 @@ function getHideStatus() {
 }
 
 function writeDefaultMode(mode) {
-  const normalized = normalizeConfigMode(mode);
+  // ponytail: only a runtime level can be a default; review is session-only (#377).
+  const normalized = normalizeMode(mode);
   if (!normalized) return null;
 
   const configPath = getConfigPath();
