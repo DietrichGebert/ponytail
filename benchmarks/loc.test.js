@@ -13,6 +13,7 @@ const cases = [
   ['inline block comment keeps its code line', score('```js\nconst x = 1; /* note */\nconst y = 2;\n```'), 2],
   ['line comments still stripped', score('```js\n// header\nconst x = 1;\n```'), 1],
   ['plain code unchanged', score('```js\nconst a = 1;\nconst b = 2;\n```'), 2],
+  ['CRLF fences parsed correctly (#339)', score('```js\r\nconst a = 1;\r\nconst b = 2;\r\n```'), 2],
 ];
 for (const [name, got, want] of cases) {
   assert.strictEqual(got, want, `FAILED: ${name} (got ${got}, want ${want})`);
