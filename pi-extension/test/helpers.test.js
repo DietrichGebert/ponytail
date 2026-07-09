@@ -95,7 +95,9 @@ test("readQuietStartup resolves env var, config file, and default in that order"
 });
 
 test("filterSkillBodyForMode keeps only requested intensity examples and rows", () => {
-  const body = `---\nname: ponytail\n---\n| **lite** | keep lite |\n| **full** | keep full |\n| **ultra** | keep ultra |\n- lite: Lite example\n- full: Full example\n- ultra: Ultra example\nOther line`;
+  // Examples are quoted in the real SKILL.md (`- lite: "..."`) — match that
+  // shape here too; see the next test for why the quote is load-bearing.
+  const body = `---\nname: ponytail\n---\n| **lite** | keep lite |\n| **full** | keep full |\n| **ultra** | keep ultra |\n- lite: "Lite example"\n- full: "Full example"\n- ultra: "Ultra example"\nOther line`;
 
   const filtered = filterSkillBodyForMode(body, "ultra");
 
@@ -105,6 +107,20 @@ test("filterSkillBodyForMode keeps only requested intensity examples and rows", 
   assert.ok(!filtered.includes("Lite example"));
   assert.ok(filtered.includes("Ultra example"));
   assert.ok(filtered.includes("Other line"));
+});
+
+test("filterSkillBodyForMode does not drop a rule bullet whose label matches a mode name", () => {
+  // A rule bullet like "- Full: ..." has the same "label: text" shape as a
+  // worked example, but isn't one — it must survive in every mode. Only the
+  // quoted, `- lite: "..."`-style bullets are real per-mode examples.
+  const body = `- Full: do not confuse this rule label with the mode name.\n- Lite: same risk, this is a real rule bullet.\n- lite: "real worked example"\n- ultra: "real worked example"`;
+
+  const filtered = filterSkillBodyForMode(body, "ultra");
+
+  assert.ok(filtered.includes("Full: do not confuse"), "an unquoted rule bullet must not be treated as a mode example");
+  assert.ok(filtered.includes("Lite: same risk"), "an unquoted rule bullet must not be treated as a mode example");
+  assert.ok(!filtered.includes("- lite:"), "the real quoted lite example must still be filtered out in ultra mode");
+  assert.ok(filtered.includes('ultra: "real worked example"'));
 });
 
 test("filterSkillBodyForMode keeps rule bullets that contain a colon", () => {
