@@ -26,12 +26,21 @@ const VERSION_FILES = [
   'gemini-extension.json',       // Gemini CLI extension
   'package.json',                // pi-package / repo root
   'ponytail-mcp/package.json',   // MCP server (private, internal-only)
+  'plugin.yaml',                 // Hermes Agent plugin manifest
 ];
+
+// plugin.yaml is bumped by hand at release time same as the rest (see
+// c99757a), but it's YAML, not JSON \u2014 pull just the top-level `version:`
+// line rather than pull in a YAML dependency for one field.
+function readYamlVersion(raw) {
+  return raw.match(/^version:\s*["']?(\d+\.\d+\.\d+)["']?\s*$/m)?.[1];
+}
 
 function readVersion(relPath) {
   try {
     // Strip a UTF-8 BOM some Windows editors prepend (breaks JSON.parse).
     const raw = fs.readFileSync(path.join(root, relPath), 'utf8').replace(/^\uFEFF/, '');
+    if (relPath.endsWith('.yaml') || relPath.endsWith('.yml')) return readYamlVersion(raw);
     return JSON.parse(raw).version;
   } catch (e) {
     throw new Error(`${relPath}: ${e.message}`);
