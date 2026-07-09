@@ -8,8 +8,9 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { z } from "zod";
 
 import { MODES, buildInstructions, resolveMode } from "./instructions.js";
+import { getVersion } from "./version.js";
 
-const server = new McpServer({ name: "ponytail", version: "0.1.0" });
+const server = new McpServer({ name: "ponytail", version: getVersion() });
 
 const modeArg = z
   .enum(MODES)
