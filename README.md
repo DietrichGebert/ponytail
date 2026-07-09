@@ -255,7 +255,7 @@ GitHub Copilot CLI fallback (instruction-only mode): it reads `AGENTS.md` and `.
 
 VS Code with the Codex extension reads `AGENTS.md`, which this repo ships, so it works from the repo root with no setup (`~/.codex/AGENTS.md` makes Codex global).
 
-JetBrains Junie reads `AGENTS.md` from the project root, which this repo ships, so it works in any JetBrains IDE with no setup (`~/.junie/AGENTS.md` makes it global; `.junie/guidelines.md` is Junie's legacy path).
+JetBrains Junie can read `AGENTS.md` once you point it there in Settings → Tools → Junie → Project Settings → Guidelines Path (it is not automatic yet). This repo ships `AGENTS.md`; `.junie/guidelines.md` is Junie's legacy path.
 
 Amp (Sourcegraph) reads `AGENTS.md` from the working directory and parent directories up to `$HOME`, which this repo ships, so it works with no setup (`~/.config/amp/AGENTS.md` works globally).
 
