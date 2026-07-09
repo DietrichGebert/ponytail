@@ -80,8 +80,8 @@ assert.equal(result.status, 0, result.stderr);
 const settingsAfter3 = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
 assert.equal(
   settingsAfter3.statusLine.command,
-  'bash ~/caveman-statusline.sh && bash /p/ponytail-statusline.sh',
-  'a combined statusLine must be left untouched, not partially destroyed',
+  'bash ~/caveman-statusline.sh',
+  'a combined statusLine must keep the non-ponytail command',
 );
 
 // #434: a malformed settings.json must not crash the script mid-cleanup. It
