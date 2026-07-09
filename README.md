@@ -130,8 +130,6 @@ codebuddy plugin marketplace add DietrichGebert/ponytail
 codebuddy plugin install ponytail@ponytail
 ```
 
-Reuses the Claude Code hooks (`hooks/claude-codex-hooks.json`), so the lifecycle activation, mode tracking, commands, and statusline all work the same way.
-
 ### Codex
 
 ```bash
