@@ -83,7 +83,8 @@ function getDefaultMode() {
   // 2. Config file
   try {
     const configPath = getConfigPath();
-    const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+    // Strip UTF-8 BOM (common on Windows-saved files) so JSON.parse doesn't choke
+    const config = JSON.parse(fs.readFileSync(configPath, 'utf8').replace(/^\uFEFF/, ''));
     if (config.defaultMode && VALID_MODES.includes(config.defaultMode.toLowerCase())) {
       return config.defaultMode.toLowerCase();
     }
@@ -95,26 +96,38 @@ function getDefaultMode() {
   return DEFAULT_MODE;
 }
 
+// Silence the pi "Ponytail loaded" startup toast while keeping ponytail active.
+// PONYTAIL_QUIET_STARTUP=1 (or any truthy value; 0/false/empty mean "show it")
+// takes precedence, else config.quietStartup === true. Mirrors getHideStatus.
 function getQuietStartup() {
-  // 1. Environment variable (highest priority)
-  const envValue = process.env.PONYTAIL_QUIET_STARTUP;
-  if (typeof envValue === 'string') {
-    const v = envValue.trim().toLowerCase();
-    if (v === '1' || v === 'true' || v === 'yes' || v === 'on') return true;
-    if (v === '0' || v === 'false' || v === 'no' || v === 'off') return false;
+  const env = process.env.PONYTAIL_QUIET_STARTUP;
+  if (env !== undefined) {
+    const v = env.trim().toLowerCase();
+    return v !== '' && v !== '0' && v !== 'false' && v !== 'no';
   }
-
-  // 2. Config file
   try {
-    const configPath = getConfigPath();
-    const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
-    if (typeof config.quietStartup === 'boolean') return config.quietStartup;
-  } catch (e) {
-    // Config file doesn't exist or is invalid — fall through
+    const config = JSON.parse(fs.readFileSync(getConfigPath(), 'utf8').replace(/^\uFEFF/, ''));
+    return config.quietStartup === true;
+  } catch (_) {
+    return false;
   }
+}
 
-  // 3. Default: show the startup notification
-  return false;
+// Hide the status-bar indicator while keeping ponytail active (#324).
+// PONYTAIL_HIDE_STATUS=1 (or any truthy value; 0/false/empty mean "don't hide")
+// takes precedence, else config.hideStatus === true.
+function getHideStatus() {
+  const env = process.env.PONYTAIL_HIDE_STATUS;
+  if (env !== undefined) {
+    const v = env.trim().toLowerCase();
+    return v !== '' && v !== '0' && v !== 'false' && v !== 'no';
+  }
+  try {
+    const config = JSON.parse(fs.readFileSync(getConfigPath(), 'utf8').replace(/^\uFEFF/, ''));
+    return config.hideStatus === true;
+  } catch (_) {
+    return false;
+  }
 }
 
 function writeDefaultMode(mode) {
@@ -123,7 +136,13 @@ function writeDefaultMode(mode) {
 
   const configPath = getConfigPath();
   fs.mkdirSync(path.dirname(configPath), { recursive: true });
-  fs.writeFileSync(configPath, JSON.stringify({ defaultMode: normalized }, null, 2), 'utf8');
+  let config = {};
+  try {
+    config = JSON.parse(fs.readFileSync(configPath, 'utf8').replace(/^\uFEFF/, ''));
+    if (!config || typeof config !== 'object' || Array.isArray(config)) config = {};
+  } catch (_) {}
+  config.defaultMode = normalized;
+  fs.writeFileSync(configPath, JSON.stringify(config, null, 2), 'utf8');
   return normalized;
 }
 
@@ -135,11 +154,12 @@ module.exports = {
   getConfigDir,
   getConfigPath,
   getClaudeDir,
+  getHideStatus,
+  getQuietStartup,
   isShellSafe,
   normalizeMode,
   normalizeConfigMode,
   normalizePersistedMode,
   isDeactivationCommand,
   writeDefaultMode,
-  getQuietStartup,
 };

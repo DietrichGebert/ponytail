@@ -6,5 +6,8 @@
     "name": "Dietrich Gebert",
     "url": "https://github.com/DietrichGebert"
   },
-  "hooks": "./hooks/claude-codex-hooks.json"
+  "homepage": "https://github.com/DietrichGebert/ponytail",
+  "repository": "https://github.com/DietrichGebert/ponytail",
+  "license": "MIT",
+  "keywords": ["yagni", "minimalism", "code-review", "productivity"]
 }
