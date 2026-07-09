@@ -96,13 +96,53 @@ function getDefaultMode() {
   return DEFAULT_MODE;
 }
 
+// Silence the pi "Ponytail loaded" startup toast while keeping ponytail active.
+// PONYTAIL_QUIET_STARTUP=1 (or any truthy value; 0/false/empty mean "show it")
+// takes precedence, else config.quietStartup === true. Mirrors getHideStatus.
+function getQuietStartup() {
+  const env = process.env.PONYTAIL_QUIET_STARTUP;
+  if (env !== undefined) {
+    const v = env.trim().toLowerCase();
+    return v !== '' && v !== '0' && v !== 'false' && v !== 'no';
+  }
+  try {
+    const config = JSON.parse(fs.readFileSync(getConfigPath(), 'utf8').replace(/^\uFEFF/, ''));
+    return config.quietStartup === true;
+  } catch (_) {
+    return false;
+  }
+}
+
+// Hide the status-bar indicator while keeping ponytail active (#324).
+// PONYTAIL_HIDE_STATUS=1 (or any truthy value; 0/false/empty mean "don't hide")
+// takes precedence, else config.hideStatus === true.
+function getHideStatus() {
+  const env = process.env.PONYTAIL_HIDE_STATUS;
+  if (env !== undefined) {
+    const v = env.trim().toLowerCase();
+    return v !== '' && v !== '0' && v !== 'false' && v !== 'no';
+  }
+  try {
+    const config = JSON.parse(fs.readFileSync(getConfigPath(), 'utf8').replace(/^\uFEFF/, ''));
+    return config.hideStatus === true;
+  } catch (_) {
+    return false;
+  }
+}
+
 function writeDefaultMode(mode) {
   const normalized = normalizeConfigMode(mode);
   if (!normalized) return null;
 
   const configPath = getConfigPath();
   fs.mkdirSync(path.dirname(configPath), { recursive: true });
-  fs.writeFileSync(configPath, JSON.stringify({ defaultMode: normalized }, null, 2), 'utf8');
+  let config = {};
+  try {
+    config = JSON.parse(fs.readFileSync(configPath, 'utf8').replace(/^\uFEFF/, ''));
+    if (!config || typeof config !== 'object' || Array.isArray(config)) config = {};
+  } catch (_) {}
+  config.defaultMode = normalized;
+  fs.writeFileSync(configPath, JSON.stringify(config, null, 2), 'utf8');
   return normalized;
 }
 
@@ -114,6 +154,8 @@ module.exports = {
   getConfigDir,
   getConfigPath,
   getClaudeDir,
+  getHideStatus,
+  getQuietStartup,
   isShellSafe,
   normalizeMode,
   normalizeConfigMode,
