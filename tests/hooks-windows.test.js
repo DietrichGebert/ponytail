@@ -9,6 +9,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('fs');
 const path = require('path');
+const { spawn } = require('child_process');
 
 const root = path.join(__dirname, '..');
 const HOOKS_JSON = 'hooks/claude-codex-hooks.json';
@@ -52,13 +53,14 @@ test('shared hook commands avoid POSIX-only guard syntax', () => {
   }
 });
 
-test('shared hook commands keep lifecycle hooks non-blocking', () => {
+test('shared hook commands exec node instead of leaving a wrapper shell behind', () => {
   const commands = commandHooks()
     .map((h) => h.command)
     .filter(Boolean);
   assert.ok(commands.length > 0, 'expected at least one shared command entry');
   for (const cmd of commands) {
-    assert.match(cmd, /;\s*exit 0$/, `command must exit successfully if node or the hook script fails: ${cmd}`);
+    assert.match(cmd, /^exec node\s+/, `command must replace the shell with node: ${cmd}`);
+    assert.doesNotMatch(cmd, /;\s*exit 0$/, `command must not leave a shell wrapper waiting on node: ${cmd}`);
   }
 });
 
@@ -71,6 +73,27 @@ test('every hook command points at a script that ships in hooks/', () => {
       assert.ok(fs.existsSync(script), `command references a missing hook script: ${match[1]}`);
     }
   }
+});
+
+// Issue #443: on Windows the UserPromptSubmit hook runs inside a PowerShell
+// `if {}` wrapper that can swallow the piped prompt JSON, so stdin 'end' never
+// fires. The hook must never wait on stdin forever — that freezes the whole
+// session. It has to self-exit even when stdin stays open and empty.
+test('ponytail-mode-tracker self-exits when stdin never closes (no freeze)', async () => {
+  const hook = path.join(root, 'hooks', 'ponytail-mode-tracker.js');
+  // stdin is a pipe we never write to or end, reproducing the deadlock.
+  const child = spawn(process.execPath, [hook], { stdio: ['pipe', 'ignore', 'ignore'] });
+
+  const code = await new Promise((resolve, reject) => {
+    const guard = setTimeout(() => {
+      child.kill('SIGKILL');
+      reject(new Error('hook hung on open stdin — it would freeze the session'));
+    }, 3000);
+    child.on('exit', (c) => { clearTimeout(guard); resolve(c); });
+    child.on('error', reject);
+  });
+
+  assert.equal(code, 0, 'hook must exit cleanly when stdin never closes');
 });
 
 test('Claude and Codex manifests point at the shared host-specific hook config', () => {

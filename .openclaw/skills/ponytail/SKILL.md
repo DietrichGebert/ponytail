@@ -1,6 +1,6 @@
 ---
 name: ponytail
-description: "Lazy senior dev mode. Forces the simplest, shortest solution that works: YAGNI, stdlib first, no unrequested abstractions."
+description: "Lazy senior dev mode for any coding task (write, refactor, fix, review): YAGNI, stdlib first, no unrequested abstractions. Not for non-coding requests."
 homepage: https://github.com/DietrichGebert/ponytail
 license: MIT
 ---
