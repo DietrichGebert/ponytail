@@ -60,11 +60,12 @@ assert.equal(result.status, 0, result.stderr);
 assert.equal(fs.readFileSync(codexState, 'utf8'), 'ultra');
 let output = JSON.parse(result.stdout);
 assert.equal(output.systemMessage, 'PONYTAIL:ULTRA');
+assert.equal(output.additionalContext, undefined, 'Codex must not emit additionalContext at top level (#573)');
+assert.equal(output.hookSpecificOutput.hookEventName, 'SessionStart');
 assert.match(
-  output.additionalContext,
+  output.hookSpecificOutput.additionalContext,
   /PONYTAIL MODE ACTIVE — level: ultra/,
 );
-assert.equal(output.hookSpecificOutput, undefined, 'Codex should not use hookSpecificOutput (#505)');
 
 result = run(
   'ponytail-mode-tracker.js',
@@ -85,8 +86,10 @@ result = run(
 assert.equal(result.status, 0, result.stderr);
 assert.equal(fs.readFileSync(codexState, 'utf8'), 'lite');
 output = JSON.parse(result.stdout);
+assert.equal(output.additionalContext, undefined, 'Codex must not emit additionalContext at top level (#573)');
+assert.equal(output.hookSpecificOutput.hookEventName, 'UserPromptSubmit');
 assert.match(
-  output.additionalContext,
+  output.hookSpecificOutput.additionalContext,
   /PONYTAIL MODE ACTIVE — level: lite/,
 );
 
@@ -230,8 +233,9 @@ result = run('ponytail-subagent.js', { HOME: subHome, USERPROFILE: subHome, PLUG
 assert.equal(result.status, 0, result.stderr);
 output = JSON.parse(result.stdout);
 assert.equal(output.systemMessage, 'PONYTAIL:FULL');
-assert.ok(output.additionalContext, 'Codex SubagentStart should have additionalContext at top level (#505)');
-assert.match(output.additionalContext, /PONYTAIL MODE ACTIVE — level: full/);
+assert.equal(output.additionalContext, undefined, 'Codex must not emit additionalContext at top level (#573)');
+assert.equal(output.hookSpecificOutput.hookEventName, 'SubagentStart');
+assert.match(output.hookSpecificOutput.additionalContext, /PONYTAIL MODE ACTIVE — level: full/);
 
 // SubagentStart scoping (issue #506): PONYTAIL_SUBAGENT_MATCHER limits the
 // injection to agent types whose name matches the regex. Unset keeps the
