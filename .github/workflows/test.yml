@@ -3,6 +3,7 @@ name: test
 on:
   push:
     branches: [main]
+    tags: ['v*']
   pull_request:
 
 jobs:
@@ -22,8 +23,14 @@ jobs:
       - name: Install Python deps for correctness checks
         run: pip install pandas
 
+      - name: Install MCP deps
+        run: npm install --prefix ponytail-mcp
+
       - name: Check rule copies
         run: node scripts/check-rule-copies.js
+
+      - name: Check version consistency
+        run: node scripts/check-versions.js
 
       - name: Run tests
         run: npm test

@@ -1,0 +1,32 @@
+# Ponytail vs baseline, latest Gemini: gemini-3.5-flash (mini) + gemini-3.1-pro-preview (top).
+#   npx promptfoo@latest eval -c benchmarks/promptfooconfig.gemini.yaml --env-file .env --repeat 30
+# Needs GOOGLE_API_KEY in .env (AI Studio).
+description: "Ponytail vs baseline, latest Gemini (3.5-flash, 3.1-pro). LOC + correctness, cost telemetry."
+
+providers:
+  - id: google:gemini-3.5-flash
+    config: { temperature: 1, maxOutputTokens: 8192 }
+  - id: google:gemini-3.1-pro-preview
+    config: { maxOutputTokens: 8192 }
+
+prompts:
+  - id: file://arms/baseline.js
+    label: baseline (no skill)
+  - id: file://arms/ponytail.js
+    label: ponytail
+
+defaultTest:
+  assert:
+    - type: javascript
+      value: file://loc.js
+      metric: code_loc
+    - type: javascript
+      value: file://correctness.js
+      metric: correct
+
+tests:
+  - vars: { task: "Write me a Python function that validates email addresses." }
+  - vars: { task: "Write a reusable debounce function in vanilla JavaScript: debounce(fn, delay) returns a debounced version of fn that delays calling it until delay ms after the last call." }
+  - vars: { task: "Write Python code that reads sales.csv and sums the 'amount' column." }
+  - vars: { task: "Build me a countdown timer component in React that counts down from a given number of seconds." }
+  - vars: { task: "Add rate limiting to my FastAPI endpoint so users can't spam it." }

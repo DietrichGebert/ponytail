@@ -3,16 +3,22 @@ import { createRequire } from "node:module";
 const require = createRequire(import.meta.url);
 const {
   DEFAULT_MODE,
+  RUNTIME_MODES,
   getDefaultMode,
+  getHideStatus,
   normalizeMode,
   normalizeConfigMode,
   normalizePersistedMode,
+  isDeactivationCommand,
   writeDefaultMode,
 } = require("../hooks/ponytail-config.js");
 const { getPonytailInstructions, filterSkillBodyForMode } = require("../hooks/ponytail-instructions.js");
 
 export { filterSkillBodyForMode };
 export const readDefaultMode = getDefaultMode;
+
+const RUNTIME_MODE_LIST = RUNTIME_MODES.join("|");
+const PONYTAIL_COMMAND_DESCRIPTION = `Set mode: ${RUNTIME_MODE_LIST}. Commands: status, default <mode>`;
 
 export function resolveSessionMode(entries, fallbackMode = DEFAULT_MODE) {
   const fallback = normalizePersistedMode(fallbackMode) || DEFAULT_MODE;
@@ -55,6 +61,28 @@ export { writeDefaultMode };
 export default function ponytailExtension(pi) {
   let currentMode = DEFAULT_MODE;
   let configuredDefaultMode = getDefaultMode();
+  let hideStatus = getHideStatus();
+  let isActive = false;
+  let lastCtx = null;
+
+  // -- Status bar --
+  function syncStatus(ctx) {
+    if (ctx) lastCtx = ctx;
+    const c = ctx || lastCtx;
+    // ponytail: hide the indicator but keep the ruleset active (#324).
+    if (hideStatus) return;
+    if (!c?.ui?.setStatus || !c.ui.theme?.fg) return;
+    const theme = c.ui.theme;
+    if (currentMode === "off") {
+      c.ui.setStatus("ponytail", "");
+      return;
+    }
+    const levelIcons = { lite: "🌿", full: "⚡", ultra: "🔥" };
+    const icon = levelIcons[currentMode] || "";
+    const label = currentMode.toUpperCase();
+    const indicator = isActive ? theme.fg("accent", "●") : theme.fg("dim", "○");
+    c.ui.setStatus("ponytail", indicator + " 🐴 " + theme.fg("muted", "ponytail: ") + theme.fg("text", icon + " " + label));
+  }
 
   const setMode = (mode, ctx) => {
     const normalized = normalizePersistedMode(mode);
@@ -62,6 +90,7 @@ export default function ponytailExtension(pi) {
 
     currentMode = normalized;
     pi.appendEntry("ponytail-mode", { mode: normalized });
+    syncStatus(ctx);
     ctx?.ui?.notify?.(`Ponytail mode set to ${normalized}.`, "info");
   };
 
@@ -79,7 +108,7 @@ export default function ponytailExtension(pi) {
   };
 
   pi.registerCommand("ponytail", {
-    description: "Set or report Ponytail mode",
+    description: PONYTAIL_COMMAND_DESCRIPTION,
     handler: async (args, ctx) => {
       const parsed = parsePonytailCommand(args, configuredDefaultMode);
 
@@ -119,6 +148,11 @@ export default function ponytailExtension(pi) {
     handler: (_args, ctx) => sendAlias("/skill:ponytail-audit", "", ctx),
   });
 
+  pi.registerCommand("ponytail-gain", {
+    description: "Run /skill:ponytail-gain",
+    handler: (_args, ctx) => sendAlias("/skill:ponytail-gain", "", ctx),
+  });
+
   pi.registerCommand("ponytail-debt", {
     description: "Run /skill:ponytail-debt",
     handler: (_args, ctx) => sendAlias("/skill:ponytail-debt", "", ctx),
@@ -133,7 +167,7 @@ export default function ponytailExtension(pi) {
     if (event?.source === "extension") return;
 
     const text = String(event?.text || "");
-    if (currentMode !== "off" && /\b(stop ponytail|normal mode)\b/i.test(text)) {
+    if (currentMode !== "off" && isDeactivationCommand(text)) {
       setMode("off");
     }
   });
@@ -141,11 +175,27 @@ export default function ponytailExtension(pi) {
   pi.on("session_start", async (_event, ctx) => {
     const entries = ctx?.sessionManager?.getBranch?.() || ctx?.sessionManager?.getEntries?.() || [];
     configuredDefaultMode = getDefaultMode();
+    hideStatus = getHideStatus();
     currentMode = resolveSessionMode(entries, configuredDefaultMode);
+    syncStatus(ctx);
+    ctx?.ui?.notify?.(`Ponytail loaded: ${currentMode}`, "info");
+  });
+
+  pi.on("agent_start", async (_event, ctx) => {
+    isActive = true;
+    syncStatus(ctx);
+  });
+
+  pi.on("agent_end", async (_event, ctx) => {
+    isActive = false;
+    syncStatus(ctx);
   });
 
   pi.on("before_agent_start", async (event) => {
     if (!currentMode || currentMode === "off") return;
-    return { systemPrompt: `${event.systemPrompt}\n\n${getPonytailInstructions(currentMode)}` };
+    // Guard a null/undefined event or a missing systemPrompt: don't crash, and
+    // don't prepend the literal string "undefined" to the prompt (#439, #440).
+    const base = event?.systemPrompt ? `${event.systemPrompt}\n\n` : "";
+    return { systemPrompt: `${base}${getPonytailInstructions(currentMode)}` };
   });
 }

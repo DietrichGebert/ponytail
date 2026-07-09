@@ -1,7 +1,7 @@
 <svg viewBox="0 0 860 336" xmlns="http://www.w3.org/2000/svg" font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif">
   <title>Median lines of code per arm across three models</title>
   <text x="20" y="26" font-size="15" font-weight="600" fill="#8b949e">Median lines of code. 10 runs per cell. Lower is leaner.</text>
-  <text x="20" y="45" font-size="12" fill="#8b949e" opacity="0.85">Ponytail writes 80-94% less code, costs 47-77% less, and runs 3-6x faster than a no-skill agent.</text>
+  <text x="20" y="45" font-size="12" fill="#8b949e" opacity="0.85">Ponytail writes 80-94% less code, costs 42-75% less, and runs 3-6x faster than a no-skill agent.</text>
   <rect x="20" y="58" width="12" height="12" rx="2" fill="#8b949e"/><text x="38" y="69" font-size="13" fill="#8b949e">baseline (no skill)</text>
   <rect x="190" y="58" width="12" height="12" rx="2" fill="#d9822b"/><text x="208" y="69" font-size="13" fill="#8b949e">caveman</text>
   <rect x="300" y="58" width="12" height="12" rx="2" fill="#2da44e"/><text x="318" y="69" font-size="13" fill="#8b949e">ponytail</text>

@@ -18,10 +18,12 @@ process.env.XDG_CONFIG_HOME = tmp;
 delete process.env.PONYTAIL_DEFAULT_MODE;
 const statePath = path.join(tmp, 'opencode', '.ponytail-active');
 
-let loadPlugin;
+let loadPlugin, parseCommandFile;
 test.before(async () => {
   const url = pathToFileURL(path.join(__dirname, '..', '.opencode', 'plugins', 'ponytail.mjs'));
-  loadPlugin = (await import(url)).default;
+  const mod = await import(url);
+  loadPlugin = mod.default;
+  parseCommandFile = mod.parseCommandFile;
 });
 
 function transform(hooks) {
@@ -54,11 +56,35 @@ test('/ponytail off persists off and transform injects nothing', async () => {
   assert.deepEqual(system, []);
 });
 
+test('unsupported /ponytail arguments do not reset the current mode', async () => {
+  const hooks = await loadPlugin({});
+  fs.writeFileSync(statePath, 'ultra');
+  await hooks['command.execute.before']({ command: 'ponytail', arguments: 'status', sessionID: 's' });
+  assert.equal(fs.readFileSync(statePath, 'utf8'), 'ultra');
+});
+
 test('unrelated commands do not touch the flag', async () => {
   try { fs.unlinkSync(statePath); } catch (e) {}
   const hooks = await loadPlugin({});
   await hooks['command.execute.before']({ command: 'commit', arguments: 'x', sessionID: 's' });
   assert.equal(fs.existsSync(statePath), false);
+});
+
+test('parseCommandFile reads frontmatter description + body, LF and CRLF', () => {
+  const lf = path.join(tmp, 'cmd-lf.md');
+  fs.writeFileSync(lf, '---\ndescription: do a thing\n---\n\nthe template body\n');
+  assert.deepEqual(parseCommandFile(lf), { description: 'do a thing', template: 'the template body' });
+
+  // Windows checkouts (autocrlf) deliver CRLF — the parser must still match.
+  const crlf = path.join(tmp, 'cmd-crlf.md');
+  fs.writeFileSync(crlf, '---\r\ndescription: do a thing\r\n---\r\n\r\nthe template body\r\n');
+  assert.deepEqual(parseCommandFile(crlf), { description: 'do a thing', template: 'the template body' });
+});
+
+test('parseCommandFile returns null when there is no frontmatter', () => {
+  const bare = path.join(tmp, 'cmd-bare.md');
+  fs.writeFileSync(bare, 'no frontmatter here\n');
+  assert.equal(parseCommandFile(bare), null);
 });
 
 test.after(() => fs.rmSync(tmp, { recursive: true, force: true }));

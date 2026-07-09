@@ -31,6 +31,13 @@ test("resolveSessionMode prefers latest persisted session mode", () => {
   assert.equal(resolveSessionMode(entries, "full"), "ultra");
 });
 
+test("resolveSessionMode returns fallback when entries is not an array", () => {
+  assert.equal(resolveSessionMode(null, "ultra"), "ultra");
+  assert.equal(resolveSessionMode(undefined, "lite"), "lite");
+  assert.equal(resolveSessionMode({}, "full"), "full");
+  assert.equal(resolveSessionMode("not an array"), "full"); // DEFAULT_MODE fallback
+});
+
 test("readDefaultMode and writeDefaultMode use XDG config path", () => {
   const tempDir = mkdtempSync(join(tmpdir(), "ponytail-config-"));
   const previousXdg = process.env.XDG_CONFIG_HOME;
@@ -71,7 +78,7 @@ test("filterSkillBodyForMode keeps rule bullets that contain a colon", () => {
   // Regression: rule bullets outside the Intensity section (e.g. the
   // "No unrequested abstractions:" rule or the `ponytail:` comment convention)
   // contain a colon and must not be mistaken for mode-example lines.
-  const skillPath = join(import.meta.dirname, "..", "..", "skills", "ponytail", "SKILL.md");
+  const skillPath = new URL("../../skills/ponytail/SKILL.md", import.meta.url);
   const body = readFileSync(skillPath, "utf8");
 
   const filtered = filterSkillBodyForMode(body, "full");

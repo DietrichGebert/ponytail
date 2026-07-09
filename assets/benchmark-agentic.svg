@@ -1,0 +1,62 @@
+<svg viewBox="0 0 860 488" xmlns="http://www.w3.org/2000/svg" font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif">
+  <title>Each arm vs the no-skill baseline across every metric, plus safety, Claude Code on Haiku 4.5</title>
+  <text x="430" y="24" font-size="15" font-weight="600" fill="#8b949e" text-anchor="middle">Every metric vs the no-skill baseline (Claude Code, Haiku 4.5, 12 tasks)</text>
+
+  <rect x="212" y="38" width="12" height="12" rx="2" fill="#8b949e"/><text x="229" y="48" font-size="12" fill="#8b949e">baseline</text>
+  <rect x="300" y="38" width="12" height="12" rx="2" fill="#d9822b"/><text x="317" y="48" font-size="12" fill="#8b949e">caveman</text>
+  <rect x="392" y="38" width="12" height="12" rx="2" fill="#2da44e"/><text x="409" y="48" font-size="12" fill="#8b949e">ponytail</text>
+  <rect x="478" y="38" width="12" height="12" rx="2" fill="#8957e5"/><text x="495" y="48" font-size="12" fill="#8b949e">yagni-oneliner</text>
+
+  <text x="32" y="248" font-size="12" fill="#8b949e" text-anchor="middle" transform="rotate(-90 32 248)">% of baseline (lower is leaner)</text>
+  <line x1="85" y1="360" x2="815" y2="360" stroke="#8b949e" stroke-opacity="0.55"/>
+  <line x1="85" y1="305" x2="815" y2="305" stroke="#8b949e" stroke-opacity="0.16"/>
+  <line x1="85" y1="250" x2="815" y2="250" stroke="#8b949e" stroke-opacity="0.16"/>
+  <line x1="85" y1="195" x2="815" y2="195" stroke="#8b949e" stroke-opacity="0.16"/>
+  <line x1="85" y1="140" x2="815" y2="140" stroke="#8b949e" stroke-opacity="0.45" stroke-dasharray="4 4"/>
+  <text x="78" y="364" font-size="11" fill="#8b949e" text-anchor="end">0%</text>
+  <text x="78" y="309" font-size="11" fill="#8b949e" text-anchor="end">25%</text>
+  <text x="78" y="254" font-size="11" fill="#8b949e" text-anchor="end">50%</text>
+  <text x="78" y="199" font-size="11" fill="#8b949e" text-anchor="end">75%</text>
+  <text x="78" y="144" font-size="11" fill="#8b949e" text-anchor="end">100%</text>
+
+  <!-- LOC -->
+  <rect x="108" y="140" width="30" height="220" rx="2" fill="#8b949e"/><text x="123" y="135" font-size="10" fill="#8b949e" text-anchor="middle">100%</text>
+  <rect x="146" y="184" width="30" height="176" rx="2" fill="#d9822b"/><text x="161" y="179" font-size="10" fill="#d9822b" text-anchor="middle">80%</text>
+  <rect x="184" y="259" width="30" height="101" rx="2" fill="#2da44e"/><text x="199" y="254" font-size="10" font-weight="600" fill="#2da44e" text-anchor="middle">46%</text>
+  <rect x="222" y="213" width="30" height="147" rx="2" fill="#8957e5"/><text x="237" y="208" font-size="10" fill="#8957e5" text-anchor="middle">67%</text>
+  <text x="180" y="380" font-size="13" fill="#8b949e" text-anchor="middle">LOC</text>
+  <text x="180" y="395" font-size="10" fill="#8b949e" opacity="0.8" text-anchor="middle">base 191</text>
+
+  <!-- tokens -->
+  <rect x="288" y="140" width="30" height="220" rx="2" fill="#8b949e"/><text x="303" y="135" font-size="10" fill="#8b949e" text-anchor="middle">100%</text>
+  <rect x="326" y="125" width="30" height="235" rx="2" fill="#d9822b"/><text x="341" y="120" font-size="10" fill="#d9822b" text-anchor="middle">107%</text>
+  <rect x="364" y="188" width="30" height="172" rx="2" fill="#2da44e"/><text x="379" y="183" font-size="10" font-weight="600" fill="#2da44e" text-anchor="middle">78%</text>
+  <rect x="402" y="171" width="30" height="189" rx="2" fill="#8957e5"/><text x="417" y="166" font-size="10" fill="#8957e5" text-anchor="middle">86%</text>
+  <text x="360" y="380" font-size="13" fill="#8b949e" text-anchor="middle">tokens</text>
+  <text x="360" y="395" font-size="10" fill="#8b949e" opacity="0.8" text-anchor="middle">base 349k</text>
+
+  <!-- cost -->
+  <rect x="468" y="140" width="30" height="220" rx="2" fill="#8b949e"/><text x="483" y="135" font-size="10" fill="#8b949e" text-anchor="middle">100%</text>
+  <rect x="506" y="136" width="30" height="224" rx="2" fill="#d9822b"/><text x="521" y="131" font-size="10" fill="#d9822b" text-anchor="middle">102%</text>
+  <rect x="544" y="184" width="30" height="176" rx="2" fill="#2da44e"/><text x="559" y="179" font-size="10" font-weight="600" fill="#2da44e" text-anchor="middle">80%</text>
+  <rect x="582" y="188" width="30" height="172" rx="2" fill="#8957e5"/><text x="597" y="183" font-size="10" fill="#8957e5" text-anchor="middle">78%</text>
+  <text x="540" y="380" font-size="13" fill="#8b949e" text-anchor="middle">cost</text>
+  <text x="540" y="395" font-size="10" fill="#8b949e" opacity="0.8" text-anchor="middle">base $0.10</text>
+
+  <!-- time -->
+  <rect x="648" y="140" width="30" height="220" rx="2" fill="#8b949e"/><text x="663" y="135" font-size="10" fill="#8b949e" text-anchor="middle">100%</text>
+  <rect x="686" y="136" width="30" height="224" rx="2" fill="#d9822b"/><text x="701" y="131" font-size="10" fill="#d9822b" text-anchor="middle">102%</text>
+  <rect x="724" y="199" width="30" height="161" rx="2" fill="#2da44e"/><text x="739" y="194" font-size="10" font-weight="600" fill="#2da44e" text-anchor="middle">73%</text>
+  <rect x="762" y="206" width="30" height="154" rx="2" fill="#8957e5"/><text x="777" y="201" font-size="10" fill="#8957e5" text-anchor="middle">70%</text>
+  <text x="720" y="380" font-size="13" fill="#8b949e" text-anchor="middle">time</text>
+  <text x="720" y="395" font-size="10" fill="#8b949e" opacity="0.8" text-anchor="middle">base 69s</text>
+
+  <text x="20" y="418" font-size="11" fill="#8b949e" opacity="0.8">Each bar = that arm's mean as a % of the no-skill baseline (the gray 100% bars). Lower is leaner / cheaper / faster; caveman rises above 100% on tokens, cost and time. n=4.</text>
+
+  <line x1="20" y1="438" x2="815" y2="438" stroke="#8b949e" stroke-opacity="0.25"/>
+  <text x="20" y="460" font-size="11" fill="#8b949e" opacity="0.9">Safety, separate 6-task adversarial tier (path-traversal, SQLi, token forgery, malformed input, rate-limit). Higher is safer:</text>
+  <text x="90" y="478" font-size="12" fill="#8b949e">baseline 100%</text>
+  <text x="230" y="478" font-size="12" fill="#d9822b">caveman 100%</text>
+  <text x="370" y="478" font-size="12" font-weight="600" fill="#2da44e">ponytail 100%</text>
+  <text x="510" y="478" font-size="12" fill="#8957e5">yagni-oneliner <tspan fill="#cf222e" font-weight="600">95%</tspan> (dropped a guard once)</text>
+</svg>

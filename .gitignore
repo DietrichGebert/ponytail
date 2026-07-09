@@ -18,3 +18,9 @@ __pycache__/
 announce-*.png
 changelog-*.png
 ponytail-*.gif
+
+# Claude Code local settings (machine-specific permission grants)
+.claude/settings.local.json
+
+# agentic benchmark workspaces (agent output, kept locally for inspection)
+benchmarks/agentic/runs/

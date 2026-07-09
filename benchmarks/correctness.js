@@ -11,9 +11,18 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 
+function correctnessTimeoutMs() {
+  const value = Number.parseInt(process.env.PONYTAIL_CORRECTNESS_TIMEOUT_MS || '', 10);
+  return Number.isFinite(value) && value > 0 ? value : 30_000;
+}
+
 // Extract fenced code blocks, tagged by language.
 function extractBlocks(text) {
-  const matches = [...text.matchAll(/```(\w*)\n([\s\S]*?)```/g)];
+  text = String(text || '');
+  const matches = [...text.matchAll(/```(\w*)\r?\n([\s\S]*?)```/g)];
+  // ponytail: terse models often answer with bare, unfenced code. Treat the whole
+  // response as one block so the gate scores the code instead of reporting "no block".
+  if (matches.length === 0 && text.trim()) return [{ lang: '', code: text }];
   return matches.map((m) => ({ lang: (m[1] || '').toLowerCase(), code: m[2] }));
 }
 
@@ -31,7 +40,7 @@ function identifyTask(task) {
 // Run a command, return { ok, stderr }.
 function exec(cmd, opts = {}) {
   try {
-    execSync(cmd, { timeout: 10_000, encoding: 'utf8', stdio: 'pipe', ...opts });
+    execSync(cmd, { timeout: correctnessTimeoutMs(), encoding: 'utf8', stdio: 'pipe', ...opts });
     return { ok: true, stderr: '' };
   } catch (e) {
     return { ok: false, stderr: (e.stderr || e.message || '').slice(0, 500) };
@@ -121,7 +130,7 @@ print("PASS")
   },
 
   debounce(blocks) {
-    const code = blocks.find((b) => b.lang === 'javascript' || b.lang === 'js' || (!b.lang && b.code.includes('function')));
+    const code = blocks.find((b) => b.lang === 'javascript' || b.lang === 'js' || (!b.lang && (b.code.includes('function') || b.code.includes('=>'))));
     if (!code) return { pass: false, reason: 'No JavaScript code block found' };
 
     const harness = `

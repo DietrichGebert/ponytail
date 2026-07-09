@@ -1,6 +1,6 @@
 {
   "name": "ponytail",
-  "version": "4.6.0",
+  "version": "4.8.4",
   "description": "Lazy senior dev mode. Forces the simplest, shortest solution that actually works: YAGNI, stdlib first, no unrequested abstractions.",
   "author": {
     "name": "Dietrich Gebert",
@@ -11,6 +11,7 @@
   "license": "MIT",
   "keywords": ["yagni", "minimalism", "code-review", "productivity"],
   "skills": "./skills/",
+  "hooks": "./hooks/claude-codex-hooks.json",
   "interface": {
     "displayName": "Ponytail",
     "shortDescription": "Lazy senior developer mode",
