@@ -16,6 +16,11 @@ const HOOKS_JSON = 'hooks/claude-codex-hooks.json';
 const HOST_PLUGIN_MANIFESTS = [
   '.claude-plugin/plugin.json',
   '.codex-plugin/plugin.json',
+  '.factory-plugin/plugin.json',
+];
+const SHARED_HOOK_MANIFESTS = [
+  '.claude-plugin/plugin.json',
+  '.codex-plugin/plugin.json',
 ];
 // cmd.exe variable syntax (%FOO%); PowerShell leaves it literal, breaking the path.
 const CMD_VAR_SYNTAX = /%[A-Za-z_][A-Za-z0-9_]*%/;
@@ -96,8 +101,13 @@ test('ponytail-mode-tracker self-exits when stdin never closes (no freeze)', asy
   assert.equal(code, 0, 'hook must exit cleanly when stdin never closes');
 });
 
+test('Factory Droid manifest points at its own host-specific hook config', () => {
+  const manifest = JSON.parse(fs.readFileSync(path.join(root, '.factory-plugin/plugin.json'), 'utf8'));
+  assert.equal(manifest.hooks, './hooks/droid-hooks.json', 'Droid must use its own hooks config, not the shared claude-codex-hooks.json');
+});
+
 test('Claude and Codex manifests point at the shared host-specific hook config', () => {
-  for (const rel of HOST_PLUGIN_MANIFESTS) {
+  for (const rel of SHARED_HOOK_MANIFESTS) {
     const manifest = JSON.parse(fs.readFileSync(path.join(root, rel), 'utf8'));
     assert.equal(manifest.hooks, `./${HOOKS_JSON}`, `${rel} must not rely on root hooks auto-discovery`);
   }

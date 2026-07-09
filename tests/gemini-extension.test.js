@@ -20,6 +20,7 @@ const VERSIONED_MANIFESTS = [
   'gemini-extension.json',
   '.claude-plugin/plugin.json',
   '.codex-plugin/plugin.json',
+  '.factory-plugin/plugin.json',
   '.github/plugin/plugin.json',
 ];
 // Gemini auto-discovers these by directory; the manifest is only useful if they exist.

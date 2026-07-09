@@ -4,7 +4,8 @@ const { getClaudeDir } = require('./ponytail-config');
 
 const STATE_FILE = '.ponytail-active';
 const isCopilot = Boolean(process.env.COPILOT_PLUGIN_DATA);
-const isCodex = !isCopilot && Boolean(process.env.PLUGIN_DATA);
+const isCodex = !isCopilot && !process.env.DROID_PLUGIN_ROOT && Boolean(process.env.PLUGIN_DATA);
+const isDroid = Boolean(process.env.DROID_PLUGIN_ROOT);
 
 let stateDir = getClaudeDir();
 if (isCodex) stateDir = process.env.PLUGIN_DATA;
@@ -37,7 +38,7 @@ function writeHookOutput(event, mode, context = '') {
       event === 'SessionStart' && context ? { additionalContext: context } : {}));
     return;
   }
-  if (isCodex) {
+  if (isCodex || isDroid) {
     const output = { systemMessage: `PONYTAIL:${mode.toUpperCase()}` };
     if (context) {
       output.hookSpecificOutput = {
@@ -62,6 +63,7 @@ module.exports = {
   clearMode,
   isCodex,
   isCopilot,
+  isDroid,
   readMode,
   setMode,
   writeHookOutput,

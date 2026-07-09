@@ -241,6 +241,17 @@ clawhub install ponytail
 
 Installs ponytail as an OpenClaw skill from ClawHub; the review, audit, debt, gain, and help skills install the same way (`clawhub install ponytail-review`, and so on). OpenClaw applies it on coding tasks and also exposes it as a `/ponytail` command. Without ClawHub, copy [`.openclaw/skills/ponytail`](.openclaw/skills/) into `~/.openclaw/skills/`.
 
+### Factory Droid
+
+```bash
+droid plugin marketplace add https://github.com/DietrichGebert/ponytail
+droid plugin install ponytail@ponytail
+```
+
+Restart Droid after installing. The plugin activates ponytail mode on every session, tracks mode switches via `/ponytail lite|full|ultra|off`, and injects the ruleset into subagents. Requires `node` on PATH. The six skills (`ponytail`, `ponytail-review`, `ponytail-audit`, `ponytail-debt`, `ponytail-gain`, `ponytail-help`) are available as Droid slash commands. Droid runs on Linux and Mac only (POSIX).
+
+Reads `AGENTS.md` from the project root as instruction-only fallback; copy `skills/` into `.factory/skills/` or `~/.factory/skills/` to use the skills without hooks.
+
 That was it. He'd be proud. He won't say it.
 
 Active every session, with a handful of commands (see [Commands](#commands)). `/ponytail ultra` exists for when the codebase has wronged you personally. Startup and mode-change text shows the current mode.
