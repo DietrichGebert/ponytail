@@ -99,7 +99,7 @@ over-build and blocked tasks, can cost more on large completion-forced agentic r
 
 ### Prerequisites
 
-Running the benchmark requires **Python 3**, **pandas**, and **Node.js** (18+).
+Running the benchmark requires **Python 3**, **pandas**, and **Node.js ≥ 22.22.0** (promptfoo's engine constraint; see [Reproduce](#reproduce)).
 
 ## Notes
 
