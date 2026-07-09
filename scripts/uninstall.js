@@ -9,6 +9,8 @@ const fs = require('fs');
 const path = require('path');
 const { getConfigPath, getClaudeDir } = require('../hooks/ponytail-config');
 
+const STATUSLINE_SCRIPT = 'ponytail-statusline';
+
 function removeIfExists(filePath, label) {
   try {
     fs.unlinkSync(filePath);
@@ -26,25 +28,24 @@ try {
   const raw = fs.readFileSync(settingsPath, 'utf8').replace(/^\uFEFF/, '');
   const settings = JSON.parse(raw);
   const cmd = settings.statusLine && settings.statusLine.command;
-  // Only remove the statusLine if ponytail owns the whole command. If the user
-  // combined it with another statusline (e.g. caveman && ponytail), deleting the
-  // key or the command field would destroy the other plugin's part, so leave it
-  // and tell them to strip ponytail's segment by hand.
+  // Only remove the parts ponytail owns. If the user combined statuslines
+  // (e.g. caveman && ponytail), keep the other plugin's command intact.
   // ponytail: splits on && / ; to detect other segments — good enough; a user
   // piping statuslines together is on their own.
-  if (typeof cmd === 'string' && cmd.includes('ponytail-statusline')) {
-    const others = cmd
+  if (typeof cmd === 'string' && cmd.includes(STATUSLINE_SCRIPT)) {
+    const parts = cmd
       .split(/&&|;/)
       .map((s) => s.trim())
-      .filter((s) => s && !s.includes('ponytail-statusline'));
+      .filter(Boolean);
+    const others = parts.filter((s) => !s.includes(STATUSLINE_SCRIPT));
     if (others.length === 0) {
       delete settings.statusLine;
       fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2), 'utf8');
       console.log(`Removed ponytail statusLine entry from ${settingsPath}`);
     } else {
-      console.log(
-        `Left your combined statusLine in ${settingsPath} untouched; remove the ponytail-statusline part by hand.`,
-      );
+      settings.statusLine.command = others.join(' && ');
+      fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2), 'utf8');
+      console.log(`Removed ponytail statusLine segment from ${settingsPath}`);
     }
   }
 } catch (e) {

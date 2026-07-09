@@ -34,6 +34,7 @@ function run(script, env, input = '') {
 delete process.env.CLAUDE_CONFIG_DIR;
 delete process.env.PLUGIN_DATA;
 delete process.env.COPILOT_PLUGIN_DATA;
+delete process.env.QODER_SESSION_ID;
 
 const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'ponytail-hooks-'));
 // Runs on normal exit and on assertion-throw exit; force makes it idempotent.
@@ -71,6 +72,20 @@ assert.equal(result.status, 0, result.stderr);
 assert.equal(fs.readFileSync(codexState, 'utf8'), 'lite');
 output = JSON.parse(result.stdout);
 assert.equal(output.systemMessage, 'PONYTAIL:LITE');
+
+// Querying bare @ponytail should report the active level ('lite') without resetting it to default ('ultra')
+result = run(
+  'ponytail-mode-tracker.js',
+  codexEnv,
+  JSON.stringify({ prompt: '@ponytail' }),
+);
+assert.equal(result.status, 0, result.stderr);
+assert.equal(fs.readFileSync(codexState, 'utf8'), 'lite');
+output = JSON.parse(result.stdout);
+assert.match(
+  output.hookSpecificOutput.additionalContext,
+  /PONYTAIL MODE ACTIVE — level: lite/,
+);
 
 result = run(
   'ponytail-mode-tracker.js',
@@ -215,6 +230,75 @@ assert.equal(output.systemMessage, 'PONYTAIL:FULL');
 assert.equal(output.hookSpecificOutput.hookEventName, 'SubagentStart');
 assert.match(output.hookSpecificOutput.additionalContext, /PONYTAIL MODE ACTIVE — level: full/);
 
+// Qoder: no SessionStart event, so UserPromptSubmit does double duty —
+// it activates the default mode on first prompt (writes flag), then injects
+// the ruleset via additionalContext on every prompt. Output is
+// hookSpecificOutput JSON (same shape as Codex minus systemMessage).
+const qoderHome = path.join(temp, 'qoder-home');
+const qoderState = path.join(qoderHome, '.qoder', '.ponytail-active');
+fs.mkdirSync(qoderHome, { recursive: true });
+
+const qoderEnv = {
+  HOME: qoderHome,
+  USERPROFILE: qoderHome,
+  QODER_SESSION_ID: 'test-session-123',
+  PONYTAIL_DEFAULT_MODE: 'full',
+};
+
+// First prompt: no flag file yet → mode-tracker initializes from default,
+// writes flag, and injects the ruleset.
+result = run(
+  'ponytail-mode-tracker.js',
+  qoderEnv,
+  JSON.stringify({ prompt: 'write a function' }),
+);
+assert.equal(result.status, 0, result.stderr);
+assert.equal(fs.readFileSync(qoderState, 'utf8'), 'full');
+output = JSON.parse(result.stdout);
+assert.equal(output.hookSpecificOutput.hookEventName, 'UserPromptSubmit');
+assert.match(
+  output.hookSpecificOutput.additionalContext,
+  /PONYTAIL MODE ACTIVE — level: full/,
+);
+
+// /ponytail ultra: mode tracker updates flag and injects ultra ruleset.
+result = run(
+  'ponytail-mode-tracker.js',
+  qoderEnv,
+  JSON.stringify({ prompt: '/ponytail ultra' }),
+);
+assert.equal(result.status, 0, result.stderr);
+assert.equal(fs.readFileSync(qoderState, 'utf8'), 'ultra');
+output = JSON.parse(result.stdout);
+assert.match(
+  output.hookSpecificOutput.additionalContext,
+  /PONYTAIL MODE CHANGED — level: ultra/,
+);
+
+// "stop ponytail": deactivates, clears flag, no ruleset output.
+result = run(
+  'ponytail-mode-tracker.js',
+  qoderEnv,
+  JSON.stringify({ prompt: 'stop ponytail' }),
+);
+assert.equal(result.status, 0, result.stderr);
+assert.equal(fs.existsSync(qoderState), false, 'flag must be cleared after stop ponytail');
+output = JSON.parse(result.stdout);
+assert.equal(output.hookSpecificOutput.additionalContext, 'PONYTAIL MODE OFF');
+
+// Subagent injection via PreToolUse (task|Task matcher): when ponytail is
+// active, the subagent hook injects the ruleset. Qoder shares the same
+// ponytail-subagent.js script; the isQoder branch outputs hookSpecificOutput
+// JSON instead of raw stdout.
+fs.writeFileSync(qoderState, 'full');
+result = run('ponytail-subagent.js', qoderEnv);
+assert.equal(result.status, 0, result.stderr);
+output = JSON.parse(result.stdout);
+assert.equal(output.hookSpecificOutput.hookEventName, 'SubagentStart');
+assert.match(
+  output.hookSpecificOutput.additionalContext,
+  /PONYTAIL MODE ACTIVE — level: full/,
+);
 // writeDefaultMode must merge into existing config, not overwrite it (#490).
 const mergeHome = path.join(temp, 'merge-home');
 const mergeConfigDir = path.join(mergeHome, '.config', 'ponytail');
