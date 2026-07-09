@@ -25,7 +25,9 @@ from pathlib import Path
 
 # Real-repo fixture: tiangolo/full-stack-fastapi-template @ cd83fc1 (v0.10.0, MIT), cloned locally.
 # Reproduce: git clone https://github.com/tiangolo/full-stack-fastapi-template && git -C ... checkout cd83fc1
-_TMPL = r"D:\dev\fullstack-fastapi-template"
+# Point PONYTAIL_TMPL at your local clone, or drop it at fixtures/full-stack-fastapi-template
+# (run.py resolves a relative name under fixtures/). Mirrors the PONYTAIL_PLUGIN_DIR override.
+_TMPL = os.environ.get("PONYTAIL_TMPL", "full-stack-fastapi-template")
 
 # --- helpers ---
 _imp_n = 0
