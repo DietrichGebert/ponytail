@@ -14,6 +14,7 @@ to load in a given agent.
 | pi | `pi-extension/`, `skills/`, `hooks/` | Package extension: injects the ruleset each turn through the shared instruction builder and registers the `/ponytail` commands. |
 | Hermes Agent | `plugin.yaml`, `__init__.py`, `skills/` | Native Hermes plugin: injects active mode through `pre_llm_call`, rewrites gateway `/ponytail-*` skill commands into agent prompts, registers `/ponytail` mode switching, and exposes bundled skills as `ponytail:<skill>`. |
 | Gemini CLI | `gemini-extension.json`, `AGENTS.md`, `commands/`, `skills/` | Extension manifest points `contextFileName` at `AGENTS.md` for always-on rules, and reuses the existing `commands/*.toml` and `skills/`, which Gemini CLI auto-discovers. The Claude/Codex hook map is not placed at Gemini's auto-discovered `hooks/hooks.json` path. |
+| Grok Build (xAI) | `.grok-plugin/` (`marketplace.json`, `plugin-index.json`, hooks, MCP), root `plugin.json` (overrides), `skills/`, `commands/`, `AGENTS.md` | Marketplace in the repo: `grok plugin marketplace add DietrichGebert/ponytail` then `grok plugin install ponytail`. Skills and commands come from the root; hooks and MCP come from `.grok-plugin/` via overrides in `plugin.json`. Node required for hooks/MCP. |
 | Cursor | `.cursor/rules/ponytail.mdc` | Always-on project rule. |
 | Windsurf | `.windsurf/rules/ponytail.md` | Project rule. |
 | Cline | `.clinerules/ponytail.md` | Project rule. |

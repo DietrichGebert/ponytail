@@ -1,0 +1,5 @@
+{
+  "name": "ponytail",
+  "hooks": ".grok-plugin/hooks.json",
+  "mcpServers": ".grok-plugin/.mcp.json"
+}

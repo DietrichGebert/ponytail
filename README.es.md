@@ -15,7 +15,7 @@
   <img src="https://img.shields.io/github/stars/DietrichGebert/ponytail?style=flat-square&color=111111&label=stars" alt="Stars">
   <img src="https://img.shields.io/github/v/release/DietrichGebert/ponytail?style=flat-square&color=111111&label=release" alt="Release">
   <img src="https://img.shields.io/npm/v/@dietrichgebert/ponytail?style=flat-square&color=111111&label=npm" alt="npm">
-  <img src="https://img.shields.io/badge/funciona%20con-15%20agentes-111111?style=flat-square" alt="Works with 15 agents">
+  <img src="https://img.shields.io/badge/funciona%20con-16%20agentes-111111?style=flat-square" alt="Works with 16 agents">
   <img src="https://img.shields.io/badge/licencia-MIT-111111?style=flat-square" alt="MIT license">
 </p>
 
@@ -193,6 +193,17 @@ agy plugin install https://github.com/DietrichGebert/ponytail
 ```
 
 Reutiliza el `gemini-extension.json` de este repo. Una diferencia: Antigravity convierte los comandos `/ponytail` en skills, así que los escribes en el chat (por ejemplo `/ponytail-review` como mensaje) en vez de seleccionarlos de un menú slash. Hasta que la migración se complete (alrededor del 18 de junio de 2026), `gemini extensions install` también funciona. Para usarlo como regla permanente, coloca el ruleset en `.agents/rules/`.
+
+### Grok Build
+
+
+```bash
+grok plugin marketplace add DietrichGebert/ponytail
+grok plugin install ponytail
+```
+
+
+Registra las 6 skills (aparecen como `/ponytail`, `/ponytail-review`, etc.), carga hooks y el servidor MCP de la herramienta `ponytail_instructions`. El soporte nativo de AGENTS.md de Grok también carga las reglas cuando están en el proyecto. Usa `grok plugin list`, `/plugins` o `grok inspect` para gestionar. Node es necesario para hooks y MCP. Las skills y los hooks funcionan de inmediato.
 
 ### CodeWhale
 

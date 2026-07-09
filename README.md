@@ -199,6 +199,17 @@ agy plugin install https://github.com/DietrichGebert/ponytail
 
 It reuses this repo's `gemini-extension.json`. One difference: Antigravity converts the `/ponytail` commands into skills, so you type them into the chat (e.g. `/ponytail-review` as a message) instead of picking them from a slash menu. Until the migration completes (around June 18, 2026), `gemini extensions install` still works too. To run it as an always-on rule instead, drop the ruleset into `.agents/rules/`.
 
+### Grok Build
+
+
+```bash
+grok plugin marketplace add DietrichGebert/ponytail
+grok plugin install ponytail
+```
+
+
+It registers the 6 skills (appear as `/ponytail`, `/ponytail-review`, etc.), loads hooks and MCP server for `ponytail_instructions` tool. Grok's native AGENTS.md support also loads the rules when present in the project. Use `grok plugin list`, `/plugins`, or `grok inspect` to manage. Node is required for hooks and MCP. Skills and hooks work immediately.
+
 ### Hermes Agent
 
 ```bash
