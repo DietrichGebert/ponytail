@@ -127,6 +127,8 @@ export default function ponytailExtension(pi) {
             ? `Default Ponytail mode set to ${written}.`
             : `Saved default ${written}, but env override keeps default at ${configuredDefaultMode}.`;
           ctx?.ui?.notify?.(message, "info");
+        } else {
+          ctx?.ui?.notify?.("Could not save the default mode — check permissions on the ponytail config file.", "error");
         }
         return;
       }

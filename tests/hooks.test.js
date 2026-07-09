@@ -248,6 +248,16 @@ try {
   else process.env.XDG_CONFIG_HOME = prevXdg;
 }
 
+// writeDefaultMode must not throw on an fs failure (e.g. EACCES, full disk);
+// it returns null instead so callers can report the failure (#555).
+const origWriteFileSync = fs.writeFileSync;
+fs.writeFileSync = () => { throw new Error('EACCES: permission denied'); };
+try {
+  assert.equal(writeDefaultMode('ultra'), null, 'writeDefaultMode must swallow fs errors and return null');
+} finally {
+  fs.writeFileSync = origWriteFileSync;
+}
+
 // #329: `/ponytail default <mode>` persists the default to config (survives
 // restart), while a plain switch stays session-scoped and never touches config.
 const defHome = path.join(temp, 'default-cmd-home');

@@ -135,15 +135,21 @@ function writeDefaultMode(mode) {
   if (!normalized) return null;
 
   const configPath = getConfigPath();
-  fs.mkdirSync(path.dirname(configPath), { recursive: true });
-  let config = {};
   try {
-    config = JSON.parse(fs.readFileSync(configPath, 'utf8').replace(/^\uFEFF/, ''));
-    if (!config || typeof config !== 'object' || Array.isArray(config)) config = {};
-  } catch (_) {}
-  config.defaultMode = normalized;
-  fs.writeFileSync(configPath, JSON.stringify(config, null, 2), 'utf8');
-  return normalized;
+    fs.mkdirSync(path.dirname(configPath), { recursive: true });
+    let config = {};
+    try {
+      config = JSON.parse(fs.readFileSync(configPath, 'utf8').replace(/^\uFEFF/, ''));
+      if (!config || typeof config !== 'object' || Array.isArray(config)) config = {};
+    } catch (_) {}
+    config.defaultMode = normalized;
+    fs.writeFileSync(configPath, JSON.stringify(config, null, 2), 'utf8');
+    return normalized;
+  } catch (_) {
+    // Permission errors, full disk, etc. \u2014 callers treat a falsy return as
+    // "not written" (#555), same sentinel as an invalid mode above.
+    return null;
+  }
 }
 
 module.exports = {
