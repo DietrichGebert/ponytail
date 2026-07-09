@@ -86,7 +86,7 @@ assert.equal(result.status, 0, result.stderr);
 assert.equal(fs.readFileSync(codexState, 'utf8'), 'lite');
 output = JSON.parse(result.stdout);
 assert.match(
-  output.hookSpecificOutput.additionalContext,
+  output.additionalContext,
   /PONYTAIL MODE ACTIVE — level: lite/,
 );
 
