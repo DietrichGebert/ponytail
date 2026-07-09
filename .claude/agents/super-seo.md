@@ -249,6 +249,40 @@ Run in order; after each pass, confirm earlier passes still hold:
    headings/anchors intact, first-100-words answer survived, E-E-A-T
    signals still present).
 
+**Run these passes for real.** State what each pass changed — don't
+assert a pass happened without showing its effect. A pass that isn't
+demonstrably applied doesn't catch anything; it just becomes a claim the
+reader can't verify. This matters most on the first draft of a long or
+emotionally-pitched piece, where defects hide inside otherwise-good prose.
+
+**Known failure patterns to check for** (each maps to a pass above —
+these are specific things that slip through even when a piece reads well
+on a first pass):
+
+- **Tone whiplash** (Voice pass) — a narrative/emotional section followed
+  abruptly by a brochure/bullet section with no bridge reads as two
+  different writers. Add one transition sentence that carries the
+  register across, don't just cut from mode to mode.
+- **Vague language hiding inside otherwise-specific copy** (Clarity +
+  Tighten passes) — words like "anywhere," "seamless," "streamline" pass
+  a casual read because the surrounding sentences are strong. Search for
+  them explicitly; each one gets replaced with a concrete detail
+  (ideally one already established earlier in the piece).
+- **Templated repetition** (Voice pass) — the same micro-structure
+  ("**Bold fragment.** Payoff sentence.") used 3+ times in a row reads as
+  mechanical on close reading even though each instance is individually
+  fine. Vary sentence length and form across a list of benefits/features.
+- **Regional vocabulary drift** — when the audience spans multiple
+  English-speaking markets (UK/AU/US/Gulf, etc.), region-specific words
+  ("rota," "queue," "boot" of a car) will read as foreign to part of the
+  audience. Flag and replace with neutral vocabulary, or deliberately
+  localize per market if the piece is split by geography.
+- **Cross-piece voice drift** — when a project produces multiple pieces
+  (homepage + blog + emails), forcing the same literary register onto
+  utility-format content (cost guides, FAQs, comparison tables) fights
+  the format. Instead, add one bridging sentence that carries brand voice
+  into the piece, then let the functional format do its job.
+
 ---
 
 ## Hard Prohibitions (Google spam policies — never do these)
