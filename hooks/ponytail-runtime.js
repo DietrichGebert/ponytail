@@ -4,13 +4,23 @@ const os = require('os');
 const { getClaudeDir, getConfigDir } = require('./ponytail-config');
 
 const STATE_FILE = '.ponytail-active';
-const isCopilot = Boolean(process.env.COPILOT_PLUGIN_DATA);
+const hasCopilotEnv = Boolean(process.env.COPILOT_PLUGIN_DATA);
+// VS Code Copilot never sets COPILOT_PLUGIN_DATA; it only injects
+// CLAUDE_PLUGIN_ROOT. Fall back to sniffing the plugin install path
+// (…/agent-plugins/…/.vscode/…) so Copilot-under-VS-Code is still detected.
+const pluginRoot = process.env.CLAUDE_PLUGIN_ROOT || '';
+const isVSCodeCopilot = !hasCopilotEnv &&
+  pluginRoot.split(/[\\/]+/).includes('agent-plugins') &&
+  pluginRoot.toLowerCase().includes('.vscode');
+const isCopilot = hasCopilotEnv || isVSCodeCopilot;
 const isCodex = !isCopilot && Boolean(process.env.PLUGIN_DATA);
 const isQoder = !isCopilot && !isCodex && Boolean(process.env.QODER_SESSION_ID);
 
 let stateDir = getClaudeDir();
 if (isCodex) stateDir = process.env.PLUGIN_DATA;
-if (isCopilot) stateDir = process.env.COPILOT_PLUGIN_DATA;
+// Only trust COPILOT_PLUGIN_DATA when it's actually set — the VS Code
+// fallback above can mark isCopilot true with no such env var present.
+if (hasCopilotEnv) stateDir = process.env.COPILOT_PLUGIN_DATA;
 if (isQoder) stateDir = path.join(os.homedir(), '.qoder');
 
 const statePath = path.join(stateDir, STATE_FILE);
