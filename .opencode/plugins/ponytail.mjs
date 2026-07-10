@@ -21,6 +21,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const require = createRequire(import.meta.url);
 const { getPonytailInstructions } = require('../../hooks/ponytail-instructions');
 const { getDefaultMode, normalizePersistedMode } = require('../../hooks/ponytail-config');
+const { parseCommandFile } = require('./ponytail-frontmatter.cjs');
 
 // OpenCode has no flag-file convention of its own; keep mode beside its config.
 const statePath = path.join(
@@ -40,15 +41,6 @@ function readMode() {
 function writeMode(mode) {
   fs.mkdirSync(path.dirname(statePath), { recursive: true });
   fs.writeFileSync(statePath, mode);
-}
-
-export function parseCommandFile(filePath) {
-  const content = fs.readFileSync(filePath, 'utf8');
-  // Tolerate CRLF: a Windows checkout (autocrlf) delivers \r\n, npm ships \n.
-  const match = content.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n([\s\S]*)$/);
-  if (!match) return null;
-  const description = match[1].match(/description:\s*(.+)/)?.[1]?.trim();
-  return { description, template: match[2].trim() };
 }
 
 export default async ({ client } = {}) => {
@@ -82,7 +74,12 @@ export default async ({ client } = {}) => {
     'experimental.chat.system.transform': async (_input, output) => {
       const mode = readMode();
       if (mode === 'off') return;
-      output.system.push(getPonytailInstructions(mode));
+      const instructions = getPonytailInstructions(mode);
+      if (output.system.length > 0) {
+        output.system[output.system.length - 1] += '\n\n' + instructions;
+      } else {
+        output.system.push(instructions);
+      }
     },
 
     // Persist `/ponytail <level>` so the next turn's injection follows it.
@@ -92,7 +89,9 @@ export default async ({ client } = {}) => {
     'command.execute.before': async (input) => {
       if (!input || input.command !== 'ponytail') return;
       // `off` is persisted like any mode; the transform reads it and stays silent.
-      const mode = normalizePersistedMode((input.arguments || '').trim()) || getDefaultMode();
+      const args = String(input.arguments || '').trim();
+      const mode = args ? normalizePersistedMode(args) : getDefaultMode();
+      if (!mode) return;
       writeMode(mode);
       log('info', 'ponytail ' + mode);
     },

@@ -11,6 +11,11 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 
+function correctnessTimeoutMs() {
+  const value = Number.parseInt(process.env.PONYTAIL_CORRECTNESS_TIMEOUT_MS || '', 10);
+  return Number.isFinite(value) && value > 0 ? value : 30_000;
+}
+
 // Extract fenced code blocks, tagged by language.
 function extractBlocks(text) {
   text = String(text || '');
@@ -35,7 +40,7 @@ function identifyTask(task) {
 // Run a command, return { ok, stderr }.
 function exec(cmd, opts = {}) {
   try {
-    execSync(cmd, { timeout: 10_000, encoding: 'utf8', stdio: 'pipe', ...opts });
+    execSync(cmd, { timeout: correctnessTimeoutMs(), encoding: 'utf8', stdio: 'pipe', ...opts });
     return { ok: true, stderr: '' };
   } catch (e) {
     return { ok: false, stderr: (e.stderr || e.message || '').slice(0, 500) };

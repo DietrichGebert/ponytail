@@ -112,7 +112,8 @@ python complete.py --run runs/<stamp>  # completeness-score every workspace
 ## Reproduce
 
 Needs the `claude` CLI (this is the harness, no SDK), Python 3, an authenticated Claude Code, and a
-clone of the template at the pinned commit (point `_TMPL` in `tasks.py` at it):
+clone of the template at the pinned commit (set `PONYTAIL_TMPL` to its path, or drop it at
+`fixtures/full-stack-fastapi-template`):
 
 ```bash
 git clone https://github.com/fastapi/full-stack-fastapi-template
