@@ -21,3 +21,12 @@ test('npm package ships the advertised cleanup script', () => {
     'scripts/uninstall.js is listed in files but missing on disk',
   );
 });
+
+test('Claude marketplace manifest does not depend on an external schema URL', () => {
+  const marketplace = JSON.parse(fs.readFileSync(path.join(root, '.claude-plugin', 'marketplace.json'), 'utf8'));
+  assert.equal(
+    Object.hasOwn(marketplace, '$schema'),
+    false,
+    'Claude Desktop marketplace sync fails when $schema points at an unreachable external URL',
+  );
+});
