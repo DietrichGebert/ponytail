@@ -14,7 +14,13 @@ function finish() {
   try {
     // Strip UTF-8 BOM some shells prepend when piping (breaks JSON.parse)
     const data = JSON.parse(input.replace(/^\uFEFF/, ''));
-    const prompt = (data.prompt || '').trim().toLowerCase();
+    // Claude Code dispatches slash commands via skills, wrapping the real command
+    // in <command-name>/<command-args> tags with the SKILL.md body as filler.
+    // Extract the actual command from the tags; fall back to raw prompt (#584).
+    const raw = data.prompt || '';
+    const name = raw.match(/<command-name>\s*([^<]+?)\s*<\/command-name>/)?.[1];
+    const args = raw.match(/<command-args>\s*([^<]*?)\s*<\/command-args>/)?.[1];
+    const prompt = (name ? `${name} ${args ?? ''}` : raw).trim().toLowerCase();
 
     // Match /ponytail commands
     if (/^[/@$]ponytail/.test(prompt)) {

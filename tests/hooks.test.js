@@ -179,6 +179,34 @@ assert.equal(
 output = JSON.parse(result.stdout);
 assert.deepEqual(output, {});
 
+// #584: Claude Code dispatches /ponytail via skills, wrapping the command in
+// <command-name>/<command-args> tags with SKILL.md body as filler. The hook
+// must extract the command from the tags, not the raw prompt.
+const skillPrompt = [
+  '<command-name>',
+  '/ponytail',
+  '</command-name>',
+  '<command-args>',
+  'ultra',
+  '</command-args>',
+  '<command-message>',
+  '# Ponytail, lazy senior dev mode',
+  '... full SKILL.md body ...',
+  '</command-message>',
+].join('\n');
+result = run('ponytail-mode-tracker.js', { HOME: home, USERPROFILE: home },
+  JSON.stringify({ prompt: skillPrompt }));
+assert.equal(result.status, 0, result.stderr);
+assert.equal(fs.readFileSync(path.join(home, '.claude', '.ponytail-active'), 'utf8'), 'ultra',
+  'must extract command from skill-dispatch tags');
+
+// Without command-name tags, falls back to raw prompt (direct text path).
+result = run('ponytail-mode-tracker.js', { HOME: home, USERPROFILE: home },
+  JSON.stringify({ prompt: '/ponytail lite' }));
+assert.equal(result.status, 0, result.stderr);
+assert.equal(fs.readFileSync(path.join(home, '.claude', '.ponytail-active'), 'utf8'), 'lite',
+  'must still work with raw prompt when no tags present');
+
 // SubagentStart hook: when ponytail mode is active it injects the ruleset into
 // each subagent (issue #252). Native Claude must get the hookSpecificOutput JSON
 // form, not raw stdout, or the context is dropped.
