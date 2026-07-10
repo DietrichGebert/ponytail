@@ -161,6 +161,24 @@ assert.ok(
   'statusline nudge must reference the CLAUDE_CONFIG_DIR settings.json',
 );
 
+// #483: the statusline nudge fires at most once — after it writes its flag, a
+// later session stays silent instead of re-nagging on every start.
+assert.ok(
+  fs.existsSync(path.join(customConfigDir, '.ponytail-statusline-nudged')),
+  'first nudge must write the once-only flag (#483)',
+);
+const secondNudge = run('ponytail-activate.js', {
+  HOME: home2,
+  USERPROFILE: home2,
+  CLAUDE_CONFIG_DIR: customConfigDir,
+  PONYTAIL_DEFAULT_MODE: 'lite',
+});
+assert.equal(secondNudge.status, 0, secondNudge.stderr);
+assert.ok(
+  !secondNudge.stdout.includes('STATUSLINE SETUP NEEDED'),
+  'nudge must not repeat once the flag file exists (#483)',
+);
+
 const copilotData = path.join(temp, 'copilot-data');
 const codexData = path.join(temp, 'codex-data-shadow');
 result = run('ponytail-activate.js', {
