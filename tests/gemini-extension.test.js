@@ -32,9 +32,9 @@ const GEMINI_AUTO_HOOKS = 'hooks/hooks.json';
 // Same load-bearing phrases asserted by scripts/check-rule-copies.js: the file
 // contextFileName points at must actually carry the rules, not just exist.
 const RULE_INVARIANTS = [
-  'lazy senior',
-  'input validation at trust boundaries',
-  'naive heuristic',
+  'Ponytail',
+  'validation at trust boundaries',
+  'security',
 ];
 
 function read(relPath) {

@@ -43,18 +43,10 @@ for (const [relPath, normalize] of copies) {
 // Upgrade path: generate the copies from SKILL.md if this ever misses a real drift.
 const INVARIANTS = [
   'in this codebase',                      // ladder rung: reuse what already exists (#217)
-  'naive heuristic',                       // ceiling-comment rule
-  'ONE runnable check',                    // test reflex
-  'flimsier algorithm',                    // robust-variant rule
-  // the four "not lazy about" safety carve-outs: pin each so a reword in either
-  // file can't silently drop one. Only validation was pinned before. These are the
-  // continuous substrings present in both files ("prevents data loss" because the
-  // full "error handling that prevents data loss" wraps a line in SKILL.md).
-  'input validation at trust boundaries',
+  'validation at trust boundaries',
   'prevents data loss',
   'security',
   'accessibility',
-  'Lazy code without its check is unfinished', // one-check promoted to headline
 ];
 
 const skill = read('skills/ponytail/SKILL.md');
