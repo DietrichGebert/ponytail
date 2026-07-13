@@ -103,7 +103,7 @@ Before writing code, the agent stops at the first rung that holds:
 
 The ladder runs *after* it understands the problem, not instead of it: it reads the code the change touches and traces the real flow before picking a rung. Lazy about the solution, never about reading.
 
-Lazy, not negligent: trust-boundary validation, data-loss handling, security, and accessibility are never on the chopping block.
+Lazy means less work for the same result. It is not negligent: trust-boundary validation, data-loss handling, security, and accessibility are never on the chopping block.
 
 ## Install
 
