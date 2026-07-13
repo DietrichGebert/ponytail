@@ -11,7 +11,8 @@ description: >
 ---
 
 Review diffs for unnecessary complexity. One line per finding: location, what
-to cut, what replaces it. The diff's best outcome is getting shorter.
+to cut, what replaces it. The diff's best outcome is getting shorter. Scope:
+If a target isn't specified, defaults to uncommitted changes or the current branch diff.
 
 ## Format
 
@@ -49,8 +50,9 @@ If there is nothing to cut, say `Lean already. Ship.` and stop.
 
 ## Boundaries
 
-Scope: over-engineering and complexity only. Correctness bugs, security holes,
-and performance are explicitly out of scope. Route them to a normal review
+Scope: over-engineering and complexity only. If a target isn't specified,
+defaults to uncommitted changes or the current branch diff. Correctness bugs,
+security holes, and performance are explicitly out of scope. Route them to a normal review
 pass, not this one. A single smoke test or `assert`-based
 self-check is the ponytail minimum, not bloat, never flag it for deletion.
 Does not apply the fixes, only lists them.
