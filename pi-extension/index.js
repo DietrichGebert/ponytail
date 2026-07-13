@@ -81,7 +81,7 @@ export default function ponytailExtension(pi) {
       c.ui.setStatus("ponytail", "");
       return;
     }
-    const levelIcons = { lite: "🌿", full: "⚡", ultra: "🔥" };
+    const levelIcons = { lite: "🌿", full: "⚡", ultra: "🔥", review: "🔍" };
     const icon = levelIcons[currentMode] || "";
     const label = currentMode.toUpperCase();
     const indicator = isActive ? theme.fg("accent", "●") : theme.fg("dim", "○");
