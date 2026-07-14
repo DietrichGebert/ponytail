@@ -1,6 +1,6 @@
 import { createRequire } from "node:module";
 
-const require = createRequire(import.meta.url);
+const cjsRequire = createRequire(import.meta.url);
 const {
   DEFAULT_MODE,
   RUNTIME_MODES,
@@ -11,8 +11,8 @@ const {
   normalizePersistedMode,
   isDeactivationCommand,
   writeDefaultMode,
-} = require("../hooks/ponytail-config.js");
-const { getPonytailInstructions, filterSkillBodyForMode } = require("../hooks/ponytail-instructions.js");
+} = cjsRequire("../hooks/ponytail-config.js");
+const { getPonytailInstructions, filterSkillBodyForMode } = cjsRequire("../hooks/ponytail-instructions.js");
 
 export { filterSkillBodyForMode };
 export const readDefaultMode = getDefaultMode;

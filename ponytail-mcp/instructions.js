@@ -3,9 +3,9 @@
 // hooks and Pi extension use, so every host emits identical rules.
 import { createRequire } from "node:module";
 
-const require = createRequire(import.meta.url);
-const { getPonytailInstructions } = require("../hooks/ponytail-instructions.js");
-const { getDefaultMode, normalizeMode } = require("../hooks/ponytail-config.js");
+const cjsRequire = createRequire(import.meta.url);
+const { getPonytailInstructions } = cjsRequire("../hooks/ponytail-instructions.js");
+const { getDefaultMode, normalizeMode } = cjsRequire("../hooks/ponytail-config.js");
 
 // The three intensities the server offers. "off" has no instructions to serve.
 export const MODES = ["lite", "full", "ultra"];
