@@ -1,12 +1,12 @@
 {
-  "_comment": "Reference template — copy the 'hooks' object into your .qoder/settings.json or ~/.qoder/settings.json. Replace PONYTAIL_DIR with the path to your ponytail checkout (e.g. ~/.qoder/plugins/ponytail or the npm global install path).",
+  "_comment": "Loaded live by .qoder-plugin/plugin.json (\"hooks\": \"./hooks/qoder-hooks.json\"). Qoder expands ${QODER_PLUGIN_ROOT} — the plugin install root — at runtime; see https://docs.qoder.com/en/cli/plugins#writing-plugin-hooks.",
   "hooks": {
     "UserPromptSubmit": [
       {
         "hooks": [
           {
             "type": "command",
-            "command": "node PONYTAIL_DIR/hooks/ponytail-mode-tracker.js"
+            "command": "node \"${QODER_PLUGIN_ROOT}/hooks/ponytail-mode-tracker.js\""
           }
         ]
       }
@@ -17,7 +17,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node PONYTAIL_DIR/hooks/ponytail-subagent.js"
+            "command": "node \"${QODER_PLUGIN_ROOT}/hooks/ponytail-subagent.js\""
           }
         ]
       }
