@@ -233,6 +233,9 @@ El benchmark de correctness lanza Python para las verificaciones de email y CSV;
 
 ## FAQ
 
+**¿Puedo usarlo junto con [caveman](https://github.com/JuliusBrussee/caveman)?**
+Sí, y deberías. Caveman achica lo que el agente dice; ponytail achica lo que construye. Mitades distintas, sin solapamiento: caveman deja el código intacto byte por byte, ponytail no se mete con la prosa. Charla concisa sobre código mínimo.
+
 **¿Necesita un archivo de configuración?**
 No. Un opcional `~/.config/ponytail/config.json` o la variable `PONYTAIL_DEFAULT_MODE` pueden fijar el nivel default, pero nada es obligatorio.
 

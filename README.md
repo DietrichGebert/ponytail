@@ -238,6 +238,9 @@ The correctness benchmark spawns Python for email and CSV checks; `python3` is t
 
 ## FAQ
 
+**Can I use it with [caveman](https://github.com/JuliusBrussee/caveman)?**
+Yes, and you should. Caveman shrinks what the agent says; ponytail shrinks what it builds. Different halves, no overlap: caveman leaves code byte-for-byte exact, ponytail stays out of the prose. Terse talk about minimal code.
+
 **Does it need a config file?**
 No. An optional `~/.config/ponytail/config.json` or `PONYTAIL_DEFAULT_MODE` env var can set the default level, but nothing is required.
 
