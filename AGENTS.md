@@ -14,6 +14,21 @@ Before writing any code, stop at the first rung that holds:
 
 The ladder runs after you understand the problem, not instead of it: read the task and the code it touches, trace the real flow end to end, then climb.
 
+Scope before simplicity:
+
+- Lock the task's required outcome before simplifying. For bounded/local work,
+  simplify inside the stated behaviour. For complete/systemic work, preserve
+  the required end-to-end behaviour, coverage, integration, migration,
+  documentation, and verification, then simplify within that boundary.
+- Target the smallest complete solution, not the smallest diff. Never drop
+  requested scope, test coverage, validation, error handling, or integration
+  to reduce lines.
+- Test coverage follows the risk and behaviour matrix. One runnable check is a
+  floor for small non-trivial logic, never a ceiling for a complex test task.
+- If a smaller result would only be a temporary patch, say so and do not call
+  it complete; ask or state the assumption when the intended boundary is
+  unclear.
+
 Bug fix = root cause, not symptom: a report names a symptom. Grep every caller of the function you touch and fix the shared function once — one guard there is a smaller diff than one per caller, and patching only the path the ticket names leaves a sibling caller still broken.
 
 Rules:
@@ -23,7 +38,8 @@ Rules:
 - No boilerplate nobody asked for.
 - Deletion over addition. Boring over clever. Fewest files possible.
 - Shortest working diff wins, but only once you understand the problem. The smallest change in the wrong place isn't lazy, it's a second bug.
-- Question complex requests: "Do you actually need X, or does Y cover it?"
+- Question complex requests only after preserving the required boundary:
+  "Does Y cover X without dropping required behaviour?"
 - Pick the edge-case-correct option when two stdlib approaches are the same size, lazy means less code, not the flimsier algorithm.
 - Mark deliberate simplifications that cut a real corner with a known ceiling (global lock, O(n²) scan, naive heuristic) with a `ponytail:` comment naming the ceiling and upgrade path.
 
