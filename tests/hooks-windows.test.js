@@ -13,10 +13,12 @@ const { spawn } = require('child_process');
 
 const root = path.join(__dirname, '..');
 const HOOKS_JSON = 'hooks/claude-codex-hooks.json';
-const HOST_PLUGIN_MANIFESTS = [
-  '.claude-plugin/plugin.json',
-  '.codex-plugin/plugin.json',
-];
+const HOST_PLUGIN_MANIFEST_HOOKS = {
+  // Issue #582: the Claude marketplace validator rejects non-standard hook
+  // fields (commandWindows), so Claude gets a schema-clean copy of the config.
+  '.claude-plugin/plugin.json': 'hooks/claude-hooks.json',
+  '.codex-plugin/plugin.json': HOOKS_JSON,
+};
 // cmd.exe variable syntax (%FOO%); PowerShell leaves it literal, breaking the path.
 const CMD_VAR_SYNTAX = /%[A-Za-z_][A-Za-z0-9_]*%/;
 // PowerShell 5.1 rejects these POSIX shell guards when a host runs `command`.
@@ -106,9 +108,36 @@ test('ponytail-mode-tracker self-exits when stdin never closes (no freeze)', asy
   assert.equal(code, 0, 'hook must exit cleanly when stdin never closes');
 });
 
-test('Claude and Codex manifests point at the shared host-specific hook config', () => {
-  for (const rel of HOST_PLUGIN_MANIFESTS) {
+test('host manifests point at their host-specific hook config', () => {
+  for (const [rel, hooksFile] of Object.entries(HOST_PLUGIN_MANIFEST_HOOKS)) {
     const manifest = JSON.parse(fs.readFileSync(path.join(root, rel), 'utf8'));
-    assert.equal(manifest.hooks, `./${HOOKS_JSON}`, `${rel} must not rely on root hooks auto-discovery`);
+    assert.equal(manifest.hooks, `./${hooksFile}`, `${rel} must not rely on root hooks auto-discovery`);
   }
+});
+
+// Issue #582: Claude Desktop (Cowork) marketplace sync validates hook configs
+// server-side and rejects any field it does not know. commandWindows is a
+// Codex-only extension, so the Claude config must never carry it — otherwise
+// the whole marketplace fails to sync with status failed_content.
+test('Claude hook config only uses fields the marketplace schema accepts', () => {
+  const config = JSON.parse(fs.readFileSync(path.join(root, 'hooks', 'claude-hooks.json'), 'utf8'));
+  const hooks = Object.values(config.hooks).flat().flatMap((entry) => entry.hooks);
+  assert.ok(hooks.length > 0, 'expected at least one Claude hook entry');
+  for (const hook of hooks) {
+    assert.equal(hook.commandWindows, undefined, 'commandWindows is rejected by the Claude marketplace validator (issue #582)');
+  }
+});
+
+// The Claude config is a schema-clean mirror of the shared one: same events,
+// same commands. Guards against the two files drifting apart.
+test('Claude hook config stays in sync with the shared config', () => {
+  const shared = JSON.parse(fs.readFileSync(path.join(root, HOOKS_JSON), 'utf8'));
+  const claude = JSON.parse(fs.readFileSync(path.join(root, 'hooks', 'claude-hooks.json'), 'utf8'));
+  const strip = (config) => Object.fromEntries(
+    Object.entries(config.hooks).map(([event, entries]) => [event, entries.map((entry) => ({
+      ...entry,
+      hooks: entry.hooks.map(({ commandWindows, ...rest }) => rest),
+    }))]),
+  );
+  assert.deepEqual(strip(claude), strip(shared), 'hooks/claude-hooks.json must mirror the shared config (minus commandWindows)');
 });
