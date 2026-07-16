@@ -85,7 +85,7 @@ This showed **80-94% less code**. [#126](https://github.com/DietrichGebert/ponyt
 
 </details>
 
-**The rule was never "fewest tokens."** It is: write only what the task needs, and never cut validation, error handling, security, or accessibility. The code ends up small because it is necessary, not golfed. Lower cost and latency are a side effect on the models that follow the ladder; a terse reasoning model that spends thinking tokens deliberating the rungs can go the other way (on GPT-5.5 it does).
+**The rule was never "fewest tokens."** It is: do less work for the same correct result, without cutting understanding, validation, error handling, security, or accessibility. The code ends up small because it is necessary, not golfed. Lower cost and latency are a side effect on the models that follow the ladder; a terse reasoning model that spends thinking tokens deliberating the rungs can go the other way (on GPT-5.5 it does).
 
 ## How it works
 
