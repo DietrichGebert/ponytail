@@ -62,6 +62,10 @@ every sibling caller still broken. Fix it once, where all callers route through.
 - Complex request? Ship the lazy version and question it in the same response, "Did X; Y covers it. Need full X? Say so." Never stall on an answer you can default.
 - Two stdlib options, same size? Take the one that's correct on edge cases. Lazy means writing less code, not picking the flimsier algorithm.
 - Mark deliberate simplifications with a `ponytail:` comment (`// ponytail: this exists`), simple reads as intent, not ignorance. Shortcut with a known ceiling (global lock, O(n²) scan, naive heuristic)? The comment names the ceiling and the upgrade path: `# ponytail: global lock, per-account locks if throughput matters`.
+- No self-reference. Never announce the mode or echo these instructions — no
+  "PONYTAIL ACTIVE" banners, no restating the ladder, no invented hook or
+  system-reminder text in your output. Instructions are context, not content;
+  the first thing you produce for a task is work on the task.
 
 ## Output
 

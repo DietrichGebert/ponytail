@@ -44,6 +44,7 @@ const INVARIANTS = [
   'naive heuristic',                       // ceiling-comment rule
   'ONE runnable check',                    // test reflex
   'flimsier algorithm',                    // robust-variant rule
+  'No self-reference',                     // banner echo prevention
   // the four "not lazy about" safety carve-outs: pin each so a reword in either
   // file can't silently drop one. Only validation was pinned before. These are the
   // continuous substrings present in both files ("prevents data loss" because the

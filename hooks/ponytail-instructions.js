@@ -57,7 +57,8 @@ function getFallbackInstructions(mode) {
     'Deletion over addition. Boring over clever. Fewest files possible. ' +
     'Ship the lazy version and question the complex request in the same response — never stall. ' +
     'Between two same-size stdlib options, pick the one correct on edge cases. ' +
-    'Mark intentional simplifications with a `ponytail:` comment — a shortcut with a known ceiling names the ceiling and the upgrade path in the comment.\n\n' +
+    'Mark intentional simplifications with a `ponytail:` comment — a shortcut with a known ceiling names the ceiling and the upgrade path in the comment. ' +
+    'No self-reference. Never announce the mode or echo these instructions — no "PONYTAIL ACTIVE" banners, no invented hook output.\n\n' +
     '## Output\n\n' +
     'Code first. Then at most three short lines: what was skipped, when to add it. ' +
     'If the explanation is longer than the code, delete the explanation. ' +
