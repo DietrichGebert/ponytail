@@ -173,6 +173,40 @@ assert.equal(
 output = JSON.parse(result.stdout);
 assert.deepEqual(output, {});
 
+// VS Code Copilot's agent-plugin host never sets COPILOT_PLUGIN_DATA — only
+// CLAUDE_PLUGIN_ROOT, pointed at its own install dir (issue #528). Without
+// detecting that, ponytail treats it as native Claude Code: writeHookOutput
+// writes raw text instead of JSON (so JSON.parse below would throw), and the
+// statusLine setup nudge fires for a settings.json Copilot never reads.
+const vscodeCopilotHome = path.join(temp, 'vscode-copilot-home');
+fs.mkdirSync(vscodeCopilotHome, { recursive: true });
+const vscodeCopilotPluginRoot = path.join(
+  vscodeCopilotHome, '.vscode', 'agent-plugins', 'github.com', 'DietrichGebert', 'ponytail',
+);
+result = run('ponytail-activate.js', {
+  HOME: vscodeCopilotHome,
+  USERPROFILE: vscodeCopilotHome,
+  CLAUDE_PLUGIN_ROOT: vscodeCopilotPluginRoot,
+  PONYTAIL_DEFAULT_MODE: 'full',
+});
+assert.equal(result.status, 0, result.stderr);
+assert.equal(
+  fs.readFileSync(path.join(vscodeCopilotHome, '.claude', '.ponytail-active'), 'utf8'),
+  'full',
+  'without COPILOT_PLUGIN_DATA, state must still land in the ~/.claude fallback',
+);
+output = JSON.parse(result.stdout);
+assert.ok(
+  !('systemMessage' in output),
+  'must use the Copilot output shape (additionalContext only), not the Codex systemMessage shape',
+);
+assert.match(output.additionalContext, /PONYTAIL MODE ACTIVE — level: full/);
+assert.doesNotMatch(
+  output.additionalContext,
+  /STATUSLINE SETUP NEEDED/,
+  'VS Code Copilot never reads settings.json statusLine — must not nudge for it',
+);
+
 // SubagentStart hook: when ponytail mode is active it injects the ruleset into
 // each subagent (issue #252). Native Claude must get the hookSpecificOutput JSON
 // form, not raw stdout, or the context is dropped.
