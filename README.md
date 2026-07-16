@@ -252,6 +252,32 @@ Active every session, with a handful of commands (see [Commands](#commands)). `/
 
 Set the level for every new session with the `PONYTAIL_DEFAULT_MODE` env var (`lite`/`full`/`ultra`/`off`), or a `defaultMode` field in `~/.config/ponytail/config.json` (`%APPDATA%\ponytail\config.json` on Windows). The default is `full`.
 
+### Status-line format (pi)
+
+The pi extension shows `○ 🐴 ponytail: ⚡ FULL` (○ idle, ● active) whenever a mode is on. To drop the line entirely while keeping ponytail active, set `hideStatus: true` in `~/.config/ponytail/config.json` or `PONYTAIL_HIDE_STATUS=1`.
+
+To change *what* the line shows instead, set `statusFormat` (or `PONYTAIL_STATUS_FORMAT`) to a template with these placeholders:
+
+| Placeholder | Replaced with | Example |
+|---|---|---|
+| `{indicator}` | ○ when idle, ● (accent) when a turn is running | `○` |
+| `{emoji}` | the 🐴 mascot | `🐴` |
+| `{label}` | `ponytail:` (muted) | `ponytail:` |
+| `{modeIcon}` | the level icon — 🌿 `lite`, ⚡ `full`, 🔥 `ultra` | `🔥` |
+| `{mode}` | the level uppercased (text color) | `ULTRA` |
+
+The default is `{indicator} {emoji} {label} {modeIcon} {mode}` (the built-in line above). Unknown placeholders pass through untouched, and `hideStatus` wins over `statusFormat` when both are set. Examples:
+
+```json
+{
+  "statusFormat": "{indicator} PT {mode}"
+}
+```
+
+```sh
+PONYTAIL_STATUS_FORMAT='{indicator} {mode} 🐴' ponytail…
+```
+
 While active, the ruleset is also injected into every subagent spawned via the Agent tool. To scope that to specific agent types (say, keep it off read-only search agents), set the `PONYTAIL_SUBAGENT_MATCHER` env var to a regex tested against the subagent's `agent_type`. It is unanchored and case-insensitive: `explore|general` matches either, `^general$` is exact, and plugin agent types look like `plugin:name`. Unset means inject into every subagent (the default); an invalid regex, or a subagent whose type the platform doesn't report, also falls back to injecting.
 
 Cursor, Windsurf, Cline, GitHub Copilot Chat (the VS Code, JetBrains, and Visual Studio editor extension, not the standalone Copilot CLI covered under [Install](#install)), Aider, Kiro, Zed, CodeWhale, Swival, Qoder: copy the matching rules file from this repo ([`.cursor/rules/`](.cursor/rules/), [`.windsurf/rules/`](.windsurf/rules/), [`.clinerules/`](.clinerules/), [`.github/copilot-instructions.md`](.github/copilot-instructions.md), [`AGENTS.md`](AGENTS.md), [`.kiro/steering/`](.kiro/steering/), [`.qoder/rules/`](.qoder/rules/)).

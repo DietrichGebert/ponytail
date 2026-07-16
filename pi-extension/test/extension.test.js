@@ -227,6 +227,57 @@ test("config.hideStatus hides the indicator but keeps ponytail active (#324)", a
   assert.match(injected.systemPrompt, /PONYTAIL MODE ACTIVE/, "ruleset must still inject while status is hidden");
 }));
 
+test("status bar default format matches the documented baseline", async () => withTempConfig(async () => {
+  const { events } = createPiHarness();
+  const statusWrites = [];
+  const ctx = createCommandContext({
+    sessionManager: { getEntries: () => [{ type: "custom", customType: "ponytail-mode", data: { mode: "ultra" } }] },
+    ui: { notify() {}, setStatus: (key, text) => statusWrites.push({ key, text }), theme: { fg: (_c, t) => t } },
+  });
+
+  await events.get("session_start")({ reason: "resume" }, ctx);
+  await events.get("agent_start")({}, ctx);
+
+  assert.equal(statusWrites.at(-2).text, "○ 🐴 ponytail: 🔥 ULTRA", "idle baseline format");
+  assert.equal(statusWrites.at(-1).text, "● 🐴 ponytail: 🔥 ULTRA", "active baseline format");
+}));
+
+test("PONYTAIL_STATUS_FORMAT rewrites the status line", async () => withTempConfig(async () => {
+  process.env.PONYTAIL_STATUS_FORMAT = "{indicator} PT {mode}";
+  try {
+    const { events } = createPiHarness();
+    const statusWrites = [];
+    const ctx = createCommandContext({
+      sessionManager: { getEntries: () => [{ type: "custom", customType: "ponytail-mode", data: { mode: "full" } }] },
+      ui: { notify() {}, setStatus: (key, text) => statusWrites.push({ key, text }), theme: { fg: (_c, t) => t } },
+    });
+
+    await events.get("session_start")({ reason: "resume" }, ctx);
+    await events.get("agent_start")({}, ctx);
+
+    assert.equal(statusWrites.at(-2).text, "○ PT FULL");
+    assert.equal(statusWrites.at(-1).text, "● PT FULL");
+  } finally {
+    delete process.env.PONYTAIL_STATUS_FORMAT;
+  }
+}));
+
+test("config.statusFormat rewrites the status line and unknown placeholders pass through", async () => withTempConfig(async () => {
+  if (process.env.PONYTAIL_STATUS_FORMAT !== undefined) delete process.env.PONYTAIL_STATUS_FORMAT;
+  mkdirSync(join(process.env.XDG_CONFIG_HOME, "ponytail"), { recursive: true });
+  writeFileSync(join(process.env.XDG_CONFIG_HOME, "ponytail", "config.json"), JSON.stringify({ statusFormat: "{mode} {emoji}{label}{unknown}" }));
+  const { events } = createPiHarness();
+  const statusWrites = [];
+  const ctx = createCommandContext({
+    sessionManager: { getEntries: () => [{ type: "custom", customType: "ponytail-mode", data: { mode: "lite" } }] },
+    ui: { notify() {}, setStatus: (key, text) => statusWrites.push({ key, text }), theme: { fg: (_c, t) => t } },
+  });
+
+  await events.get("session_start")({ reason: "resume" }, ctx);
+
+  assert.equal(statusWrites.at(-1).text, "LITE 🐴ponytail:{unknown}");
+}));
+
 test("PONYTAIL_HIDE_STATUS=0 does not hide the indicator", async () => withTempConfig(async () => {
   process.env.PONYTAIL_HIDE_STATUS = "0";
   const { events } = createPiHarness();
