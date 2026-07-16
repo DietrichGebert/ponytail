@@ -59,7 +59,7 @@ let result = run('ponytail-activate.js', codexEnv);
 assert.equal(result.status, 0, result.stderr);
 assert.equal(fs.readFileSync(codexState, 'utf8'), 'ultra');
 let output = JSON.parse(result.stdout);
-assert.equal(output.systemMessage, 'PONYTAIL:ULTRA');
+assert.equal(output.systemMessage, undefined, 'Codex must not emit systemMessage — Codex renders it as a yellow warning: line (#605)');
 assert.equal(output.additionalContext, undefined, 'Codex must not emit additionalContext at top level (#573)');
 assert.equal(output.hookSpecificOutput.hookEventName, 'SessionStart');
 assert.match(
@@ -75,7 +75,12 @@ result = run(
 assert.equal(result.status, 0, result.stderr);
 assert.equal(fs.readFileSync(codexState, 'utf8'), 'lite');
 output = JSON.parse(result.stdout);
-assert.equal(output.systemMessage, 'PONYTAIL:LITE');
+assert.equal(output.systemMessage, undefined, 'Codex must not emit systemMessage (#605)');
+assert.match(
+  output.hookSpecificOutput.additionalContext,
+  /level: lite/,
+  'mode still surfaces via the hook context line',
+);
 
 // Querying bare @ponytail should report the active level ('lite') without resetting it to default ('ultra')
 result = run(
@@ -101,7 +106,12 @@ result = run(
 assert.equal(result.status, 0, result.stderr);
 assert.equal(fs.existsSync(codexState), false);
 output = JSON.parse(result.stdout);
-assert.equal(output.systemMessage, 'PONYTAIL:OFF');
+assert.equal(output.systemMessage, undefined, 'Codex must not emit systemMessage (#605)');
+assert.match(
+  output.hookSpecificOutput.additionalContext,
+  /PONYTAIL MODE OFF/,
+  'deactivation still surfaces via the hook context line',
+);
 
 // A request that merely mentions "normal mode" must not deactivate ponytail.
 result = run('ponytail-mode-tracker.js', codexEnv, JSON.stringify({ prompt: '@ponytail lite' }));
@@ -243,14 +253,14 @@ assert.equal(result.status, 0, result.stderr);
 assert.equal(result.stdout, '', 'SubagentStart must stay silent when ponytail is off');
 
 // Codex shares claude-codex-hooks.json, so SubagentStart is reachable under Codex
-// too — assert the codex branch emits the badge plus hookSpecificOutput.
+// too — assert the codex branch emits hookSpecificOutput and no systemMessage (#605).
 const subCodex = path.join(temp, 'sub-codex');
 fs.mkdirSync(subCodex, { recursive: true });
 fs.writeFileSync(path.join(subCodex, '.ponytail-active'), 'full');
 result = run('ponytail-subagent.js', { HOME: subHome, USERPROFILE: subHome, PLUGIN_DATA: subCodex });
 assert.equal(result.status, 0, result.stderr);
 output = JSON.parse(result.stdout);
-assert.equal(output.systemMessage, 'PONYTAIL:FULL');
+assert.equal(output.systemMessage, undefined, 'Codex must not emit systemMessage (#605)');
 assert.equal(output.additionalContext, undefined, 'Codex must not emit additionalContext at top level (#573)');
 assert.equal(output.hookSpecificOutput.hookEventName, 'SubagentStart');
 assert.match(output.hookSpecificOutput.additionalContext, /PONYTAIL MODE ACTIVE — level: full/);

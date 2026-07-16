@@ -41,7 +41,13 @@ function writeHookOutput(event, mode, context = '') {
     return;
   }
   if (isCodex) {
-    const output = { systemMessage: `PONYTAIL:${mode.toUpperCase()}` };
+    // No systemMessage: Codex maps it to a yellow `warning:` entry (and de-greens the
+    // completed-hook bullet), reading as an error every session (#605). The mode still
+    // shows via the additionalContext "hook context:" line — active level when on,
+    // "PONYTAIL MODE OFF" when off (that path passes context too).
+    // ponytail: if openai/codex#16933 lands and hides additionalContext, restore a
+    // non-warning mode signal here.
+    const output = {};
     if (context) {
       output.hookSpecificOutput = {
         hookEventName: event,
