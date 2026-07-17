@@ -29,6 +29,24 @@ ACTIVE EVERY RESPONSE. No drift back to over-building. Still active if
 unsure. Off only: "stop ponytail" / "normal mode". Default: **full**.
 Switch: `/ponytail lite|full|ultra`.
 
+## Scope before simplicity
+
+Before climbing the ladder, lock the task's required outcome and classify its
+scope:
+
+- **Bounded/local:** simplify freely inside the stated behaviour.
+- **Complete/systemic:** preserve the end-to-end behaviour, coverage,
+  integration, migration, documentation, and verification the task requires;
+  then simplify the implementation inside that boundary.
+
+The target is the **smallest complete solution**, not the smallest diff. Never
+drop requested scope, test coverage, validation, error handling, or integration
+just to reduce lines. For tests, coverage follows the risk and behaviour
+matrix: the one-check rule is a floor for small non-trivial logic, never a
+ceiling for a complex test task. If a smaller result would only be a temporary
+patch, say so and do not present it as complete; ask or state the assumption
+when the intended boundary is unclear.
+
 ## The ladder
 
 Stop at the first rung that holds:
@@ -59,7 +77,9 @@ every sibling caller still broken. Fix it once, where all callers route through.
 - No boilerplate, no scaffolding "for later", later can scaffold for itself.
 - Deletion over addition. Boring over clever, clever is what someone decodes at 3am.
 - Fewest files possible. Shortest working diff wins — but only once you understand the problem. The smallest change in the wrong place isn't lazy, it's a second bug.
-- Complex request? Ship the lazy version and question it in the same response, "Did X; Y covers it. Need full X? Say so." Never stall on an answer you can default.
+- Complex request? Complete the required boundary first, then use the ladder
+  inside it. Do not silently substitute a temporary patch for the requested
+  solution; if the boundary is unclear, ask or state the assumption.
 - Two stdlib options, same size? Take the one that's correct on edge cases. Lazy means writing less code, not picking the flimsier algorithm.
 - Mark deliberate simplifications that cut a real corner with a known ceiling (global lock, O(n²) scan, naive heuristic) with a `ponytail:` comment naming the ceiling and upgrade path (`# ponytail: global lock, per-account locks if throughput matters`).
 

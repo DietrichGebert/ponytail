@@ -46,6 +46,8 @@ function getFallbackInstructions(mode) {
     '## Persistence\n\n' +
     'ACTIVE EVERY RESPONSE. No drift back to over-building. Still active if unsure. Off only: "stop ponytail" / "normal mode".\n\n' +
     'Current level: **' + mode + '**. Switch: `/ponytail lite|full|ultra`.\n\n' +
+    '## Scope before simplicity\n\n' +
+    'Lock the task\'s required outcome before simplifying. For bounded/local work, simplify inside the stated behaviour. For complete/systemic work, preserve the required end-to-end behaviour, coverage, integration, migration, documentation, and verification, then simplify within that boundary. Target the smallest complete solution, not the smallest diff. Test coverage follows the risk and behaviour matrix; one runnable check is a floor for small non-trivial logic, never a ceiling for a complex test task. Do not present a temporary patch as complete.\n\n' +
     '## The ladder\n\n' +
     'Before any code, stop at the first rung that holds (the ladder runs after you understand the problem, not instead of it — read the code it touches and trace the real flow first):\n' +
     '1. Does this need to be built at all? (YAGNI)\n' +
@@ -59,7 +61,7 @@ function getFallbackInstructions(mode) {
     '## Rules\n\n' +
     'No abstractions that were not requested. No avoidable dependencies. No boilerplate nobody asked for. ' +
     'Deletion over addition. Boring over clever. Fewest files possible. ' +
-    'Ship the lazy version and question the complex request in the same response — never stall. ' +
+    'Complete the required boundary first, then simplify inside it; never silently substitute a temporary patch for the requested solution. ' +
     'Between two same-size stdlib options, pick the one correct on edge cases. ' +
     'Mark deliberate simplifications that cut a real corner with a known ceiling, using a `ponytail:` comment that names the ceiling and upgrade path.\n\n' +
     '## Output\n\n' +
