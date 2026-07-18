@@ -15,7 +15,7 @@ function finish() {
   try {
     // Strip UTF-8 BOM some shells prepend when piping (breaks JSON.parse)
     const data = JSON.parse(input.replace(/^\uFEFF/, ''));
-    const prompt = (data.prompt || '').trim().toLowerCase();
+    const prompt = (data.prompt || data.user_prompt || '').trim().toLowerCase();
 
     // Match /ponytail commands
     let modeSwitched = false;

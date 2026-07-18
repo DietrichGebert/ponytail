@@ -37,6 +37,8 @@ delete process.env.COPILOT_PLUGIN_DATA;
 // A leaked subagent matcher would scope the inject-into-every-subagent assertions.
 delete process.env.PONYTAIL_SUBAGENT_MATCHER;
 delete process.env.QODER_SESSION_ID;
+delete process.env.KIMI_PLUGIN_ROOT;
+delete process.env.KIMI_CODE_HOME;
 
 const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'ponytail-hooks-'));
 // Runs on normal exit and on assertion-throw exit; force makes it idempotent.
@@ -458,5 +460,48 @@ try {
   if (prevXdgRev === undefined) delete process.env.XDG_CONFIG_HOME; else process.env.XDG_CONFIG_HOME = prevXdgRev;
   if (prevEnvModeRev === undefined) delete process.env.PONYTAIL_DEFAULT_MODE; else process.env.PONYTAIL_DEFAULT_MODE = prevEnvModeRev;
 }
+
+// Kimi Code tests
+const kimiHome = path.join(temp, 'kimi-home');
+const kimiState = path.join(kimiHome, '.kimi-code', '.ponytail-active');
+fs.mkdirSync(path.dirname(kimiState), { recursive: true });
+
+const kimiEnv = {
+  HOME: kimiHome,
+  USERPROFILE: kimiHome,
+  KIMI_PLUGIN_ROOT: path.join(temp, 'kimi-plugin'),
+  PONYTAIL_DEFAULT_MODE: 'ultra',
+};
+
+// 1. SessionStart activate hook
+result = run('ponytail-activate.js', kimiEnv);
+assert.equal(result.status, 0, result.stderr);
+assert.equal(fs.readFileSync(kimiState, 'utf8'), 'ultra');
+assert.match(result.stdout, /PONYTAIL MODE ACTIVE — level: ultra/);
+
+// 2. UserPromptSubmit tracker hook (prompt field)
+result = run(
+  'ponytail-mode-tracker.js',
+  kimiEnv,
+  JSON.stringify({ prompt: '@ponytail lite' }),
+);
+assert.equal(result.status, 0, result.stderr);
+assert.equal(fs.readFileSync(kimiState, 'utf8'), 'lite');
+assert.match(result.stdout, /PONYTAIL MODE CHANGED — level: lite/);
+
+// 3. UserPromptSubmit tracker hook (user_prompt field)
+result = run(
+  'ponytail-mode-tracker.js',
+  kimiEnv,
+  JSON.stringify({ user_prompt: '@ponytail ultra' }),
+);
+assert.equal(result.status, 0, result.stderr);
+assert.equal(fs.readFileSync(kimiState, 'utf8'), 'ultra');
+assert.match(result.stdout, /PONYTAIL MODE CHANGED — level: ultra/);
+
+// 4. SubagentStart hook
+result = run('ponytail-subagent.js', kimiEnv);
+assert.equal(result.status, 0, result.stderr);
+assert.match(result.stdout, /PONYTAIL MODE ACTIVE — level: ultra/);
 
 console.log('hook compatibility checks passed');

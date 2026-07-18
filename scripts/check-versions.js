@@ -23,6 +23,7 @@ const VERSION_FILES = [
   '.codex-plugin/plugin.json',   // Codex plugin
   '.devin-plugin/plugin.json',   // Devin CLI plugin
   '.github/plugin/plugin.json',  // Copilot plugin
+  '.kimi-plugin/plugin.json',    // Kimi Code plugin
   '.qoder-plugin/plugin.json',   // Qoder plugin
   'gemini-extension.json',       // Gemini CLI extension
   'package.json',                // pi-package / repo root
