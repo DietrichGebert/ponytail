@@ -24,3 +24,6 @@ ponytail-*.gif
 
 # agentic benchmark workspaces (agent output, kept locally for inspection)
 benchmarks/agentic/runs/
+
+# kbcode knowledge base (local agent context, not repo content)
+kb/
