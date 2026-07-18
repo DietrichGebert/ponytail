@@ -459,4 +459,26 @@ try {
   if (prevEnvModeRev === undefined) delete process.env.PONYTAIL_DEFAULT_MODE; else process.env.PONYTAIL_DEFAULT_MODE = prevEnvModeRev;
 }
 
+// Claude Code's Skill invocation relays the arg wrapped in literal brackets
+// ("ponytail:ponytail [lite]"), unlike a plain slash command. Before the fix,
+// the bracketed token never matched 'lite'/'full'/'ultra'/'off' and silently
+// fell back to the default mode instead of switching.
+const skillArgHome = path.join(temp, 'skill-arg-home');
+const skillArgEnv = { HOME: skillArgHome, USERPROFILE: skillArgHome };
+const skillArgFlag = path.join(skillArgHome, '.claude', '.ponytail-active');
+
+result = run(
+  'ponytail-mode-tracker.js',
+  skillArgEnv,
+  JSON.stringify({ prompt: '/ponytail:ponytail [lite]' }),
+);
+assert.equal(result.status, 0, result.stderr);
+assert.equal(
+  fs.readFileSync(skillArgFlag, 'utf8'),
+  'lite',
+  'bracket-wrapped Skill arg must switch mode, not silently fall back to default',
+);
+// Native Claude writes UserPromptSubmit output as raw stdout, not JSON (see writeHookOutput).
+assert.match(result.stdout, /PONYTAIL MODE CHANGED — level: lite/);
+
 console.log('hook compatibility checks passed');
