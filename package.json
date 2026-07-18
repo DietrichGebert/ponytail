@@ -28,6 +28,7 @@
     ".opencode/",
     ".qoder/",
     ".qoder-plugin/",
+    ".kimi-plugin/",
     "pi-extension/",
     "scripts/uninstall.js",
     "assets/",

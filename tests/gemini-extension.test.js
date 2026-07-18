@@ -21,6 +21,7 @@ const VERSIONED_MANIFESTS = [
   '.claude-plugin/plugin.json',
   '.codex-plugin/plugin.json',
   '.github/plugin/plugin.json',
+  '.kimi-plugin/plugin.json',
 ];
 // Gemini auto-discovers these by directory; the manifest is only useful if they exist.
 const REUSED_COMMANDS = ['commands/ponytail.toml', 'commands/ponytail-review.toml'];

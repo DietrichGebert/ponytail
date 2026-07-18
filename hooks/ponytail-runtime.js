@@ -7,11 +7,13 @@ const STATE_FILE = '.ponytail-active';
 const isCopilot = Boolean(process.env.COPILOT_PLUGIN_DATA);
 const isCodex = !isCopilot && Boolean(process.env.PLUGIN_DATA);
 const isQoder = !isCopilot && !isCodex && Boolean(process.env.QODER_SESSION_ID);
+const isKimi = !isCopilot && !isCodex && !isQoder && (Boolean(process.env.KIMI_PLUGIN_ROOT) || Boolean(process.env.KIMI_CODE_HOME));
 
 let stateDir = getClaudeDir();
 if (isCodex) stateDir = process.env.PLUGIN_DATA;
 if (isCopilot) stateDir = process.env.COPILOT_PLUGIN_DATA;
 if (isQoder) stateDir = path.join(os.homedir(), '.qoder');
+if (isKimi) stateDir = process.env.KIMI_CODE_HOME || path.join(os.homedir(), '.kimi-code');
 
 const statePath = path.join(stateDir, STATE_FILE);
 
@@ -64,6 +66,11 @@ function writeHookOutput(event, mode, context = '') {
     process.stdout.write(JSON.stringify(output));
     return;
   }
+  if (isKimi) {
+    // Kimi Code appends raw stdout to the context.
+    process.stdout.write(context);
+    return;
+  }
   // Native Claude: SessionStart accepts raw stdout, but SubagentStart needs the
   // hookSpecificOutput JSON form or the context is dropped.
   if (event === 'SubagentStart') {
@@ -79,6 +86,7 @@ module.exports = {
   isCodex,
   isCopilot,
   isQoder,
+  isKimi,
   readMode,
   setMode,
   writeHookOutput,
