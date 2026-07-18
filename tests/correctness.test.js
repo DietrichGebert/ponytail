@@ -5,7 +5,17 @@
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const { execSync } = require('node:child_process');
 const correctness = require('../benchmarks/correctness');
+
+// CSV checks need pandas installed locally; skip the pandas-dependent test when
+// it's absent so `npm test` is green on a fresh clone without the optional dep.
+let hasPandas = false;
+try {
+  const probe = process.platform === 'win32' ? 'python -c "import pandas"' : 'python3 -c "import pandas"';
+  execSync(probe, { stdio: 'pipe' });
+  hasPandas = true;
+} catch (_) {}
 
 // Helper: wrap code in a fenced block and call the assertion with task vars.
 function check(task, lang, code) {
@@ -74,7 +84,7 @@ test('debounce: immediate-call implementation fails', () => {
 
 // --- CSV sum ---
 
-test('csv: correct pandas one-liner passes', () => {
+(hasPandas ? test : test.skip)('csv: correct pandas one-liner passes', () => {
   const result = check(
     "Write Python code that reads sales.csv and sums the 'amount' column.",
     'python',
