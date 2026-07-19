@@ -13,6 +13,7 @@ function finish() {
   if (done) return;
   done = true;
   try {
+    if (!input.trim()) return;
     // Strip UTF-8 BOM some shells prepend when piping (breaks JSON.parse)
     const data = JSON.parse(input.replace(/^\uFEFF/, ''));
     const prompt = (data.prompt || '').trim().toLowerCase();
