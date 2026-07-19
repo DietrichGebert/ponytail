@@ -354,6 +354,23 @@ assert.match(
   /PONYTAIL MODE ACTIVE — level: full/,
 );
 
+// Bare `/ponytail` on Qoder is report-only: there's no SessionStart, so the
+// double-duty block below emits the full ruleset as the report. A second
+// confirmation here would push two JSON objects to stdout. The point is that
+// the user still gets the ruleset back as one object.
+result = run(
+  'ponytail-mode-tracker.js',
+  qoderEnv,
+  JSON.stringify({ prompt: '/ponytail' }),
+);
+assert.equal(result.status, 0, result.stderr);
+output = JSON.parse(result.stdout);
+assert.equal(output.hookSpecificOutput.hookEventName, 'UserPromptSubmit');
+assert.match(
+  output.hookSpecificOutput.additionalContext,
+  /PONYTAIL MODE ACTIVE — level: full/,
+);
+
 // /ponytail ultra: mode tracker updates flag and injects ultra ruleset.
 result = run(
   'ponytail-mode-tracker.js',
