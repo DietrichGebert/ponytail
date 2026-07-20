@@ -12,6 +12,38 @@ const root = path.join(__dirname, '..');
 // paths pass, paths carrying shell metacharacters are rejected so they never get
 // embedded in a shell command.
 const { DEFAULT_MODE, getDefaultMode, isShellSafe, writeDefaultMode } = require('../hooks/ponytail-config');
+const {
+  getFallbackInstructions,
+  getPonytailInstructions,
+  getSubagentInstructions,
+} = require('../hooks/ponytail-instructions');
+const condensedFullInstructions = getSubagentInstructions('full');
+const fallbackFullInstructions = getFallbackInstructions('full');
+const canonicalFullInstructions = getPonytailInstructions('full');
+
+assert.equal(
+  condensedFullInstructions,
+  fallbackFullInstructions,
+  'SubagentStart should use the condensed fallback instructions',
+);
+
+assert.notEqual(
+  condensedFullInstructions,
+  canonicalFullInstructions,
+  'SubagentStart should not use the full SKILL.md instructions',
+);
+
+assert.ok(
+  condensedFullInstructions.length < canonicalFullInstructions.length,
+  'condensed instructions should be shorter than the full instructions',
+);
+
+assert.equal(
+  getSubagentInstructions('review'),
+  getPonytailInstructions('review'),
+  'independent subagent modes should keep their short pointer instructions',
+);
+
 assert.equal(isShellSafe('C:\\Users\\x\\.claude\\plugins\\ponytail\\hooks\\ponytail-statusline.ps1'), true);
 assert.equal(isShellSafe('/home/u/.claude/plugins/ponytail/hooks/ponytail-statusline.sh'), true);
 assert.equal(isShellSafe('/tmp/a"&calc.exe&"/x.sh'), false);
@@ -231,9 +263,10 @@ result = run('ponytail-subagent.js', subEnv);
 assert.equal(result.status, 0, result.stderr);
 output = JSON.parse(result.stdout);
 assert.equal(output.hookSpecificOutput.hookEventName, 'SubagentStart');
-assert.match(
+assert.equal(
   output.hookSpecificOutput.additionalContext,
-  /PONYTAIL MODE ACTIVE — level: full/,
+  getFallbackInstructions('full'),
+  'SubagentStart should inject the condensed fallback payload',
 );
 
 // No flag → ponytail off → inject nothing (empty stdout, no failure).
@@ -253,7 +286,11 @@ output = JSON.parse(result.stdout);
 assert.equal(output.systemMessage, 'PONYTAIL:FULL');
 assert.equal(output.additionalContext, undefined, 'Codex must not emit additionalContext at top level (#573)');
 assert.equal(output.hookSpecificOutput.hookEventName, 'SubagentStart');
-assert.match(output.hookSpecificOutput.additionalContext, /PONYTAIL MODE ACTIVE — level: full/);
+assert.equal(
+  output.hookSpecificOutput.additionalContext,
+  getFallbackInstructions('full'),
+  'Codex SubagentStart should inject the condensed fallback payload',
+);
 
 // SubagentStart scoping (issue #506): PONYTAIL_SUBAGENT_MATCHER limits the
 // injection to agent types whose name matches the regex. Unset keeps the
@@ -274,7 +311,11 @@ result = run(
 assert.equal(result.status, 0, result.stderr);
 output = JSON.parse(result.stdout);
 assert.equal(output.hookSpecificOutput.hookEventName, 'SubagentStart');
-assert.match(output.hookSpecificOutput.additionalContext, /PONYTAIL MODE ACTIVE — level: full/);
+assert.equal(
+  output.hookSpecificOutput.additionalContext,
+  getFallbackInstructions('full'),
+  'a matched subagent should receive the condensed fallback payload',
+);
 
 // agent_type the matcher rejects → stay silent.
 result = run(
@@ -303,7 +344,11 @@ result = run(
 );
 assert.equal(result.status, 0, result.stderr);
 output = JSON.parse(result.stdout);
-assert.match(output.hookSpecificOutput.additionalContext, /PONYTAIL MODE ACTIVE — level: full/);
+assert.equal(
+  output.hookSpecificOutput.additionalContext,
+  getFallbackInstructions('full'),
+  'missing agent_type should fail open with the condensed fallback payload',
+);
 
 // Invalid regex → must not crash; fall back to injecting everywhere.
 result = run(
@@ -312,8 +357,11 @@ result = run(
   JSON.stringify({ agent_type: 'anything' }),
 );
 assert.equal(result.status, 0, result.stderr);
-output = JSON.parse(result.stdout);
-assert.equal(output.hookSpecificOutput.hookEventName, 'SubagentStart');
+assert.equal(
+  output.hookSpecificOutput.additionalContext,
+  getFallbackInstructions('full'),
+  'an invalid matcher should fail open with the condensed fallback payload',
+);
 
 // The default (no matcher) path must not depend on stdin: even with stdin
 // closed empty it injects synchronously, preserving the #252 behavior on
@@ -321,7 +369,11 @@ assert.equal(output.hookSpecificOutput.hookEventName, 'SubagentStart');
 result = run('ponytail-subagent.js', scopeEnv, '');
 assert.equal(result.status, 0, result.stderr);
 output = JSON.parse(result.stdout);
-assert.match(output.hookSpecificOutput.additionalContext, /PONYTAIL MODE ACTIVE — level: full/);
+assert.equal(
+  output.hookSpecificOutput.additionalContext,
+  getFallbackInstructions('full'),
+  'the default no-matcher path should inject the condensed fallback payload',
+);
 
 // Qoder: no SessionStart event, so UserPromptSubmit does double duty —
 // it activates the default mode on first prompt (writes flag), then injects
@@ -388,9 +440,10 @@ result = run('ponytail-subagent.js', qoderEnv);
 assert.equal(result.status, 0, result.stderr);
 output = JSON.parse(result.stdout);
 assert.equal(output.hookSpecificOutput.hookEventName, 'SubagentStart');
-assert.match(
+assert.equal(
   output.hookSpecificOutput.additionalContext,
-  /PONYTAIL MODE ACTIVE — level: full/,
+  getFallbackInstructions('full'),
+  'Qoder SubagentStart should inject the condensed fallback payload',
 );
 // writeDefaultMode must merge into existing config, not overwrite it (#490).
 const mergeHome = path.join(temp, 'merge-home');
