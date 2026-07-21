@@ -29,6 +29,7 @@
     ],
     "UserPromptSubmit": [
       {
+        "matcher": "ponytail|normal mode",
         "hooks": [
           {
             "type": "command",
