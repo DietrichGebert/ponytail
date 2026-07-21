@@ -25,10 +25,12 @@
     "AGENTS.md",
     "hooks/",
     "skills/",
+    ".devin-plugin/",
     ".opencode/",
     ".qoder/",
     ".qoder-plugin/",
     "pi-extension/",
+    "scripts/devin-cli-setup.sh",
     "scripts/uninstall.js",
     "assets/",
     "LICENSE"
