@@ -18,8 +18,8 @@ assert.equal(isShellSafe('/tmp/a"&calc.exe&"/x.sh'), false);
 assert.equal(isShellSafe('/tmp/$(calc)/x.sh'), false);
 assert.equal(isShellSafe('/tmp/a;rm -rf/x.sh'), false);
 
-function run(script, env, input = '') {
-  return spawnSync(process.execPath, [path.join(root, 'hooks', script)], {
+function run(script, env, input = '', args = []) {
+  return spawnSync(process.execPath, [path.join(root, 'hooks', script), ...args], {
     env: { ...process.env, ...env },
     input,
     encoding: 'utf8',
@@ -458,5 +458,51 @@ try {
   if (prevXdgRev === undefined) delete process.env.XDG_CONFIG_HOME; else process.env.XDG_CONFIG_HOME = prevXdgRev;
   if (prevEnvModeRev === undefined) delete process.env.PONYTAIL_DEFAULT_MODE; else process.env.PONYTAIL_DEFAULT_MODE = prevEnvModeRev;
 }
+
+// --- Devin CLI hook adapter tests ---
+delete process.env.PONYTAIL_PLUGIN_DIR;
+
+const devinHome = path.join(temp, 'devin-home');
+fs.mkdirSync(devinHome, { recursive: true });
+const devinConfigDir = path.join(devinHome, '.config', 'ponytail');
+fs.mkdirSync(devinConfigDir, { recursive: true });
+fs.writeFileSync(path.join(devinConfigDir, 'config.json'), JSON.stringify({ defaultMode: 'ultra' }));
+
+const devinEnv = {
+  HOME: devinHome,
+  USERPROFILE: devinHome,
+  PONYTAIL_PLUGIN_DIR: root,
+};
+
+// SessionStart: picks up the config default and emits the ruleset.
+result = run('ponytail-devin.js', devinEnv, '', ['SessionStart']);
+assert.equal(result.status, 0, result.stderr);
+const devinState = path.join(devinHome, '.config', 'ponytail', '.ponytail-active');
+assert.equal(fs.readFileSync(devinState, 'utf8'), 'ultra');
+output = JSON.parse(result.stdout);
+assert.equal(output.systemMessage, 'PONYTAIL:ULTRA');
+assert.equal(output.hookSpecificOutput.hookEventName, 'SessionStart');
+assert.match(output.hookSpecificOutput.additionalContext, /PONYTAIL MODE ACTIVE — level: ultra/);
+
+// UserPromptSubmit: switch mode, then report, then deactivate.
+result = run('ponytail-devin.js', devinEnv, JSON.stringify({ prompt: '/ponytail lite' }), ['UserPromptSubmit']);
+assert.equal(result.status, 0, result.stderr);
+assert.equal(fs.readFileSync(devinState, 'utf8'), 'lite');
+output = JSON.parse(result.stdout);
+assert.equal(output.systemMessage, 'PONYTAIL:LITE');
+assert.equal(output.hookSpecificOutput.hookEventName, 'UserPromptSubmit');
+assert.match(output.hookSpecificOutput.additionalContext, /PONYTAIL MODE CHANGED — level: lite/);
+
+result = run('ponytail-devin.js', devinEnv, JSON.stringify({ prompt: '/ponytail' }), ['UserPromptSubmit']);
+assert.equal(result.status, 0, result.stderr);
+assert.equal(fs.readFileSync(devinState, 'utf8'), 'lite');
+output = JSON.parse(result.stdout);
+assert.match(output.hookSpecificOutput.additionalContext, /PONYTAIL MODE ACTIVE — level: lite/);
+
+result = run('ponytail-devin.js', devinEnv, JSON.stringify({ prompt: '/ponytail off' }), ['UserPromptSubmit']);
+assert.equal(result.status, 0, result.stderr);
+assert.equal(fs.existsSync(devinState), false);
+output = JSON.parse(result.stdout);
+assert.equal(output.systemMessage, 'PONYTAIL:OFF');
 
 console.log('hook compatibility checks passed');

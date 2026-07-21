@@ -234,9 +234,12 @@ On the command line, use a `$` prefix to explicitly activate a skill. For exampl
 
 ```bash
 devin plugins install DietrichGebert/ponytail
+bash "$(find ~/.local/share/devin/cli/plugins/cache -name devin-cli-setup.sh | head -1)"
 ```
 
 Installs ponytail as a Devin plugin; skills are available as `/ponytail:ponytail`, `/ponytail:ponytail-review`, and so on.
+
+Devin CLI does not run plugin install scripts, so the second command copies the hook adapter into `~/.config/devin/` and registers `SessionStart` / `UserPromptSubmit` / `PostCompaction` hooks in `~/.config/devin/config.json`. After that, ponytail is active every session and respects `PONYTAIL_DEFAULT_MODE` and `~/.config/ponytail/config.json`.
 
 ### OpenClaw
 
