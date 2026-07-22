@@ -29,12 +29,18 @@
     ".qoder/",
     ".qoder-plugin/",
     "pi-extension/",
+    "omp-extension/",
     "scripts/uninstall.js",
     "assets/",
     "LICENSE"
   ],
   "scripts": {
-    "test": "node --test tests/*.test.js && npm test --prefix pi-extension && npm test --prefix ponytail-mcp"
+    "test": "node --test tests/*.test.js && npm test --prefix pi-extension && npm test --prefix omp-extension && npm test --prefix ponytail-mcp"
+  },
+  "omp": {
+    "name": "Ponytail",
+    "description": "Lazy senior dev mode with persistent modes and bundled skills.",
+    "extensions": ["./omp-extension/index.js"]
   },
   "pi": {
     "extensions": ["./pi-extension/index.js"],

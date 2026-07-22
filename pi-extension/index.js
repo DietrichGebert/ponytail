@@ -60,10 +60,10 @@ export function parsePonytailCommand(text, defaultMode = DEFAULT_MODE) {
 
 export { writeDefaultMode };
 
-export default function ponytailExtension(pi) {
+export default function ponytailExtension(pi, { hideStatus: forceHideStatus = false } = {}) {
   let currentMode = DEFAULT_MODE;
   let configuredDefaultMode = getDefaultMode();
-  let hideStatus = getHideStatus();
+  let hideStatus = forceHideStatus || getHideStatus();
   let isActive = false;
   let lastCtx = null;
 
@@ -183,7 +183,7 @@ export default function ponytailExtension(pi) {
   pi.on("session_start", async (_event, ctx) => {
     const entries = ctx?.sessionManager?.getBranch?.() || ctx?.sessionManager?.getEntries?.() || [];
     configuredDefaultMode = getDefaultMode();
-    hideStatus = getHideStatus();
+    hideStatus = forceHideStatus || getHideStatus();
     currentMode = resolveSessionMode(entries, configuredDefaultMode);
     syncStatus(ctx);
     if (!getQuietStartup()) {

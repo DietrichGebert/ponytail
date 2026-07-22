@@ -25,6 +25,9 @@ function createPiHarness() {
     sendUserMessage(text, options) {
       sentUserMessages.push({ text, options });
     },
+    setLabel() {
+      throw new Error("Pi runtime actions are unavailable during extension loading");
+    },
   };
 
   ponytailExtension(pi);
@@ -57,6 +60,10 @@ function withTempConfig(fn) {
       rmSync(tempConfigHome, { recursive: true, force: true });
     });
 }
+
+test("Pi entrypoint does not invoke runtime actions during load", () => {
+  assert.doesNotThrow(() => createPiHarness());
+});
 
 test("extension registers Ponytail commands", () => {
   const { commands } = createPiHarness();
