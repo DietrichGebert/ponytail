@@ -1,0 +1,4 @@
+policy:
+  products:
+    - chatgpt
+    - atlas

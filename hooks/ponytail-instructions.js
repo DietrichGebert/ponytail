@@ -3,6 +3,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 const { DEFAULT_MODE, normalizeMode, normalizePersistedMode } = require('./ponytail-config');
 
 const INDEPENDENT_MODES = new Set(['review']);
@@ -91,8 +92,82 @@ function getPonytailInstructions(mode) {
   }
 }
 
+function canonicalSkillBody() {
+  return fs.readFileSync(SKILL_PATH, 'utf8').replace(/^---[\s\S]*?---\s*/, '');
+}
+
+function withoutSections(body, sectionNames) {
+  const names = new Set(sectionNames.map((name) => name.toLowerCase()));
+  const output = [];
+  let skipping = false;
+
+  for (const line of body.split(/\r?\n/)) {
+    const heading = line.match(/^##\s+(.+?)\s*$/);
+    if (heading) skipping = names.has(heading[1].toLowerCase());
+    if (!skipping) output.push(line);
+  }
+  return output.join('\n').trim();
+}
+
+function getCodexBaseContent() {
+  const commonRules = withoutSections(canonicalSkillBody(), ['Persistence', 'Intensity']);
+  return 'This base supersedes every earlier PONYTAIL BASE. Apply it only when the latest PONYTAIL CONTROL names this base hash.\n\n' +
+    commonRules;
+}
+
+function getCodexBaseHash() {
+  return crypto.createHash('sha256').update(getCodexBaseContent()).digest('hex');
+}
+
+function getCodexBaseInstructions() {
+  return 'PONYTAIL BASE hash=' + getCodexBaseHash() + '\n' + getCodexBaseContent();
+}
+
+function getModeDetails(mode) {
+  const body = canonicalSkillBody();
+  const tableRow = body.split(/\r?\n/).find((line) => {
+    const match = line.match(/^\|\s*\*\*(lite|full|ultra)\*\*\s*\|/i);
+    return match && match[1].toLowerCase() === mode;
+  });
+  const example = body.split(/\r?\n/).find((line) => {
+    const match = line.match(/^-\s*(lite|full|ultra):\s*"/i);
+    return match && match[1].toLowerCase() === mode;
+  });
+  const semantics = tableRow
+    ? tableRow.replace(/^\|\s*\*\*[^*]+\*\*\s*\|\s*/, '').replace(/\s*\|\s*$/, '')
+    : 'Apply the canonical Ponytail rules at ' + mode + ' intensity.';
+  return { example: example || '', semantics };
+}
+
+function getCodexControlInstructions(mode, generation, revision) {
+  const effectiveMode = normalizeMode(mode) || 'off';
+  const baseHash = effectiveMode === 'off' ? 'none' : getCodexBaseHash();
+  const header = 'PONYTAIL CONTROL generation=' + generation + ' revision=' + revision +
+    ' mode=' + effectiveMode + ' base=' + baseHash + '\n' +
+    'This control supersedes every earlier PONYTAIL CONTROL; if controls share generation/revision, the later control wins.';
+
+  if (effectiveMode === 'off') {
+    return header + '\nPonytail is off. Suspend PONYTAIL BASE and every earlier control until a newer active control appears.';
+  }
+
+  const details = getModeDetails(effectiveMode);
+  return header + '\nPonytail is active at **' + effectiveMode + '** intensity.\n' +
+    'Complete mode semantics: ' + details.semantics +
+    (details.example ? '\nCanonical example:\n' + details.example : '');
+}
+
+function getCodexActivation(mode, generation, revision) {
+  return getCodexBaseInstructions() + '\n\n' +
+    getCodexControlInstructions(mode, generation, revision);
+}
+
 module.exports = {
   filterSkillBodyForMode,
+  getCodexActivation,
+  getCodexBaseContent,
+  getCodexBaseHash,
+  getCodexBaseInstructions,
+  getCodexControlInstructions,
   getFallbackInstructions,
   getPonytailInstructions,
 };

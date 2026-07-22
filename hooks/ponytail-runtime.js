@@ -1,7 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
-const { getClaudeDir, getConfigDir } = require('./ponytail-config');
+const { getClaudeDir } = require('./ponytail-config');
 
 const STATE_FILE = '.ponytail-active';
 const isCopilot = Boolean(process.env.COPILOT_PLUGIN_DATA);
@@ -16,16 +16,19 @@ if (isQoder) stateDir = path.join(os.homedir(), '.qoder');
 const statePath = path.join(stateDir, STATE_FILE);
 
 function setMode(mode) {
+  if (isCodex) return;
   fs.mkdirSync(path.dirname(statePath), { recursive: true });
   fs.writeFileSync(statePath, mode);
 }
 
 function clearMode() {
+  if (isCodex) return;
   try { fs.unlinkSync(statePath); } catch (e) {}
 }
 
 // Live mode written by activate/mode-tracker. Absent flag = ponytail off.
 function readMode() {
+  if (isCodex) return null;
   try {
     return fs.readFileSync(statePath, 'utf8').trim() || null;
   } catch (e) {

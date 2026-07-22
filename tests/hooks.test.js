@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 const assert = require('assert');
+const crypto = require('crypto');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
@@ -24,6 +25,23 @@ function run(script, env, input = '') {
     input,
     encoding: 'utf8',
   });
+}
+
+function codexInput(event, sessionId, extra = {}) {
+  return JSON.stringify({
+    session_id: sessionId,
+    transcript_path: null,
+    cwd: root,
+    hook_event_name: event,
+    model: 'gpt-5.3-codex',
+    permission_mode: 'default',
+    ...extra,
+  });
+}
+
+function codexStatePath(pluginData, sessionId) {
+  const key = crypto.createHash('sha256').update(sessionId).digest('hex');
+  return path.join(pluginData, 'sessions', `${key}.json`);
 }
 
 // Keep the base env clean so the default-dir / native-Claude checks are
@@ -53,38 +71,46 @@ const codexEnv = {
   PLUGIN_DATA: pluginData,
   PONYTAIL_DEFAULT_MODE: 'ultra',
 };
-const codexState = path.join(pluginData, '.ponytail-active');
+const codexSession = 'hooks-compat-session';
+const codexState = codexStatePath(pluginData, codexSession);
 
-let result = run('ponytail-activate.js', codexEnv);
+let result = run(
+  'ponytail-activate.js',
+  codexEnv,
+  codexInput('SessionStart', codexSession, { source: 'startup' }),
+);
 assert.equal(result.status, 0, result.stderr);
-assert.equal(fs.readFileSync(codexState, 'utf8'), 'ultra');
+assert.equal(JSON.parse(fs.readFileSync(codexState, 'utf8')).mode, 'ultra');
 let output = JSON.parse(result.stdout);
 assert.equal(output.systemMessage, 'PONYTAIL:ULTRA');
 assert.equal(output.additionalContext, undefined, 'Codex must not emit additionalContext at top level (#573)');
 assert.equal(output.hookSpecificOutput.hookEventName, 'SessionStart');
 assert.match(
   output.hookSpecificOutput.additionalContext,
-  /PONYTAIL MODE ACTIVE — level: ultra/,
+  /^PONYTAIL BASE\b/m,
 );
+assert.match(output.hookSpecificOutput.additionalContext, /^PONYTAIL CONTROL\b.*\bmode=ultra\b/m);
 
 result = run(
   'ponytail-mode-tracker.js',
   codexEnv,
-  JSON.stringify({ prompt: '@ponytail lite' }),
+  codexInput('UserPromptSubmit', codexSession, { turn_id: 'turn-lite', prompt: '$ponytail lite' }),
 );
 assert.equal(result.status, 0, result.stderr);
-assert.equal(fs.readFileSync(codexState, 'utf8'), 'lite');
+assert.equal(JSON.parse(fs.readFileSync(codexState, 'utf8')).mode, 'lite');
 output = JSON.parse(result.stdout);
 assert.equal(output.systemMessage, 'PONYTAIL:LITE');
+assert.doesNotMatch(output.hookSpecificOutput.additionalContext, /^PONYTAIL BASE\b/m);
+assert.match(output.hookSpecificOutput.additionalContext, /^PONYTAIL CONTROL\b.*\bmode=lite\b/m);
 
-// Querying bare @ponytail should report the active level ('lite') without resetting it to default ('ultra')
+// Querying bare $ponytail reports the active level without resetting it to the default.
 result = run(
   'ponytail-mode-tracker.js',
   codexEnv,
-  JSON.stringify({ prompt: '@ponytail' }),
+  codexInput('UserPromptSubmit', codexSession, { turn_id: 'turn-status', prompt: '$ponytail' }),
 );
 assert.equal(result.status, 0, result.stderr);
-assert.equal(fs.readFileSync(codexState, 'utf8'), 'lite');
+assert.equal(JSON.parse(fs.readFileSync(codexState, 'utf8')).mode, 'lite');
 output = JSON.parse(result.stdout);
 assert.equal(output.additionalContext, undefined, 'Codex must not emit additionalContext at top level (#573)');
 assert.equal(output.hookSpecificOutput.hookEventName, 'UserPromptSubmit');
@@ -96,26 +122,33 @@ assert.match(
 result = run(
   'ponytail-mode-tracker.js',
   codexEnv,
-  JSON.stringify({ prompt: 'normal mode' }),
+  codexInput('UserPromptSubmit', codexSession, { turn_id: 'turn-off', prompt: 'normal mode' }),
 );
 assert.equal(result.status, 0, result.stderr);
-assert.equal(fs.existsSync(codexState), false);
+assert.equal(JSON.parse(fs.readFileSync(codexState, 'utf8')).mode, 'off');
 output = JSON.parse(result.stdout);
 assert.equal(output.systemMessage, 'PONYTAIL:OFF');
 
 // A request that merely mentions "normal mode" must not deactivate ponytail.
-result = run('ponytail-mode-tracker.js', codexEnv, JSON.stringify({ prompt: '@ponytail lite' }));
+result = run(
+  'ponytail-mode-tracker.js',
+  codexEnv,
+  codexInput('UserPromptSubmit', codexSession, { turn_id: 'turn-reactivate', prompt: '$ponytail lite' }),
+);
 assert.equal(result.status, 0, result.stderr);
-assert.equal(fs.readFileSync(codexState, 'utf8'), 'lite');
+assert.equal(JSON.parse(fs.readFileSync(codexState, 'utf8')).mode, 'lite');
 
 result = run(
   'ponytail-mode-tracker.js',
   codexEnv,
-  JSON.stringify({ prompt: 'add a normal mode toggle next to dark mode' }),
+  codexInput('UserPromptSubmit', codexSession, {
+    turn_id: 'turn-incidental-normal',
+    prompt: 'add a normal mode toggle next to dark mode',
+  }),
 );
 assert.equal(result.status, 0, result.stderr);
 assert.equal(
-  fs.readFileSync(codexState, 'utf8'),
+  JSON.parse(fs.readFileSync(codexState, 'utf8')).mode,
   'lite',
   'incidental "normal mode" in a request must not turn ponytail off',
 );
@@ -246,14 +279,35 @@ assert.equal(result.stdout, '', 'SubagentStart must stay silent when ponytail is
 // too — assert the codex branch emits the badge plus hookSpecificOutput.
 const subCodex = path.join(temp, 'sub-codex');
 fs.mkdirSync(subCodex, { recursive: true });
-fs.writeFileSync(path.join(subCodex, '.ponytail-active'), 'full');
-result = run('ponytail-subagent.js', { HOME: subHome, USERPROFILE: subHome, PLUGIN_DATA: subCodex });
+const subCodexSession = 'subagent-codex-session';
+const subCodexEnv = {
+  HOME: subHome,
+  USERPROFILE: subHome,
+  PLUGIN_DATA: subCodex,
+  PONYTAIL_DEFAULT_MODE: 'full',
+};
+result = run(
+  'ponytail-activate.js',
+  subCodexEnv,
+  codexInput('SessionStart', subCodexSession, { source: 'startup' }),
+);
+assert.equal(result.status, 0, result.stderr);
+result = run(
+  'ponytail-subagent.js',
+  subCodexEnv,
+  codexInput('SubagentStart', subCodexSession, {
+    turn_id: 'sub-turn',
+    agent_id: 'sub-agent',
+    agent_type: 'general-purpose',
+  }),
+);
 assert.equal(result.status, 0, result.stderr);
 output = JSON.parse(result.stdout);
 assert.equal(output.systemMessage, 'PONYTAIL:FULL');
 assert.equal(output.additionalContext, undefined, 'Codex must not emit additionalContext at top level (#573)');
 assert.equal(output.hookSpecificOutput.hookEventName, 'SubagentStart');
-assert.match(output.hookSpecificOutput.additionalContext, /PONYTAIL MODE ACTIVE — level: full/);
+assert.match(output.hookSpecificOutput.additionalContext, /^PONYTAIL BASE\b/m);
+assert.match(output.hookSpecificOutput.additionalContext, /^PONYTAIL CONTROL\b.*\bmode=full\b/m);
 
 // SubagentStart scoping (issue #506): PONYTAIL_SUBAGENT_MATCHER limits the
 // injection to agent types whose name matches the regex. Unset keeps the

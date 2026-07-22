@@ -31,9 +31,12 @@ Level sticks until changed or session end.
 | **ponytail-gain** | `/ponytail-gain` | Measured-impact scoreboard: less code, less cost, more speed. |
 | **ponytail-help** | `/ponytail-help` | This card. |
 
-Codex uses `@ponytail`, `@ponytail-review`, and `@ponytail-help`; Claude Code
-and OpenCode use the slash-command forms above (OpenCode ships all six as
-slash commands).
+Codex mode switching accepts the convenience hook form `$ponytail full` and
+the explicit controller form `$ponytail:ponytail full`.
+Codex one-shot skills use qualified names such as
+`$ponytail:ponytail-review` and `$ponytail:ponytail-help`.
+Claude Code and OpenCode use the slash-command forms above (OpenCode ships all
+six as slash commands).
 
 ## Deactivate
 

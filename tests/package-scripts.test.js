@@ -23,3 +23,9 @@ test('CI installs MCP dependencies before root npm test', () => {
     'MCP dependencies must be installed before the root test command runs',
   );
 });
+
+test('package exposes the local Codex build script', () => {
+  const packageJson = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
+
+  assert.equal(packageJson.scripts['codex:local'], 'node scripts/build-codex-local.js');
+});

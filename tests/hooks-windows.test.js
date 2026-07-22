@@ -8,6 +8,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('fs');
+const os = require('os');
 const path = require('path');
 const { spawn } = require('child_process');
 
@@ -89,21 +90,37 @@ test('every hook command points at a script that ships in hooks/', () => {
 // `if {}` wrapper that can swallow the piped prompt JSON, so stdin 'end' never
 // fires. The hook must never wait on stdin forever — that freezes the whole
 // session. It has to self-exit even when stdin stays open and empty.
-test('ponytail-mode-tracker self-exits when stdin never closes (no freeze)', async () => {
-  const hook = path.join(root, 'hooks', 'ponytail-mode-tracker.js');
+async function assertOpenStdinDoesNotHang(script, env = {}) {
+  const hook = path.join(root, 'hooks', script);
   // stdin is a pipe we never write to or end, reproducing the deadlock.
-  const child = spawn(process.execPath, [hook], { stdio: ['pipe', 'ignore', 'ignore'] });
+  const child = spawn(process.execPath, [hook], {
+    env: { ...process.env, ...env },
+    stdio: ['pipe', 'ignore', 'ignore'],
+  });
 
   const code = await new Promise((resolve, reject) => {
     const guard = setTimeout(() => {
       child.kill('SIGKILL');
-      reject(new Error('hook hung on open stdin — it would freeze the session'));
+      reject(new Error(`${script} hung on open stdin — it would freeze the session`));
     }, 3000);
     child.on('exit', (c) => { clearTimeout(guard); resolve(c); });
     child.on('error', reject);
   });
 
   assert.equal(code, 0, 'hook must exit cleanly when stdin never closes');
+}
+
+test('ponytail-mode-tracker self-exits when stdin never closes (no freeze)', async () => {
+  await assertOpenStdinDoesNotHang('ponytail-mode-tracker.js');
+});
+
+test('Codex stdin-reading lifecycle hooks self-exit when stdin never closes', async (t) => {
+  const pluginData = fs.mkdtempSync(path.join(os.tmpdir(), 'ponytail-open-stdin-'));
+  t.after(() => fs.rmSync(pluginData, { recursive: true, force: true }));
+  const env = { PLUGIN_DATA: pluginData, COPILOT_PLUGIN_DATA: '' };
+
+  await assertOpenStdinDoesNotHang('ponytail-activate.js', env);
+  await assertOpenStdinDoesNotHang('ponytail-subagent.js', env);
 });
 
 test('Claude and Codex manifests point at the shared host-specific hook config', () => {
