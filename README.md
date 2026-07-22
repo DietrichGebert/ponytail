@@ -158,7 +158,7 @@ Copilot CLI namespaces plugin commands by plugin name. For example:
 ### Oh My Pi
 
 ```bash
-omp plugin install git:github.com/fogrye/ponytail
+omp plugin install github:DietrichGebert/ponytail
 ```
 
 OMP loads the native package manifest, the bundled skills, and the `/ponytail` command family.
