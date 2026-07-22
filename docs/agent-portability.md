@@ -9,7 +9,7 @@ to load in a given agent.
 | Host | Files | Notes |
 |------|-------|-------|
 | Claude Code | `.claude-plugin/plugin.json`, `commands/`, `hooks/claude-codex-hooks.json`, `hooks/` | Full plugin install with session activation, mode tracking, commands, and statusline support. |
-| Codex | `.codex-plugin/plugin.json`, `hooks/claude-codex-hooks.json`, `hooks/`, `skills/` | Plugin install with the same skills plus lifecycle hooks for activation and mode tracking. |
+| Codex | `.codex-plugin/plugin.json`, `.codex-plugin/skills/`, `hooks/claude-codex-hooks.json`, `hooks/` | Plugin install with a generated explicit controller plus per-session lifecycle hooks; the portable full `skills/ponytail` copy is excluded from Codex to avoid duplicate rules. |
 | OpenCode | `.opencode/plugins/ponytail.mjs`, `.opencode/command/`, `hooks/`, `skills/` | Server plugin injects the ruleset each turn via `experimental.chat.system.transform` and persists `/ponytail` switches; reuses the shared instruction builder. |
 | pi | `pi-extension/`, `skills/`, `hooks/` | Package extension: injects the ruleset each turn through the shared instruction builder and registers the `/ponytail` commands. |
 | Hermes Agent | `plugin.yaml`, `__init__.py`, `skills/` | Native Hermes plugin: injects active mode through `pre_llm_call`, rewrites gateway `/ponytail-*` skill commands into agent prompts, registers `/ponytail` mode switching, and exposes bundled skills as `ponytail:<skill>`. |
@@ -30,6 +30,29 @@ to load in a given agent.
 | Qoder | `.qoder/rules/ponytail.md`, `.qoder-plugin/plugin.json`, `hooks/qoder-hooks.json`, `skills/`, `AGENTS.md` | Qoder auto-loads `AGENTS.md` as always-on context; `.qoder/rules/ponytail.md` provides per-project rules; the plugin manifest points at `skills/` for the six ponytail skills (invoked as `/ponytail`, `/ponytail-review`, etc. via the Skill system). Full plugin-tier: `hooks/qoder-hooks.json` template registers `UserPromptSubmit` (mode activation + ruleset injection) and `PreToolUse` with `task|Task` matcher (subagent injection). Instruction-tier works from repo root with zero setup via `AGENTS.md`. |
 | Zed | `AGENTS.md` | Auto-includes `AGENTS.md` from the worktree root as one of its default rule files for the Agent Panel. Instruction-tier. |
 | Generic agents | `AGENTS.md` or `skills/*/SKILL.md` | Copy the compact rule file or load the skill files directly. |
+
+## Codex lifecycle
+
+Codex installs Ponytail globally, but hook state is keyed by root `session_id`, which Codex shares with that root thread's subagents.
+Concurrent root threads can therefore use different modes without overwriting each other.
+
+Set `$ponytail default off` to make new Codex threads opt in, then use `$ponytail lite`, `$ponytail full`, `$ponytail ultra`, or `$ponytail off` inside a thread.
+These unqualified forms are convenience hook commands; `$ponytail:ponytail ...` is the namespaced explicit controller form.
+An off startup injects no rules.
+The first active switch injects one mode-neutral base plus an authoritative mode control, while later mode changes inject only a replacement control.
+Repeating the current mode is a no-op.
+
+Resume reuses valid persisted thread state without duplicating the base.
+Compact preserves the current mode and injects one fresh base into the replacement context.
+Clear resets the thread to its configured default.
+New subagents receive a complete activation when the parent thread is active, and receive nothing when it is off.
+
+The generated `.codex-plugin/skills/` tree is product-gated to Codex, and its `ponytail` controller is explicit-only and contains no ruleset body.
+The canonical `skills/` tree remains the portable source for other hosts, while Codex uses the generated controller and generated one-shot skill copies.
+`$ponytail:ponytail-review`, `$ponytail:ponytail-audit`, `$ponytail:ponytail-debt`, `$ponytail:ponytail-gain`, and `$ponytail:ponytail-help` are one-shot and never mutate the persistent mode.
+
+Codex currently does not dispatch compact reinjection for a long-lived child subagent's own context.
+If such a child compacts, it may lose Ponytail until it ends; the parent state and newly spawned children remain correct.
 
 ## Adapter Rule
 

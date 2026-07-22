@@ -109,7 +109,8 @@ Lazy, not negligent: trust-boundary validation, data-loss handling, security, an
 
 The most effort ponytail will ever ask of you:
 
-The Claude Code and Codex plugins run two tiny Node.js lifecycle hooks, so `node` needs to be on your PATH (note for Nix/nvm users: it must be on the non-interactive shell's PATH). If it isn't, the skills still work, the always-on activation just stays quiet instead of erroring on every prompt.
+The Claude Code and Codex plugins run three tiny Node.js lifecycle hooks, so `node` needs to be on your PATH (note for Nix/nvm users: it must be on the non-interactive shell's PATH).
+Without Node, hosts can still load standalone skill bodies, but automatic lifecycle activation and Codex mode switching do not work.
 
 ### Claude Code
 
@@ -130,9 +131,29 @@ codex plugin marketplace add DietrichGebert/ponytail
 codex plugin add ponytail@ponytail
 ```
 
-Run `codex` and open `/hooks`, review and trust its two lifecycle hooks, and start a new thread.
+Run `codex` and open `/hooks`, review and trust its three lifecycle hooks, and start a new thread.
 
 This same install also covers the Codex desktop app: restart the app after installing and it picks up the plugin.
+
+The Codex install is global, but activation is isolated per root thread and shared only with that thread's subagents.
+To keep Ponytail dormant for research and brainstorming, set future threads to opt in:
+
+```text
+$ponytail default off
+```
+
+Start a new thread, then enable it only when planning or implementing software:
+
+```text
+$ponytail lite
+$ponytail full
+$ponytail ultra
+$ponytail off
+```
+
+`$ponytail ...` is the convenience hook syntax; the explicit generated controller also accepts `$ponytail:ponytail ...`.
+With the default set to `off`, Codex receives no Ponytail rules at startup.
+The first active switch injects the common rules once, and later switches add only a small authoritative mode control instead of duplicating the ruleset.
 
 ### GitHub Copilot CLI
 
@@ -248,9 +269,16 @@ Installs ponytail as an OpenClaw skill from ClawHub; the review, audit, debt, ga
 
 That was it. He'd be proud. He won't say it.
 
-Active every session, with a handful of commands (see [Commands](#commands)). `/ponytail ultra` exists for when the codebase has wronged you personally. Startup and mode-change text shows the current mode.
+Ponytail starts at the configured default and provides a handful of commands (see [Commands](#commands)).
+`/ponytail ultra` exists for when the codebase has wronged you personally.
+Startup and mode-change text shows the current mode.
 
 Set the level for every new session with the `PONYTAIL_DEFAULT_MODE` env var (`lite`/`full`/`ultra`/`off`), or a `defaultMode` field in `~/.config/ponytail/config.json` (`%APPDATA%\ponytail\config.json` on Windows). The default is `full`.
+
+On Codex, a mode belongs to the root thread, so two concurrent threads can use different modes safely.
+Resume preserves valid thread state without reinjecting the base, compact preserves the active mode and injects one fresh base for the new context, and clear returns the thread to its configured default.
+Turning Ponytail off adds an authoritative off control; turning it back on in the same context reuses the base already present.
+Codex currently does not dispatch the compact reinjection lifecycle to a long-lived child subagent, so a child that compacts its own context may lose Ponytail until it ends; the parent thread and newly spawned subagents are unaffected.
 
 While active, the ruleset is also injected into every subagent spawned via the Agent tool. To scope that to specific agent types (say, keep it off read-only search agents), set the `PONYTAIL_SUBAGENT_MATCHER` env var to a regex tested against the subagent's `agent_type`. It is unanchored and case-insensitive: `explore|general` matches either, `^general$` is exact, and plugin agent types look like `plugin:name`. Unset means inject into every subagent (the default); an invalid regex, or a subagent whose type the platform doesn't report, also falls back to injecting.
 
@@ -280,7 +308,11 @@ Which files map to which agent: [Agent portability](docs/agent-portability.md).
 | Pi agent | `pi uninstall ponytail` |
 | Cursor / Windsurf / Cline / Qoder / etc. | Delete the copied rule file |
 
-These remove the plugin's own files. They leave behind a small amount of state ponytail writes outside the plugin folder: the mode flag, `~/.config/ponytail/config.json`, and (if you accepted the setup nudge) a `statusLine` entry in `~/.claude/settings.json`. Run `node scripts/uninstall.js` to clean those up too. **Run it before the host remove command above** — the script is itself a plugin file, so removing the plugin first deletes it (or run it from a separate clone of this repo). It only removes the statusLine entry if it points at ponytail's own script, so a statusline you set up yourself is left untouched.
+These remove the plugin's own files.
+They can leave behind a small amount of state Ponytail writes outside the plugin folder: the legacy mode flag, `~/.config/ponytail/config.json`, and (if you accepted the setup nudge) a `statusLine` entry in `~/.claude/settings.json`.
+Run `node scripts/uninstall.js` to clean those up too.
+**Run it before the host remove command above** — the script is itself a plugin file, so removing the plugin first deletes it (or run it from a separate clone of this repo).
+It only removes the statusLine entry if it points at Ponytail's own script, so a statusline you set up yourself is left untouched.
 
 ## Commands
 
@@ -293,7 +325,12 @@ These remove the plugin's own files. They leave behind a small amount of state p
 | `/ponytail-gain` | Show the measured impact scoreboard (less code, less cost, more speed) from the benchmark. |
 | `/ponytail-help` | Quick reference for the commands above. |
 
-Commands need a skill-capable host (Claude Code, Codex, Devin CLI, OpenCode, Gemini, pi, Swival, Hermes Agent, Qoder). In Codex they're skills, invoke with `@` (`@ponytail-review`). The instruction-only adapters (Cursor, Windsurf, Cline, Copilot, Kiro, Antigravity) load the always-on ruleset without the commands.
+Commands need a skill-capable host (Claude Code, Codex, Devin CLI, OpenCode, Gemini, pi, Swival, Hermes Agent, Qoder).
+In Codex, `$ponytail full` is the convenience hook syntax and `$ponytail:ponytail full` invokes the generated controller explicitly.
+Plugin one-shot skills use qualified names such as `$ponytail:ponytail-review`.
+The Codex plugin uses a generated lightweight controller; the portable full rules skill is excluded so a mode switch does not duplicate the rules already injected by the hook.
+The five report/help skills are one-shot and never change the persistent Ponytail mode.
+The instruction-only adapters (Cursor, Windsurf, Cline, Copilot, Kiro, Antigravity) load the always-on ruleset without the commands.
 
 ## Development
 
@@ -304,7 +341,9 @@ node scripts/check-rule-copies.js
 npm test
 ```
 
-The OpenClaw skill package (`.openclaw/skills/`) is generated from `skills/`; rerun `node scripts/build-openclaw-skills.js` after changing a skill, the test suite fails if it is stale. To publish the skills to ClawHub, run `clawhub login` once, then `node scripts/publish-openclaw-skills.js` (it publishes all six at the `package.json` version; pass `--dry-run` to preview).
+The Codex skill package (`.codex-plugin/skills/`) is generated from `skills/`; rerun `node scripts/build-codex-skills.js` after changing a skill.
+The OpenClaw skill package (`.openclaw/skills/`) is generated from `skills/`; rerun `node scripts/build-openclaw-skills.js` after changing a skill, the test suite fails if it is stale.
+To publish the skills to ClawHub, run `clawhub login` once, then `node scripts/publish-openclaw-skills.js` (it publishes all six at the `package.json` version; pass `--dry-run` to preview).
 
 The correctness benchmark spawns Python for email and CSV checks; `python3` is tried before `python`. CSV checks need `pandas` installed locally.
 

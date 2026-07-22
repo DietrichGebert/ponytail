@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// ponytail — Claude Code SubagentStart hook
+// ponytail — subagent-start activation hook
 //
 // SessionStart context is parent-thread only and never reaches subagents, so
 // without this every Task-spawned agent runs ponytail-unaware (issue #252).
@@ -11,18 +11,13 @@
 // "^general$" is exact. Unset means inject into every subagent, as before.
 
 const { getPonytailInstructions } = require('./ponytail-instructions');
-const { readMode, writeHookOutput } = require('./ponytail-runtime');
+const { getSubagentActivation } = require('./ponytail-codex-session');
+const { readHookPayload } = require('./ponytail-stdin');
+const { isCodex, readMode, writeHookOutput } = require('./ponytail-runtime');
 
-const mode = readMode();
-
-// Absent flag or off → ponytail isn't active; inject nothing.
-if (!mode || mode === 'off') {
-  process.exit(0);
-}
-
-function inject() {
+function inject(mode, context) {
   try {
-    writeHookOutput('SubagentStart', mode, getPonytailInstructions(mode));
+    writeHookOutput('SubagentStart', mode, context);
   } catch (e) {
     // Silent fail — a stdout error at hook exit must not surface as a hook failure.
   }
@@ -38,40 +33,38 @@ try {
   matcherRe = null;
 }
 
-// No matcher → keep the original synchronous, stdin-independent path. On Windows
-// the PowerShell `if {}` wrapper can swallow the piped JSON so stdin 'end' never
-// fires (#443); the default path must not wait on stdin or it would stall every
-// subagent spawn.
-if (!matcherRe) {
-  inject();
-  process.exit(0);
+if (isCodex) {
+  readHookPayload((payload) => {
+    if (!payload) return;
+    const agentType = String(payload.agent_type || '').trim();
+    if (matcherRe && agentType && !matcherRe.test(agentType)) return;
+    const activation = getSubagentActivation(payload.session_id);
+    if (activation) inject(activation.mode, activation.context);
+  });
+} else {
+  activateLegacy();
 }
 
-// Matcher set → read agent_type from stdin and skip only on a definite
-// mismatch. Missing/unparseable agent_type, a stdin error, or the timeout all
-// fail open (inject), so scoping never silently drops the persona.
-let input = '';
-let done = false;
+function activateLegacy() {
+  const mode = readMode();
 
-function finish() {
-  if (done) return;
-  done = true;
+  // Absent flag or off → ponytail isn't active; inject nothing.
+  if (!mode || mode === 'off') return;
 
-  let agentType = '';
-  try {
-    // Strip UTF-8 BOM some shells prepend when piping (breaks JSON.parse)
-    agentType = String(JSON.parse(input.replace(/^\uFEFF/, '')).agent_type || '').trim();
-  } catch (e) {
-    // Unparseable payload — fall through and inject to be safe.
+  // No matcher → keep the original synchronous, stdin-independent path. On Windows
+  // the PowerShell `if {}` wrapper can swallow the piped JSON so stdin 'end' never
+  // fires (#443); the default path must not wait on stdin or it would stall every
+  // subagent spawn.
+  if (!matcherRe) {
+    inject(mode, getPonytailInstructions(mode));
+    return;
   }
-  if (agentType && !matcherRe.test(agentType)) {
-    process.exit(0);
-  }
-  inject();
+
+  // Matcher set → skip only on a definite mismatch. Unparseable input fails
+  // open for legacy hosts, preserving the original subagent behavior.
+  readHookPayload((payload) => {
+    const agentType = payload ? String(payload.agent_type || '').trim() : '';
+    if (agentType && !matcherRe.test(agentType)) return;
+    inject(mode, getPonytailInstructions(mode));
+  });
 }
-
-process.stdin.on('data', chunk => { input += chunk; });
-process.stdin.on('end', finish);
-// Never block the session (#443): recover on stdin error or a short fallback.
-process.stdin.on('error', () => { finish(); process.exit(0); });
-setTimeout(() => { finish(); process.exit(0); }, 1000).unref();
