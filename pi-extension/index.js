@@ -61,7 +61,6 @@ export function parsePonytailCommand(text, defaultMode = DEFAULT_MODE) {
 export { writeDefaultMode };
 
 export default function ponytailExtension(pi) {
-  pi.setLabel?.("Ponytail");
   let currentMode = DEFAULT_MODE;
   let configuredDefaultMode = getDefaultMode();
   let hideStatus = getHideStatus();

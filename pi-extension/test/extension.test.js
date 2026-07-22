@@ -11,7 +11,6 @@ function createPiHarness() {
   const commands = new Map();
   const appendedEntries = [];
   const sentUserMessages = [];
-  const labels = [];
 
   const pi = {
     on(eventName, handler) {
@@ -26,13 +25,13 @@ function createPiHarness() {
     sendUserMessage(text, options) {
       sentUserMessages.push({ text, options });
     },
-    setLabel(label) {
-      labels.push(label);
+    setLabel() {
+      throw new Error("Pi runtime actions are unavailable during extension loading");
     },
   };
 
   ponytailExtension(pi);
-  return { events, commands, labels, appendedEntries, sentUserMessages };
+  return { events, commands, appendedEntries, sentUserMessages };
 }
 
 function createCommandContext(overrides = {}) {
@@ -62,10 +61,13 @@ function withTempConfig(fn) {
     });
 }
 
-test("extension registers Ponytail commands", () => {
-  const { commands, labels } = createPiHarness();
+test("Pi entrypoint does not invoke runtime actions during load", () => {
+  assert.doesNotThrow(() => createPiHarness());
+});
 
-  assert.deepEqual(labels, ["Ponytail"]);
+test("extension registers Ponytail commands", () => {
+  const { commands } = createPiHarness();
+
   assert.deepEqual([...commands.keys()].sort(), ["ponytail", "ponytail-audit", "ponytail-debt", "ponytail-gain", "ponytail-help", "ponytail-review"]);
 });
 
