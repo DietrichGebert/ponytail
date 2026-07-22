@@ -9,8 +9,9 @@ const { spawnSync } = require('child_process');
 const ROOT = path.join(__dirname, '..');
 const MARKETPLACE_NAME = 'ponytail-local';
 const MARKETPLACE_ROOT = path.join(ROOT, '.codex-local-marketplace');
+const PLUGIN_SOURCE = './plugins/ponytail';
 
-function localMarketplace(root = ROOT) {
+function localMarketplace() {
   return {
     name: MARKETPLACE_NAME,
     interface: { displayName: 'Ponytail Local' },
@@ -19,7 +20,7 @@ function localMarketplace(root = ROOT) {
         name: 'ponytail',
         source: {
           source: 'local',
-          path: root,
+          path: PLUGIN_SOURCE,
         },
         policy: {
           installation: 'AVAILABLE',
@@ -32,9 +33,13 @@ function localMarketplace(root = ROOT) {
 }
 
 function writeLocalMarketplace(root = ROOT, marketplaceRoot = MARKETPLACE_ROOT) {
+  const pluginPath = path.join(marketplaceRoot, 'plugins', 'ponytail');
   const file = path.join(marketplaceRoot, '.agents', 'plugins', 'marketplace.json');
+  fs.rmSync(pluginPath, { recursive: true, force: true });
+  fs.mkdirSync(path.dirname(pluginPath), { recursive: true });
+  fs.symlinkSync(root, pluginPath, process.platform === 'win32' ? 'junction' : 'dir');
   fs.mkdirSync(path.dirname(file), { recursive: true });
-  fs.writeFileSync(file, JSON.stringify(localMarketplace(root), null, 2) + '\n');
+  fs.writeFileSync(file, JSON.stringify(localMarketplace(), null, 2) + '\n');
   return file;
 }
 
@@ -68,6 +73,7 @@ function main() {
 module.exports = {
   MARKETPLACE_NAME,
   MARKETPLACE_ROOT,
+  PLUGIN_SOURCE,
   localMarketplace,
   writeLocalMarketplace,
 };
