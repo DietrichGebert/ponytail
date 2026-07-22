@@ -342,6 +342,7 @@ npm test
 ```
 
 The Codex skill package (`.codex-plugin/skills/`) is generated from `skills/`; rerun `node scripts/build-codex-skills.js` after changing a skill.
+To test this checkout as the globally installed Codex plugin, run `npm run codex:local`.
 The OpenClaw skill package (`.openclaw/skills/`) is generated from `skills/`; rerun `node scripts/build-openclaw-skills.js` after changing a skill, the test suite fails if it is stale.
 To publish the skills to ClawHub, run `clawhub login` once, then `node scripts/publish-openclaw-skills.js` (it publishes all six at the `package.json` version; pass `--dry-run` to preview).
 

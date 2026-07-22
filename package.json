@@ -34,6 +34,7 @@
     "LICENSE"
   ],
   "scripts": {
+    "codex:local": "node scripts/build-codex-local.js",
     "test": "node --test tests/*.test.js && npm test --prefix pi-extension && npm test --prefix ponytail-mcp"
   },
   "pi": {
@@ -44,4 +45,3 @@
     "access": "public"
   }
 }
-
