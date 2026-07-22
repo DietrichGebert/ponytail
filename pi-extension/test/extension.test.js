@@ -11,6 +11,7 @@ function createPiHarness() {
   const commands = new Map();
   const appendedEntries = [];
   const sentUserMessages = [];
+  const labels = [];
 
   const pi = {
     on(eventName, handler) {
@@ -25,10 +26,13 @@ function createPiHarness() {
     sendUserMessage(text, options) {
       sentUserMessages.push({ text, options });
     },
+    setLabel(label) {
+      labels.push(label);
+    },
   };
 
   ponytailExtension(pi);
-  return { events, commands, appendedEntries, sentUserMessages };
+  return { events, commands, labels, appendedEntries, sentUserMessages };
 }
 
 function createCommandContext(overrides = {}) {
@@ -59,8 +63,9 @@ function withTempConfig(fn) {
 }
 
 test("extension registers Ponytail commands", () => {
-  const { commands } = createPiHarness();
+  const { commands, labels } = createPiHarness();
 
+  assert.deepEqual(labels, ["Ponytail"]);
   assert.deepEqual([...commands.keys()].sort(), ["ponytail", "ponytail-audit", "ponytail-debt", "ponytail-gain", "ponytail-help", "ponytail-review"]);
 });
 

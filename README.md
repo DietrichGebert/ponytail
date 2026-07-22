@@ -155,6 +155,14 @@ Copilot CLI namespaces plugin commands by plugin name. For example:
 /ponytail:ponytail-review
 ```
 
+### Oh My Pi
+
+```bash
+omp plugin install git:github.com/fogrye/ponytail
+```
+
+OMP loads the native package manifest, the bundled skills, and the `/ponytail` command family.
+
 ### Pi agent harness
 
 ```
