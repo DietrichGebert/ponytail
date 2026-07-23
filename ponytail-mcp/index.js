@@ -11,7 +11,7 @@ import { z } from "zod";
 import { MODES, buildInstructions, resolveMode } from "./instructions.js";
 
 const { version } = JSON.parse(
-  await fs.promises.readFile(new URL("../package.json", import.meta.url), "utf8")
+  await fs.promises.readFile(new URL("./package.json", import.meta.url), "utf8")
 );
 const server = new McpServer({ name: "ponytail", version });
 
