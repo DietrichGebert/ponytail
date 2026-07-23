@@ -235,6 +235,24 @@ assert.match(
   output.hookSpecificOutput.additionalContext,
   /PONYTAIL MODE ACTIVE — level: full/,
 );
+assert.match(output.hookSpecificOutput.additionalContext, /You are a lazy senior developer/);
+assert.ok(!output.hookSpecificOutput.additionalContext.includes('Intensity'), 'should not contain full instructions Intensity section');
+assert.ok(!output.hookSpecificOutput.additionalContext.includes('Example:'), 'should not contain full instructions examples');
+
+// Independent mode subagent case (e.g. 'review'): must keep its pointer line, not fallback
+const revSubHome = path.join(temp, 'rev-sub-home');
+const revSubFlag = path.join(revSubHome, '.claude', '.ponytail-active');
+fs.mkdirSync(path.dirname(revSubFlag), { recursive: true });
+fs.writeFileSync(revSubFlag, 'review');
+
+result = run('ponytail-subagent.js', { HOME: revSubHome, USERPROFILE: revSubHome });
+assert.equal(result.status, 0, result.stderr);
+output = JSON.parse(result.stdout);
+assert.equal(output.hookSpecificOutput.hookEventName, 'SubagentStart');
+assert.equal(
+  output.hookSpecificOutput.additionalContext,
+  'PONYTAIL MODE ACTIVE — level: review. Behavior defined by /ponytail-review skill.',
+);
 
 // No flag → ponytail off → inject nothing (empty stdout, no failure).
 fs.unlinkSync(subFlag);
@@ -254,6 +272,8 @@ assert.equal(output.systemMessage, 'PONYTAIL:FULL');
 assert.equal(output.additionalContext, undefined, 'Codex must not emit additionalContext at top level (#573)');
 assert.equal(output.hookSpecificOutput.hookEventName, 'SubagentStart');
 assert.match(output.hookSpecificOutput.additionalContext, /PONYTAIL MODE ACTIVE — level: full/);
+assert.match(output.hookSpecificOutput.additionalContext, /You are a lazy senior developer/);
+assert.ok(!output.hookSpecificOutput.additionalContext.includes('Intensity'), 'should not contain full instructions Intensity section');
 
 // SubagentStart scoping (issue #506): PONYTAIL_SUBAGENT_MATCHER limits the
 // injection to agent types whose name matches the regex. Unset keeps the
@@ -275,6 +295,8 @@ assert.equal(result.status, 0, result.stderr);
 output = JSON.parse(result.stdout);
 assert.equal(output.hookSpecificOutput.hookEventName, 'SubagentStart');
 assert.match(output.hookSpecificOutput.additionalContext, /PONYTAIL MODE ACTIVE — level: full/);
+assert.match(output.hookSpecificOutput.additionalContext, /You are a lazy senior developer/);
+assert.ok(!output.hookSpecificOutput.additionalContext.includes('Intensity'), 'should not contain full instructions Intensity section');
 
 // agent_type the matcher rejects → stay silent.
 result = run(
@@ -392,6 +414,8 @@ assert.match(
   output.hookSpecificOutput.additionalContext,
   /PONYTAIL MODE ACTIVE — level: full/,
 );
+assert.match(output.hookSpecificOutput.additionalContext, /You are a lazy senior developer/);
+assert.ok(!output.hookSpecificOutput.additionalContext.includes('Intensity'), 'should not contain full instructions Intensity section');
 // writeDefaultMode must merge into existing config, not overwrite it (#490).
 const mergeHome = path.join(temp, 'merge-home');
 const mergeConfigDir = path.join(mergeHome, '.config', 'ponytail');

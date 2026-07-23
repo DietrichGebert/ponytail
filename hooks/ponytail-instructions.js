@@ -91,8 +91,20 @@ function getPonytailInstructions(mode) {
   }
 }
 
+function getSubagentInstructions(mode) {
+  const configuredMode = normalizePersistedMode(mode) || DEFAULT_MODE;
+
+  if (INDEPENDENT_MODES.has(configuredMode)) {
+    return 'PONYTAIL MODE ACTIVE — level: ' + configuredMode + '. Behavior defined by /ponytail-' + configuredMode + ' skill.';
+  }
+
+  const effectiveMode = normalizeMode(configuredMode) || DEFAULT_MODE;
+  return getFallbackInstructions(effectiveMode);
+}
+
 module.exports = {
   filterSkillBodyForMode,
   getFallbackInstructions,
   getPonytailInstructions,
+  getSubagentInstructions,
 };
