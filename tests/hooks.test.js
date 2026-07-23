@@ -239,6 +239,21 @@ assert.match(output.hookSpecificOutput.additionalContext, /You are a lazy senior
 assert.ok(!output.hookSpecificOutput.additionalContext.includes('Intensity'), 'should not contain full instructions Intensity section');
 assert.ok(!output.hookSpecificOutput.additionalContext.includes('Example:'), 'should not contain full instructions examples');
 
+// Independent mode subagent case (e.g. 'review'): must keep its pointer line, not fallback
+const revSubHome = path.join(temp, 'rev-sub-home');
+const revSubFlag = path.join(revSubHome, '.claude', '.ponytail-active');
+fs.mkdirSync(path.dirname(revSubFlag), { recursive: true });
+fs.writeFileSync(revSubFlag, 'review');
+
+result = run('ponytail-subagent.js', { HOME: revSubHome, USERPROFILE: revSubHome });
+assert.equal(result.status, 0, result.stderr);
+output = JSON.parse(result.stdout);
+assert.equal(output.hookSpecificOutput.hookEventName, 'SubagentStart');
+assert.equal(
+  output.hookSpecificOutput.additionalContext,
+  'PONYTAIL MODE ACTIVE — level: review. Behavior defined by /ponytail-review skill.',
+);
+
 // No flag → ponytail off → inject nothing (empty stdout, no failure).
 fs.unlinkSync(subFlag);
 result = run('ponytail-subagent.js', subEnv);
