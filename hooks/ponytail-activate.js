@@ -94,3 +94,6 @@ try {
 } catch (e) {
   // Silent fail — stdout closed/EPIPE at hook exit must not surface as a hook failure
 }
+
+process.stdin.resume();
+setTimeout(() => process.exit(0), 1000).unref();
