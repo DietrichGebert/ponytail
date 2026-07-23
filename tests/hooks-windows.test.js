@@ -8,6 +8,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('fs');
+const os = require('os');
 const path = require('path');
 const { spawn } = require('child_process');
 
@@ -104,6 +105,32 @@ test('ponytail-mode-tracker self-exits when stdin never closes (no freeze)', asy
   });
 
   assert.equal(code, 0, 'hook must exit cleanly when stdin never closes');
+});
+
+test('ponytail-activate drains large Codex SessionStart stdin without EPIPE', async () => {
+  const hook = path.join(root, 'hooks', 'ponytail-activate.js');
+  const pluginData = fs.mkdtempSync(path.join(os.tmpdir(), 'ponytail-stdin-'));
+  const child = spawn(process.execPath, [hook], {
+    env: {
+      ...process.env,
+      PLUGIN_DATA: pluginData,
+      PONYTAIL_DEFAULT_MODE: 'full',
+    },
+    stdio: ['pipe', 'ignore', 'ignore'],
+  });
+  const exitCode = new Promise((resolve) => child.once('close', resolve));
+  await new Promise((resolve) => setTimeout(resolve, 50));
+  const writeError = await new Promise((resolve) => {
+    child.stdin.once('error', resolve);
+    child.stdin.end(
+      JSON.stringify({ transcript: 'x'.repeat(2_000_000) }),
+      (error) => resolve(error),
+    );
+  });
+
+  assert.equal(writeError, null);
+  assert.equal(await exitCode, 0);
+  fs.rmSync(pluginData, { recursive: true, force: true });
 });
 
 test('Claude and Codex manifests point at the shared host-specific hook config', () => {
