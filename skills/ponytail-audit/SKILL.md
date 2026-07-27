@@ -28,10 +28,19 @@ Deps the stdlib or platform already ships, single-implementation interfaces,
 factories with one product, wrappers that only delegate, files exporting one
 thing, dead flags and config, hand-rolled stdlib.
 
+## Coverage
+
+Enumerate the tree first (`git ls-files` or equivalent), then hunt. Every
+directory ends the audit reviewed or skipped with a reason — vendored,
+generated, out of scope. Lazy means reading less per file, never silently
+reading fewer files. Verify each cited path:line with `sed -n '<line>p'`
+before it ships.
+
 ## Output
 
 One line per finding, ranked: `<tag> <what to cut>. <replacement>. [path]`.
-End with `net: -<N> lines, -<M> deps possible.` Nothing to cut: `Lean already. Ship.`
+End with `covered: <N>/<M> dirs` then `net: -<N> lines, -<M> deps possible.`
+Nothing to cut: `Lean already. Ship.`
 
 ## Boundaries
 

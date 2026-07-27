@@ -13,6 +13,17 @@ description: >
 Review diffs for unnecessary complexity. One line per finding: location, what
 to cut, what replaces it. The diff's best outcome is getting shorter.
 
+## Coverage
+
+The file list comes from a command, not from vibes: `git diff --stat` (or the
+range under review). Every listed file ends the review in one of two states —
+reviewed, or skipped with a reason. No third state. Lazy means reading less
+per file, never silently reading fewer files.
+
+Before reporting, verify each cited line: `sed -n '<line>p' <file>`. The line
+must contain the finding, or the finding ships with the corrected line. A
+citation pointing at `}` is a finding the author never locates.
+
 ## Format
 
 `L<line>: <tag> <what>. <replacement>.`, or `<file>:L<line>: ...` for
@@ -43,7 +54,9 @@ considered whether all these validation rules are needed at this stage?"
 
 ## Scoring
 
-End with the only metric that matters: `net: -<N> lines possible.`
+End with the only metric that matters: `net: -<N> lines possible.`, preceded
+by one coverage line: `covered: <N>/<M> files` (list the skipped ones with
+their reason).
 
 If there is nothing to cut, say `Lean already. Ship.` and stop.
 
