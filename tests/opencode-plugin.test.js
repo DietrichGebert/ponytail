@@ -18,16 +18,22 @@ process.env.XDG_CONFIG_HOME = tmp;
 delete process.env.PONYTAIL_DEFAULT_MODE;
 const statePath = path.join(tmp, 'opencode', '.ponytail-active');
 
-let loadPlugin, parseCommandFile;
+let mod, parseCommandFile;
 test.before(async () => {
   const url = pathToFileURL(path.join(__dirname, '..', '.opencode', 'plugins', 'ponytail.mjs'));
-  const mod = await import(url);
-  loadPlugin = mod.default;
+  mod = await import(url);
   // The frontmatter parser used to be exported from the plugin module itself.
   // OpenCode's legacy loader treats every exported function as a plugin and
   // tried to invoke it with the plugin context object, which crashed. The
   // parser now lives in its own .cjs sibling; require it directly.
   parseCommandFile = require(path.join(__dirname, '..', '.opencode', 'plugins', 'ponytail-frontmatter.cjs')).parseCommandFile;
+});
+
+test('exports an OpenCode v1 PluginModule descriptor', () => {
+  assert.deepEqual(Object.keys(mod), ['default']);
+  assert.deepEqual(Object.keys(mod.default), ['id', 'server']);
+  assert.equal(mod.default.id, 'ponytail');
+  assert.equal(typeof mod.default.server, 'function');
 });
 
 function transform(hooks) {
@@ -37,7 +43,7 @@ function transform(hooks) {
 
 test('system.transform injects the ruleset at the default mode (full)', async () => {
   try { fs.unlinkSync(statePath); } catch (e) {}
-  const hooks = await loadPlugin({});
+  const hooks = await mod.default.server({});
   const system = await transform(hooks);
   assert.equal(system.length, 1);
   assert.match(system[0], /PONYTAIL MODE ACTIVE — level: full/);
@@ -45,7 +51,7 @@ test('system.transform injects the ruleset at the default mode (full)', async ()
 });
 
 test('command.execute.before persists /ponytail ultra, transform follows it', async () => {
-  const hooks = await loadPlugin({});
+  const hooks = await mod.default.server({});
   await hooks['command.execute.before']({ command: 'ponytail', arguments: 'ultra', sessionID: 's' });
   assert.equal(fs.readFileSync(statePath, 'utf8'), 'ultra');
   const system = await transform(hooks);
@@ -53,7 +59,7 @@ test('command.execute.before persists /ponytail ultra, transform follows it', as
 });
 
 test('/ponytail off persists off and transform injects nothing', async () => {
-  const hooks = await loadPlugin({});
+  const hooks = await mod.default.server({});
   await hooks['command.execute.before']({ command: 'ponytail', arguments: 'off', sessionID: 's' });
   assert.equal(fs.readFileSync(statePath, 'utf8'), 'off');
   const system = await transform(hooks);
@@ -62,7 +68,7 @@ test('/ponytail off persists off and transform injects nothing', async () => {
 
 test('system.transform merges into existing system entry (Qwen compat, #296)', async () => {
   try { fs.unlinkSync(statePath); } catch (e) {}
-  const hooks = await loadPlugin({});
+  const hooks = await mod.default.server({});
   const output = { system: ['You are a helpful assistant.'] };
   await hooks['experimental.chat.system.transform']({ model: {} }, output);
   assert.equal(output.system.length, 1, 'must not add a second system entry');
@@ -71,7 +77,7 @@ test('system.transform merges into existing system entry (Qwen compat, #296)', a
 });
 
 test('unsupported /ponytail arguments do not reset the current mode', async () => {
-  const hooks = await loadPlugin({});
+  const hooks = await mod.default.server({});
   fs.writeFileSync(statePath, 'ultra');
   await hooks['command.execute.before']({ command: 'ponytail', arguments: 'status', sessionID: 's' });
   assert.equal(fs.readFileSync(statePath, 'utf8'), 'ultra');
@@ -79,7 +85,7 @@ test('unsupported /ponytail arguments do not reset the current mode', async () =
 
 test('unrelated commands do not touch the flag', async () => {
   try { fs.unlinkSync(statePath); } catch (e) {}
-  const hooks = await loadPlugin({});
+  const hooks = await mod.default.server({});
   await hooks['command.execute.before']({ command: 'commit', arguments: 'x', sessionID: 's' });
   assert.equal(fs.existsSync(statePath), false);
 });

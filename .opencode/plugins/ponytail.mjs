@@ -43,7 +43,7 @@ function writeMode(mode) {
   fs.writeFileSync(statePath, mode);
 }
 
-export default async ({ client } = {}) => {
+async function server({ client } = {}) {
   const log = (level, message) => {
     try { client && client.app && client.app.log({ body: { service: 'ponytail', level, message } }); } catch (e) {}
   };
@@ -96,4 +96,6 @@ export default async ({ client } = {}) => {
       log('info', 'ponytail ' + mode);
     },
   };
-};
+}
+
+export default { id: 'ponytail', server };
