@@ -253,7 +253,8 @@ Codex 확장을 쓰는 VS Code는 이 저장소가 함께 싣는 `AGENTS.md`를 
 
 | 명령 | 하는 일 |
 |---------|--------------|
-| `/ponytail [lite \| full \| ultra \| off]` | 강도를 정하거나, 끈다. 인수가 없으면 지금 레벨을 알려 준다. |
+| `/ponytail [lite \| full \| ultra \| off]` | 강도를 정하거나, 끈다. 인수가 없으면 지금 레벨을 알려 준다. 세션 한정이라, 새 세션은 기본값에서 시작한다. |
+| `/ponytail default [lite \| full \| ultra \| off]` | 기본값을 저장해서, 새 세션이 그 레벨에서 시작하게 한다. |
 | `/ponytail-review` | 지금 diff를 과잉 구현 관점에서 훑고, 삭제 목록을 돌려준다. |
 | `/ponytail-audit` | diff만이 아니라 저장소 전체를 과잉 구현 관점에서 감사한다. |
 | `/ponytail-debt` | 미뤄 둔 `ponytail:` 간소화들을 장부로 모아, "나중에"가 "영영"이 되지 않게 한다. |

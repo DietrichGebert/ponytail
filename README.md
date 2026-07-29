@@ -286,7 +286,8 @@ These remove the plugin's own files. They leave behind a small amount of state p
 
 | Command | What it does |
 |---------|--------------|
-| `/ponytail [lite \| full \| ultra \| off]` | Set the intensity, or turn it off. No argument reports the current level. |
+| `/ponytail [lite \| full \| ultra \| off]` | Set the intensity, or turn it off. No argument reports the current level. Session-scoped: a new session starts at the default. |
+| `/ponytail default [lite \| full \| ultra \| off]` | Persist the default, so new sessions start there. |
 | `/ponytail-review` | Review the current diff for over-engineering, hands back a delete-list. |
 | `/ponytail-audit` | Audit the whole repo for over-engineering, not just the diff. |
 | `/ponytail-debt` | Harvest the `ponytail:` shortcuts you've deferred into a ledger, so "later" doesn't become "never". |
