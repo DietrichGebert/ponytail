@@ -77,6 +77,14 @@ test('unsupported /ponytail arguments do not reset the current mode', async () =
   assert.equal(fs.readFileSync(statePath, 'utf8'), 'ultra');
 });
 
+test('bare /ponytail reports the level without overwriting the session mode (#639)', async () => {
+  const hooks = await loadPlugin({});
+  fs.writeFileSync(statePath, 'ultra');
+  // No arguments used to persist getDefaultMode() (full), dropping the live level.
+  await hooks['command.execute.before']({ command: 'ponytail', arguments: '', sessionID: 's' });
+  assert.equal(fs.readFileSync(statePath, 'utf8'), 'ultra');
+});
+
 test('unrelated commands do not touch the flag', async () => {
   try { fs.unlinkSync(statePath); } catch (e) {}
   const hooks = await loadPlugin({});

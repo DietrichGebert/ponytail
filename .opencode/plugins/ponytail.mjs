@@ -88,9 +88,15 @@ export default async ({ client } = {}) => {
     // synchronous store if same-turn switching ever matters.
     'command.execute.before': async (input) => {
       if (!input || input.command !== 'ponytail') return;
-      // `off` is persisted like any mode; the transform reads it and stays silent.
       const args = String(input.arguments || '').trim();
-      const mode = args ? normalizePersistedMode(args) : getDefaultMode();
+      // Bare /ponytail reports the current level; it must not overwrite the
+      // session mode with the default (matches Claude Code and the README, #639).
+      if (!args) {
+        log('info', 'ponytail ' + readMode());
+        return;
+      }
+      // `off` is persisted like any mode; the transform reads it and stays silent.
+      const mode = normalizePersistedMode(args);
       if (!mode) return;
       writeMode(mode);
       log('info', 'ponytail ' + mode);
