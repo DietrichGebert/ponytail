@@ -1,15 +1,17 @@
 #!/usr/bin/env node
-// Smoke test for the Kimi Code adapter. The adapter is a single thin manifest
-// (kimi.plugin.json, repo root takes precedence over .kimi-plugin/plugin.json)
-// that reuses the repo's existing files: AGENTS.md via systemPromptPath for
-// always-on rules, skills/ for the six agent skills, sessionStart.skill to
-// activate ponytail every session, and the shared Markdown command files in
-// .opencode/command/ — already the exact frontmatter + $ARGUMENTS shape Kimi
-// Code registers as /ponytail:<command>. Kimi's hook payload differs from the
-// Claude/Codex event shapes ponytail's lifecycle hooks emit, so the adapter
-// declares no hooks. This test fails if the manifest is removed, drifts off
-// the pinned version, points at files that no longer exist, or starts carrying
-// fields Kimi Code would flag as diagnostics.
+// Smoke test for the Kimi Code adapter. The adapter is a self-contained
+// plugin dir (.kimi-plugin/): the manifest (plugin.json, recognized by Kimi
+// Code next to the root-level kimi.plugin.json form) wires the repo's shared
+// files — AGENTS.md via systemPromptPath for always-on rules, skills/ for the
+// six agent skills, sessionStart.skill to activate ponytail every session —
+// and registers its own copy of the Markdown commands in .kimi-plugin/commands/
+// as /ponytail:<command>. The command copies start out identical to
+// .opencode/command/*.md and a test below keeps the two adapters from silently
+// drifting apart. Kimi's hook payload differs from the Claude/Codex event
+// shapes ponytail's lifecycle hooks emit, so the adapter declares no hooks.
+// This test fails if the manifest is removed, drifts off the pinned version,
+// points at files that no longer exist, or starts carrying fields Kimi Code
+// would flag as diagnostics.
 //
 // Manifest spec: https://www.kimi.com/code/docs/en/kimi-code-cli/customization/plugins.html
 
@@ -19,7 +21,7 @@ const fs = require('fs');
 const path = require('path');
 
 const root = path.join(__dirname, '..');
-const MANIFEST = 'kimi.plugin.json';
+const MANIFEST = path.join('.kimi-plugin', 'plugin.json');
 // Floating refs are a supply-chain footgun; the manifest version must be pinned.
 const PINNED_SEMVER = /^\d+\.\d+\.\d+$/;
 // The name field doubles as the plugin id (and the /ponytail:<command> prefix).
@@ -138,5 +140,25 @@ test('every registered command resolves in the declared commands dir', () => {
     // Kimi Code parses frontmatter for name/description; the rest is the prompt.
     assert.match(body, /^---\r?\n[\s\S]*?description:.+?\r?\n---\r?\n/, `${rel} lost its frontmatter description`);
     assert.ok(body.replace(/^---\r?\n[\s\S]*?\r?\n---\r?\n/, '').trim().length > 0, `${rel} has an empty prompt body`);
+  }
+});
+
+// The Kimi adapter keeps its own copy of the command files so the two adapters
+// can evolve independently — but the copies start out identical, and a change
+// to one almost always applies to the other. Byte-compare against the OpenCode
+// set so a one-sided edit fails loudly instead of drifting (same convention as
+// scripts/check-rule-copies.js). If a divergence is ever deliberate, this is
+// the reminder to say so in the test.
+test('command files stay in sync with the OpenCode set', () => {
+  const manifest = loadManifest();
+  const kimiDir = [].concat(manifest.commands)[0];
+  const opencodeDir = path.join('.opencode', 'command');
+  const kimiFiles = fs.readdirSync(path.join(root, kimiDir)).filter((f) => f.endsWith('.md')).sort();
+  const opencodeFiles = fs.readdirSync(path.join(root, opencodeDir)).filter((f) => f.endsWith('.md')).sort();
+  assert.deepEqual(kimiFiles, opencodeFiles, 'the two command dirs ship different command sets');
+  for (const file of kimiFiles) {
+    const kimiBody = read(path.join(kimiDir, file)).replace(/\r\n/g, '\n');
+    const opencodeBody = read(path.join(opencodeDir, file)).replace(/\r\n/g, '\n');
+    assert.equal(kimiBody, opencodeBody, `${file} drifted from .opencode/command/${file}`);
   }
 });

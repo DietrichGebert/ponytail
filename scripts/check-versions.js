@@ -25,7 +25,7 @@ const VERSION_FILES = [
   '.github/plugin/plugin.json',  // Copilot plugin
   '.qoder-plugin/plugin.json',   // Qoder plugin
   'gemini-extension.json',       // Gemini CLI extension
-  'kimi.plugin.json',            // Kimi Code plugin
+  '.kimi-plugin/plugin.json',    // Kimi Code plugin
   'package.json',                // pi-package / repo root
   'ponytail-mcp/package.json',   // MCP server (private, internal-only)
 ];

@@ -202,7 +202,7 @@ For full plugin-tier support (automatic mode activation + ruleset injection on e
 
 Or run `/plugins`, switch to the **Custom** tab, and paste the repo URL. Run `/reload` (or `/new`) after installing.
 
-The plugin manifest ([`kimi.plugin.json`](kimi.plugin.json)) ships the six skills, registers the commands as `/ponytail:ponytail`, `/ponytail:ponytail-review`, and so on, injects `AGENTS.md` into the system prompt, and session-starts the ponytail skill — always-on with zero setup. Level switches (`/ponytail:ponytail ultra`) last for the session. The adapter declares no hooks: Kimi Code's hook payload differs from the Claude/Codex event shapes ponytail's lifecycle hooks emit, and the system prompt plus session-start skill already cover always-on behavior.
+The plugin manifest ([`.kimi-plugin/plugin.json`](.kimi-plugin/plugin.json)) ships the six skills, registers the commands from [`.kimi-plugin/commands/`](.kimi-plugin/commands/) as `/ponytail:ponytail`, `/ponytail:ponytail-review`, and so on, injects `AGENTS.md` into the system prompt, and session-starts the ponytail skill — always-on with zero setup. Level switches (`/ponytail:ponytail ultra`) last for the session. The adapter declares no hooks: Kimi Code's hook payload differs from the Claude/Codex event shapes ponytail's lifecycle hooks emit, and the system prompt plus session-start skill already cover always-on behavior.
 
 ### Antigravity CLI
 

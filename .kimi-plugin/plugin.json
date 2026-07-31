@@ -14,7 +14,7 @@
     "shortDescription": "Lazy senior dev mode: YAGNI, stdlib first, the least code that works."
   },
   "skills": "./skills/",
-  "commands": "./.opencode/command/",
+  "commands": "./.kimi-plugin/commands/",
   "systemPromptPath": "./AGENTS.md",
   "sessionStart": {
     "skill": "ponytail"
