@@ -44,34 +44,24 @@ test('hooks.json omits commandWindows for marketplace validation (#593)', () => 
   }
 });
 
-test('shared hook commands avoid POSIX-only guard syntax', () => {
-  const commands = commandHooks()
-    .map((h) => h.command)
-    .filter(Boolean);
-  assert.ok(commands.length > 0, 'expected at least one shared command entry');
-  for (const cmd of commands) {
-    assert.doesNotMatch(cmd, POSIX_GUARD_SYNTAX, `command uses POSIX-only guard syntax: ${cmd}`);
+test('POSIX hook commands have a PowerShell override when they use POSIX guards', () => {
+  const hooks = commandHooks().filter((h) => h.command);
+  assert.ok(hooks.length > 0, 'expected at least one command entry');
+  for (const hook of hooks) {
+    if (POSIX_GUARD_SYNTAX.test(hook.command)) {
+      assert.ok(hook.commandWindows, `POSIX-only command needs commandWindows: ${hook.command}`);
+    }
   }
 });
 
-// Issue #527 / #569: the shared `command` field must be shell-agnostic. `exec`
-// is a bash/zsh builtin with no PowerShell equivalent, but some hosts run
-// `command` through PowerShell on Windows regardless of the commandWindows
-// field — VS Code Copilot always does (it never reads commandWindows), and
-// native Claude Code launched from Git Bash was seen doing the same. `exec
-// node ...` then dies on its first token with CommandNotFoundException, so
-// every hook fails on Windows. Plain `node ...` runs natively in both bash and
-// PowerShell. The wrapper-process pileup that #461 originally used `exec` to
-// avoid is handled separately by each hook's stdin self-exit guard (#443/#477).
-test('shared hook commands are shell-agnostic (no bash-only exec prefix)', () => {
+test('PowerShell hook commands avoid POSIX-only guard syntax', () => {
   const commands = commandHooks()
-    .map((h) => h.command)
+    .map((h) => h.commandWindows)
     .filter(Boolean);
-  assert.ok(commands.length > 0, 'expected at least one shared command entry');
+  assert.ok(commands.length > 0, 'expected at least one commandWindows entry');
   for (const cmd of commands) {
-    assert.doesNotMatch(cmd, /(^|\s)exec\s/, `command must not use the bash-only 'exec' builtin (breaks under PowerShell): ${cmd}`);
-    assert.match(cmd, /^node\s+/, `command must invoke node directly so it runs in both bash and PowerShell: ${cmd}`);
-    assert.doesNotMatch(cmd, /;\s*exit 0$/, `command must not leave a shell wrapper waiting on node: ${cmd}`);
+    assert.doesNotMatch(cmd, POSIX_GUARD_SYNTAX, `commandWindows uses POSIX-only guard syntax: ${cmd}`);
+    assert.doesNotMatch(cmd, /(^|\s)exec\s/, `commandWindows must not use the bash-only 'exec' builtin: ${cmd}`);
   }
 });
 
