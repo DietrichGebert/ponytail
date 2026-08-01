@@ -9,13 +9,9 @@ const isCodex = !isCopilot && Boolean(process.env.PLUGIN_DATA);
 const isQoder = !isCopilot && !isCodex && Boolean(process.env.QODER_SESSION_ID);
 
 let stateDir = getClaudeDir();
-if (isCodex) {
-  stateDir = process.env.PLUGIN_DATA;
-} else if (isCopilot) {
-  stateDir = process.env.COPILOT_PLUGIN_DATA;
-} else if (isQoder) {
-  stateDir = path.join(os.homedir(), '.qoder');
-}
+if (isCodex) stateDir = process.env.PLUGIN_DATA;
+if (isCopilot) stateDir = process.env.COPILOT_PLUGIN_DATA;
+if (isQoder) stateDir = path.join(os.homedir(), '.qoder');
 
 const statePath = path.join(stateDir, STATE_FILE);
 
