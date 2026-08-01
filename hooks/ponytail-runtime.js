@@ -6,12 +6,18 @@ const { getClaudeDir, getGrokPluginDataDir } = require('./ponytail-config');
 const STATE_FILE = '.ponytail-active';
 const isCopilot = Boolean(process.env.COPILOT_PLUGIN_DATA);
 const isCodex = !isCopilot && Boolean(process.env.PLUGIN_DATA);
-const isGrok = Boolean(process.env.GROK_PLUGIN_DATA || process.env.GROK_PLUGIN_ROOT);
+// Prefer GROK_PLUGIN_DATA for host detection (state dir). ROOT alone still
+// identifies Grok so hooks that only export ROOT do not fall through to Claude.
+const isGrok = !isCopilot && !isCodex &&
+  Boolean(process.env.GROK_PLUGIN_DATA || process.env.GROK_PLUGIN_ROOT);
 const isQoder = !isCopilot && !isCodex && !isGrok && Boolean(process.env.QODER_SESSION_ID);
 
 let stateDir = getClaudeDir();
 if (isGrok) {
-  stateDir = getGrokPluginDataDir() || process.env.GROK_PLUGIN_DATA || getClaudeDir();
+  stateDir = getGrokPluginDataDir()
+    || process.env.GROK_PLUGIN_DATA
+    || process.env.GROK_PLUGIN_ROOT
+    || getClaudeDir();
 } else if (isCodex) {
   stateDir = process.env.PLUGIN_DATA;
 } else if (isCopilot) {

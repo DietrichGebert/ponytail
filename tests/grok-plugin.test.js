@@ -33,6 +33,33 @@ test('getGrokPluginDataDir is exported and returns GROK_PLUGIN_DATA', () => {
   }
 });
 
+test('root plugin.json is path overrides only (hooks, no MCP)', () => {
+  const manifest = JSON.parse(fs.readFileSync(path.join(root, 'plugin.json'), 'utf8'));
+  assert.equal(manifest.name, 'ponytail');
+  assert.equal(manifest.hooks, '.grok-plugin/hooks.json');
+  assert.equal(manifest.mcpServers, undefined);
+  assert.ok(!fs.existsSync(path.join(root, 'hooks', 'hooks.json')), 'no root hooks/hooks.json (Gemini)');
+  assert.ok(!fs.existsSync(path.join(root, '.grok-plugin', '.mcp.json')), 'no Grok MCP wiring');
+});
+
+test('.grok-plugin/hooks.json registers lifecycle events with plain node', () => {
+  const config = JSON.parse(fs.readFileSync(path.join(root, '.grok-plugin', 'hooks.json'), 'utf8'));
+  for (const event of ['SessionStart', 'UserPromptSubmit', 'SubagentStart']) {
+    assert.ok(config.hooks[event], `missing ${event}`);
+  }
+  const commands = Object.values(config.hooks)
+    .flat()
+    .flatMap((entry) => entry.hooks)
+    .map((h) => h.command)
+    .filter(Boolean);
+  assert.ok(commands.length >= 3);
+  for (const cmd of commands) {
+    assert.match(cmd, /^node\s+/);
+    assert.doesNotMatch(cmd, /(^|\s)exec\s/);
+    assert.match(cmd, /\$\{GROK_PLUGIN_ROOT\}/);
+  }
+});
+
 test('SessionStart activate writes mode under GROK_PLUGIN_DATA and emits ruleset', () => {
   const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'ponytail-grok-'));
   process.on('exit', () => fs.rmSync(temp, { recursive: true, force: true }));
@@ -54,6 +81,7 @@ test('SessionStart activate writes mode under GROK_PLUGIN_DATA and emits ruleset
     PLUGIN_DATA: '',
     COPILOT_PLUGIN_DATA: '',
     CLAUDE_CONFIG_DIR: '',
+    QODER_SESSION_ID: '',
   });
 
   assert.equal(result.status, 0, result.stderr || result.stdout);
@@ -90,6 +118,7 @@ test('mode-tracker under Grok env updates GROK_PLUGIN_DATA only', () => {
     GROK_PLUGIN_ROOT: path.join(temp, 'root'),
     PLUGIN_DATA: '',
     COPILOT_PLUGIN_DATA: '',
+    QODER_SESSION_ID: '',
   };
 
   const result = run(
@@ -118,6 +147,11 @@ test('Qoder path still emits JSON when Grok env is unset', () => {
   });
   assert.equal(result.status, 0, result.stderr || result.stdout);
   const parsed = JSON.parse(result.stdout);
-  assert.ok(parsed.hookSpecificOutput || Object.keys(parsed).length >= 0);
-  assert.match(JSON.stringify(parsed), /PONYTAIL MODE ACTIVE|additionalContext|hookSpecificOutput/);
+  assert.equal(parsed.hookSpecificOutput.hookEventName, 'SessionStart');
+  assert.match(parsed.hookSpecificOutput.additionalContext, /PONYTAIL MODE ACTIVE — level: full/);
+  assert.equal(parsed.systemMessage, undefined);
+  assert.equal(
+    fs.readFileSync(path.join(home, '.qoder', '.ponytail-active'), 'utf8'),
+    'full',
+  );
 });

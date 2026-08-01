@@ -259,7 +259,7 @@ Enable the plugin (off by default): `/plugins` → Plugins → Space on `ponytai
 enabled = ["ponytail"]
 ```
 
-Start a new session (or reload plugins). Skills show as `/ponytail`, `/ponytail-review`, `/ponytail-audit`, `/ponytail-debt`, `/ponytail-gain`, `/ponytail-help`. Verify with `grok inspect`. Node on `PATH` is required for lifecycle hooks (same note as Claude/Codex). Thin adapter: `.grok-plugin/` + root `plugin.json` overrides; hooks reuse the shared `hooks/ponytail-*.js` scripts.
+Start a new session (or reload plugins). Skills show as `/ponytail`, `/ponytail-review`, `/ponytail-audit`, `/ponytail-debt`, `/ponytail-gain`, `/ponytail-help`. Verify with `grok inspect`. Node on `PATH` is required for lifecycle hooks (same note as Claude/Codex). Thin adapter: `.grok-plugin/hooks.json` via root `plugin.json`; hooks reuse the shared `hooks/ponytail-*.js` scripts.
 
 `AGENTS.md` still works instruction-only from a checkout without the plugin. Optional default level: `PONYTAIL_DEFAULT_MODE` or `~/.config/ponytail/config.json`.
 
@@ -311,7 +311,7 @@ These remove the plugin's own files. They leave behind a small amount of state p
 | `/ponytail-gain` | Show the measured impact scoreboard (less code, less cost, more speed) from the benchmark. |
 | `/ponytail-help` | Quick reference for the commands above. |
 
-Commands need a skill-capable host (Claude Code, Codex, Devin CLI, OpenCode, Gemini, pi, Swival, Hermes Agent, Qoder). In Codex they're skills, invoke with `@` (`@ponytail-review`). The instruction-only adapters (Cursor, Windsurf, Cline, Copilot, Kiro, Antigravity) load the always-on ruleset without the commands.
+Commands need a skill-capable host (Claude Code, Codex, Devin CLI, OpenCode, Gemini, pi, Swival, Hermes Agent, Qoder, Grok Build). In Codex they're skills, invoke with `@` (`@ponytail-review`). The instruction-only adapters (Cursor, Windsurf, Cline, Copilot, Kiro, Antigravity) load the always-on ruleset without the commands.
 
 ## Development
 

@@ -37,6 +37,9 @@ delete process.env.COPILOT_PLUGIN_DATA;
 // A leaked subagent matcher would scope the inject-into-every-subagent assertions.
 delete process.env.PONYTAIL_SUBAGENT_MATCHER;
 delete process.env.QODER_SESSION_ID;
+// Grok host signals must not leak into Codex/Claude/Qoder branches.
+delete process.env.GROK_PLUGIN_DATA;
+delete process.env.GROK_PLUGIN_ROOT;
 
 const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'ponytail-hooks-'));
 // Runs on normal exit and on assertion-throw exit; force makes it idempotent.
