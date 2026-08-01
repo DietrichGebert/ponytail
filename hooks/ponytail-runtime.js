@@ -1,23 +1,20 @@
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
-const { getClaudeDir, getGrokPluginDataDir } = require('./ponytail-config');
+const { getClaudeDir } = require('./ponytail-config');
 
 const STATE_FILE = '.ponytail-active';
 const isCopilot = Boolean(process.env.COPILOT_PLUGIN_DATA);
 const isCodex = !isCopilot && Boolean(process.env.PLUGIN_DATA);
-// Prefer GROK_PLUGIN_DATA for host detection (state dir). ROOT alone still
-// identifies Grok so hooks that only export ROOT do not fall through to Claude.
+// Grok sets GROK_PLUGIN_DATA / GROK_PLUGIN_ROOT (and CLAUDE_PLUGIN_* aliases).
+// Detect after Copilot/Codex so a leaked Grok env cannot steal those hosts.
 const isGrok = !isCopilot && !isCodex &&
   Boolean(process.env.GROK_PLUGIN_DATA || process.env.GROK_PLUGIN_ROOT);
 const isQoder = !isCopilot && !isCodex && !isGrok && Boolean(process.env.QODER_SESSION_ID);
 
 let stateDir = getClaudeDir();
 if (isGrok) {
-  stateDir = getGrokPluginDataDir()
-    || process.env.GROK_PLUGIN_DATA
-    || process.env.GROK_PLUGIN_ROOT
-    || getClaudeDir();
+  stateDir = process.env.GROK_PLUGIN_DATA || process.env.GROK_PLUGIN_ROOT || getClaudeDir();
 } else if (isCodex) {
   stateDir = process.env.PLUGIN_DATA;
 } else if (isCopilot) {
@@ -53,12 +50,6 @@ function writeHookOutput(event, mode, context = '') {
       event === 'SessionStart' && context ? { additionalContext: context } : {}));
     return;
   }
-  if (isGrok) {
-    // Grok captures stdout from plugin hooks for annotations/scrollback.
-    // Emit the ruleset on SessionStart. Skills provide the main behavior and slash commands.
-    if (context) process.stdout.write(context);
-    return;
-  }
   if (isCodex) {
     const output = { systemMessage: `PONYTAIL:${mode.toUpperCase()}` };
     if (context) {
@@ -83,8 +74,8 @@ function writeHookOutput(event, mode, context = '') {
     process.stdout.write(JSON.stringify(output));
     return;
   }
-  // Native Claude: SessionStart accepts raw stdout, but SubagentStart needs the
-  // hookSpecificOutput JSON form or the context is dropped.
+  // Claude and Grok (Claude-compatible hook surface): SessionStart is raw
+  // stdout; SubagentStart needs hookSpecificOutput JSON or the context is dropped.
   if (event === 'SubagentStart') {
     process.stdout.write(JSON.stringify(
       { hookSpecificOutput: { hookEventName: event, additionalContext: context } }));

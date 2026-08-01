@@ -246,7 +246,7 @@ grok plugin install DietrichGebert/ponytail --trust
 enabled = ["ponytail"]
 ```
 
-새 세션을 열거나 플러그인을 다시 로드한다. 스킬은 `/ponytail`, `/ponytail-review`, `/ponytail-audit`, `/ponytail-debt`, `/ponytail-gain`, `/ponytail-help`로 보인다. `grok inspect`로 확인. 훅에는 `PATH`에 `node`가 필요하다. 어댑터는 `.grok-plugin/`과 루트 `plugin.json` 오버라이드이며, 훅은 공유 `hooks/ponytail-*.js`를 쓴다.
+새 세션을 열거나 플러그인을 다시 로드한다. 스킬은 `/ponytail`, `/ponytail-review`, `/ponytail-audit`, `/ponytail-debt`, `/ponytail-gain`, `/ponytail-help`로 보인다. `grok inspect`로 확인. 훅에는 `PATH`에 `node`가 필요하다. 어댑터는 루트 `plugin.json`이 Claude/Codex 공유 훅 맵을 가리키고, 모드 상태는 `GROK_PLUGIN_DATA`를 쓴다.
 
 체크아웃의 `AGENTS.md`만으로도 지시문 전용 모드는 된다. 기본 레벨: `PONYTAIL_DEFAULT_MODE` 또는 `~/.config/ponytail/config.json`. 제거: `grok plugin uninstall ponytail`.
 

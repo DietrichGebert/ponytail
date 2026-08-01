@@ -12,15 +12,12 @@ const path = require('path');
 const { spawn } = require('child_process');
 
 const root = path.join(__dirname, '..');
-const HOOKS_JSON_FILES = [
-  'hooks/claude-codex-hooks.json',
-  '.grok-plugin/hooks.json',
-];
-// Each host manifest must point at an explicit hooks map (never root hooks/hooks.json).
+const HOOKS_JSON = 'hooks/claude-codex-hooks.json';
+// Claude, Codex, and Grok (root plugin.json) all point at the shared map.
 const HOST_PLUGIN_MANIFESTS = {
   '.claude-plugin/plugin.json': './hooks/claude-codex-hooks.json',
   '.codex-plugin/plugin.json': './hooks/claude-codex-hooks.json',
-  'plugin.json': '.grok-plugin/hooks.json',
+  'plugin.json': './hooks/claude-codex-hooks.json',
 };
 // cmd.exe variable syntax (%FOO%); PowerShell leaves it literal, breaking the path.
 const CMD_VAR_SYNTAX = /%[A-Za-z_][A-Za-z0-9_]*%/;
@@ -32,12 +29,10 @@ const HOOK_SCRIPT = /hooks[\\/]([\w.-]+\.(?:js|mjs|cjs|ps1|sh))/;
 // Read inside each case so a missing/malformed file fails as a clean assertion,
 // not a load-time crash.
 function commandHooks() {
-  return HOOKS_JSON_FILES.flatMap((rel) => {
-    const config = JSON.parse(fs.readFileSync(path.join(root, rel), 'utf8'));
-    return Object.values(config.hooks)
-      .flat()
-      .flatMap((entry) => entry.hooks);
-  });
+  const config = JSON.parse(fs.readFileSync(path.join(root, HOOKS_JSON), 'utf8'));
+  return Object.values(config.hooks)
+    .flat()
+    .flatMap((entry) => entry.hooks);
 }
 
 test('every commandWindows uses PowerShell $env: syntax, not cmd.exe %VAR%', () => {

@@ -73,14 +73,6 @@ function getClaudeDir() {
   return process.env.CLAUDE_CONFIG_DIR || path.join(os.homedir(), '.claude');
 }
 
-function getGrokPluginDataDir() {
-  // Grok Build plugin hooks: mode flag and related state under GROK_PLUGIN_DATA.
-  if (process.env.GROK_PLUGIN_DATA) {
-    return process.env.GROK_PLUGIN_DATA;
-  }
-  return null;
-}
-
 function getDefaultMode() {
   // 1. Environment variable (highest priority)
   const envMode = process.env.PONYTAIL_DEFAULT_MODE;
@@ -166,7 +158,6 @@ module.exports = {
   getConfigDir,
   getConfigPath,
   getClaudeDir,
-  getGrokPluginDataDir,
   getHideStatus,
   getQuietStartup,
   isShellSafe,

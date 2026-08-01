@@ -1,4 +1,4 @@
 {
   "name": "ponytail",
-  "hooks": ".grok-plugin/hooks.json"
+  "hooks": "./hooks/claude-codex-hooks.json"
 }

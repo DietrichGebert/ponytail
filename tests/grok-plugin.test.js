@@ -1,7 +1,6 @@
 #!/usr/bin/env node
-// Smoke test for the Grok Build adapter: SessionStart must not crash when
-// GROK_PLUGIN_* is set, must write mode state under GROK_PLUGIN_DATA, and must
-// emit the ruleset on stdout (raw text, not Claude/Codex JSON wrappers).
+// Grok Build adapter: mode state under GROK_PLUGIN_DATA, shared Claude/Codex
+// hook map via root plugin.json, Claude-compatible hook output shapes.
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -20,76 +19,45 @@ function run(script, env, input = '') {
   });
 }
 
-test('getGrokPluginDataDir is exported and returns GROK_PLUGIN_DATA', () => {
-  const { getGrokPluginDataDir } = require('../hooks/ponytail-config');
-  assert.equal(typeof getGrokPluginDataDir, 'function');
-  const prev = process.env.GROK_PLUGIN_DATA;
-  process.env.GROK_PLUGIN_DATA = '/tmp/grok-plugin-data-test';
-  try {
-    assert.equal(getGrokPluginDataDir(), '/tmp/grok-plugin-data-test');
-  } finally {
-    if (prev === undefined) delete process.env.GROK_PLUGIN_DATA;
-    else process.env.GROK_PLUGIN_DATA = prev;
-  }
-});
+const cleanHost = {
+  PLUGIN_DATA: '',
+  COPILOT_PLUGIN_DATA: '',
+  CLAUDE_CONFIG_DIR: '',
+  QODER_SESSION_ID: '',
+};
 
-test('root plugin.json is path overrides only (hooks, no MCP)', () => {
+test('root plugin.json reuses the shared Claude/Codex hooks map', () => {
   const manifest = JSON.parse(fs.readFileSync(path.join(root, 'plugin.json'), 'utf8'));
   assert.equal(manifest.name, 'ponytail');
-  assert.equal(manifest.hooks, '.grok-plugin/hooks.json');
+  assert.equal(manifest.hooks, './hooks/claude-codex-hooks.json');
   assert.equal(manifest.mcpServers, undefined);
   assert.ok(!fs.existsSync(path.join(root, 'hooks', 'hooks.json')), 'no root hooks/hooks.json (Gemini)');
-  assert.ok(!fs.existsSync(path.join(root, '.grok-plugin', '.mcp.json')), 'no Grok MCP wiring');
+  assert.ok(
+    !fs.existsSync(path.join(root, '.grok-plugin', 'hooks.json')),
+    'no Grok-only hooks fork',
+  );
 });
 
-test('.grok-plugin/hooks.json registers lifecycle events with plain node', () => {
-  const config = JSON.parse(fs.readFileSync(path.join(root, '.grok-plugin', 'hooks.json'), 'utf8'));
-  for (const event of ['SessionStart', 'UserPromptSubmit', 'SubagentStart']) {
-    assert.ok(config.hooks[event], `missing ${event}`);
-  }
-  const commands = Object.values(config.hooks)
-    .flat()
-    .flatMap((entry) => entry.hooks)
-    .map((h) => h.command)
-    .filter(Boolean);
-  assert.ok(commands.length >= 3);
-  for (const cmd of commands) {
-    assert.match(cmd, /^node\s+/);
-    assert.doesNotMatch(cmd, /(^|\s)exec\s/);
-    assert.match(cmd, /\$\{GROK_PLUGIN_ROOT\}/);
-  }
-});
-
-test('SessionStart activate writes mode under GROK_PLUGIN_DATA and emits ruleset', () => {
+test('SessionStart under Grok writes mode to GROK_PLUGIN_DATA and emits ruleset', () => {
   const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'ponytail-grok-'));
   process.on('exit', () => fs.rmSync(temp, { recursive: true, force: true }));
 
   const home = path.join(temp, 'home');
   const grokData = path.join(temp, 'grok-data');
-  const grokRoot = path.join(temp, 'grok-root');
   fs.mkdirSync(home, { recursive: true });
   fs.mkdirSync(grokData, { recursive: true });
-  fs.mkdirSync(grokRoot, { recursive: true });
 
   const result = run('ponytail-activate.js', {
     HOME: home,
     USERPROFILE: home,
     GROK_PLUGIN_DATA: grokData,
-    GROK_PLUGIN_ROOT: grokRoot,
+    GROK_PLUGIN_ROOT: path.join(temp, 'root'),
     PONYTAIL_DEFAULT_MODE: 'full',
-    // Keep other hosts from winning if the shell leaks them.
-    PLUGIN_DATA: '',
-    COPILOT_PLUGIN_DATA: '',
-    CLAUDE_CONFIG_DIR: '',
-    QODER_SESSION_ID: '',
+    ...cleanHost,
   });
 
   assert.equal(result.status, 0, result.stderr || result.stdout);
-  assert.doesNotMatch(result.stderr || '', /getGrokPluginDataDir is not a function/);
-  assert.equal(
-    fs.readFileSync(path.join(grokData, '.ponytail-active'), 'utf8'),
-    'full',
-  );
+  assert.equal(fs.readFileSync(path.join(grokData, '.ponytail-active'), 'utf8'), 'full');
   assert.equal(
     fs.existsSync(path.join(home, '.claude', '.ponytail-active')),
     false,
@@ -97,11 +65,35 @@ test('SessionStart activate writes mode under GROK_PLUGIN_DATA and emits ruleset
   );
   assert.match(result.stdout, /PONYTAIL MODE ACTIVE — level: full/);
   assert.doesNotMatch(result.stdout, /STATUSLINE SETUP NEEDED/);
-  // Raw text for Grok — not a Claude/Codex/Copilot JSON envelope.
+  // Claude-compatible SessionStart: raw ruleset text, not a JSON envelope.
   assert.throws(() => JSON.parse(result.stdout));
 });
 
-test('mode-tracker under Grok env updates GROK_PLUGIN_DATA only', () => {
+test('SubagentStart under Grok uses Claude-compatible hookSpecificOutput JSON', () => {
+  const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'ponytail-grok-sub-'));
+  process.on('exit', () => fs.rmSync(temp, { recursive: true, force: true }));
+
+  const home = path.join(temp, 'home');
+  const grokData = path.join(temp, 'grok-data');
+  fs.mkdirSync(home, { recursive: true });
+  fs.mkdirSync(grokData, { recursive: true });
+  fs.writeFileSync(path.join(grokData, '.ponytail-active'), 'full');
+
+  const result = run('ponytail-subagent.js', {
+    HOME: home,
+    USERPROFILE: home,
+    GROK_PLUGIN_DATA: grokData,
+    GROK_PLUGIN_ROOT: path.join(temp, 'root'),
+    ...cleanHost,
+  });
+
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+  const parsed = JSON.parse(result.stdout);
+  assert.equal(parsed.hookSpecificOutput.hookEventName, 'SubagentStart');
+  assert.match(parsed.hookSpecificOutput.additionalContext, /PONYTAIL MODE ACTIVE — level: full/);
+});
+
+test('mode-tracker under Grok updates GROK_PLUGIN_DATA only', () => {
   const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'ponytail-grok-tracker-'));
   process.on('exit', () => fs.rmSync(temp, { recursive: true, force: true }));
 
@@ -111,19 +103,15 @@ test('mode-tracker under Grok env updates GROK_PLUGIN_DATA only', () => {
   fs.mkdirSync(grokData, { recursive: true });
   fs.writeFileSync(path.join(grokData, '.ponytail-active'), 'full');
 
-  const env = {
-    HOME: home,
-    USERPROFILE: home,
-    GROK_PLUGIN_DATA: grokData,
-    GROK_PLUGIN_ROOT: path.join(temp, 'root'),
-    PLUGIN_DATA: '',
-    COPILOT_PLUGIN_DATA: '',
-    QODER_SESSION_ID: '',
-  };
-
   const result = run(
     'ponytail-mode-tracker.js',
-    env,
+    {
+      HOME: home,
+      USERPROFILE: home,
+      GROK_PLUGIN_DATA: grokData,
+      GROK_PLUGIN_ROOT: path.join(temp, 'root'),
+      ...cleanHost,
+    },
     JSON.stringify({ prompt: '/ponytail ultra' }),
   );
   assert.equal(result.status, 0, result.stderr || result.stdout);
