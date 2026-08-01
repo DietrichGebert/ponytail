@@ -214,6 +214,23 @@ clawhub install ponytail
 
 Instala ponytail como skill de OpenClaw desde ClawHub; los skills de review, audit, debt y help se instalan igual (`clawhub install ponytail-review`, etc.). OpenClaw lo aplica en tareas de código y también lo expone como comando `/ponytail`. Sin ClawHub, copia [`.openclaw/skills/ponytail`](.openclaw/skills/) a `~/.openclaw/skills/`.
 
+### Grok Build
+
+```bash
+grok plugin install DietrichGebert/ponytail --trust
+```
+
+Habilita el plugin (está desactivado por defecto): `/plugins` → Plugins → Space en `ponytail`, o en `~/.grok/config.toml`:
+
+```toml
+[plugins]
+enabled = ["ponytail"]
+```
+
+Abre una sesión nueva (o recarga los plugins). Los skills aparecen como `/ponytail`, `/ponytail-review`, `/ponytail-audit`, `/ponytail-debt`, `/ponytail-gain`, `/ponytail-help`. Verifica con `grok inspect`. Hace falta `node` en el `PATH` para los hooks. Adaptador fino: `.grok-plugin/` + `plugin.json` en la raíz; los hooks reutilizan `hooks/ponytail-*.js`.
+
+`AGENTS.md` sigue funcionando solo como instrucciones desde un checkout sin el plugin. Nivel por defecto opcional: `PONYTAIL_DEFAULT_MODE` o `~/.config/ponytail/config.json`. Desinstalar: `grok plugin uninstall ponytail`.
+
 Eso fue todo. Él estaría orgulloso. No lo va a decir.
 
 Activo en cada sesión, con un puñado de comandos (ver [Comandos](#comandos)). `/ponytail ultra` existe para cuando el codebase te hizo algo personal. El texto de inicio y de cambio de modo muestra el nivel activo.

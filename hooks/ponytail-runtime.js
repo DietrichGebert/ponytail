@@ -1,17 +1,24 @@
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
-const { getClaudeDir, getConfigDir } = require('./ponytail-config');
+const { getClaudeDir, getGrokPluginDataDir } = require('./ponytail-config');
 
 const STATE_FILE = '.ponytail-active';
 const isCopilot = Boolean(process.env.COPILOT_PLUGIN_DATA);
 const isCodex = !isCopilot && Boolean(process.env.PLUGIN_DATA);
-const isQoder = !isCopilot && !isCodex && Boolean(process.env.QODER_SESSION_ID);
+const isGrok = Boolean(process.env.GROK_PLUGIN_DATA || process.env.GROK_PLUGIN_ROOT);
+const isQoder = !isCopilot && !isCodex && !isGrok && Boolean(process.env.QODER_SESSION_ID);
 
 let stateDir = getClaudeDir();
-if (isCodex) stateDir = process.env.PLUGIN_DATA;
-if (isCopilot) stateDir = process.env.COPILOT_PLUGIN_DATA;
-if (isQoder) stateDir = path.join(os.homedir(), '.qoder');
+if (isGrok) {
+  stateDir = getGrokPluginDataDir() || process.env.GROK_PLUGIN_DATA || getClaudeDir();
+} else if (isCodex) {
+  stateDir = process.env.PLUGIN_DATA;
+} else if (isCopilot) {
+  stateDir = process.env.COPILOT_PLUGIN_DATA;
+} else if (isQoder) {
+  stateDir = path.join(os.homedir(), '.qoder');
+}
 
 const statePath = path.join(stateDir, STATE_FILE);
 
@@ -38,6 +45,12 @@ function writeHookOutput(event, mode, context = '') {
     // Copilot reads additionalContext on SessionStart; ignores output elsewhere.
     process.stdout.write(JSON.stringify(
       event === 'SessionStart' && context ? { additionalContext: context } : {}));
+    return;
+  }
+  if (isGrok) {
+    // Grok captures stdout from plugin hooks for annotations/scrollback.
+    // Emit the ruleset on SessionStart. Skills provide the main behavior and slash commands.
+    if (context) process.stdout.write(context);
     return;
   }
   if (isCodex) {
@@ -78,6 +91,7 @@ module.exports = {
   clearMode,
   isCodex,
   isCopilot,
+  isGrok,
   isQoder,
   readMode,
   setMode,

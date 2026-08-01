@@ -246,6 +246,23 @@ clawhub install ponytail
 
 Installs ponytail as an OpenClaw skill from ClawHub; the review, audit, debt, gain, and help skills install the same way (`clawhub install ponytail-review`, and so on). OpenClaw applies it on coding tasks and also exposes it as a `/ponytail` command. Without ClawHub, copy [`.openclaw/skills/ponytail`](.openclaw/skills/) into `~/.openclaw/skills/`.
 
+### Grok Build
+
+```bash
+grok plugin install DietrichGebert/ponytail --trust
+```
+
+Enable the plugin (off by default): `/plugins` → Plugins → Space on `ponytail`, or in `~/.grok/config.toml`:
+
+```toml
+[plugins]
+enabled = ["ponytail"]
+```
+
+Start a new session (or reload plugins). Skills show as `/ponytail`, `/ponytail-review`, `/ponytail-audit`, `/ponytail-debt`, `/ponytail-gain`, `/ponytail-help`. Verify with `grok inspect`. Node on `PATH` is required for lifecycle hooks (same note as Claude/Codex). Thin adapter: `.grok-plugin/` + root `plugin.json` overrides; hooks reuse the shared `hooks/ponytail-*.js` scripts.
+
+`AGENTS.md` still works instruction-only from a checkout without the plugin. Optional default level: `PONYTAIL_DEFAULT_MODE` or `~/.config/ponytail/config.json`.
+
 That was it. He'd be proud. He won't say it.
 
 Active every session, with a handful of commands (see [Commands](#commands)). `/ponytail ultra` exists for when the codebase has wronged you personally. Startup and mode-change text shows the current mode.
@@ -277,6 +294,7 @@ Which files map to which agent: [Agent portability](docs/agent-portability.md).
 | Claude Code | `/plugin remove ponytail` |
 | Codex | `codex plugin remove ponytail` |
 | Devin CLI | `devin plugins remove ponytail` |
+| Grok Build | `grok plugin uninstall ponytail` |
 | Pi agent | `pi uninstall ponytail` |
 | Cursor / Windsurf / Cline / Qoder / etc. | Delete the copied rule file |
 
