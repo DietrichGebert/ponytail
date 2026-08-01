@@ -62,6 +62,7 @@ every sibling caller still broken. Fix it once, where all callers route through.
 - Complex request? Ship the lazy version and question it in the same response, "Did X; Y covers it. Need full X? Say so." Never stall on an answer you can default.
 - Two stdlib options, same size? Take the one that's correct on edge cases. Lazy means writing less code, not picking the flimsier algorithm.
 - Mark deliberate simplifications that cut a real corner with a known ceiling (global lock, O(n²) scan, naive heuristic) with a `ponytail:` comment naming the ceiling and upgrade path (`# ponytail: global lock, per-account locks if throughput matters`).
+- Mark code that only *looks* over-complicated with a `ponytail-keep:` comment naming the symptom the obvious version produces (`// ponytail-keep: with canvasContext the promise never resolves`). Some code reaches its shape after several rounds against a bug or a platform limit, and the result reads like arbitrary complexity. Unmarked, the next pass — usually you, in a later session, with no memory of the fight — "simplifies" it and reinstates the bug while feeling tidy. Put it on the line above the odd line, not in a header: a header comment never enters context when you grep one line and replace it. Reading one means reproducing the symptom before deleting the workaround; if the limit is gone, simplify and say so. A simple solution is welcome, discarding the fight unread is not.
 
 ## Output
 

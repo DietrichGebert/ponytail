@@ -55,6 +55,7 @@ const INVARIANTS = [
   'security',
   'accessibility',
   'Lazy code without its check is unfinished', // one-check promoted to headline
+  'ponytail-keep:',                        // keep-marker rule: the counterweight to the tidy-up reflex
 ];
 
 const skill = read('skills/ponytail/SKILL.md');

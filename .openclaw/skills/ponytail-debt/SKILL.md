@@ -16,6 +16,8 @@ output:
 
 `grep -rnE '(#|//) ?ponytail:' .`  (add other comment prefixes if your stack uses them)
 
+The colon is load-bearing: `ponytail-keep:` markers are the opposite of debt (code that must not be simplified) and this pattern correctly skips them.
+
 Each hit is one ledger row. The comment prefix keeps prose that merely mentions
 the convention out of the ledger.
 
