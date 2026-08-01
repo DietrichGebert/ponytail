@@ -246,9 +246,9 @@ grok plugin install DietrichGebert/ponytail --trust
 enabled = ["ponytail"]
 ```
 
-새 세션을 열거나 플러그인을 다시 로드한다. 스킬은 `/ponytail`, `/ponytail-review`, `/ponytail-audit`, `/ponytail-debt`, `/ponytail-gain`, `/ponytail-help`로 보인다. `grok inspect`로 확인. 훅에는 `PATH`에 `node`가 필요하다. 어댑터는 루트 `plugin.json`이 Claude/Codex 공유 훅 맵을 가리키고, 모드 상태는 `GROK_PLUGIN_DATA`를 쓴다.
+새 세션을 열거나 플러그인을 다시 로드한다. 스킬은 `/ponytail`, `/ponytail-review`, `/ponytail-audit`, `/ponytail-debt`, `/ponytail-gain`, `/ponytail-help`로 보인다. `grok inspect`로 확인. Grok은 스킬 설명을 바탕으로 코딩 작업에서 ponytail을 자동으로 호출할 수 있다. 명시적으로 활성화해야 하면 `/ponytail`(또는 `/ponytail lite`, `/ponytail full`, `/ponytail ultra`)을 사용한다. `SessionStart` 출력으로는 지시문을 주입할 수 없으므로 Grok 라이프사이클 훅은 사용하지 않는다.
 
-체크아웃의 `AGENTS.md`만으로도 지시문 전용 모드는 된다. 기본 레벨: `PONYTAIL_DEFAULT_MODE` 또는 `~/.config/ponytail/config.json`. 제거: `grok plugin uninstall ponytail`.
+체크아웃의 `AGENTS.md`만으로도 지시문 전용 모드는 된다. 제거: `grok plugin uninstall ponytail`.
 
 이게 끝이었다. 그 사람이라면 흐뭇해할 거다. 입 밖으로 내진 않겠지만.
 

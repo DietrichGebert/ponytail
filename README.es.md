@@ -227,9 +227,9 @@ Habilita el plugin (está desactivado por defecto): `/plugins` → Plugins → S
 enabled = ["ponytail"]
 ```
 
-Abre una sesión nueva (o recarga los plugins). Los skills aparecen como `/ponytail`, `/ponytail-review`, `/ponytail-audit`, `/ponytail-debt`, `/ponytail-gain`, `/ponytail-help`. Verifica con `grok inspect`. Hace falta `node` en el `PATH` para los hooks. Adaptador fino: `plugin.json` en la raíz apunta al mapa de hooks compartido Claude/Codex; el estado de modo usa `GROK_PLUGIN_DATA`.
+Abre una sesión nueva (o recarga los plugins). Los skills aparecen como `/ponytail`, `/ponytail-review`, `/ponytail-audit`, `/ponytail-debt`, `/ponytail-gain`, `/ponytail-help`. Verifica con `grok inspect`. Grok puede invocar ponytail automáticamente en tareas de código según la descripción del skill; usa `/ponytail` (o `/ponytail lite`, `/ponytail full`, `/ponytail ultra`) cuando necesites activarlo de forma explícita. No se usan hooks de ciclo de vida de Grok: la salida de `SessionStart` no puede inyectar instrucciones.
 
-`AGENTS.md` sigue funcionando solo como instrucciones desde un checkout sin el plugin. Nivel por defecto opcional: `PONYTAIL_DEFAULT_MODE` o `~/.config/ponytail/config.json`. Desinstalar: `grok plugin uninstall ponytail`.
+`AGENTS.md` sigue funcionando solo como instrucciones desde un checkout sin el plugin. Desinstalar: `grok plugin uninstall ponytail`.
 
 Eso fue todo. Él estaría orgulloso. No lo va a decir.
 

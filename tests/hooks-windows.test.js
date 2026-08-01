@@ -13,12 +13,10 @@ const { spawn } = require('child_process');
 
 const root = path.join(__dirname, '..');
 const HOOKS_JSON = 'hooks/claude-codex-hooks.json';
-// Claude, Codex, and Grok (root plugin.json) all point at the shared map.
-const HOST_PLUGIN_MANIFESTS = {
-  '.claude-plugin/plugin.json': './hooks/claude-codex-hooks.json',
-  '.codex-plugin/plugin.json': './hooks/claude-codex-hooks.json',
-  'plugin.json': './hooks/claude-codex-hooks.json',
-};
+const HOST_PLUGIN_MANIFESTS = [
+  '.claude-plugin/plugin.json',
+  '.codex-plugin/plugin.json',
+];
 // cmd.exe variable syntax (%FOO%); PowerShell leaves it literal, breaking the path.
 const CMD_VAR_SYNTAX = /%[A-Za-z_][A-Za-z0-9_]*%/;
 // PowerShell 5.1 rejects these POSIX shell guards when a host runs `command`.
@@ -108,9 +106,9 @@ test('ponytail-mode-tracker self-exits when stdin never closes (no freeze)', asy
   assert.equal(code, 0, 'hook must exit cleanly when stdin never closes');
 });
 
-test('host plugin manifests point at explicit hook configs (no root hooks/hooks.json)', () => {
-  for (const [rel, expectedHooks] of Object.entries(HOST_PLUGIN_MANIFESTS)) {
+test('Claude and Codex manifests point at the shared host-specific hook config', () => {
+  for (const rel of HOST_PLUGIN_MANIFESTS) {
     const manifest = JSON.parse(fs.readFileSync(path.join(root, rel), 'utf8'));
-    assert.equal(manifest.hooks, expectedHooks, `${rel} must not rely on root hooks auto-discovery`);
+    assert.equal(manifest.hooks, `./${HOOKS_JSON}`, `${rel} must not rely on root hooks auto-discovery`);
   }
 });

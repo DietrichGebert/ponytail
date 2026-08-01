@@ -259,9 +259,9 @@ Enable the plugin (off by default): `/plugins` → Plugins → Space on `ponytai
 enabled = ["ponytail"]
 ```
 
-Start a new session (or reload plugins). Skills show as `/ponytail`, `/ponytail-review`, `/ponytail-audit`, `/ponytail-debt`, `/ponytail-gain`, `/ponytail-help`. Verify with `grok inspect`. Node on `PATH` is required for lifecycle hooks (same note as Claude/Codex). Thin adapter: root `plugin.json` points at the shared Claude/Codex hook map; mode state uses `GROK_PLUGIN_DATA`.
+Start a new session (or reload plugins). Skills show as `/ponytail`, `/ponytail-review`, `/ponytail-audit`, `/ponytail-debt`, `/ponytail-gain`, `/ponytail-help`. Verify with `grok inspect`. Grok can auto-invoke ponytail for coding tasks from its skill description; use `/ponytail` (or `/ponytail lite`, `/ponytail full`, `/ponytail ultra`) when activation needs to be explicit. Grok lifecycle hooks are not used because their SessionStart output cannot inject instructions.
 
-`AGENTS.md` still works instruction-only from a checkout without the plugin. Optional default level: `PONYTAIL_DEFAULT_MODE` or `~/.config/ponytail/config.json`.
+`AGENTS.md` still works instruction-only from a checkout without the plugin.
 
 That was it. He'd be proud. He won't say it.
 
