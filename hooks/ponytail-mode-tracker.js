@@ -64,14 +64,17 @@ function finish() {
       } else if (mode && mode !== 'off') {
         setMode(mode);
         modeSwitched = true;
-        // ponytail: Qoder needs the full ruleset every turn, so when a mode
-        // switch happens we fold the confirmation into the ruleset output
-        // below (one JSON on stdout) instead of emitting two separate writes.
+        // ponytail: a mid-session switch must deliver the ruleset immediately,
+        // not just the confirmation (#663) — otherwise the main thread stays
+        // rule-less until the next SessionStart, even though subagents spawned
+        // meanwhile already see it (ponytail-subagent.js reads the flag
+        // independently). Qoder folds this same way below since it has no
+        // SessionStart to fall back on.
         if (!isQoder) {
           writeHookOutput(
             'UserPromptSubmit',
             mode,
-            'PONYTAIL MODE CHANGED — level: ' + mode,
+            'PONYTAIL MODE CHANGED — level: ' + mode + '\n\n' + getPonytailInstructions(mode),
           );
         }
       } else if (mode === 'off') {

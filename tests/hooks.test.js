@@ -76,6 +76,19 @@ assert.equal(result.status, 0, result.stderr);
 assert.equal(fs.readFileSync(codexState, 'utf8'), 'lite');
 output = JSON.parse(result.stdout);
 assert.equal(output.systemMessage, 'PONYTAIL:LITE');
+// #663: Codex shares the same !isQoder mode-switch write path as native
+// Claude, so a mid-session switch must also deliver the ruleset here, not
+// just the systemMessage badge.
+assert.equal(output.hookSpecificOutput.hookEventName, 'UserPromptSubmit');
+assert.match(
+  output.hookSpecificOutput.additionalContext,
+  /PONYTAIL MODE CHANGED — level: lite/,
+);
+assert.match(
+  output.hookSpecificOutput.additionalContext,
+  /You are a lazy senior developer/,
+  'Codex mid-session mode switch must deliver the ruleset immediately, not just the badge (#663)',
+);
 
 // Querying bare @ponytail should report the active level ('lite') without resetting it to default ('ultra')
 result = run(
@@ -428,6 +441,21 @@ result = run('ponytail-mode-tracker.js', defEnv, JSON.stringify({ prompt: '/pony
 assert.equal(result.status, 0, result.stderr);
 assert.equal(fs.readFileSync(defFlag, 'utf8'), 'ultra', 'plain switch must set the session mode');
 assert.equal(JSON.parse(fs.readFileSync(defConfig, 'utf8')).defaultMode, 'lite', 'plain switch must not persist the default');
+// #663: a mid-session switch on native Claude/Codex (non-Qoder) must deliver
+// the ruleset immediately, not just the confirmation — otherwise the main
+// thread stays rule-less until the next SessionStart, while subagents
+// spawned meanwhile (ponytail-subagent.js reads the flag independently)
+// already see it.
+assert.match(
+  result.stdout,
+  /PONYTAIL MODE CHANGED — level: ultra/,
+  'plain switch must still emit the confirmation',
+);
+assert.match(
+  result.stdout,
+  /You are a lazy senior developer/,
+  'mid-session mode switch must deliver the ruleset immediately, not just the confirmation (#663)',
+);
 
 // review is not a valid default (#377) — the command is ignored, config unchanged.
 result = run('ponytail-mode-tracker.js', defEnv, JSON.stringify({ prompt: '/ponytail default review' }));
