@@ -77,18 +77,15 @@ _MODE_BLOCK_CLOSE_RE = re.compile(r"^<!--\s*/mode:\s*([a-z]+)\s*-->\s*$")
 def _filter_skill_body_for_mode(body: str, mode: str) -> str:
     effective = _normalize_runtime_mode(mode) or DEFAULT_MODE
     out: list[str] = []
-    block_mode: str | None = None
     skip = False
     for line in _strip_frontmatter(body).splitlines():
         open_match = _MODE_BLOCK_OPEN_RE.match(line)
         if open_match:
-            block_mode = _normalize_runtime_mode(open_match.group(1)) or open_match.group(1)
-            skip = block_mode != effective
+            skip = (_normalize_runtime_mode(open_match.group(1)) or open_match.group(1)) != effective
             continue  # strip the marker line itself
 
         close_match = _MODE_BLOCK_CLOSE_RE.match(line)
         if close_match:
-            block_mode = None
             skip = False
             continue  # strip the marker line itself
 

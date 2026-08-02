@@ -6,6 +6,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('fs');
+const path = require('path');
 const { NAMES, render, outPath, sourceBody, DESCRIPTIONS } = require('../scripts/build-openclaw-skills');
 
 for (const name of NAMES) {
@@ -31,7 +32,7 @@ for (const name of NAMES) {
 // stray marker would leak into raw consumers (OpenClaw, pi skills, skill
 // pickers, benchmark arms) as instructions.
 test('ponytail: gated mode blocks are balanced and well-formed in the raw copies', () => {
-  const skill = fs.readFileSync('skills/ponytail/SKILL.md', 'utf8');
+  const skill = fs.readFileSync(path.join(__dirname, '..', 'skills', 'ponytail', 'SKILL.md'), 'utf8');
   const openclaw = fs.readFileSync(outPath('ponytail'), 'utf8');
 
   for (const [label, text] of [['skills/ponytail/SKILL.md', skill], ['.openclaw/skills/ponytail/SKILL.md', openclaw]]) {

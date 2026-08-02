@@ -23,22 +23,19 @@ function filterSkillBodyForMode(body, mode) {
   const lines = withoutFrontmatter.split(/\r?\n/);
   const out = [];
 
-  // State machine: `blockMode` is non-null while inside a mode block; `skip`
-  // is true when the open block's mode is not the effective mode.
-  let blockMode = null;
+  // State machine: `skip` is true while inside a mode block whose mode is not
+  // the effective mode; marker lines themselves are stripped from output.
   let skip = false;
 
   for (const line of lines) {
     const open = line.match(MODE_BLOCK_OPEN_RE);
     if (open) {
-      blockMode = normalizeMode(open[1]) || open[1];
-      skip = blockMode !== effectiveMode;
+      skip = (normalizeMode(open[1]) || open[1]) !== effectiveMode;
       continue; // strip the marker line itself
     }
 
     const close = line.match(MODE_BLOCK_CLOSE_RE);
     if (close) {
-      blockMode = null;
       skip = false;
       continue; // strip the marker line itself
     }
@@ -54,11 +51,7 @@ function filterSkillBodyForMode(body, mode) {
     const tableLabel = line.match(/^\|\s*\*\*(.+?)\*\*\s*\|/);
     if (tableLabel) {
       const labelMode = normalizeMode(tableLabel[1].trim());
-      if (labelMode) {
-        if (labelMode !== effectiveMode) continue;
-        out.push(line);
-        continue;
-      }
+      if (labelMode && labelMode !== effectiveMode) continue;
     }
 
     // Require a quoted value: every worked example is `- lite: "..."`. Without
@@ -68,11 +61,7 @@ function filterSkillBodyForMode(body, mode) {
     const exampleLabel = line.match(/^-\s*([^:]+):\s*"/);
     if (exampleLabel) {
       const labelMode = normalizeMode(exampleLabel[1].trim());
-      if (labelMode) {
-        if (labelMode !== effectiveMode) continue;
-        out.push(line);
-        continue;
-      }
+      if (labelMode && labelMode !== effectiveMode) continue;
     }
 
     out.push(line);
