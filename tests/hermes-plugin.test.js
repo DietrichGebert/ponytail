@@ -234,3 +234,40 @@ print(json.dumps(cases, sort_keys=True))
   assert.equal(data['/status'], null);
   assert.equal(data.hello, null);
 });
+
+test('Hermes Python filter matches the JS filter byte-for-byte for every level (parity, #664)', () => {
+  // KTD2/R7 hard gate: the two filters must never silently fork again. Run the
+  // JS filter and the Python mirror over the same canonical SKILL.md for all
+  // three levels and assert identical (trailing-whitespace-normalized) output.
+  const skillPath = path.join(root, 'skills', 'ponytail', 'SKILL.md');
+  const skillBody = fs.readFileSync(skillPath, 'utf8');
+  const { filterSkillBodyForMode } = require('../hooks/ponytail-instructions');
+
+  // Feed the canonical body to the Python filter via stdin (the python()
+  // helper runs `python -c`, so pass the body through the child's stdin).
+  const pyJson = spawnSync(pythonExe(), ['-c', `
+import importlib.util, json, sys
+spec = importlib.util.spec_from_file_location('ponytail_hermes_plugin', '__init__.py')
+mod = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(mod)
+body = sys.stdin.read()
+print(json.dumps({m: mod._filter_skill_body_for_mode(body, m) for m in ['lite', 'full', 'ultra']}))
+`], { cwd: root, input: skillBody, encoding: 'utf8' });
+  assert.equal(pyJson.status, 0, pyJson.stderr);
+  const py = JSON.parse(pyJson.stdout);
+
+  for (const m of ['lite', 'full', 'ultra']) {
+    const jsOut = filterSkillBodyForMode(skillBody, m).replace(/\s+$/, '');
+    const pyOutFor = py[m].replace(/\s+$/, '');
+    assert.equal(
+      pyOutFor,
+      jsOut,
+      `Hermes Python filter output must match the JS filter for level ${m} (#664)`,
+    );
+    // The active level's block is present; the other levels' blocks are absent.
+    assert.match(jsOut, new RegExp(`\\*\\*${m} —`));
+    for (const other of ['lite', 'full', 'ultra']) {
+      if (other !== m) assert.doesNotMatch(jsOut, new RegExp(`\\*\\*${other} —`));
+    }
+  }
+});
