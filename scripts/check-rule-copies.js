@@ -68,6 +68,35 @@ for (const phrase of INVARIANTS) {
   }
 }
 
+// The invariants must live in the ungated core, not inside a per-level block
+// (KTD4): a mode's filtered output must never silently lose a safety carve-out.
+// Strip the `<!-- mode: X -->` blocks and assert each invariant is still present
+// in the remaining ungated region.
+const MODE_BLOCK_RE = /<!--\s*mode:\s*[a-z]+\s*-->[\s\S]*?<!--\s*\/mode:\s*[a-z]+\s*-->/gi;
+const ungated = skill.replace(MODE_BLOCK_RE, '');
+for (const phrase of INVARIANTS) {
+  if (!ungated.includes(phrase)) {
+    console.error(`skills/ponytail/SKILL.md ungated core is missing rule invariant: "${phrase}"`);
+    failed = true;
+  }
+}
+
+// Gated blocks must not leak into AGENTS.md or its compact copies (KTD5): the
+// instruction-tier hosts load them statically with no mode state, so per-level
+// blocks would be dead weight and contradict the mode-less boundary.
+const GATED_BLOCK_PRESENT = /<!--\s*mode:\s*[a-z]+\s*-->|<!--\s*\/mode:\s*[a-z]+\s*-->/i;
+for (const [relPath] of copies) {
+  const actual = read(relPath);
+  if (GATED_BLOCK_PRESENT.test(actual)) {
+    console.error(`${relPath} must not contain gated mode blocks (instruction-tier copies are mode-less)`);
+    failed = true;
+  }
+}
+if (GATED_BLOCK_PRESENT.test(agents)) {
+  console.error('AGENTS.md must not contain gated mode blocks (instruction-tier copies are mode-less)');
+  failed = true;
+}
+
 if (failed) {
   console.error('Update the copied rule text, AGENTS.md, or SKILL.md so the shared rules match.');
   process.exit(1);
