@@ -33,20 +33,10 @@ RUNS_DIR = Path(__file__).resolve().parent / "runs"
 
 def _skill(rel): return (ROOT / rel).read_text(encoding="utf-8")
 
-def _ponytail_prompt():
-    # ponytail activates via --plugin-dir (PLUGIN_ARMS), which exercises the
-    # production injection path. This fallback is only for the raw-prompt path:
-    # use the mode-filtered full ruleset, not the raw SKILL.md, which since
-    # #664 carries the union of all three levels plus gating markers.
-    import importlib.util
-    spec = importlib.util.spec_from_file_location("ponytail_hermes_plugin", ROOT / "__init__.py")
-    mod = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(mod)
-    return mod.build_injected_context("full")
-
 ARMS = {
     "baseline":       lambda: None,
-    "ponytail":       _ponytail_prompt,
+    # ponytail activates via --plugin-dir (PLUGIN_ARMS), so this raw-prompt entry is never used.
+    "ponytail":       lambda: None,
     "caveman":        lambda: _skill("benchmarks/arms/caveman-SKILL.md"),
     "yagni":          lambda: "Follow YAGNI principles.",
     "yagni-oneliner": lambda: "Follow YAGNI principles, and prefer one-liner solutions.",

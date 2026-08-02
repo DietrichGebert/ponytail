@@ -124,15 +124,36 @@ def _fallback_instructions(mode: str) -> str:
         "ultra": "deletion-first — YAGNI extremist, challenge the requirement before adding.",
     }
     stance = stances.get(mode, "enforced — the ladder and rules below are binding.")
+    # Lite is advisory (R2): the fallback body must not re-impose the enforced
+    # ladder on the failure path — a stance that says "user picks" followed by
+    # binding mandates silently reproduces full-level enforcement. Full and
+    # ultra keep the enforced body; ultra keeps its deletion-first stance.
+    # Mirrors the JS fallback's mode-conditional body.
+    if mode == "lite":
+        ladder_rules = (
+            "Before any code, consider the lazy option first: does this need to "
+            "exist (YAGNI)? Does it already exist in this codebase? Does the "
+            "stdlib or a native platform feature cover it? Can it be one line? "
+            "Name the lazier alternative in one line and let the user pick. "
+            "Build what was asked. Avoid unrequested abstractions, avoidable "
+            "dependencies, and boilerplate unless the user asked for them. "
+            "Deletion over addition and boring over clever are advisory here, "
+            "not mandates — name the lazier option in the same response and let "
+            "the user pick."
+        )
+    else:
+        ladder_rules = (
+            "Before any code, stop at the first rung that holds: YAGNI, stdlib, "
+            "native platform, installed dependency, one line, then minimum code. "
+            "No unrequested abstractions, avoidable dependencies, boilerplate, or "
+            "speculative scaffolding. Deletion over addition. Boring over clever."
+        )
     return (
         f"PONYTAIL MODE ACTIVE — level: {mode}\n\n"
         "You are a lazy senior developer. Lazy means efficient, not careless. "
         "The best code is the code never written.\n\n"
         f"Level stance: {stance}\n\n"
-        "Before any code, stop at the first rung that holds: YAGNI, stdlib, "
-        "native platform, installed dependency, one line, then minimum code. "
-        "No unrequested abstractions, avoidable dependencies, boilerplate, or "
-        "speculative scaffolding. Deletion over addition. Boring over clever. "
+        f"{ladder_rules} "
         "Do not simplify away trust-boundary validation, data-loss handling, "
         "security, accessibility, explicitly requested behavior, or one small "
         "runnable check for non-trivial logic."

@@ -230,6 +230,38 @@ assert.equal(
 output = JSON.parse(result.stdout);
 assert.deepEqual(output, {});
 
+// #2: a Copilot mid-session /ponytail <level> switch persists a session flag,
+// and Copilot's writeHookOutput drops all non-SessionStart output — so the
+// switch only takes effect at the next SessionStart. SessionStart must honor
+// the persisted flag over the configured default (README.md:253).
+const copilotSwitch = path.join(temp, 'copilot-switch');
+fs.mkdirSync(copilotSwitch, { recursive: true });
+fs.writeFileSync(path.join(copilotSwitch, '.ponytail-active'), 'ultra');
+result = run('ponytail-activate.js', {
+  HOME: home,
+  USERPROFILE: home,
+  COPILOT_PLUGIN_DATA: copilotSwitch,
+  PONYTAIL_DEFAULT_MODE: 'full',
+});
+assert.equal(result.status, 0, result.stderr);
+assert.equal(fs.readFileSync(path.join(copilotSwitch, '.ponytail-active'), 'utf8'), 'ultra');
+output = JSON.parse(result.stdout);
+assert.match(output.additionalContext, /PONYTAIL MODE ACTIVE — level: ultra/);
+
+// No persisted flag → Copilot SessionStart falls back to the configured default.
+const copilotDefault = path.join(temp, 'copilot-default');
+fs.mkdirSync(copilotDefault, { recursive: true });
+result = run('ponytail-activate.js', {
+  HOME: home,
+  USERPROFILE: home,
+  COPILOT_PLUGIN_DATA: copilotDefault,
+  PONYTAIL_DEFAULT_MODE: 'full',
+});
+assert.equal(result.status, 0, result.stderr);
+assert.equal(fs.readFileSync(path.join(copilotDefault, '.ponytail-active'), 'utf8'), 'full');
+output = JSON.parse(result.stdout);
+assert.match(output.additionalContext, /PONYTAIL MODE ACTIVE — level: full/);
+
 // SubagentStart hook: when ponytail mode is active it injects the ruleset into
 // each subagent (issue #252). Native Claude must get the hookSpecificOutput JSON
 // form, not raw stdout, or the context is dropped.

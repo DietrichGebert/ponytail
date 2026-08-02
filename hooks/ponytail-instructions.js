@@ -82,22 +82,35 @@ function getFallbackInstructions(mode) {
       lite: 'advisory — build what is asked, name the lazier alternative, user picks.',
       ultra: 'deletion-first — YAGNI extremist, challenge the requirement before adding.',
     }[mode] || 'enforced — the ladder and rules below are binding.') + '\n\n' +
-    '## The ladder\n\n' +
-    'Before any code, stop at the first rung that holds (the ladder runs after you understand the problem, not instead of it — read the code it touches and trace the real flow first):\n' +
-    '1. Does this need to be built at all? (YAGNI)\n' +
-    '2. Does it already exist in this codebase? Reuse what is already here, do not re-write it.\n' +
-    '3. Does the standard library do this? Use it.\n' +
-    '4. Does a native platform feature cover it? Use it.\n' +
-    '5. Does an already-installed dependency solve it? Use it.\n' +
-    '6. Can this be one line? Make it one line.\n' +
-    '7. Only then: write the minimum code that works.\n\n' +
-    'Bug fix = root cause, not symptom: grep every caller of the function you touch and fix the shared function once (a smaller diff than one guard per caller); patching only the path the ticket names leaves a sibling caller broken.\n\n' +
-    '## Rules\n\n' +
-    'No abstractions that were not requested. No avoidable dependencies. No boilerplate nobody asked for. ' +
-    'Deletion over addition. Boring over clever. Fewest files possible. ' +
-    'Ship the lazy version and question the complex request in the same response — never stall. ' +
-    'Between two same-size stdlib options, pick the one correct on edge cases. ' +
-    'Mark deliberate simplifications that cut a real corner with a known ceiling, using a `ponytail:` comment that names the ceiling and upgrade path.\n\n' +
+    // Lite is advisory (R2): the fallback body must not re-impose the enforced
+    // ladder on the failure path — a stance that says "user picks" followed by
+    // binding mandates silently reproduces full-level enforcement. Full and
+    // ultra keep the enforced body; ultra keeps its deletion-first stance.
+    (mode === 'lite'
+      ? '## The ladder\n\n' +
+        'Before any code, consider the lazy option first (read the code it touches and trace the real flow before deciding): does this need to exist (YAGNI)? Does it already exist in this codebase? Does the stdlib or a native platform feature cover it? Can it be one line? Name the lazier alternative in one line and let the user pick.\n\n' +
+        'Bug fix = root cause, not symptom: grep every caller of the function you touch and fix the shared function once (a smaller diff than one guard per caller); patching only the path the ticket names leaves a sibling caller broken.\n\n' +
+        '## Rules\n\n' +
+        'Build what was asked. Avoid unrequested abstractions, avoidable dependencies, and boilerplate unless the user asked for them. ' +
+        'Deletion over addition and boring over clever are advisory here, not mandates — name the lazier option in the same response and let the user pick. ' +
+        'Between two same-size stdlib options, pick the one correct on edge cases. ' +
+        'Mark deliberate simplifications that cut a real corner with a known ceiling, using a `ponytail:` comment that names the ceiling and upgrade path.\n\n'
+      : '## The ladder\n\n' +
+        'Before any code, stop at the first rung that holds (the ladder runs after you understand the problem, not instead of it — read the code it touches and trace the real flow first):\n' +
+        '1. Does this need to be built at all? (YAGNI)\n' +
+        '2. Does it already exist in this codebase? Reuse what is already here, do not re-write it.\n' +
+        '3. Does the standard library do this? Use it.\n' +
+        '4. Does a native platform feature cover it? Use it.\n' +
+        '5. Does an already-installed dependency solve it? Use it.\n' +
+        '6. Can this be one line? Make it one line.\n' +
+        '7. Only then: write the minimum code that works.\n\n' +
+        'Bug fix = root cause, not symptom: grep every caller of the function you touch and fix the shared function once (a smaller diff than one guard per caller); patching only the path the ticket names leaves a sibling caller broken.\n\n' +
+        '## Rules\n\n' +
+        'No abstractions that were not requested. No avoidable dependencies. No boilerplate nobody asked for. ' +
+        'Deletion over addition. Boring over clever. Fewest files possible. ' +
+        'Ship the lazy version and question the complex request in the same response — never stall. ' +
+        'Between two same-size stdlib options, pick the one correct on edge cases. ' +
+        'Mark deliberate simplifications that cut a real corner with a known ceiling, using a `ponytail:` comment that names the ceiling and upgrade path.\n\n') +
     '## Output\n\n' +
     'Code first. Then at most three short lines: what was skipped, when to add it. ' +
     'If the explanation is longer than the code, delete the explanation. ' +

@@ -270,4 +270,62 @@ print(json.dumps({m: mod._filter_skill_body_for_mode(body, m) for m in ['lite', 
       if (other !== m) assert.doesNotMatch(jsOut, new RegExp(`\\*\\*${other} —`));
     }
   }
+
+  // KTD2 fallback parity (#4): the stateless line-drop fallback only fires on
+  // content OUTSIDE mode blocks. Every mode-labeled row/example in the
+  // canonical SKILL.md now lives inside a gated block, so the canonical body
+  // above never exercises the fallback — a JS/Python fork there would go
+  // undetected. Feed a synthetic blockless fixture through both filters and
+  // assert identical keep/drop behavior for every level.
+  const blocklessFixture = [
+    '| **lite** | keep lite |',
+    '| **ultra** | keep ultra |',
+    '- lite: "Lite example"',
+    '- ultra: "Ultra example"',
+    '- Full: do not confuse this rule label with the mode name.',
+  ].join('\n');
+
+  const pyFixtureJson = spawnSync(pythonExe(), ['-c', `
+import importlib.util, json, sys
+spec = importlib.util.spec_from_file_location('ponytail_hermes_plugin', '__init__.py')
+mod = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(mod)
+body = sys.stdin.read()
+print(json.dumps({m: mod._filter_skill_body_for_mode(body, m) for m in ['lite', 'full', 'ultra']}))
+`], { cwd: root, input: blocklessFixture, encoding: 'utf8' });
+  assert.equal(pyFixtureJson.status, 0, pyFixtureJson.stderr);
+  const pyFixture = JSON.parse(pyFixtureJson.stdout);
+
+  for (const m of ['lite', 'full', 'ultra']) {
+    const jsOut = filterSkillBodyForMode(blocklessFixture, m).replace(/\s+$/, '');
+    const pyOutFor = pyFixture[m].replace(/\s+$/, '');
+    assert.equal(
+      pyOutFor,
+      jsOut,
+      `Hermes Python filter fallback must match the JS filter fallback for level ${m} (#4)`,
+    );
+    // Expected keep/drop on the blockless fixture: a bold table row or quoted
+    // worked example labeled with the effective mode survives; other levels'
+    // are dropped; the unquoted rule bullet survives every mode.
+    assert.equal(
+      jsOut.includes('| **lite** |'), m === 'lite',
+      `lite row must ${m === 'lite' ? 'survive' : 'be dropped'} in level ${m}`,
+    );
+    assert.equal(
+      jsOut.includes('| **ultra** |'), m === 'ultra',
+      `ultra row must ${m === 'ultra' ? 'survive' : 'be dropped'} in level ${m}`,
+    );
+    assert.equal(
+      jsOut.includes('- lite: "Lite example"'), m === 'lite',
+      `lite example must ${m === 'lite' ? 'survive' : 'be dropped'} in level ${m}`,
+    );
+    assert.equal(
+      jsOut.includes('- ultra: "Ultra example"'), m === 'ultra',
+      `ultra example must ${m === 'ultra' ? 'survive' : 'be dropped'} in level ${m}`,
+    );
+    assert.ok(
+      jsOut.includes('- Full: do not confuse this rule label with the mode name.'),
+      `unquoted rule bullet must survive in level ${m}`,
+    );
+  }
 });

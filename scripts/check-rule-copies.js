@@ -97,6 +97,38 @@ if (GATED_BLOCK_PRESENT.test(agents)) {
   failed = true;
 }
 
+// Per-level blocks must carry their own semantics, not another level's: a block
+// body that gets swapped or rewritten so one level silently enforces another's
+// rules survives every check above (the ungated core and the no-leak guard never
+// inspect block contents), so pin each level's distinctive phrase here.
+const LEVEL_PHRASES = {
+  lite: 'advisory',
+  full: 'enforced default',
+  ultra: 'deletion-first',
+};
+for (const [level, phrase] of Object.entries(LEVEL_PHRASES)) {
+  const blockMatch = skill.match(
+    new RegExp(`<!--\\s*mode:\\s*${level}\\s*-->([\\s\\S]*?)<!--\\s*\\/mode:\\s*${level}\\s*-->`, 'i')
+  );
+  if (!blockMatch) {
+    console.error(`skills/ponytail/SKILL.md is missing the ${level} mode block`);
+    failed = true;
+    continue;
+  }
+  const block = blockMatch[1];
+  if (!block.includes(phrase)) {
+    console.error(`skills/ponytail/SKILL.md ${level} mode block is missing its distinctive phrase: "${phrase}"`);
+    failed = true;
+  }
+  for (const [otherLevel, otherPhrase] of Object.entries(LEVEL_PHRASES)) {
+    if (otherLevel === level) continue;
+    if (block.includes(otherPhrase)) {
+      console.error(`skills/ponytail/SKILL.md ${level} mode block contains ${otherLevel}'s distinctive phrase: "${otherPhrase}"`);
+      failed = true;
+    }
+  }
+}
+
 if (failed) {
   console.error('Update the copied rule text, AGENTS.md, or SKILL.md so the shared rules match.');
   process.exit(1);
