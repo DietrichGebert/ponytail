@@ -106,7 +106,7 @@ test("readQuietStartup resolves env var, config file, and default in that order"
 test("filterSkillBodyForMode keeps only requested intensity examples and rows", () => {
   // Examples are quoted in the real SKILL.md (`- lite: "..."`) — match that
   // shape here too; see the next test for why the quote is load-bearing.
-  const body = `---\nname: ponytail\n---\n| **lite** | keep lite |\n| **full** | keep full |\n| **ultra** | keep ultra |\n- lite: "Lite example"\n- full: "Full example"\n- ultra: "Ultra example"\nOther line`;
+  const body = `---\nname: ponytail\n---\n<!-- mode: lite -->\n| **lite** | keep lite |\n- lite: "Lite example"\n<!-- /mode: lite -->\n<!-- mode: full -->\n| **full** | keep full |\n- full: "Full example"\n<!-- /mode: full -->\n<!-- mode: ultra -->\n| **ultra** | keep ultra |\n- ultra: "Ultra example"\n<!-- /mode: ultra -->\nOther line`;
 
   const filtered = filterSkillBodyForMode(body, "ultra");
 
@@ -116,13 +116,16 @@ test("filterSkillBodyForMode keeps only requested intensity examples and rows", 
   assert.ok(!filtered.includes("Lite example"));
   assert.ok(filtered.includes("Ultra example"));
   assert.ok(filtered.includes("Other line"));
+  // Marker lines themselves are stripped.
+  assert.ok(!filtered.includes("<!-- mode:"));
+  assert.ok(!filtered.includes("<!-- /mode:"));
 });
 
 test("filterSkillBodyForMode does not drop a rule bullet whose label matches a mode name", () => {
   // A rule bullet like "- Full: ..." has the same "label: text" shape as a
   // worked example, but isn't one — it must survive in every mode. Only the
   // quoted, `- lite: "..."`-style bullets are real per-mode examples.
-  const body = `- Full: do not confuse this rule label with the mode name.\n- Lite: same risk, this is a real rule bullet.\n- lite: "real worked example"\n- ultra: "real worked example"`;
+  const body = `- Full: do not confuse this rule label with the mode name.\n- Lite: same risk, this is a real rule bullet.\n<!-- mode: lite -->\n- lite: "real worked example"\n<!-- /mode: lite -->\n<!-- mode: ultra -->\n- ultra: "real worked example"\n<!-- /mode: ultra -->`;
 
   const filtered = filterSkillBodyForMode(body, "ultra");
 
@@ -148,4 +151,8 @@ test("filterSkillBodyForMode keeps rule bullets that contain a colon", () => {
   assert.ok(filtered.includes('full: "`@lru_cache'));
   assert.ok(!filtered.includes('lite: "Done'));
   assert.ok(!filtered.includes('ultra: "No cache'));
+  // The full-level block is kept; the lite/ultra blocks are dropped.
+  assert.ok(filtered.includes("full — enforced default"));
+  assert.ok(!filtered.includes("lite — advisory"));
+  assert.ok(!filtered.includes("ultra — deletion-first"));
 });

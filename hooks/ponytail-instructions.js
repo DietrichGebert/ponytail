@@ -8,36 +8,77 @@ const { DEFAULT_MODE, normalizeMode, normalizePersistedMode } = require('./ponyt
 const INDEPENDENT_MODES = new Set(['review']);
 const SKILL_PATH = path.join(__dirname, '..', 'skills', 'ponytail', 'SKILL.md');
 
+// Mode block markers (KTD1): `<!-- mode: lite -->` opens a block, `<!-- /mode:
+// lite -->` closes it. A block whose mode is not the effective mode is dropped
+// entirely; marker lines themselves are stripped from output. The `ponytail:`
+// prefix is deliberately NOT used so the markers never collide with the pinned
+// `ponytail:` comment convention or the debt scanner.
+const MODE_BLOCK_OPEN_RE = /^<!--\s*mode:\s*([a-z]+)\s*-->\s*$/;
+const MODE_BLOCK_CLOSE_RE = /^<!--\s*\/mode:\s*([a-z]+)\s*-->\s*$/;
+
 function filterSkillBodyForMode(body, mode) {
   const effectiveMode = normalizeMode(mode) || DEFAULT_MODE;
   const withoutFrontmatter = String(body || '').replace(/^---[\s\S]*?---\s*/, '');
 
-  // Only the intensity table rows and worked examples are mode-specific, and
-  // both are keyed by a mode name (lite/full/ultra). A bullet whose label is
-  // not a mode — e.g. "No unrequested abstractions: ..." — is a normal rule
-  // and must be kept verbatim.
-  return withoutFrontmatter
-    .split(/\r?\n/)
-    .filter((line) => {
-      const tableLabel = line.match(/^\|\s*\*\*(.+?)\*\*\s*\|/);
-      if (tableLabel) {
-        const labelMode = normalizeMode(tableLabel[1].trim());
-        if (labelMode) return labelMode === effectiveMode;
-      }
+  const lines = withoutFrontmatter.split(/\r?\n/);
+  const out = [];
 
-      // Require a quoted value: every worked example is `- lite: "..."`. Without
-      // this, an ordinary rule bullet that happens to start with a mode word
-      // (e.g. "- Full: ...") is silently dropped in every other mode — it looks
-      // like a worked example but is really prose meant to survive verbatim.
-      const exampleLabel = line.match(/^-\s*([^:]+):\s*"/);
-      if (exampleLabel) {
-        const labelMode = normalizeMode(exampleLabel[1].trim());
-        if (labelMode) return labelMode === effectiveMode;
-      }
+  // State machine: `blockMode` is non-null while inside a mode block; `skip`
+  // is true when the open block's mode is not the effective mode.
+  let blockMode = null;
+  let skip = false;
 
-      return true;
-    })
-    .join('\n');
+  for (const line of lines) {
+    const open = line.match(MODE_BLOCK_OPEN_RE);
+    if (open) {
+      blockMode = normalizeMode(open[1]) || open[1];
+      skip = blockMode !== effectiveMode;
+      continue; // strip the marker line itself
+    }
+
+    const close = line.match(MODE_BLOCK_CLOSE_RE);
+    if (close) {
+      blockMode = null;
+      skip = false;
+      continue; // strip the marker line itself
+    }
+
+    if (skip) continue; // drop the whole non-active block
+
+    // Preserve the original stateless line-drop as a fallback for content that
+    // does not use blocks (KTD2): a bold table row or quoted worked example
+    // whose label is a mode other than the effective one is dropped. Only the
+    // intensity-table rows and worked examples are mode-specific; a bullet
+    // whose label is not a mode — e.g. "No unrequested abstractions: ..." —
+    // is a normal rule and must be kept verbatim.
+    const tableLabel = line.match(/^\|\s*\*\*(.+?)\*\*\s*\|/);
+    if (tableLabel) {
+      const labelMode = normalizeMode(tableLabel[1].trim());
+      if (labelMode) {
+        if (labelMode !== effectiveMode) continue;
+        out.push(line);
+        continue;
+      }
+    }
+
+    // Require a quoted value: every worked example is `- lite: "..."`. Without
+    // this, an ordinary rule bullet that happens to start with a mode word
+    // (e.g. "- Full: ...") is silently dropped in every other mode — it looks
+    // like a worked example but is really prose meant to survive verbatim.
+    const exampleLabel = line.match(/^-\s*([^:]+):\s*"/);
+    if (exampleLabel) {
+      const labelMode = normalizeMode(exampleLabel[1].trim());
+      if (labelMode) {
+        if (labelMode !== effectiveMode) continue;
+        out.push(line);
+        continue;
+      }
+    }
+
+    out.push(line);
+  }
+
+  return out.join('\n');
 }
 
 function getFallbackInstructions(mode) {
@@ -46,6 +87,12 @@ function getFallbackInstructions(mode) {
     '## Persistence\n\n' +
     'ACTIVE EVERY RESPONSE. No drift back to over-building. Still active if unsure. Off only: "stop ponytail" / "normal mode".\n\n' +
     'Current level: **' + mode + '**. Switch: `/ponytail lite|full|ultra`.\n\n' +
+    // One per-level enforcement line (R9): the failure path must not silently
+    // reproduce the 96%-identical behavior the levels fix.
+    'Level stance: ' + ({
+      lite: 'advisory — build what is asked, name the lazier alternative, user picks.',
+      ultra: 'deletion-first — YAGNI extremist, challenge the requirement before adding.',
+    }[mode] || 'enforced — the ladder and rules below are binding.') + '\n\n' +
     '## The ladder\n\n' +
     'Before any code, stop at the first rung that holds (the ladder runs after you understand the problem, not instead of it — read the code it touches and trace the real flow first):\n' +
     '1. Does this need to be built at all? (YAGNI)\n' +
