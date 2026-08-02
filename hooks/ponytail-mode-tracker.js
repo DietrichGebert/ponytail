@@ -64,14 +64,21 @@ function finish() {
       } else if (mode && mode !== 'off') {
         setMode(mode);
         modeSwitched = true;
-        // ponytail: Qoder needs the full ruleset every turn, so when a mode
-        // switch happens we fold the confirmation into the ruleset output
-        // below (one JSON on stdout) instead of emitting two separate writes.
+        // ponytail: re-inject the new level's ruleset on a mid-session switch
+        // (#664, KTD3) so the running session actually enforces the new level —
+        // the old behavior emitted only a one-line confirmation, leaving the
+        // previous level's rules in context until the next session start.
+        // Qoder already folds the header into the ruleset output below, so this
+        // non-Qoder branch emits the ruleset (prefixed by the confirmation) for
+        // the hosts whose hook output carries context (Claude Code raw stdout,
+        // Codex hookSpecificOutput.additionalContext). Copilot's writeHookOutput
+        // drops all non-SessionStart output by design, so Copilot applies the
+        // switch at the next session start — documented, not engineered around.
         if (!isQoder) {
           writeHookOutput(
             'UserPromptSubmit',
             mode,
-            'PONYTAIL MODE CHANGED — level: ' + mode,
+            'PONYTAIL MODE CHANGED — level: ' + mode + '\n\n' + getPonytailInstructions(mode),
           );
         }
       } else if (mode === 'off') {

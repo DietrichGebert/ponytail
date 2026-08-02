@@ -76,6 +76,18 @@ assert.equal(result.status, 0, result.stderr);
 assert.equal(fs.readFileSync(codexState, 'utf8'), 'lite');
 output = JSON.parse(result.stdout);
 assert.equal(output.systemMessage, 'PONYTAIL:LITE');
+// A mid-session switch re-injects the new level's ruleset (#664, KTD3): the
+// Codex hook output carries the lite ruleset, not just a one-line confirmation.
+assert.equal(output.additionalContext, undefined, 'Codex must not emit additionalContext at top level (#573)');
+assert.equal(output.hookSpecificOutput.hookEventName, 'UserPromptSubmit');
+assert.match(
+  output.hookSpecificOutput.additionalContext,
+  /PONYTAIL MODE CHANGED — level: lite/,
+);
+assert.match(
+  output.hookSpecificOutput.additionalContext,
+  /lite — advisory/,
+);
 
 // Querying bare @ponytail should report the active level ('lite') without resetting it to default ('ultra')
 result = run(
