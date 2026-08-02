@@ -30,10 +30,17 @@ TASKS = [
 
 
 def load_arms():
+    # ponytail uses the mode-filtered full ruleset (the production injection
+    # path), not the raw SKILL.md, which since #664 carries the union of all
+    # three levels plus gating markers.
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("ponytail_hermes_plugin", ROOT / "__init__.py")
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
     return {
         "baseline": None,
         "caveman":  (ROOT / "benchmarks/arms/caveman-SKILL.md").read_text(encoding="utf-8"),
-        "ponytail": (ROOT / "skills/ponytail/SKILL.md").read_text(encoding="utf-8"),
+        "ponytail": mod.build_injected_context("full"),
     }
 
 

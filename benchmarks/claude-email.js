@@ -1,7 +1,9 @@
 // Email under ponytail on Claude (ponytail's primary target), baseline vs ponytail.
 const fs = require('fs'), path = require('path');
 const { checkPy, pyBlock, TASKS } = require('./robustness-audit.js');
-const skill = fs.readFileSync(path.join(__dirname, '..', 'skills', 'ponytail', 'SKILL.md'), 'utf8');
+// Use the mode-filtered full ruleset (not the raw SKILL.md, which since #664
+// carries the union of all three levels plus gating markers).
+const skill = require('../hooks/ponytail-instructions').getPonytailInstructions('full');
 const email = TASKS.find(t => t.name === 'email');
 const N = Number(process.env.CE_N) || 40;
 const MODELS = (process.env.CE_MODELS || 'claude-haiku-4-5-20251001,claude-sonnet-4-6,claude-opus-4-8').split(',');

@@ -75,7 +75,8 @@ Versus baseline, ponytail writes **80-94% less code**, costs **42-75% less**, an
 Run by other people, not by us, on their own harnesses and machines. Linked for
 transparency: the numbers are theirs, may shift between runs, and are corroboration
 rather than official figures. Only plugin-installed runs are listed, since pasting
-`SKILL.md` into a prompt is a rough approximation of `full` and skews the result.
+`SKILL.md` into a prompt is a rough approximation of `full` and skews the result. The bundled
+arms use the mode-filtered full builder, the production injection path.
 
 | Source | Method | Headline | Date |
 |---|---|---|---|
