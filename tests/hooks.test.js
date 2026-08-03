@@ -429,6 +429,13 @@ assert.equal(result.status, 0, result.stderr);
 assert.equal(fs.readFileSync(defFlag, 'utf8'), 'ultra', 'plain switch must set the session mode');
 assert.equal(JSON.parse(fs.readFileSync(defConfig, 'utf8')).defaultMode, 'lite', 'plain switch must not persist the default');
 
+// An unsupported mode is a no-op: it must not reset the active session mode
+// to the configured default.
+result = run('ponytail-mode-tracker.js', defEnv, JSON.stringify({ prompt: '/ponytail ulta' }));
+assert.equal(result.status, 0, result.stderr);
+assert.equal(result.stdout, '');
+assert.equal(fs.readFileSync(defFlag, 'utf8'), 'ultra', 'invalid mode must preserve the active session mode');
+
 // review is not a valid default (#377) — the command is ignored, config unchanged.
 result = run('ponytail-mode-tracker.js', defEnv, JSON.stringify({ prompt: '/ponytail default review' }));
 assert.equal(result.status, 0, result.stderr);

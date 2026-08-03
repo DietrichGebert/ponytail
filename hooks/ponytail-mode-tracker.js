@@ -50,8 +50,6 @@ function finish() {
         else if (arg === '') {
           isReportOnly = true;
           mode = readMode() || getDefaultMode();
-        } else {
-          mode = getDefaultMode();
         }
       }
 
