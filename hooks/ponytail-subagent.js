@@ -33,22 +33,186 @@ function inject() {
 // length cap and a nested-quantifier sniff, not a sandbox; both are tuned to
 // refuse obvious footguns without blocking legitimate filters.
 const MAX_MATCHER_LEN = 256;
-// ReDoS guard: flag a quantified group whose body contains a quantifier
-// (`(a+)+`, `(a*)*`, `(a+b+c)+`, `(a+){2,}`), the classic catastrophic-
-// backtracking shapes. Character classes are masked so a literal like `[+]+`
-// is not a false positive. Heuristic, not a proof: `(a|aa)+` (alternation
-// inside a quantified group) also backtracks badly but is left alone.
+// ReDoS guard: flag unbounded repeated groups with nested quantifiers or
+// overlapping alternatives (`(a+)+`, `(a|aa)+`, `(foo(bar+))+$`). Bounded
+// repeats are finite work, and a fixed prefix makes direct nesting such as
+// `(foo+)+` deterministic. Heuristic, not a proof.
 // ponytail: RE2 would fix the whole class, overkill for an opt-in operator
-// filter; a false positive just means inject-everywhere plus a warning.
-const RE_NESTED_QUANT = /\([^)]*[*+?{][^)]*\)\s*[*+?{]/;
+// filter; a false positive just means inject-everywhere plus a warning. A
+// same-thread RegExp.test cannot be interrupted by this hook, so a timeout
+// needs a child process or a constrained regex engine; reject known shapes
+// before test() instead.
+// ponytail: branch comparison is O(n^2), bounded by the 256-character cap;
+// use RE2 or a full regex parser if matcher scope grows.
 function isReDoSSuspect(pattern) {
-  return RE_NESTED_QUANT.test(
-    pattern
-      .replace(/\[[^\]]*\]/g, 'X')
-      // Group-prefix syntax (`?:`, lookarounds, inline flags) carries a `?`
-      // that is not a quantifier; strip it so `(?:a|b)+` is not flagged.
-      .replace(/\(\?[=!<:i-]*/g, '('),
-  );
+  let cursor = 0;
+
+  function readQuantifier() {
+    const ch = pattern[cursor];
+    if (ch === '*') {
+      cursor++;
+      return { min: 0, max: Infinity, unbounded: true };
+    }
+    if (ch === '+') {
+      cursor++;
+      return { min: 1, max: Infinity, unbounded: true };
+    }
+    if (ch === '?') {
+      cursor++;
+      return { min: 0, max: 1, unbounded: false };
+    }
+    if (ch !== '{') return null;
+
+    const match = pattern.slice(cursor).match(/^\{(\d+)(,(\d*)?)?\}/);
+    if (!match) return null;
+    cursor += match[0].length;
+    const min = Number(match[1]);
+    const max = match[2] === undefined
+      ? min
+      : match[3] === undefined || match[3] === ''
+        ? Infinity
+        : Number(match[3]);
+    return { min, max, unbounded: max === Infinity };
+  }
+
+  function readGroupPrefix() {
+    if (pattern[cursor] !== '?') return false;
+    cursor++;
+    if (pattern[cursor] === '=' || pattern[cursor] === '!') {
+      cursor++;
+      return true;
+    }
+    if (pattern[cursor] === '<' && (pattern[cursor + 1] === '=' || pattern[cursor + 1] === '!')) {
+      cursor += 2;
+      return true;
+    }
+    if (pattern[cursor] === '<') {
+      const end = pattern.indexOf('>', cursor + 1);
+      cursor = end === -1 ? pattern.length : end + 1;
+      return false;
+    }
+    if (pattern[cursor] === ':') {
+      cursor++;
+      return false;
+    }
+    // Invalid inline syntax will be rejected by RegExp below. Consume its
+    // prefix here so it cannot be mistaken for a quantifier.
+    while (cursor < pattern.length && pattern[cursor] !== ':' && pattern[cursor] !== ')') cursor++;
+    if (pattern[cursor] === ':') cursor++;
+    return false;
+  }
+
+  function parseSequence(stop) {
+    const alternatives = [[]];
+    while (cursor < pattern.length) {
+      const ch = pattern[cursor];
+      if (ch === stop) {
+        cursor++;
+        return alternatives;
+      }
+      if (ch === '|') {
+        alternatives.push([]);
+        cursor++;
+        continue;
+      }
+      if (ch === '\\') {
+        alternatives[alternatives.length - 1].push({ kind: 'literal', text: pattern.slice(cursor, cursor + 2) });
+        cursor += 2;
+        continue;
+      }
+      if (ch === '[') {
+        cursor++;
+        while (cursor < pattern.length) {
+          if (pattern[cursor] === '\\') cursor += 2;
+          else if (pattern[cursor++] === ']') break;
+        }
+        alternatives[alternatives.length - 1].push({ kind: 'unknown' });
+        continue;
+      }
+      if (ch === '(') {
+        cursor++;
+        const group = {
+          kind: 'group',
+          assertion: readGroupPrefix(),
+          alternatives: parseSequence(')'),
+          quant: null,
+        };
+        alternatives[alternatives.length - 1].push(group);
+        continue;
+      }
+      const branch = alternatives[alternatives.length - 1];
+      if (ch === '*' || ch === '+' || ch === '?' || ch === '{') {
+        const quant = readQuantifier();
+        if (quant && branch.length) {
+          branch[branch.length - 1].quant = quant;
+          if (pattern[cursor] === '?') cursor++;
+          continue;
+        }
+      }
+      branch.push({ kind: ch === '^' || ch === '$' ? 'assertion' : 'literal', text: ch });
+      cursor++;
+    }
+    return alternatives;
+  }
+
+  const root = { kind: 'root', alternatives: parseSequence(null), quant: null };
+
+  function branchInfo(branch) {
+    let prefix = '';
+    let nullable = true;
+    for (const node of branch) {
+      if (node.kind === 'assertion') continue;
+      if (node.kind !== 'literal') break;
+      if (node.quant && node.quant.min === 0) break;
+      prefix += node.text;
+      nullable = false;
+      if (node.quant && node.quant.unbounded) break;
+    }
+    return { prefix, nullable };
+  }
+
+  function alternativesOverlap(alternatives) {
+    const infos = alternatives.map(branchInfo);
+    for (let i = 0; i < infos.length; i++) {
+      for (let j = i + 1; j < infos.length; j++) {
+        const left = infos[i];
+        const right = infos[j];
+        if (left.nullable || right.nullable || !left.prefix || !right.prefix) return true;
+        if (left.prefix.startsWith(right.prefix) || right.prefix.startsWith(left.prefix)) return true;
+      }
+    }
+    return false;
+  }
+
+  function hasFixedPrefix(branch, target) {
+    let hasPrefix = false;
+    for (const node of branch) {
+      if (node === target) return hasPrefix;
+      if (node.kind !== 'literal' || node.quant) return false;
+      hasPrefix = true;
+    }
+    return false;
+  }
+
+  function hasRisk(group, repeatedAncestor, nestedGroup) {
+    const repeated = repeatedAncestor || Boolean(group.quant && group.quant.unbounded);
+    if (repeated && group.alternatives.length > 1 && alternativesOverlap(group.alternatives)) return true;
+
+    for (const branch of group.alternatives) {
+      for (const node of branch) {
+        if (node.kind === 'group') {
+          if (repeatedAncestor && node.quant && node.quant.unbounded) return true;
+          if (hasRisk(node, repeated, nestedGroup || repeated)) return true;
+          continue;
+        }
+        if (!repeated || !node.quant || !node.quant.unbounded) continue;
+        if (nestedGroup || !hasFixedPrefix(branch, node)) return true;
+      }
+    }
+    return false;
+  }
+
+  return hasRisk(root, false, false);
 }
 function warn(msg) {
   // Stderr only, stdout is the hook payload and must stay valid JSON.

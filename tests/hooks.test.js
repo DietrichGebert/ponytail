@@ -23,6 +23,7 @@ function run(script, env, input = '') {
     env: { ...process.env, ...env },
     input,
     encoding: 'utf8',
+    timeout: 5000,
   });
 }
 
@@ -316,6 +317,7 @@ assert.equal(result.status, 0, result.stderr);
 assert.ok(/PONYTAIL_SUBAGENT_MATCHER is invalid/.test(result.stderr), 'bad pattern must warn on stderr');
 output = JSON.parse(result.stdout);
 assert.equal(output.hookSpecificOutput.hookEventName, 'SubagentStart');
+assert.match(output.hookSpecificOutput.additionalContext, /PONYTAIL MODE ACTIVE — level: full/);
 
 // Empty matcher env var behaves like unset: inject into every subagent.
 result = run(
@@ -327,18 +329,28 @@ assert.equal(result.status, 0, result.stderr);
 output = JSON.parse(result.stdout);
 assert.equal(output.hookSpecificOutput.hookEventName, 'SubagentStart');
 
-// Backtracking-style attack pattern → must not hang or crash; rejected with a
-// warning and falls back to injecting everywhere (issue #658). The long
-// non-matching agent_type is exactly the input that makes `(a+)+$` spin.
-result = run(
-  'ponytail-subagent.js',
-  { ...scopeEnv, PONYTAIL_SUBAGENT_MATCHER: '(a+)+$' },
-  JSON.stringify({ agent_type: 'a'.repeat(64) + 'b' }),
-);
-assert.equal(result.status, 0, result.stderr);
-assert.ok(/ReDoS risk/.test(result.stderr), 'backtracking pattern must warn on stderr');
-output = JSON.parse(result.stdout);
-assert.equal(output.hookSpecificOutput.hookEventName, 'SubagentStart');
+// Backtracking-style attack patterns must not hang or crash. Rejected with a
+// warning, then fail open with the full context (issue #658).
+for (const matcher of [
+  '(a+)+$',
+  '(a|aa)+$',
+  '(?:a|aa)+$',
+  '((a|aa))+$',
+  '(a|aa){2,}$',
+  '(foo(bar+))+$',
+]) {
+  result = run(
+    'ponytail-subagent.js',
+    { ...scopeEnv, PONYTAIL_SUBAGENT_MATCHER: matcher },
+    JSON.stringify({ agent_type: 'a'.repeat(64) + 'b' }),
+  );
+  assert.equal(result.error, undefined, `${matcher} exceeded test timeout`);
+  assert.equal(result.status, 0, result.stderr);
+  assert.ok(/ReDoS risk/.test(result.stderr), `${matcher} must warn on stderr`);
+  output = JSON.parse(result.stdout);
+  assert.equal(output.hookSpecificOutput.hookEventName, 'SubagentStart');
+  assert.match(output.hookSpecificOutput.additionalContext, /PONYTAIL MODE ACTIVE — level: full/);
+}
 
 // Overlong pattern → rejected with a warning, falls back to injecting.
 result = run(
@@ -350,6 +362,55 @@ assert.equal(result.status, 0, result.stderr);
 assert.ok(/exceeds 256 chars/.test(result.stderr), 'overlong pattern must warn on stderr');
 output = JSON.parse(result.stdout);
 assert.equal(output.hookSpecificOutput.hookEventName, 'SubagentStart');
+assert.match(output.hookSpecificOutput.additionalContext, /PONYTAIL MODE ACTIVE — level: full/);
+
+// The length cap is inclusive at 256 characters.
+const matcher256 = 'a'.repeat(256);
+result = run(
+  'ponytail-subagent.js',
+  { ...scopeEnv, PONYTAIL_SUBAGENT_MATCHER: matcher256 },
+  JSON.stringify({ agent_type: matcher256 }),
+);
+assert.equal(result.error, undefined, '256-character matcher exceeded test timeout');
+assert.equal(result.status, 0, result.stderr);
+assert.equal(result.stderr, '');
+output = JSON.parse(result.stdout);
+assert.match(output.hookSpecificOutput.additionalContext, /PONYTAIL MODE ACTIVE — level: full/);
+
+const matcher257 = 'a'.repeat(257);
+result = run(
+  'ponytail-subagent.js',
+  { ...scopeEnv, PONYTAIL_SUBAGENT_MATCHER: matcher257 },
+  JSON.stringify({ agent_type: matcher257 }),
+);
+assert.equal(result.error, undefined, '257-character matcher exceeded test timeout');
+assert.equal(result.status, 0, result.stderr);
+assert.ok(/exceeds 256 chars/.test(result.stderr));
+output = JSON.parse(result.stdout);
+assert.match(output.hookSpecificOutput.additionalContext, /PONYTAIL MODE ACTIVE — level: full/);
+
+// These patterns are safe and must remain usable rather than being rejected
+// by the heuristic.
+for (const [matcher, agentType] of [
+  ['(a+)?', 'a'],
+  ['(a+){2}', 'aa'],
+  ['(a+){2,4}', 'aa'],
+  ['(a\\+)+', 'a+'],
+  ['(foo+)+', 'fooo'],
+  ['(?=a+)a+', 'aaa'],
+]) {
+  result = run(
+    'ponytail-subagent.js',
+    { ...scopeEnv, PONYTAIL_SUBAGENT_MATCHER: matcher },
+    JSON.stringify({ agent_type: agentType }),
+  );
+  assert.equal(result.error, undefined, `${matcher} exceeded test timeout`);
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(result.stderr, '', `${matcher} must not be rejected`);
+  output = JSON.parse(result.stdout);
+  assert.equal(output.hookSpecificOutput.hookEventName, 'SubagentStart');
+  assert.match(output.hookSpecificOutput.additionalContext, /PONYTAIL MODE ACTIVE — level: full/);
+}
 
 // The default (no matcher) path must not depend on stdin: even with stdin
 // closed empty it injects synchronously, preserving the #252 behavior on
