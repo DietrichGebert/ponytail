@@ -305,13 +305,49 @@ assert.equal(result.status, 0, result.stderr);
 output = JSON.parse(result.stdout);
 assert.match(output.hookSpecificOutput.additionalContext, /PONYTAIL MODE ACTIVE — level: full/);
 
-// Invalid regex → must not crash; fall back to injecting everywhere.
+// Invalid regex → must not crash; fall back to injecting everywhere, with a
+// warning on stderr (issue #658).
 result = run(
   'ponytail-subagent.js',
   { ...scopeEnv, PONYTAIL_SUBAGENT_MATCHER: '(' },
   JSON.stringify({ agent_type: 'anything' }),
 );
 assert.equal(result.status, 0, result.stderr);
+assert.ok(/PONYTAIL_SUBAGENT_MATCHER is invalid/.test(result.stderr), 'bad pattern must warn on stderr');
+output = JSON.parse(result.stdout);
+assert.equal(output.hookSpecificOutput.hookEventName, 'SubagentStart');
+
+// Empty matcher env var behaves like unset: inject into every subagent.
+result = run(
+  'ponytail-subagent.js',
+  { ...scopeEnv, PONYTAIL_SUBAGENT_MATCHER: '' },
+  JSON.stringify({ agent_type: 'anything' }),
+);
+assert.equal(result.status, 0, result.stderr);
+output = JSON.parse(result.stdout);
+assert.equal(output.hookSpecificOutput.hookEventName, 'SubagentStart');
+
+// Backtracking-style attack pattern → must not hang or crash; rejected with a
+// warning and falls back to injecting everywhere (issue #658). The long
+// non-matching agent_type is exactly the input that makes `(a+)+$` spin.
+result = run(
+  'ponytail-subagent.js',
+  { ...scopeEnv, PONYTAIL_SUBAGENT_MATCHER: '(a+)+$' },
+  JSON.stringify({ agent_type: 'a'.repeat(64) + 'b' }),
+);
+assert.equal(result.status, 0, result.stderr);
+assert.ok(/ReDoS risk/.test(result.stderr), 'backtracking pattern must warn on stderr');
+output = JSON.parse(result.stdout);
+assert.equal(output.hookSpecificOutput.hookEventName, 'SubagentStart');
+
+// Overlong pattern → rejected with a warning, falls back to injecting.
+result = run(
+  'ponytail-subagent.js',
+  { ...scopeEnv, PONYTAIL_SUBAGENT_MATCHER: 'a'.repeat(300) },
+  JSON.stringify({ agent_type: 'anything' }),
+);
+assert.equal(result.status, 0, result.stderr);
+assert.ok(/exceeds 256 chars/.test(result.stderr), 'overlong pattern must warn on stderr');
 output = JSON.parse(result.stdout);
 assert.equal(output.hookSpecificOutput.hookEventName, 'SubagentStart');
 

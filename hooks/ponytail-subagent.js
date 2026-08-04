@@ -28,13 +28,46 @@ function inject() {
   }
 }
 
-// A bad regex must never crash the hook; treat it as "no matcher" and inject.
+// A bad regex must never crash the hook; treat it as "no matcher" and inject
+// (issue #658). The pattern is operator-controlled, so the guardrail is a
+// length cap and a nested-quantifier sniff, not a sandbox; both are tuned to
+// refuse obvious footguns without blocking legitimate filters.
+const MAX_MATCHER_LEN = 256;
+// ReDoS guard: flag a quantified group whose body contains a quantifier
+// (`(a+)+`, `(a*)*`, `(a+b+c)+`, `(a+){2,}`), the classic catastrophic-
+// backtracking shapes. Character classes are masked so a literal like `[+]+`
+// is not a false positive. Heuristic, not a proof: `(a|aa)+` (alternation
+// inside a quantified group) also backtracks badly but is left alone.
+// ponytail: RE2 would fix the whole class, overkill for an opt-in operator
+// filter; a false positive just means inject-everywhere plus a warning.
+const RE_NESTED_QUANT = /\([^)]*[*+?{][^)]*\)\s*[*+?{]/;
+function isReDoSSuspect(pattern) {
+  return RE_NESTED_QUANT.test(
+    pattern
+      .replace(/\[[^\]]*\]/g, 'X')
+      // Group-prefix syntax (`?:`, lookarounds, inline flags) carries a `?`
+      // that is not a quantifier; strip it so `(?:a|b)+` is not flagged.
+      .replace(/\(\?[=!<:i-]*/g, '('),
+  );
+}
+function warn(msg) {
+  // Stderr only, stdout is the hook payload and must stay valid JSON.
+  try { process.stderr.write('ponytail-subagent: ' + msg + '\n'); } catch (e) {}
+}
 let matcherRe = null;
 try {
-  if (process.env.PONYTAIL_SUBAGENT_MATCHER) {
-    matcherRe = new RegExp(process.env.PONYTAIL_SUBAGENT_MATCHER, 'i');
+  const pattern = process.env.PONYTAIL_SUBAGENT_MATCHER;
+  if (pattern) {
+    if (pattern.length > MAX_MATCHER_LEN) {
+      warn('PONYTAIL_SUBAGENT_MATCHER exceeds ' + MAX_MATCHER_LEN + ' chars; ignoring');
+    } else if (isReDoSSuspect(pattern)) {
+      warn('PONYTAIL_SUBAGENT_MATCHER has nested quantifiers (ReDoS risk); ignoring');
+    } else {
+      matcherRe = new RegExp(pattern, 'i');
+    }
   }
 } catch (e) {
+  warn('PONYTAIL_SUBAGENT_MATCHER is invalid (' + (e && e.message) + '); ignoring');
   matcherRe = null;
 }
 
