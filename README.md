@@ -155,6 +155,20 @@ Copilot CLI namespaces plugin commands by plugin name. For example:
 /ponytail:ponytail-review
 ```
 
+### ChatGPT
+
+Build the single upload bundle from the canonical six Ponytail skills:
+
+```bash
+npm run pack:chatgpt
+```
+
+Then open **Plugins → Skills → Create → Upload from your computer** in ChatGPT and select `dist/ponytail-chatgpt-skill.zip`.
+
+ChatGPT automatically selects the Skill for relevant coding requests. You can also type `ponytail lite`, `ponytail full`, `ponytail ultra`, `/ponytail-review`, `/ponytail-audit`, `/ponytail-debt`, `/ponytail-gain`, or `/ponytail-help`. These slash-like forms are text triggers, not registered slash-menu commands.
+
+Unlike the lifecycle-hook adapters, ChatGPT keeps mode only in the current conversation and writes no config, mode flag, or statusline state. See [ChatGPT Skill Adapter](docs/chatgpt.md) for availability, updates, removal, architecture, and maintenance.
+
 ### Pi agent harness
 
 ```
@@ -250,9 +264,9 @@ That was it. He'd be proud. He won't say it.
 
 Active every session, with a handful of commands (see [Commands](#commands)). `/ponytail ultra` exists for when the codebase has wronged you personally. Startup and mode-change text shows the current mode.
 
-Set the level for every new session with the `PONYTAIL_DEFAULT_MODE` env var (`lite`/`full`/`ultra`/`off`), or a `defaultMode` field in `~/.config/ponytail/config.json` (`%APPDATA%\ponytail\config.json` on Windows). The default is `full`.
+Set the level for every new session with the `PONYTAIL_DEFAULT_MODE` env var (`lite`/`full`/`ultra`/`off`), or a `defaultMode` field in `~/.config/ponytail/config.json` (`%APPDATA%\ponytail\config.json` on Windows). The default is `full`. ChatGPT is the exception: its uploaded Skill keeps mode only in the current conversation and does not read these local settings.
 
-While active, the ruleset is also injected into every subagent spawned via the Agent tool. To scope that to specific agent types (say, keep it off read-only search agents), set the `PONYTAIL_SUBAGENT_MATCHER` env var to a regex tested against the subagent's `agent_type`. It is unanchored and case-insensitive: `explore|general` matches either, `^general$` is exact, and plugin agent types look like `plugin:name`. Unset means inject into every subagent (the default); an invalid regex, or a subagent whose type the platform doesn't report, also falls back to injecting.
+While active, the ruleset is also injected into every subagent spawned via the Agent tool. To scope that to specific agent types (say, keep it off read-only search agents), set the `PONYTAIL_SUBAGENT_MATCHER` env var to a regex tested against the subagent's `agent_type`. It is unanchored and case-insensitive: `explore|general` matches either, `^general$` is exact, and plugin agent types look like `plugin:name`. Unset means inject into every subagent (the default); an invalid regex, or a subagent whose type the platform doesn't report, also falls back to injecting. ChatGPT does not run this lifecycle-hook subagent injection; its Skill instructions remain available to ChatGPT within the conversation.
 
 Cursor, Windsurf, Cline, GitHub Copilot Chat (the VS Code, JetBrains, and Visual Studio editor extension, not the standalone Copilot CLI covered under [Install](#install)), Aider, Kiro, Zed, CodeWhale, Swival, Qoder: copy the matching rules file from this repo ([`.cursor/rules/`](.cursor/rules/), [`.windsurf/rules/`](.windsurf/rules/), [`.clinerules/`](.clinerules/), [`.github/copilot-instructions.md`](.github/copilot-instructions.md), [`AGENTS.md`](AGENTS.md), [`.kiro/steering/`](.kiro/steering/), [`.qoder/rules/`](.qoder/rules/)).
 
@@ -276,11 +290,12 @@ Which files map to which agent: [Agent portability](docs/agent-portability.md).
 |------|---------|
 | Claude Code | `/plugin remove ponytail` |
 | Codex | `codex plugin remove ponytail` |
+| ChatGPT | Delete the uploaded Skill from **Plugins → Skills** |
 | Devin CLI | `devin plugins remove ponytail` |
 | Pi agent | `pi uninstall ponytail` |
 | Cursor / Windsurf / Cline / Qoder / etc. | Delete the copied rule file |
 
-These remove the plugin's own files. They leave behind a small amount of state ponytail writes outside the plugin folder: the mode flag, `~/.config/ponytail/config.json`, and (if you accepted the setup nudge) a `statusLine` entry in `~/.claude/settings.json`. Run `node scripts/uninstall.js` to clean those up too. **Run it before the host remove command above** — the script is itself a plugin file, so removing the plugin first deletes it (or run it from a separate clone of this repo). It only removes the statusLine entry if it points at ponytail's own script, so a statusline you set up yourself is left untouched.
+These remove the plugin's own files. They leave behind a small amount of state ponytail writes outside the plugin folder: the mode flag, `~/.config/ponytail/config.json`, and (if you accepted the setup nudge) a `statusLine` entry in `~/.claude/settings.json`. Run `node scripts/uninstall.js` to clean those up too. **Run it before the host remove command above** — the script is itself a plugin file, so removing the plugin first deletes it (or run it from a separate clone of this repo). It only removes the statusLine entry if it points at ponytail's own script, so a statusline you set up yourself is left untouched. ChatGPT writes none of this local state, so deleting its uploaded Skill is enough.
 
 ## Commands
 
@@ -293,7 +308,7 @@ These remove the plugin's own files. They leave behind a small amount of state p
 | `/ponytail-gain` | Show the measured impact scoreboard (less code, less cost, more speed) from the benchmark. |
 | `/ponytail-help` | Quick reference for the commands above. |
 
-Commands need a skill-capable host (Claude Code, Codex, Devin CLI, OpenCode, Gemini, pi, Swival, Hermes Agent, Qoder). In Codex they're skills, invoke with `@` (`@ponytail-review`). The instruction-only adapters (Cursor, Windsurf, Cline, Copilot, Kiro, Antigravity) load the always-on ruleset without the commands.
+Commands need a skill-capable host (Claude Code, Codex, ChatGPT, Devin CLI, OpenCode, Gemini, pi, Swival, Hermes Agent, Qoder). In Codex they're skills, invoke with `@` (`@ponytail-review`). In ChatGPT, slash-like forms are text triggers and the Skill may also activate automatically. The instruction-only adapters (Cursor, Windsurf, Cline, Copilot, Kiro, Antigravity) load the always-on ruleset without the commands.
 
 ## Development
 
@@ -306,6 +321,15 @@ npm test
 
 The OpenClaw skill package (`.openclaw/skills/`) is generated from `skills/`; rerun `node scripts/build-openclaw-skills.js` after changing a skill, the test suite fails if it is stale. To publish the skills to ClawHub, run `clawhub login` once, then `node scripts/publish-openclaw-skills.js` (it publishes all six at the `package.json` version; pass `--dry-run` to preview).
 
+The ChatGPT adapter is also generated from `skills/`, but combines all six behaviors into one upload entrypoint. After changing a canonical skill, run:
+
+```bash
+npm run build:chatgpt
+npm run pack:chatgpt
+```
+
+The first command refreshes `.chatgpt/ponytail/`; the second also writes `dist/ponytail-chatgpt-skill.zip`. `npm test` checks canonical-body parity, ChatGPT-specific host help, npm package inclusion, and the generated ZIP structure.
+
 The correctness benchmark spawns Python for email and CSV checks; `python3` is tried before `python`. CSV checks need `pandas` installed locally.
 
 ## FAQ
@@ -314,7 +338,7 @@ The correctness benchmark spawns Python for email and CSV checks; `python3` is t
 Yes, and you should. Caveman shrinks what the agent says; ponytail shrinks what it builds. Different halves, no overlap: caveman leaves code byte-for-byte exact, ponytail stays out of the prose. Terse talk about minimal code.
 
 **Does it need a config file?**
-No. An optional `~/.config/ponytail/config.json` or `PONYTAIL_DEFAULT_MODE` env var can set the default level, but nothing is required.
+No. An optional `~/.config/ponytail/config.json` or `PONYTAIL_DEFAULT_MODE` env var can set the default level for lifecycle-hook hosts, but nothing is required. ChatGPT uses conversation-scoped mode instead.
 
 **What if I really need the 120-line cache class?**
 You don't. Insist anyway and he'll build it. Slowly. Correctly. While looking at you.
