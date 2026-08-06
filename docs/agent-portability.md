@@ -10,6 +10,7 @@ to load in a given agent.
 |------|-------|-------|
 | Claude Code | `.claude-plugin/plugin.json`, `commands/`, `hooks/claude-codex-hooks.json`, `hooks/` | Full plugin install with session activation, mode tracking, commands, and statusline support. |
 | Codex | `.codex-plugin/plugin.json`, `hooks/claude-codex-hooks.json`, `hooks/`, `skills/` | Plugin install with the same skills plus lifecycle hooks for activation and mode tracking. |
+| ChatGPT | `.chatgpt/ponytail/`, `scripts/build-chatgpt-skill.js`, `scripts/package-chatgpt-skill.js`, `skills/` | Standard single-Skill upload. One root `SKILL.md` dispatches core, review, audit, debt, gain, and help; generated references preserve the canonical skill bodies. Modes are conversation-scoped and no lifecycle hooks or local state run. |
 | OpenCode | `.opencode/plugins/ponytail.mjs`, `.opencode/command/`, `hooks/`, `skills/` | Server plugin injects the ruleset each turn via `experimental.chat.system.transform` and persists `/ponytail` switches; reuses the shared instruction builder. |
 | pi | `pi-extension/`, `skills/`, `hooks/` | Package extension: injects the ruleset each turn through the shared instruction builder and registers the `/ponytail` commands. |
 | Hermes Agent | `plugin.yaml`, `__init__.py`, `skills/` | Native Hermes plugin: injects active mode through `pre_llm_call`, rewrites gateway `/ponytail-*` skill commands into agent prompts, registers `/ponytail` mode switching, and exposes bundled skills as `ponytail:<skill>`. |
@@ -36,6 +37,29 @@ to load in a given agent.
 Keep adapters thin. When a host supports skills or hooks, point it at the
 existing `skills/` and `hooks/` files. When a host only supports project
 instructions, keep its copied rule text aligned with `AGENTS.md`.
+
+## ChatGPT Adapter
+
+ChatGPT accepts a user-uploaded Skill directory, but the Ponytail distribution
+has six canonical `SKILL.md` entrypoints. The adapter therefore exposes one
+root `.chatgpt/ponytail/SKILL.md` and copies each canonical skill body into a
+non-entrypoint reference file. This preserves all six behaviors without
+presenting six separate uploaded skills or nested `SKILL.md` files.
+
+`references/chatgpt-host.md` is intentionally host-specific. It overrides the
+Claude/Codex configuration and update instructions that remain in the shared
+help body. ChatGPT mode state is conversation-scoped; it does not use hooks,
+statusline state, `PONYTAIL_DEFAULT_MODE`, or the local Ponytail config file.
+
+Build and package it with:
+
+```bash
+npm run build:chatgpt
+npm run pack:chatgpt
+```
+
+See [ChatGPT Skill Adapter](chatgpt.md) for installation, usage, update, removal,
+and maintenance details.
 
 ## Portable Behavior
 

@@ -24,7 +24,7 @@ Choose the narrowest path that matches the request:
 - Whole-repository complexity audit: read `references/ponytail-audit.md`. Rank the largest cuts first and do not edit unless asked.
 - Deferred-shortcut ledger: read `references/ponytail-debt.md`. Search comment-form `ponytail:` markers, skip vendored/build directories, and report or persist the ledger as requested.
 - Impact scoreboard: read `references/ponytail-gain.md`. Present published benchmark figures as benchmarks, never as measured savings for the current repository.
-- Usage help: read `references/ponytail-help.md`, but replace host-specific install/update instructions with ChatGPT's Skills UI terminology.
+- Usage, installation, update, removal, commands, or mode help: read `references/chatgpt-host.md` first. Use `references/ponytail-help.md` only for the shared level and action descriptions; ignore its host-specific install, update, persistence, and configuration sections.
 
 If one request combines modes, apply implementation rules first, then add only the requested review, audit, or ledger output.
 
@@ -35,7 +35,7 @@ If one request combines modes, apply implementation rules first, then add only t
 - `ponytail ultra`: prefer deletion and YAGNI aggressively while honoring explicit requirements and safety boundaries.
 - `ponytail off`, `stop ponytail`, or `normal mode`: stop applying Ponytail until the user re-enables it.
 
-Keep mode state in the conversation. Do not create config files, status-line files, lifecycle hooks, or persistent flags; those belong to other host adapters and ChatGPT does not execute them.
+Keep mode state in the conversation. Slash-like forms such as `/ponytail-review` are text triggers, not registered ChatGPT slash commands. Do not create config files, status-line files, lifecycle hooks, or persistent flags; those belong to other host adapters and ChatGPT does not execute them.
 
 ## Working method
 

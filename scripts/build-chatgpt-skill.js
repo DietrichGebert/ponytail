@@ -1,13 +1,10 @@
 #!/usr/bin/env node
 // Generate a single ChatGPT-uploadable Skill source tree from the canonical
-// skills/. ChatGPT accepts the Agent Skills format, but one uploaded bundle
-// should expose one SKILL.md entrypoint. This adapter routes Ponytail's six
-// skills through one root entrypoint and keeps each canonical body as a
-// reference, so the behavior stays in sync without shipping nested SKILL.md
-// files that would be detected as separate skills.
+// skills/. One uploaded bundle exposes one SKILL.md entrypoint, which routes
+// Ponytail's six behaviors through canonical bodies copied as references.
 //
-// Run: node scripts/build-chatgpt-skill.js
-// Then package: cd .chatgpt && python3 -m zipfile -c skill.zip ponytail
+// Run: npm run build:chatgpt
+// Package: npm run pack:chatgpt
 
 const fs = require('fs');
 const path = require('path');
@@ -25,6 +22,34 @@ const NAMES = [
 
 const ENTRYPOINT = fs.readFileSync(path.join(OUT, 'SKILL.md'), 'utf8').replace(/\r\n/g, '\n');
 const OPENAI_YAML = `interface:\n  display_name: "Ponytail"\n  short_description: "Minimal coding, review, audit, and debt cleanup"\n  brand_color: "#8FD14F"\n`;
+const CHATGPT_HOST = `# ChatGPT host behavior
+
+Use this reference as the authority for ChatGPT-specific installation, commands, mode state, updates, and removal. Do not reuse host behavior from Claude Code, Codex, OpenCode, Copilot CLI, or other adapters.
+
+## Use
+
+ChatGPT can select Ponytail automatically for coding requests. Users can also type these text triggers:
+
+- \`ponytail lite\`, \`ponytail full\`, \`ponytail ultra\`, or \`ponytail off\`
+- \`/ponytail-review\`, \`/ponytail-audit\`, \`/ponytail-debt\`, \`/ponytail-gain\`, or \`/ponytail-help\`
+- \`stop ponytail\` or \`normal mode\`
+
+Slash-like forms are messages, not registered ChatGPT slash-menu commands.
+
+## State
+
+Mode is scoped to the current conversation. Default to full when Ponytail is first used unless the user explicitly selects another level. Do not read or create \`PONYTAIL_DEFAULT_MODE\`, \`~/.config/ponytail/config.json\`, mode flags, statusline files, or lifecycle hooks.
+
+## Install and update
+
+The upload bundle is a ZIP whose top-level directory is \`ponytail/\`. In ChatGPT, the user opens **Plugins → Skills → Create → Upload from your computer** and selects the ZIP. Availability and admin controls depend on the user's current ChatGPT plan and workspace settings.
+
+To update, the user builds a newer ZIP and replaces or re-uploads the Skill. Personal Skills may need to be added separately on different ChatGPT surfaces.
+
+## Remove
+
+Delete the uploaded Ponytail Skill from **Plugins → Skills**. No local Ponytail state needs cleanup because this adapter writes none.
+`;
 
 function sourceBody(name) {
   const source = fs.readFileSync(path.join(ROOT, 'skills', name, 'SKILL.md'), 'utf8').replace(/\r\n/g, '\n');
@@ -37,6 +62,7 @@ function renderFiles() {
   const files = new Map([
     ['SKILL.md', ENTRYPOINT],
     ['agents/openai.yaml', OPENAI_YAML],
+    ['references/chatgpt-host.md', CHATGPT_HOST],
   ]);
   for (const name of NAMES) files.set(`references/${name}.md`, sourceBody(name));
   return files;
@@ -47,6 +73,7 @@ function outPath(relativePath) {
 }
 
 function writeFiles() {
+  fs.rmSync(OUT, { recursive: true, force: true });
   for (const [relativePath, content] of renderFiles()) {
     const target = outPath(relativePath);
     fs.mkdirSync(path.dirname(target), { recursive: true });
@@ -55,6 +82,16 @@ function writeFiles() {
   }
 }
 
-module.exports = { ENTRYPOINT, NAMES, OPENAI_YAML, OUT, outPath, renderFiles, sourceBody, writeFiles };
+module.exports = {
+  CHATGPT_HOST,
+  ENTRYPOINT,
+  NAMES,
+  OPENAI_YAML,
+  OUT,
+  outPath,
+  renderFiles,
+  sourceBody,
+  writeFiles,
+};
 
 if (require.main === module) writeFiles();
