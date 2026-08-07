@@ -233,6 +233,12 @@ clawhub install ponytail
 
 ClawHub에서 ponytail을 OpenClaw 스킬로 설치한다. review, audit, debt, gain, help 스킬도 같은 식으로 깐다(`clawhub install ponytail-review` 등). OpenClaw는 코딩 작업에 이를 적용하고 `/ponytail` 명령으로도 열어 준다. ClawHub가 없으면 [`.openclaw/skills/ponytail`](.openclaw/skills/)을 `~/.openclaw/skills/`에 복사하면 된다.
 
+### Kimchi
+
+```bash
+kimchi install git:github.com/DietrichGebert/ponytail
+```
+
 이게 끝이었다. 그 사람이라면 흐뭇해할 거다. 입 밖으로 내진 않겠지만.
 
 매 세션 켜져 있고, 명령 몇 개가 딸려 온다([Commands](#commands) 참고). `/ponytail ultra`는 코드베이스가 당신에게 단단히 밉보인 날을 위해 있다. 시작할 때와 모드를 바꿀 때 지금 모드를 보여 준다.
