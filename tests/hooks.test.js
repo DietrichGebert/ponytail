@@ -335,13 +335,47 @@ assert.equal(result.status, 0, result.stderr);
 output = JSON.parse(result.stdout);
 assert.match(output.hookSpecificOutput.additionalContext, /PONYTAIL MODE ACTIVE — level: full/);
 
-// Invalid regex → must not crash; fall back to injecting everywhere.
+// Invalid regex → must not crash; fall back to injecting everywhere, with a
+// warning on stderr (issue #658).
 result = run(
   'ponytail-subagent.js',
   { ...scopeEnv, PONYTAIL_SUBAGENT_MATCHER: '(' },
   JSON.stringify({ agent_type: 'anything' }),
 );
 assert.equal(result.status, 0, result.stderr);
+assert.ok(/PONYTAIL_SUBAGENT_MATCHER is invalid/.test(result.stderr), 'bad pattern must warn on stderr');
+output = JSON.parse(result.stdout);
+assert.equal(output.hookSpecificOutput.hookEventName, 'SubagentStart');
+
+// Overlong pattern → rejected with a warning; falls back to injecting.
+result = run(
+  'ponytail-subagent.js',
+  { ...scopeEnv, PONYTAIL_SUBAGENT_MATCHER: 'a'.repeat(300) },
+  JSON.stringify({ agent_type: 'anything' }),
+);
+assert.equal(result.status, 0, result.stderr);
+assert.ok(/exceeds 256 chars/.test(result.stderr), 'overlong pattern must warn on stderr');
+output = JSON.parse(result.stdout);
+assert.equal(output.hookSpecificOutput.hookEventName, 'SubagentStart');
+
+// The length cap is inclusive at 256 characters.
+result = run(
+  'ponytail-subagent.js',
+  { ...scopeEnv, PONYTAIL_SUBAGENT_MATCHER: 'a'.repeat(256) },
+  JSON.stringify({ agent_type: 'a'.repeat(256) }),
+);
+assert.equal(result.status, 0, result.stderr);
+assert.equal(result.stderr, '', '256-char matcher is valid and must not warn');
+output = JSON.parse(result.stdout);
+assert.equal(output.hookSpecificOutput.hookEventName, 'SubagentStart');
+
+result = run(
+  'ponytail-subagent.js',
+  { ...scopeEnv, PONYTAIL_SUBAGENT_MATCHER: 'a'.repeat(257) },
+  JSON.stringify({ agent_type: 'a'.repeat(257) }),
+);
+assert.equal(result.status, 0, result.stderr);
+assert.ok(/exceeds 256 chars/.test(result.stderr), '257-char matcher must warn');
 output = JSON.parse(result.stdout);
 assert.equal(output.hookSpecificOutput.hookEventName, 'SubagentStart');
 
