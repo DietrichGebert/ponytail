@@ -16,7 +16,9 @@ import re
 import time
 import urllib.request
 import urllib.parse
+import urllib.error
 from pathlib import Path
+
 
 ROOT = Path(__file__).parent.parent
 
@@ -73,10 +75,23 @@ def call_ollama(model, system_prompt, user_prompt, ollama_url):
         method="POST",
     )
     t0 = time.time()
-    with urllib.request.urlopen(req, timeout=180) as resp:
-        data = json.loads(resp.read())
+    try:
+        with urllib.request.urlopen(req, timeout=180) as resp:
+            data = json.loads(resp.read())
+    except urllib.error.URLError as e:
+        raise RuntimeError(
+            f"Could not reach Ollama at {ollama_url} (model '{model}'): {e}. "
+            "Is Ollama running and is the model pulled?"
+        ) from e
+    except json.JSONDecodeError as e:
+        raise RuntimeError(f"Ollama returned invalid JSON for model '{model}': {e}") from e
     elapsed = time.time() - t0
-    return data["message"]["content"], round(elapsed, 1)
+    try:
+        return data["message"]["content"], round(elapsed, 1)
+    except KeyError as e:
+        raise RuntimeError(
+            f"Unexpected response shape from Ollama for model '{model}': {data}"
+        ) from e
 
 
 def run(model, repeat, ollama_url):
