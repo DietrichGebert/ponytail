@@ -78,6 +78,12 @@ def call_ollama(model, system_prompt, user_prompt, ollama_url):
     try:
         with urllib.request.urlopen(req, timeout=180) as resp:
             data = json.loads(resp.read())
+    except urllib.error.HTTPError as e:
+        body = e.read().decode(errors="replace")
+        raise RuntimeError(
+            f"Ollama returned HTTP {e.code} for model '{model}': {body}. "
+            "Check that the model name is correct and has been pulled."
+        ) from e
     except urllib.error.URLError as e:
         raise RuntimeError(
             f"Could not reach Ollama at {ollama_url} (model '{model}'): {e}. "
