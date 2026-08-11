@@ -4,13 +4,28 @@ const os = require('os');
 const { getClaudeDir, getConfigDir } = require('./ponytail-config');
 
 const STATE_FILE = '.ponytail-active';
-const isCopilot = Boolean(process.env.COPILOT_PLUGIN_DATA);
+
+// ponytail: VS Code Copilot never sets COPILOT_PLUGIN_DATA — it only injects
+// CLAUDE_PLUGIN_ROOT, pointed at an install path under .vscode/agent-plugins/
+// (#528). Without this fallback isCopilot was false, so ponytail assumed
+// native Claude Code and emitted the statusline nudge, which VS Code Copilot
+// doesn't read.
+function isVsCodeCopilotRoot(pluginRoot) {
+  if (!pluginRoot) return false;
+  return pluginRoot.split(/[\\/]+/).includes('agent-plugins') &&
+    pluginRoot.toLowerCase().includes('.vscode');
+}
+
+const isCopilot = Boolean(process.env.COPILOT_PLUGIN_DATA) ||
+  isVsCodeCopilotRoot(process.env.CLAUDE_PLUGIN_ROOT);
 const isCodex = !isCopilot && Boolean(process.env.PLUGIN_DATA);
 const isQoder = !isCopilot && !isCodex && Boolean(process.env.QODER_SESSION_ID);
 
 let stateDir = getClaudeDir();
 if (isCodex) stateDir = process.env.PLUGIN_DATA;
-if (isCopilot) stateDir = process.env.COPILOT_PLUGIN_DATA;
+// COPILOT_PLUGIN_DATA is unset under VS Code Copilot, so fall back to
+// getClaudeDir() rather than building a path from undefined.
+if (isCopilot) stateDir = process.env.COPILOT_PLUGIN_DATA || getClaudeDir();
 if (isQoder) stateDir = path.join(os.homedir(), '.qoder');
 
 const statePath = path.join(stateDir, STATE_FILE);
