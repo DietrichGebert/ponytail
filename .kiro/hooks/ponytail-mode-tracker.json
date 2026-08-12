@@ -1,5 +1,6 @@
 {
   "version": "v1",
+  "_note": "Paths are relative to the project root. These files work when ponytail is cloned as the project. For other projects, use hooks/kiro-hooks.json as a template with absolute paths.",
   "hooks": [
     {
       "name": "Ponytail mode tracker",

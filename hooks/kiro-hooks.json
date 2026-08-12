@@ -1,5 +1,5 @@
 {
-  "_comment": "Reference template — copy the files from .kiro/hooks/ into your project's .kiro/hooks/ or ~/.kiro/hooks/ for global activation. Replace PONYTAIL_DIR with the path to your ponytail checkout if hooks are not relative to the project root.",
+  "_comment": "Reference template — copy the individual hook entries into your project's .kiro/hooks/ or ~/.kiro/hooks/ for global activation. Replace PONYTAIL_DIR with the absolute path to your ponytail checkout. Subagent injection is not supported: Kiro's PreToolUse stdout is for permission decisions, not context injection.",
   "version": "v1",
   "hooks": [
     {
@@ -16,15 +16,6 @@
       "action": {
         "type": "command",
         "command": "PONYTAIL_HOST=kiro node PONYTAIL_DIR/hooks/ponytail-mode-tracker.js"
-      }
-    },
-    {
-      "name": "Ponytail subagent injection",
-      "trigger": "PreToolUse",
-      "matcher": "orchestrate_subagent",
-      "action": {
-        "type": "command",
-        "command": "PONYTAIL_HOST=kiro node PONYTAIL_DIR/hooks/ponytail-subagent.js"
       }
     }
   ]

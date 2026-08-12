@@ -209,7 +209,7 @@ cp .kiro/hooks/ponytail-*.json ~/.kiro/hooks/
 
 The hooks reference the `hooks/` scripts relative to the project root, so either clone ponytail into your project or update the paths in the JSON files to point at your checkout (see [`hooks/kiro-hooks.json`](hooks/kiro-hooks.json) for a template with `PONYTAIL_DIR` placeholders).
 
-This gives full hook support: session activation, mode switching (`/ponytail lite|full|ultra|off`), and subagent injection via `PreToolUse`. The steering file (`.kiro/steering/ponytail.md`) remains as an instruction-only fallback — copy it to `~/.kiro/steering/` for always-on rules without hooks.
+This gives hook support: session activation and mode switching (`/ponytail lite|full|ultra|off`). Subagent injection is not supported (Kiro's `PreToolUse` stdout is for permission decisions, not context injection; a future Kiro trigger may enable it). The steering file (`.kiro/steering/ponytail.md`) remains as an instruction-only fallback — copy it to `~/.kiro/steering/` for always-on rules without hooks. Hook commands use inline env var syntax (`VAR=val node ...`), which requires a POSIX shell (Linux/macOS); Windows support depends on Kiro adding per-platform command fields.
 
 ### Antigravity CLI
 
@@ -329,7 +329,7 @@ These remove the plugin's own files. They leave behind a small amount of state p
 | `/ponytail-gain` | Show the measured impact scoreboard (less code, less cost, more speed) from the benchmark. |
 | `/ponytail-help` | Quick reference for the commands above. |
 
-Commands need a skill-capable host (Claude Code, Codex, Devin CLI, OpenCode, Gemini, pi, Swival, Hermes Agent, Qoder, Grok Build). In Codex they're skills, invoke with `@` (`@ponytail-review`). The instruction-only adapters (Cursor, Windsurf, Cline, Copilot, Antigravity) load the always-on ruleset without the commands. Kiro with hooks supports mode switching (`/ponytail lite|full|ultra|off`) but not the slash-command skills.
+Commands need a skill-capable host (Claude Code, Codex, Devin CLI, OpenCode, Gemini, pi, Swival, Hermes Agent, Qoder, Grok Build). In Codex they're skills, invoke with `@` (`@ponytail-review`). The instruction-only adapters (Cursor, Windsurf, Cline, Copilot, Antigravity) load the always-on ruleset without the commands. Kiro with hooks supports mode switching (`/ponytail lite|full|ultra|off`) but not the slash-command skills or subagent injection.
 
 ## Development
 
