@@ -4,6 +4,7 @@ const os = require('os');
 const { getClaudeDir, getConfigDir } = require('./ponytail-config');
 
 const STATE_FILE = '.ponytail-active';
+const HIDDEN_FILE = '.ponytail-hidden';
 
 // ponytail: VS Code Copilot never sets COPILOT_PLUGIN_DATA — it only injects
 // CLAUDE_PLUGIN_ROOT, pointed at an install path under .vscode/agent-plugins/
@@ -29,10 +30,30 @@ if (isCopilot) stateDir = process.env.COPILOT_PLUGIN_DATA || getClaudeDir();
 if (isQoder) stateDir = path.join(os.homedir(), '.qoder');
 
 const statePath = path.join(stateDir, STATE_FILE);
+const hiddenPath = path.join(stateDir, HIDDEN_FILE);
 
 function setMode(mode) {
   fs.mkdirSync(path.dirname(statePath), { recursive: true });
   fs.writeFileSync(statePath, mode);
+}
+
+// Hide the statusline badge without deactivating ponytail (#659). The statusline
+// scripts are shell/PowerShell that only stat a file, so instead of teaching them
+// to parse config, activate resolves getHideStatus() once and drops (or clears)
+// this marker next to the mode flag. Rewritten every session start, so unsetting
+// PONYTAIL_HIDE_STATUS brings the badge back on its own.
+function setHidden(hidden) {
+  try {
+    if (hidden) {
+      fs.mkdirSync(path.dirname(hiddenPath), { recursive: true });
+      fs.writeFileSync(hiddenPath, '');
+    } else {
+      fs.unlinkSync(hiddenPath);
+    }
+  } catch (e) {
+    // best-effort: ENOENT on clear is fine, and the badge is cosmetic — never
+    // block the hook over it.
+  }
 }
 
 function clearMode() {
@@ -95,6 +116,7 @@ module.exports = {
   isCopilot,
   isQoder,
   readMode,
+  setHidden,
   setMode,
   writeHookOutput,
 };

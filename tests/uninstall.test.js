@@ -27,6 +27,10 @@ fs.mkdirSync(claudeDir, { recursive: true });
 const flagPath = path.join(claudeDir, '.ponytail-active');
 fs.writeFileSync(flagPath, 'full');
 
+// #659: uninstall must also clear the hide-badge marker activate may have written.
+const hiddenPath = path.join(claudeDir, '.ponytail-hidden');
+fs.writeFileSync(hiddenPath, '');
+
 const configDir = path.join(temp, 'config-home', 'ponytail');
 fs.mkdirSync(configDir, { recursive: true });
 const configPath = path.join(configDir, 'config.json');
@@ -46,6 +50,7 @@ const env = {
 let result = runUninstall(env);
 assert.equal(result.status, 0, result.stderr);
 assert.equal(fs.existsSync(flagPath), false, 'mode flag must be removed');
+assert.equal(fs.existsSync(hiddenPath), false, 'hide-badge marker must be removed (#659)');
 assert.equal(fs.existsSync(configPath), false, 'config file must be removed');
 
 const settingsAfter = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));

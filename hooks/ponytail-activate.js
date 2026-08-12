@@ -8,12 +8,13 @@
 
 const fs = require('fs');
 const path = require('path');
-const { getDefaultMode, getClaudeDir, isShellSafe } = require('./ponytail-config');
+const { getDefaultMode, getClaudeDir, getHideStatus, isShellSafe } = require('./ponytail-config');
 const { getPonytailInstructions } = require('./ponytail-instructions');
 const {
   clearMode,
   isCodex,
   isCopilot,
+  setHidden,
   setMode,
   writeHookOutput,
 } = require('./ponytail-runtime');
@@ -36,6 +37,15 @@ try {
   setMode(mode);
 } catch (e) {
   // Silent fail -- flag is best-effort, don't block the hook
+}
+
+// 1b. Reflect hideStatus into a marker the statusline scripts can stat (#659).
+// getHideStatus() reads PONYTAIL_HIDE_STATUS or config.hideStatus; the marker is
+// rewritten every session start so toggling the setting takes effect next session.
+try {
+  setHidden(getHideStatus());
+} catch (e) {
+  // Silent fail — the badge is cosmetic, never block session start over it.
 }
 
 // 2. Emit the ponytail ruleset, filtered to the active intensity level.
