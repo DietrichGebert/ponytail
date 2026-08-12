@@ -1,0 +1,13 @@
+{
+  "version": "v1",
+  "hooks": [
+    {
+      "name": "Ponytail mode tracker",
+      "trigger": "UserPromptSubmit",
+      "action": {
+        "type": "command",
+        "command": "PONYTAIL_HOST=kiro node hooks/ponytail-mode-tracker.js"
+      }
+    }
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "version": "v1",
+  "hooks": [
+    {
+      "name": "Ponytail session activation",
+      "trigger": "SessionStart",
+      "action": {
+        "type": "command",
+        "command": "PONYTAIL_HOST=kiro node hooks/ponytail-activate.js"
+      }
+    }
+  ]
+}
