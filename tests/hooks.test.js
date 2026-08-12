@@ -37,6 +37,9 @@ delete process.env.COPILOT_PLUGIN_DATA;
 // A leaked subagent matcher would scope the inject-into-every-subagent assertions.
 delete process.env.PONYTAIL_SUBAGENT_MATCHER;
 delete process.env.QODER_SESSION_ID;
+// The #662 flag-ownership tests set CLAUDE_PROJECT_DIR explicitly; a value leaked
+// from the outer session would make the ownership branch nondeterministic.
+delete process.env.CLAUDE_PROJECT_DIR;
 
 const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'ponytail-hooks-'));
 // Runs on normal exit and on assertion-throw exit; force makes it idempotent.
@@ -352,6 +355,59 @@ result = run('ponytail-subagent.js', scopeEnv, '');
 assert.equal(result.status, 0, result.stderr);
 output = JSON.parse(result.stdout);
 assert.match(output.hookSpecificOutput.additionalContext, /PONYTAIL MODE ACTIVE — level: full/);
+
+// #662: the .ponytail-active flag is machine-global. A .ponytail-active.owner
+// sidecar records which project wrote it, so a concurrent session in another repo
+// neither reads a foreign active flag when it opted out, nor deletes a flag it
+// doesn't own. CLAUDE_PROJECT_DIR identifies the reading/writing project.
+const raceHome = path.join(temp, 'race-home');
+const raceDir = path.join(raceHome, '.claude');
+const raceFlag = path.join(raceDir, '.ponytail-active');
+const raceOwner = path.join(raceDir, '.ponytail-active.owner');
+fs.mkdirSync(raceDir, { recursive: true });
+
+// Repo B is configured off; repo A (owner) wrote 'full' to the shared flag.
+// B's subagent must ignore the foreign flag and stay silent.
+fs.writeFileSync(raceFlag, 'full');
+fs.writeFileSync(raceOwner, '/repo/A');
+result = run('ponytail-subagent.js', {
+  HOME: raceHome, USERPROFILE: raceHome,
+  CLAUDE_PROJECT_DIR: '/repo/B', PONYTAIL_DEFAULT_MODE: 'off',
+});
+assert.equal(result.status, 0, result.stderr);
+assert.equal(result.stdout, '', 'an off repo must ignore another repo\'s active flag (#662)');
+
+// But an explicit /ponytail opt-in in that off repo owns the flag → still injects.
+fs.writeFileSync(raceOwner, '/repo/B');
+result = run('ponytail-subagent.js', {
+  HOME: raceHome, USERPROFILE: raceHome,
+  CLAUDE_PROJECT_DIR: '/repo/B', PONYTAIL_DEFAULT_MODE: 'off',
+});
+assert.equal(result.status, 0, result.stderr);
+output = JSON.parse(result.stdout);
+assert.match(output.hookSpecificOutput.additionalContext, /PONYTAIL MODE ACTIVE — level: full/,
+  'a self-owned opt-in flag still injects even when the repo default is off (#662)');
+
+// Owner-aware clearMode: an off session in repo B must NOT delete repo A's flag.
+fs.writeFileSync(raceFlag, 'full');
+fs.writeFileSync(raceOwner, '/repo/A');
+result = run('ponytail-activate.js', {
+  HOME: raceHome, USERPROFILE: raceHome,
+  CLAUDE_PROJECT_DIR: '/repo/B', PONYTAIL_DEFAULT_MODE: 'off',
+});
+assert.equal(result.status, 0, result.stderr);
+assert.equal(fs.readFileSync(raceFlag, 'utf8'), 'full',
+  'an off session must not clear another repo\'s owned flag (#662)');
+
+// A same-repo off session (owns the flag) still clears it.
+fs.writeFileSync(raceOwner, '/repo/B');
+result = run('ponytail-activate.js', {
+  HOME: raceHome, USERPROFILE: raceHome,
+  CLAUDE_PROJECT_DIR: '/repo/B', PONYTAIL_DEFAULT_MODE: 'off',
+});
+assert.equal(result.status, 0, result.stderr);
+assert.equal(fs.existsSync(raceFlag), false,
+  'a same-repo off session still clears its own flag (#662)');
 
 // Qoder: no SessionStart event, so UserPromptSubmit does double duty —
 // it activates the default mode on first prompt (writes flag), then injects
