@@ -1,7 +1,7 @@
 {
   "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
   "name": "ponytail",
-  "description": "Lazy senior dev mode for AI agents. The best code is the code you never wrote.",
+  "description": "Outcome-first engineering for AI agents: best complete result, then least justified complexity.",
   "owner": {
     "name": "Dietrich Gebert",
     "url": "https://github.com/DietrichGebert"
@@ -9,7 +9,7 @@
   "plugins": [
     {
       "name": "ponytail",
-      "description": "Forces the laziest solution that works. YAGNI, stdlib first, one line over fifty.",
+      "description": "Prioritizes the best complete result; simplicity wins when outcomes are materially equivalent.",
       "source": "./",
       "category": "productivity"
     }

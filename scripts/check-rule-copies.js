@@ -37,24 +37,25 @@ for (const [relPath, normalize] of copies) {
 }
 
 // SKILL.md is the runtime source of truth and is longer than the compact body,
-// so it cannot be byte-compared. ponytail: canary, not full equality. Assert the
-// load-bearing rules survive verbatim in both the source and AGENTS.md. Changing
-// a rule's wording trips this, which is the reminder to propagate it everywhere.
-// Upgrade path: generate the copies from SKILL.md if this ever misses a real drift.
+// so it cannot be byte-compared. Assert the load-bearing outcome and safety
+// rules survive in both the source and AGENTS.md. Changing a rule's wording
+// trips this, which is the reminder to propagate it everywhere.
 const INVARIANTS = [
-  'in this codebase',                      // ladder rung: reuse what already exists (#217)
-  'naive heuristic',                       // ceiling-comment rule
-  'ONE runnable check',                    // test reflex
-  'flimsier algorithm',                    // robust-variant rule
-  // the four "not lazy about" safety carve-outs: pin each so a reword in either
-  // file can't silently drop one. Only validation was pinned before. These are the
-  // continuous substrings present in both files ("prevents data loss" because the
-  // full "error handling that prevents data loss" wraps a line in SKILL.md).
-  'input validation at trust boundaries',
-  'prevents data loss',
+  'strongest evidence-backed complete outcome',
+  'materially equivalent',
+  'incremental value',
+  'No speculative abstractions',
+  'Test and review in proportion',
+  'naive heuristic',
+  'product quality',
+  'user value',
+  'data safety',
   'security',
+  'privacy',
   'accessibility',
-  'Lazy code without its check is unfinished', // one-check promoted to headline
+  'performance',
+  'maintainability',
+  'verification',
 ];
 
 const skill = read('skills/ponytail/SKILL.md');

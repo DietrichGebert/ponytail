@@ -24,7 +24,7 @@ server.registerPrompt(
   "ponytail",
   {
     title: "Ponytail mode",
-    description: "Lazy senior dev instructions: YAGNI, stdlib first, the smallest correct change.",
+    description: "Outcome-first engineering: the best complete result with the least justified complexity.",
     argsSchema: { mode: modeArg },
   },
   ({ mode }) => ({

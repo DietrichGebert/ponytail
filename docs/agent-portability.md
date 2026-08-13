@@ -40,7 +40,7 @@ instructions, keep its copied rule text aligned with `AGENTS.md`.
 
 ## Portable Behavior
 
-- `skills/ponytail/SKILL.md`: lazy senior dev mode
+- `skills/ponytail/SKILL.md`: outcome-first engineering with the least justified complexity
 - `skills/ponytail-review/SKILL.md`: over-engineering review
 - `skills/ponytail-audit/SKILL.md`: whole-repo over-engineering audit
 - `skills/ponytail-debt/SKILL.md`: harvest `ponytail:` shortcuts into a tracked ledger

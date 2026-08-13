@@ -8,7 +8,7 @@
 <h1 align="center">Ponytail</h1>
 
 <p align="center">
-  <em>He says nothing. He writes one line. It works.</em>
+  <em>He finds the strongest complete solution. Then removes what does not help.</em>
 </p>
 
 <p align="center">
@@ -39,7 +39,7 @@
   <a href="https://ponytail.dev/soon"><img src="assets/waitlist-banner.png" alt="Something's coming, join the waitlist" width="760"></a>
 </p>
 
-You know him. Long ponytail. Oval glasses. Has been at the company longer than the version control. You show him fifty lines; he looks at them, says nothing, and replaces them with one.
+You know him. Long ponytail. Oval glasses. Has been at the company longer than the version control. You show him a proposed solution; he identifies the outcome that actually matters, keeps everything needed to deliver and prove it, and removes the rest.
 
 Ponytail puts him inside your AI agent.
 
@@ -85,31 +85,34 @@ This showed **80-94% less code**. [#126](https://github.com/DietrichGebert/ponyt
 
 </details>
 
-**The rule was never "fewest tokens."** It is: write only what the task needs, and never cut validation, error handling, security, or accessibility. The code ends up small because it is necessary, not golfed. Lower cost and latency are a side effect on the models that follow the ladder; a terse reasoning model that spends thinking tokens deliberating the rungs can go the other way (on GPT-5.5 it does).
+**The rule is not "fewest tokens" or "smallest architecture."** It is: choose the strongest evidence-backed complete outcome, then remove only complexity that does not help deliver or prove it. Correctness, user and business value, quality, safety, privacy, accessibility, performance, maintainability, longevity, and verification come first. Simplicity is the tiebreaker when expected outcomes are materially equivalent. Lower code, cost, and latency are benefits when they do not weaken the result; they are not the objective.
+
+The benchmark above measures bounded feature work and its safety checks. It demonstrates Ponytail's efficiency discipline; it does not justify shrinking a product, system, migration, or architecture below the outcome it must deliver.
 
 ## How it works
 
-Before writing code, the agent stops at the first rung that holds:
+Before writing code, the agent locks the requested outcome, affected people, real constraints, material trade-offs, and evidence needed to call the work complete. For "best" work it compares meaningful alternatives across the whole outcome, not just implementation size.
+
+It then uses the first ladder rung capable of delivering that chosen outcome:
 
 ```
-1. Does this need to exist?   → no: skip it (YAGNI)
-2. Already in this codebase?  → reuse it, don't rewrite
-3. Stdlib does it?            → use it
-4. Native platform feature?   → use it
-5. Installed dependency?      → use it
-6. One line?                  → one line
-7. Only then: the minimum that works
+1. Does this need to exist?   → skip only speculative work that adds no material value
+2. Already in this codebase?  → reuse it when it fits the required behaviour and quality
+3. Stdlib does it?            → use it when it satisfies the contract without hidden ceilings
+4. Native platform feature?   → prefer it when quality, control, and compatibility remain strong
+5. Installed dependency?      → reuse it when it remains the best-supported fit after total cost and risk
+6. Otherwise                  → add the least complexity that fully delivers the chosen outcome
 ```
 
-The ladder runs *after* it understands the problem, not instead of it: it reads the code the change touches and traces the real flow before picking a rung. Lazy about the solution, never about reading.
+The ladder runs *after* it understands the problem, not instead of it: it reads the code the change touches and traces the real flow before picking a rung. "Works" is not enough when another approach materially improves the requested outcome. A larger, more sophisticated, or longer solution is correct when its incremental value materially exceeds its added cost, risk, delay, and maintenance burden.
 
-Lazy, not negligent: trust-boundary validation, data-loss handling, security, and accessibility are never on the chopping block.
+Efficient, not negligent or under-ambitious: required quality, completeness, trust-boundary validation, data-loss handling, security, privacy, accessibility, performance, integration, migration, documentation, and verification are never on the chopping block.
 
 ## Install
 
 The most effort ponytail will ever ask of you:
 
-The Claude Code and Codex plugins run two tiny Node.js lifecycle hooks, so `node` needs to be on your PATH (note for Nix/nvm users: it must be on the non-interactive shell's PATH). If it isn't, the skills still work, the always-on activation just stays quiet instead of erroring on every prompt.
+The Claude Code plugin runs two tiny Node.js lifecycle hooks, so `node` needs to be on your PATH (note for Nix/nvm users: it must be on the non-interactive shell's PATH). If it isn't, the skills still work, but Claude's always-on activation stays quiet. Codex uses the shipped skills directly.
 
 ### Claude Code
 
@@ -129,8 +132,6 @@ Same steps in the Claude Code Desktop app's Code tab: type the two `/plugin` com
 codex plugin marketplace add DietrichGebert/ponytail
 codex plugin add ponytail@ponytail
 ```
-
-Run `codex` and open `/hooks`, review and trust its two lifecycle hooks, and start a new thread.
 
 This same install also covers the Codex desktop app: restart the app after installing and it picks up the plugin.
 

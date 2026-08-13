@@ -41,7 +41,7 @@ test('system.transform injects the ruleset at the default mode (full)', async ()
   const system = await transform(hooks);
   assert.equal(system.length, 1);
   assert.match(system[0], /PONYTAIL MODE ACTIVE — level: full/);
-  assert.match(system[0], /lazy senior developer/);
+  assert.match(system[0], /outcome-first senior developer/);
 });
 
 test('command.execute.before persists /ponytail ultra, transform follows it', async () => {
