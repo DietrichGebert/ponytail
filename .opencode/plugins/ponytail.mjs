@@ -20,7 +20,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 // The shared instruction builder is CommonJS; bridge to it from this ES module.
 const require = createRequire(import.meta.url);
 const { getPonytailInstructions } = require('../../hooks/ponytail-instructions');
-const { getDefaultMode, normalizePersistedMode } = require('../../hooks/ponytail-config');
+const { getDefaultMode, getSafeSkillPaths, normalizePersistedMode } = require('../../hooks/ponytail-config');
 const { parseCommandFile } = require('./ponytail-frontmatter.cjs');
 
 // OpenCode has no flag-file convention of its own; keep mode beside its config.
@@ -67,6 +67,9 @@ export default async ({ client } = {}) => {
       config.skills.paths = config.skills.paths || [];
       if (!config.skills.paths.includes(ponytailSkillsDir)) {
         config.skills.paths.push(ponytailSkillsDir);
+      }
+      for (const skillPath of getSafeSkillPaths()) {
+        if (!config.skills.paths.includes(skillPath)) config.skills.paths.push(skillPath);
       }
     },
 

@@ -3,7 +3,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const { DEFAULT_MODE, normalizeMode, normalizePersistedMode } = require('./ponytail-config');
+const { DEFAULT_MODE, getPolicyFile, normalizeMode, normalizePersistedMode } = require('./ponytail-config');
 
 const INDEPENDENT_MODES = new Set(['review']);
 const SKILL_PATH = path.join(__dirname, '..', 'skills', 'ponytail', 'SKILL.md');
@@ -78,16 +78,27 @@ function getPonytailInstructions(mode) {
   const configuredMode = normalizePersistedMode(mode) || DEFAULT_MODE;
 
   if (INDEPENDENT_MODES.has(configuredMode)) {
-    return 'PONYTAIL MODE ACTIVE — level: ' + configuredMode + '. Behavior defined by /ponytail-' + configuredMode + ' skill.';
+    return appendPolicy('PONYTAIL MODE ACTIVE — level: ' + configuredMode + '. Behavior defined by /ponytail-' + configuredMode + ' skill.');
   }
 
   const effectiveMode = normalizeMode(configuredMode) || DEFAULT_MODE;
 
   try {
-    return 'PONYTAIL MODE ACTIVE — level: ' + effectiveMode + '\n\n' +
-      filterSkillBodyForMode(fs.readFileSync(SKILL_PATH, 'utf8'), effectiveMode);
+    return appendPolicy('PONYTAIL MODE ACTIVE — level: ' + effectiveMode + '\n\n' +
+      filterSkillBodyForMode(fs.readFileSync(SKILL_PATH, 'utf8'), effectiveMode));
   } catch (e) {
-    return getFallbackInstructions(effectiveMode);
+    return appendPolicy(getFallbackInstructions(effectiveMode));
+  }
+}
+
+function appendPolicy(instructions) {
+  const policyFile = getPolicyFile();
+  if (!policyFile) return instructions;
+  try {
+    const policy = fs.readFileSync(policyFile, 'utf8').trim();
+    return policy ? instructions + '\n\n## External policy\n\n' + policy : instructions;
+  } catch (_) {
+    return instructions;
   }
 }
 

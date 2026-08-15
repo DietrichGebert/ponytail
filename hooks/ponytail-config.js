@@ -64,8 +64,75 @@ function getConfigDir() {
   return path.join(os.homedir(), '.config', 'ponytail');
 }
 
+function readConfig() {
+  try {
+    const config = JSON.parse(fs.readFileSync(getConfigPath(), 'utf8').replace(/^\uFEFF/, ''));
+    return config && typeof config === 'object' && !Array.isArray(config) ? config : {};
+  } catch (_) {
+    return {};
+  }
+}
+
 function getConfigPath() {
   return path.join(getConfigDir(), 'config.json');
+}
+
+function getPolicyFile() {
+  const configured = process.env.PONYTAIL_POLICY_FILE || readConfig().policyFile;
+  if (typeof configured !== 'string' || !configured.trim()) return null;
+  const candidate = path.resolve(configured.trim());
+  try {
+    return fs.statSync(candidate).isFile() ? candidate : null;
+  } catch (_) {
+    return null;
+  }
+}
+
+function getSkillPaths() {
+  const configured = process.env.PONYTAIL_SKILL_PATHS !== undefined
+    ? process.env.PONYTAIL_SKILL_PATHS.split(path.delimiter)
+    : readConfig().skillPaths;
+  if (!Array.isArray(configured)) return [];
+  return configured
+    .filter((value) => typeof value === 'string' && value.trim())
+    .map((value) => path.resolve(value.trim()))
+    .filter((value, index, values) => values.indexOf(value) === index)
+    .filter((value) => {
+      try { return fs.statSync(value).isDirectory(); } catch (_) { return false; }
+    });
+}
+
+const BUILTIN_SKILL_NAMES = new Set(['ponytail', 'ponytail-review', 'ponytail-audit', 'ponytail-debt', 'ponytail-gain', 'ponytail-help']);
+
+function getCustomSkillFiles() {
+  const files = [];
+  for (const root of getSkillPaths()) {
+    const direct = path.join(root, 'SKILL.md');
+    const candidates = fs.existsSync(direct) ? [root] : fs.readdirSync(root, { withFileTypes: true })
+      .filter((entry) => entry.isDirectory())
+      .map((entry) => path.join(root, entry.name));
+    for (const directory of candidates) {
+      const name = path.basename(directory);
+      const skillFile = path.join(directory, 'SKILL.md');
+      if (BUILTIN_SKILL_NAMES.has(name)) continue;
+      try {
+        if (fs.statSync(skillFile).isFile()) files.push({ name, path: skillFile });
+      } catch (_) {}
+    }
+  }
+  return files.filter((entry, index, values) => values.findIndex((item) => item.name === entry.name) === index);
+}
+
+function getSafeSkillPaths() {
+  return getSkillPaths().filter((root) => {
+    if (fs.existsSync(path.join(root, 'SKILL.md'))) return !BUILTIN_SKILL_NAMES.has(path.basename(root));
+    try {
+      return !fs.readdirSync(root, { withFileTypes: true })
+        .some((entry) => entry.isDirectory() && BUILTIN_SKILL_NAMES.has(entry.name));
+    } catch (_) {
+      return false;
+    }
+  });
 }
 
 function getClaudeDir() {
@@ -157,7 +224,11 @@ module.exports = {
   getDefaultMode,
   getConfigDir,
   getConfigPath,
+  getCustomSkillFiles,
   getClaudeDir,
+  getPolicyFile,
+  getSkillPaths,
+  getSafeSkillPaths,
   getHideStatus,
   getQuietStartup,
   isShellSafe,

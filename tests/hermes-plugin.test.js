@@ -190,6 +190,32 @@ print(json.dumps({'message': message, 'context': injected['context']}))
   assert.match(data.context, /PONYTAIL MODE ACTIVE — level: ultra/);
 });
 
+test('Hermes registers custom skills and injects configured policy', () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'ponytail-custom-'));
+  const skillDir = path.join(tmp, 'team-review');
+  const policyFile = path.join(tmp, 'policy.md');
+  fs.mkdirSync(skillDir);
+  fs.writeFileSync(path.join(skillDir, 'SKILL.md'), '# Team review');
+  fs.writeFileSync(policyFile, 'TEAM-POLICY');
+  const output = python(String.raw`
+import importlib.util, json
+spec = importlib.util.spec_from_file_location('ponytail_hermes_plugin', '__init__.py')
+mod = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(mod)
+class Ctx:
+    def __init__(self): self.skills = []
+    def register_skill(self, name, path): self.skills.append(name)
+    def register_hook(self, name, handler): pass
+    def register_command(self, name, handler, description='', args_hint=''): pass
+ctx = Ctx()
+mod.register(ctx)
+print(json.dumps({'skills': ctx.skills, 'context': mod.build_injected_context('full')}))
+`, { PONYTAIL_SKILL_PATHS: tmp, PONYTAIL_POLICY_FILE: policyFile });
+  const data = JSON.parse(output);
+  assert.ok(data.skills.includes('team-review'));
+  assert.match(data.context, /TEAM-POLICY/);
+});
+
 test('Hermes gateway rewrite respects slash access denial', () => {
   const output = python(String.raw`
 import importlib.util, json

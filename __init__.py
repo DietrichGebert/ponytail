@@ -23,6 +23,7 @@ ROOT = Path(__file__).resolve().parent
 SKILLS_DIR = ROOT / "skills"
 PONYTAIL_SKILL = SKILLS_DIR / "ponytail" / "SKILL.md"
 REVIEW_SKILL = SKILLS_DIR / "ponytail-review" / "SKILL.md"
+BUILTIN_SKILL_NAMES = {"ponytail", *SKILL_COMMANDS}
 
 _current_mode = None
 
@@ -49,13 +50,43 @@ def _config_dir() -> Path:
     return Path.home() / ".config" / "ponytail"
 
 
+def _config() -> dict[str, Any]:
+    try:
+        data = json.loads((_config_dir() / "config.json").read_text(encoding="utf-8"))
+        return data if isinstance(data, dict) else {}
+    except Exception:
+        return {}
+
+
+def _custom_skill_files() -> list[tuple[str, Path]]:
+    configured = os.environ.get("PONYTAIL_SKILL_PATHS")
+    values = configured.split(os.pathsep) if configured is not None else _config().get("skillPaths", [])
+    if not isinstance(values, list):
+        return []
+    result: list[tuple[str, Path]] = []
+    for raw in values:
+        if not isinstance(raw, str) or not raw.strip():
+            continue
+        root = Path(raw).expanduser().resolve()
+        if not root.is_dir():
+            continue
+        candidates = [root] if (root / "SKILL.md").is_file() else [child for child in root.iterdir() if child.is_dir()]
+        for directory in candidates:
+            name = directory.name
+            skill_file = directory / "SKILL.md"
+            if name in BUILTIN_SKILL_NAMES or not skill_file.is_file():
+                continue
+            if not any(existing == name for existing, _ in result):
+                result.append((name, skill_file))
+    return result
+
+
 def _default_mode() -> str:
     env_mode = _normalize_config_mode(os.environ.get("PONYTAIL_DEFAULT_MODE"))
     if env_mode:
         return env_mode
     try:
-        data = json.loads((_config_dir() / "config.json").read_text(encoding="utf-8"))
-        file_mode = _normalize_config_mode(data.get("defaultMode"))
+        file_mode = _normalize_config_mode(_config().get("defaultMode"))
         if file_mode:
             return file_mode
     except Exception:
@@ -110,16 +141,29 @@ def build_injected_context(mode: str | None = None) -> str:
     if configured == "review":
         try:
             body = REVIEW_SKILL.read_text(encoding="utf-8")
-            return f"PONYTAIL MODE ACTIVE — level: review\n\n{_strip_frontmatter(body)}"
+            context = f"PONYTAIL MODE ACTIVE — level: review\n\n{_strip_frontmatter(body)}"
+            return _append_policy(context)
         except OSError:
-            return "PONYTAIL MODE ACTIVE — level: review. Review diffs for unnecessary complexity."
+            return _append_policy("PONYTAIL MODE ACTIVE — level: review. Review diffs for unnecessary complexity.")
 
     effective = _normalize_runtime_mode(configured) or DEFAULT_MODE
     try:
         body = PONYTAIL_SKILL.read_text(encoding="utf-8")
-        return f"PONYTAIL MODE ACTIVE — level: {effective}\n\n{_filter_skill_body_for_mode(body, effective)}"
+        return _append_policy(f"PONYTAIL MODE ACTIVE — level: {effective}\n\n{_filter_skill_body_for_mode(body, effective)}")
     except OSError:
-        return _fallback_instructions(effective)
+        return _append_policy(_fallback_instructions(effective))
+
+
+def _append_policy(context: str) -> str:
+    configured = os.environ.get("PONYTAIL_POLICY_FILE") or _config().get("policyFile")
+    if not isinstance(configured, str) or not configured.strip():
+        return context
+    policy = Path(configured).expanduser().resolve()
+    try:
+        text = policy.read_text(encoding="utf-8").strip()
+    except OSError:
+        return context
+    return f"{context}\n\n## External policy\n\n{text}" if text else context
 
 
 def _pre_llm_call(session_id: str = "", **_: Any) -> dict[str, str] | None:
@@ -198,6 +242,8 @@ def register(ctx: Any) -> None:
         skill_md = child / "SKILL.md"
         if child.is_dir() and skill_md.exists():
             ctx.register_skill(child.name, skill_md)
+    for name, skill_md in _custom_skill_files():
+        ctx.register_skill(name, skill_md)
 
     ctx.register_hook("pre_llm_call", _pre_llm_call)
     ctx.register_hook("pre_gateway_dispatch", rewrite_gateway_command)

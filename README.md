@@ -179,6 +179,29 @@ Injects the ruleset every turn at the active level; adds the `/ponytail` command
 
 The `./` path resolves against your project's `opencode.json`; to share one checkout across projects, point it at the absolute path of the `.mjs` instead (it finds its `hooks/` and `skills/` relative to its own file).
 
+### Custom policy and skills
+
+Ponytail can append an external Markdown policy to every active instruction injection and register additional skills without changing the bundled rules. Environment variables take precedence over the config file:
+
+```bash
+export PONYTAIL_POLICY_FILE="$HOME/.config/ponytail/team-policy.md"
+export PONYTAIL_SKILL_PATHS="$HOME/.config/ponytail/skills:/work/shared/ponytail-skills"
+```
+
+Equivalent `~/.config/ponytail/config.json` (or `$XDG_CONFIG_HOME/ponytail/config.json`):
+
+```json
+{
+  "policyFile": "/Users/me/.config/ponytail/team-policy.md",
+  "skillPaths": [
+    "/Users/me/.config/ponytail/skills",
+    "/work/shared/ponytail-skills"
+  ]
+}
+```
+
+Each skill path must exist and contain directories with `SKILL.md` files. Missing or invalid paths are ignored. Names matching Ponytail's built-in skills are ignored rather than overwritten. This feature is prompt and skill injection only; it does **not** enforce workspace execution blocking, sandboxing, or any other tool/runtime policy.
+
 ### Gemini CLI
 
 ```bash
