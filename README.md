@@ -202,6 +202,22 @@ Equivalent `~/.config/ponytail/config.json` (or `$XDG_CONFIG_HOME/ponytail/confi
 
 Each skill path must exist and contain directories with `SKILL.md` files. Missing or invalid paths are ignored. Names matching Ponytail's built-in skills are ignored rather than overwritten. This feature is prompt and skill injection only; it does **not** enforce workspace execution blocking, sandboxing, or any other tool/runtime policy.
 
+For hosts that only read project instructions (AGENTS.md, Cursor, Windsurf,
+Cline, Copilot editor, Kiro, Junie, Amp, Jules, Zed, CodeWhale, and
+Gemini/Antigravity), materialize the same opt-in policy explicitly:
+
+```bash
+npm run sync-policy -- --project /path/to/project
+```
+
+This preserves the surrounding files and writes a managed block to the static
+adapter files plus existing generated OpenClaw skills. Run the command again
+after every `POLICY.md` change; static adapters do not refresh automatically.
+It is a no-op without a readable configured policy, and `off` removes only the
+managed block. These hosts do not gain native skills or hooks from this command:
+use the documented plugin surfaces for Claude, Codex, Hermes, MCP, pi, OpenCode,
+Qoder, or Copilot CLI where available.
+
 ### Gemini CLI
 
 ```bash

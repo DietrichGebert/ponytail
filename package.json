@@ -24,6 +24,7 @@
   "files": [
     "AGENTS.md",
     "hooks/",
+    "scripts/sync-policy.js",
     "skills/",
     ".opencode/",
     ".qoder/",
@@ -34,7 +35,8 @@
     "LICENSE"
   ],
   "scripts": {
-    "test": "node --test tests/*.test.js && npm test --prefix pi-extension && npm test --prefix ponytail-mcp"
+    "test": "node --test tests/*.test.js && npm test --prefix pi-extension && npm test --prefix ponytail-mcp",
+    "sync-policy": "node scripts/sync-policy.js"
   },
   "pi": {
     "extensions": ["./pi-extension/index.js"],

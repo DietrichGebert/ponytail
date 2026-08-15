@@ -31,6 +31,39 @@ to load in a given agent.
 | Zed | `AGENTS.md` | Auto-includes `AGENTS.md` from the worktree root as one of its default rule files for the Agent Panel. Instruction-tier. |
 | Generic agents | `AGENTS.md` or `skills/*/SKILL.md` | Copy the compact rule file or load the skill files directly. |
 
+## External POLICY.md support
+
+`PONYTAIL_POLICY_FILE` (or `config.policyFile`) is opt-in. Claude/Codex hooks,
+OpenCode, pi, MCP, and Hermes read the configured Markdown at injection time;
+Qoder and Copilot CLI plugin paths retain their hook/plugin behavior and use the
+same shared policy resolver. Missing, empty, or unreadable policy files are
+ignored, and `off` emits no policy. Built-in skills cannot be replaced by custom
+skill paths.
+
+Instruction-only adapters have no host-native runtime registration surface, so
+they cannot consume a policy dynamically. Materialize the policy explicitly:
+
+```bash
+npm run sync-policy -- --project /path/to/project
+```
+
+The command writes a managed, replaceable block to `AGENTS.md`, Cursor,
+Windsurf, Cline, Copilot editor, Kiro, Junie, Qoder, Gemini/Antigravity
+(`.agents/rules`), and generated OpenClaw `SKILL.md` files. It preserves the
+surrounding instruction text and is safe to rerun. Run it again after every
+policy change; static adapters do not update automatically. With `off`, it
+removes only Ponytail's managed block and leaves built-in rules intact. With no
+readable policy configured, it is a no-op.
+
+Amp, Jules, Zed, and CodeWhale are covered through their shared `AGENTS.md`
+project-instruction surface. They have no supported host-native Ponytail skill
+registration here. Junie's `AGENTS.md`/guidelines-path behavior likewise remains
+instruction-tier only. OpenClaw is covered only through its existing generated
+skill-copy mechanism; Ponytail does not claim an OpenClaw host hook.
+
+See the complete adapter matrix below for the distinction between runtime
+plugin/hook support and static instruction support.
+
 ## Adapter Rule
 
 Keep adapters thin. When a host supports skills or hooks, point it at the
