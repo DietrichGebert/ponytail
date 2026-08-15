@@ -87,3 +87,13 @@ test('missing path-like explicit policy is treated as unreadable', () => {
   assert.deepEqual(result.files, []);
   assert.equal(fs.existsSync(path.join(project, 'AGENTS.md')), false);
 });
+
+test('explicit policy text containing a workspace path is preserved', () => {
+  const project = temp();
+  const policy = '모든 작업은 /Users/cinos81/works 아래에서 수행한다.';
+
+  const result = syncPolicy({ project, policy });
+
+  assert.ok(result.files.length > 0);
+  assert.match(fs.readFileSync(path.join(project, 'AGENTS.md'), 'utf8'), /\/Users\/cinos81\/works/);
+});

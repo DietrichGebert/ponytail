@@ -81,7 +81,7 @@ function hasSymlinkComponent(root, destination) {
 }
 
 function isPathLike(value) {
-  return path.isAbsolute(value) || value.startsWith('~/') || value.startsWith('./') || value.startsWith('../') || value.includes('/') || value.includes('\\') || value.endsWith('.md');
+  return path.isAbsolute(value) || value.startsWith('~/') || value.startsWith('./') || value.startsWith('../') || value.endsWith('.md');
 }
 
 function normalizeExplicitPolicy(policy) {
