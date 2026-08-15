@@ -124,15 +124,21 @@ function getCustomSkillFiles() {
 }
 
 function getSafeSkillPaths() {
-  return getSkillPaths().filter((root) => {
-    if (fs.existsSync(path.join(root, 'SKILL.md'))) return !BUILTIN_SKILL_NAMES.has(path.basename(root));
-    try {
-      return !fs.readdirSync(root, { withFileTypes: true })
-        .some((entry) => entry.isDirectory() && BUILTIN_SKILL_NAMES.has(entry.name));
-    } catch (_) {
-      return false;
+  const paths = [];
+  for (const root of getSkillPaths()) {
+    if (fs.existsSync(path.join(root, 'SKILL.md'))) {
+      if (!BUILTIN_SKILL_NAMES.has(path.basename(root))) paths.push(root);
+      continue;
     }
-  });
+    try {
+      for (const entry of fs.readdirSync(root, { withFileTypes: true })) {
+        if (!entry.isDirectory() || BUILTIN_SKILL_NAMES.has(entry.name)) continue;
+        const directory = path.join(root, entry.name);
+        if (fs.statSync(path.join(directory, 'SKILL.md')).isFile()) paths.push(directory);
+      }
+    } catch (_) {}
+  }
+  return paths;
 }
 
 function getClaudeDir() {

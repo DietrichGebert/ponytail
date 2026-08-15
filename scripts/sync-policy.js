@@ -49,7 +49,10 @@ function removeManagedPolicy(text) {
 function addManagedPolicy(text, policy) {
   const base = removeManagedPolicy(String(text || '').replace(/\r\n/g, '\n')).trimEnd();
   if (!policy) return base + (base ? '\n' : '');
-  return `${base}\n\n${START}\n## External policy\n\n${policy}\n${END}\n`;
+  const safePolicy = String(policy)
+    .split(START).join(`${START}&#45;&#45;>`)
+    .split(END).join(`${END.slice(0, -3)}&#45;&#45;>`);
+  return `${base}\n\n${START}\n## External policy\n\n${safePolicy}\n${END}\n`;
 }
 
 function sourceFor(root, source) {
@@ -57,11 +60,41 @@ function sourceFor(root, source) {
   return fs.readFileSync(file, 'utf8');
 }
 
+function hasSymlinkComponent(root, destination) {
+  let current = root;
+  try {
+    if (fs.lstatSync(current).isSymbolicLink()) return true;
+  } catch (_) {
+    return true;
+  }
+  const relative = path.relative(root, path.dirname(destination));
+  for (const component of relative ? relative.split(path.sep) : []) {
+    current = path.join(current, component);
+    try {
+      if (fs.lstatSync(current).isSymbolicLink()) return true;
+    } catch (error) {
+      if (error.code !== 'ENOENT') return true;
+      break;
+    }
+  }
+  try { return fs.lstatSync(destination).isSymbolicLink(); } catch (error) { return error.code !== 'ENOENT'; }
+}
+
+function isPathLike(value) {
+  return path.isAbsolute(value) || value.startsWith('~/') || value.startsWith('./') || value.startsWith('../') || value.includes('/') || value.includes('\\') || value.endsWith('.md');
+}
+
+function normalizeExplicitPolicy(policy) {
+  if (typeof policy !== 'string') return policy;
+  if (fs.existsSync(policy)) {
+    try { return fs.readFileSync(policy, 'utf8').trim(); } catch (_) { return null; }
+  }
+  return isPathLike(policy) ? null : policy;
+}
+
 function syncPolicy({ project = process.cwd(), policy = readPolicy(), mode = getDefaultMode() } = {}) {
   const root = path.resolve(project);
-  const configuredPolicy = typeof policy === 'string' && fs.existsSync(policy)
-    ? fs.readFileSync(policy, 'utf8').trim()
-    : policy;
+  const configuredPolicy = normalizeExplicitPolicy(policy);
   const policyText = typeof configuredPolicy === 'string' ? configuredPolicy.trim() : null;
   const effectiveMode = normalizeMode(mode) || 'full';
   const results = [];
@@ -72,11 +105,13 @@ function syncPolicy({ project = process.cwd(), policy = readPolicy(), mode = get
     const destination = path.join(root, target);
     const exists = fs.existsSync(destination);
     if (!exists && effectiveMode === 'off') continue;
+    if (hasSymlinkComponent(root, destination)) continue;
     let original;
     try { original = fs.readFileSync(destination, 'utf8'); } catch (_) { original = sourceFor(root, source); }
     const rendered = addManagedPolicy(original, effectiveMode === 'off' ? null : policyText);
     if (rendered !== original.replace(/\r\n/g, '\n')) {
       fs.mkdirSync(path.dirname(destination), { recursive: true });
+      if (hasSymlinkComponent(root, destination)) continue;
       fs.writeFileSync(destination, rendered, 'utf8');
       results.push(target);
     }
@@ -91,9 +126,11 @@ function syncPolicy({ project = process.cwd(), policy = readPolicy(), mode = get
       if (!entry.isDirectory()) continue;
       const destination = path.join(openclaw, entry.name, 'SKILL.md');
       if (!fs.existsSync(destination)) continue;
+      if (hasSymlinkComponent(root, destination)) continue;
       const original = fs.readFileSync(destination, 'utf8');
       const rendered = addManagedPolicy(original, effectiveMode === 'off' ? null : policyText);
       if (rendered !== original.replace(/\r\n/g, '\n')) {
+        if (hasSymlinkComponent(root, destination)) continue;
         fs.writeFileSync(destination, rendered, 'utf8');
         results.push(path.relative(root, destination).replace(/\\/g, '/'));
       }

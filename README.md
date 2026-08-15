@@ -188,6 +188,10 @@ export PONYTAIL_POLICY_FILE="$HOME/.config/ponytail/team-policy.md"
 export PONYTAIL_SKILL_PATHS="$HOME/.config/ponytail/skills:/work/shared/ponytail-skills"
 ```
 
+`POLICY.md` is trusted configuration: its contents are inserted into the
+agent's instructions on every active injection. Review it with the same care
+as any other instruction source.
+
 Equivalent `~/.config/ponytail/config.json` (or `$XDG_CONFIG_HOME/ponytail/config.json`):
 
 ```json

@@ -52,3 +52,38 @@ test('off mode removes managed policy but preserves built-in instructions', () =
   assert.match(after, /lazy senior developer/i);
   assert.doesNotMatch(after, new RegExp(START));
 });
+
+test('does not follow an existing symlink destination', () => {
+  const project = temp();
+  const outside = path.join(temp(), 'outside.md');
+  fs.writeFileSync(outside, 'outside instructions\n');
+  fs.symlinkSync(outside, path.join(project, 'AGENTS.md'));
+
+  const result = syncPolicy({ project, policy: 'Do not modify outside.' });
+
+  assert.equal(result.files.includes('AGENTS.md'), false);
+  assert.equal(fs.readFileSync(outside, 'utf8'), 'outside instructions\n');
+  assert.equal(fs.readlinkSync(path.join(project, 'AGENTS.md')), outside);
+});
+
+test('policy containing the end marker remains idempotent', () => {
+  const project = temp();
+  const policy = `Keep this text ${END} exactly in the policy.`;
+
+  syncPolicy({ project, policy });
+  const before = new Map(STATIC_ADAPTERS.map(([target]) => [target, fs.readFileSync(path.join(project, target), 'utf8')]));
+  const second = syncPolicy({ project, policy });
+
+  assert.deepEqual(second.files, []);
+  for (const [target, text] of before) assert.equal(fs.readFileSync(path.join(project, target), 'utf8'), text);
+});
+
+test('missing path-like explicit policy is treated as unreadable', () => {
+  const project = temp();
+
+  const result = syncPolicy({ project, policy: '/missing/path/POLICY.md' });
+
+  assert.equal(result.policy, false);
+  assert.deepEqual(result.files, []);
+  assert.equal(fs.existsSync(path.join(project, 'AGENTS.md')), false);
+});

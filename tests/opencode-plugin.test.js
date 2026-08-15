@@ -101,4 +101,21 @@ test('parseCommandFile returns null when there is no frontmatter', () => {
   assert.equal(parseCommandFile(bare), null);
 });
 
+test('config registers valid custom skills beside a built-in skill', async () => {
+  const root = path.join(tmp, 'custom-skills');
+  fs.mkdirSync(path.join(root, 'ponytail'), { recursive: true });
+  fs.writeFileSync(path.join(root, 'ponytail', 'SKILL.md'), '# Built-in name');
+  fs.mkdirSync(path.join(root, 'team-review'), { recursive: true });
+  fs.writeFileSync(path.join(root, 'team-review', 'SKILL.md'), '# Custom skill');
+  process.env.PONYTAIL_SKILL_PATHS = root;
+
+  const hooks = await loadPlugin({});
+  const config = { skills: { paths: [] } };
+  await hooks.config(config);
+
+  assert.ok(config.skills.paths.includes(path.join(root, 'team-review')));
+  assert.ok(!config.skills.paths.includes(root));
+  delete process.env.PONYTAIL_SKILL_PATHS;
+});
+
 test.after(() => fs.rmSync(tmp, { recursive: true, force: true }));
