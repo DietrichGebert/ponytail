@@ -194,6 +194,20 @@ Qoder auto-loads `AGENTS.md` from the repo root as always-on context, so running
 
 For full plugin-tier support (automatic mode activation + ruleset injection on every prompt), add the hooks from [`hooks/qoder-hooks.json`](hooks/qoder-hooks.json) to your `.qoder/settings.json`. Replace `PONYTAIL_DIR` with the path to your ponytail checkout. Qoder's `UserPromptSubmit` hook activates the default mode on first prompt and injects the ruleset every turn; `PreToolUse` with `task|Task` matcher injects the ruleset into subagents. Level switches (`/ponytail lite|full|ultra|off`) work automatically.
 
+### Cursor
+
+Symlink a checkout into Cursor's local plugin directory, then restart Cursor:
+
+```bash
+ln -s "$PWD" ~/.cursor/plugins/local/ponytail
+```
+
+Teams can add this repo as a plugin marketplace instead (it ships [`.cursor-plugin/marketplace.json`](.cursor-plugin/marketplace.json)) and install ponytail from **Customize** in the sidebar.
+
+The plugin loads the always-on rule, the six skills, the `/ponytail` command, and two hooks: `sessionStart` injects the ruleset at the active level, `beforeSubmitPrompt` records `/ponytail lite|full|ultra|off` switches. Cursor's prompt hook can only allow or block a prompt, never inject, so a mid-session level change reaches the model through the `/ponytail` command itself and sticks for the next session.
+
+Without the plugin, copy [`.cursor/rules/ponytail.mdc`](.cursor/rules/ponytail.mdc) into your project's `.cursor/rules/` for the always-on ruleset (no levels, no hooks).
+
 ### Antigravity CLI
 
 Google is renaming Gemini CLI to Antigravity CLI (the `agy` binary); the same extension installs there:
@@ -271,7 +285,7 @@ Set the level for every new session with the `PONYTAIL_DEFAULT_MODE` env var (`l
 
 While active, the ruleset is also injected into every subagent spawned via the Agent tool. To scope that to specific agent types (say, keep it off read-only search agents), set the `PONYTAIL_SUBAGENT_MATCHER` env var to a regex tested against the subagent's `agent_type`. It is unanchored and case-insensitive: `explore|general` matches either, `^general$` is exact, and plugin agent types look like `plugin:name`. Unset means inject into every subagent (the default); an invalid regex, or a subagent whose type the platform doesn't report, also falls back to injecting.
 
-Cursor, Windsurf, Cline, GitHub Copilot Chat (the VS Code, JetBrains, and Visual Studio editor extension, not the standalone Copilot CLI covered under [Install](#install)), Aider, Kiro, Zed, CodeWhale, Swival, Qoder: copy the matching rules file from this repo ([`.cursor/rules/`](.cursor/rules/), [`.windsurf/rules/`](.windsurf/rules/), [`.clinerules/`](.clinerules/), [`.github/copilot-instructions.md`](.github/copilot-instructions.md), [`AGENTS.md`](AGENTS.md), [`.kiro/steering/`](.kiro/steering/), [`.qoder/rules/`](.qoder/rules/)).
+Cursor (instruction-only fallback, the plugin is under [Install](#cursor)), Windsurf, Cline, GitHub Copilot Chat (the VS Code, JetBrains, and Visual Studio editor extension, not the standalone Copilot CLI covered under [Install](#install)), Aider, Kiro, Zed, CodeWhale, Swival, Qoder: copy the matching rules file from this repo ([`.cursor/rules/`](.cursor/rules/), [`.windsurf/rules/`](.windsurf/rules/), [`.clinerules/`](.clinerules/), [`.github/copilot-instructions.md`](.github/copilot-instructions.md), [`AGENTS.md`](AGENTS.md), [`.kiro/steering/`](.kiro/steering/), [`.qoder/rules/`](.qoder/rules/)).
 
 Kiro: copy `.kiro/steering/ponytail.md` to `~/.kiro/steering/` (global) or `.kiro/steering/` in your project.
 
@@ -296,7 +310,8 @@ Which files map to which agent: [Agent portability](docs/agent-portability.md).
 | Devin CLI | `devin plugins remove ponytail` |
 | Grok Build | `grok plugin uninstall ponytail` |
 | Pi agent | `pi uninstall ponytail` |
-| Cursor / Windsurf / Cline / Qoder / etc. | Delete the copied rule file |
+| Cursor | Uninstall from **Customize**, or `rm ~/.cursor/plugins/local/ponytail` |
+| Windsurf / Cline / Qoder / etc. | Delete the copied rule file |
 
 These remove the plugin's own files. They leave behind a small amount of state ponytail writes outside the plugin folder: the mode flag, `~/.config/ponytail/config.json`, and (if you accepted the setup nudge) a `statusLine` entry in `~/.claude/settings.json`. Run `node scripts/uninstall.js` to clean those up too. **Run it before the host remove command above** — the script is itself a plugin file, so removing the plugin first deletes it (or run it from a separate clone of this repo). It only removes the statusLine entry if it points at ponytail's own script, so a statusline you set up yourself is left untouched.
 
@@ -311,7 +326,7 @@ These remove the plugin's own files. They leave behind a small amount of state p
 | `/ponytail-gain` | Show the measured impact scoreboard (less code, less cost, more speed) from the benchmark. |
 | `/ponytail-help` | Quick reference for the commands above. |
 
-Commands need a skill-capable host (Claude Code, Codex, Devin CLI, OpenCode, Gemini, pi, Swival, Hermes Agent, Qoder, Grok Build). In Codex they're skills, invoke with `@` (`@ponytail-review`). The instruction-only adapters (Cursor, Windsurf, Cline, Copilot, Kiro, Antigravity) load the always-on ruleset without the commands.
+Commands need a skill-capable host (Claude Code, Codex, Devin CLI, OpenCode, Gemini, pi, Swival, Hermes Agent, Qoder, Grok Build). In Codex they're skills, invoke with `@` (`@ponytail-review`). In Cursor, `/ponytail` is a command and the other five are skills the agent picks up from their description. The instruction-only adapters (Windsurf, Cline, Copilot, Kiro, Antigravity) load the always-on ruleset without the commands.
 
 ## Development
 
