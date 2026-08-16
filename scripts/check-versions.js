@@ -21,6 +21,7 @@ const PINNED_SEMVER = /^\d+\.\d+\.\d+$/;
 const VERSION_FILES = [
   '.claude-plugin/plugin.json',  // Claude Code plugin — what users install
   '.codex-plugin/plugin.json',   // Codex plugin
+  '.cursor-plugin/plugin.json',  // Cursor plugin
   '.devin-plugin/plugin.json',   // Devin CLI plugin
   '.github/plugin/plugin.json',  // Copilot plugin
   '.qoder-plugin/plugin.json',   // Qoder plugin

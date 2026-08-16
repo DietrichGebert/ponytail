@@ -20,6 +20,12 @@ const isCopilot = Boolean(process.env.COPILOT_PLUGIN_DATA) ||
   isVsCodeCopilotRoot(process.env.CLAUDE_PLUGIN_ROOT);
 const isCodex = !isCopilot && Boolean(process.env.PLUGIN_DATA);
 const isQoder = !isCopilot && !isCodex && Boolean(process.env.QODER_SESSION_ID);
+// Cursor sets CURSOR_PLUGIN_ROOT for plugin-bundled hooks and CURSOR_VERSION for
+// every hook, so hand-wired .cursor/hooks.json installs are detected too. Cursor
+// also exports CLAUDE_PROJECT_DIR as an alias, which is why detection can't key
+// off that.
+const isCursor = !isCopilot && !isCodex && !isQoder &&
+  Boolean(process.env.CURSOR_PLUGIN_ROOT || process.env.CURSOR_VERSION);
 
 let stateDir = getClaudeDir();
 if (isCodex) stateDir = process.env.PLUGIN_DATA;
@@ -27,6 +33,7 @@ if (isCodex) stateDir = process.env.PLUGIN_DATA;
 // getClaudeDir() rather than building a path from undefined.
 if (isCopilot) stateDir = process.env.COPILOT_PLUGIN_DATA || getClaudeDir();
 if (isQoder) stateDir = path.join(os.homedir(), '.qoder');
+if (isCursor) stateDir = path.join(os.homedir(), '.cursor');
 
 const statePath = path.join(stateDir, STATE_FILE);
 
@@ -79,6 +86,20 @@ function writeHookOutput(event, mode, context = '') {
     process.stdout.write(JSON.stringify(output));
     return;
   }
+  if (isCursor) {
+    // Cursor parses hook stdout as JSON. sessionStart is its only documented
+    // injection point (additional_context); beforeSubmitPrompt can allow/block
+    // only, so a mid-session switch persists the flag and confirms to the user
+    // — the new level's ruleset lands via the /ponytail command or next session.
+    if (event === 'SessionStart') {
+      process.stdout.write(JSON.stringify(context ? { additional_context: context } : {}));
+      return;
+    }
+    const output = { continue: true };
+    if (context) output.user_message = context;
+    process.stdout.write(JSON.stringify(output));
+    return;
+  }
   // Native Claude: SessionStart accepts raw stdout, but SubagentStart needs the
   // hookSpecificOutput JSON form or the context is dropped.
   if (event === 'SubagentStart') {
@@ -93,6 +114,7 @@ module.exports = {
   clearMode,
   isCodex,
   isCopilot,
+  isCursor,
   isQoder,
   readMode,
   setMode,
