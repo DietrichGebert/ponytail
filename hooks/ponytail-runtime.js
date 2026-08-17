@@ -1,7 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
-const { getClaudeDir, getConfigDir } = require('./ponytail-config');
+const { getClaudeDir, normalizePersistedMode } = require('./ponytail-config');
 
 const STATE_FILE = '.ponytail-active';
 
@@ -40,9 +40,13 @@ function clearMode() {
 }
 
 // Live mode written by activate/mode-tracker. Absent flag = ponytail off.
+// ponytail: validate what comes off disk, the way the OpenCode reader already
+// does. A hand-edited or truncated flag file used to be returned verbatim, so
+// `/ponytail` reported "level: banana" while behaviour was really the full
+// default -- the status line contradicted the ruleset actually in force.
 function readMode() {
   try {
-    return fs.readFileSync(statePath, 'utf8').trim() || null;
+    return normalizePersistedMode(fs.readFileSync(statePath, 'utf8').trim()) || null;
   } catch (e) {
     return null;
   }

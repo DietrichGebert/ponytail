@@ -489,4 +489,59 @@ try {
   if (prevEnvModeRev === undefined) delete process.env.PONYTAIL_DEFAULT_MODE; else process.env.PONYTAIL_DEFAULT_MODE = prevEnvModeRev;
 }
 
+
+// --- regression: a padded env var must still resolve (normalization reuse) ---
+// getDefaultMode did its own toLowerCase() without trimming, while the
+// normalizeMode() it ships beside trims. One stray space in a shell profile or
+// CI yaml silently resolved to the built-in default instead of the named mode.
+const prevPadded = process.env.PONYTAIL_DEFAULT_MODE;
+const prevXdgPadded = process.env.XDG_CONFIG_HOME;
+const paddedHome = path.join(temp, 'padded-env-home');
+fs.mkdirSync(path.join(paddedHome, '.config'), { recursive: true });
+process.env.XDG_CONFIG_HOME = path.join(paddedHome, '.config');
+try {
+  for (const raw of [' lite ', '\tultra\n', 'LITE', ' OFF ']) {
+    const expected = raw.trim().toLowerCase();
+    process.env.PONYTAIL_DEFAULT_MODE = raw;
+    assert.equal(getDefaultMode(), expected,
+      'PONYTAIL_DEFAULT_MODE=' + JSON.stringify(raw) + ' must resolve to ' + expected);
+  }
+  process.env.PONYTAIL_DEFAULT_MODE = '  ';
+  assert.equal(getDefaultMode(), DEFAULT_MODE, 'a blank env var must fall back to the default');
+} finally {
+  if (prevPadded === undefined) delete process.env.PONYTAIL_DEFAULT_MODE; else process.env.PONYTAIL_DEFAULT_MODE = prevPadded;
+  if (prevXdgPadded === undefined) delete process.env.XDG_CONFIG_HOME; else process.env.XDG_CONFIG_HOME = prevXdgPadded;
+}
+
+// --- regression: a corrupt flag file must not be reported as a mode ---
+// readMode returned the file verbatim, so `/ponytail` announced "level: banana"
+// while getPonytailInstructions had already fallen back to the real default.
+const badFlagHome = path.join(temp, 'bad-flag-claude');
+fs.mkdirSync(badFlagHome, { recursive: true });
+fs.writeFileSync(path.join(badFlagHome, '.ponytail-active'), 'banana\n');
+const reported = spawnSync(process.execPath, [path.join(root, 'hooks', 'ponytail-mode-tracker.js')], {
+  input: JSON.stringify({ prompt: '/ponytail' }),
+  encoding: 'utf8',
+  env: { ...process.env, CLAUDE_CONFIG_DIR: badFlagHome, PONYTAIL_DEFAULT_MODE: 'full' },
+});
+assert.ok(!/banana/.test(reported.stdout), 'a corrupt flag file must never be reported as the active level');
+assert.ok(/level: full/.test(reported.stdout), 'a corrupt flag file must report the mode actually in force');
+
+// --- regression: Qoder gets exactly one JSON object per invocation ---
+// The report-only branch wrote its status line AND the ruleset write repeated
+// that same line, so stdout carried two concatenated JSON objects.
+const qoderSingleJsonHome = path.join(temp, 'qoder-single-json');
+fs.mkdirSync(qoderSingleJsonHome, { recursive: true });
+for (const prompt of ['/ponytail', '/ponytail lite', '/ponytail ultra']) {
+  const run = spawnSync(process.execPath, [path.join(root, 'hooks', 'ponytail-mode-tracker.js')], {
+    input: JSON.stringify({ prompt }),
+    encoding: 'utf8',
+    env: { ...process.env, QODER_SESSION_ID: 'test', HOME: qoderSingleJsonHome, USERPROFILE: qoderSingleJsonHome },
+  });
+  const out = (run.stdout || '').trim();
+  if (!out) continue;
+  assert.doesNotThrow(() => JSON.parse(out),
+    'Qoder stdout for ' + JSON.stringify(prompt) + ' must be one parseable JSON object, got: ' + out.slice(0, 120));
+}
+
 console.log('hook compatibility checks passed');
