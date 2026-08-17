@@ -233,6 +233,23 @@ clawhub install ponytail
 
 ClawHub에서 ponytail을 OpenClaw 스킬로 설치한다. review, audit, debt, gain, help 스킬도 같은 식으로 깐다(`clawhub install ponytail-review` 등). OpenClaw는 코딩 작업에 이를 적용하고 `/ponytail` 명령으로도 열어 준다. ClawHub가 없으면 [`.openclaw/skills/ponytail`](.openclaw/skills/)을 `~/.openclaw/skills/`에 복사하면 된다.
 
+### Grok Build
+
+```bash
+grok plugin install DietrichGebert/ponytail --trust
+```
+
+플러그인은 기본이 꺼져 있다. `/plugins` → Plugins에서 `ponytail`에 Space, 또는 `~/.grok/config.toml`:
+
+```toml
+[plugins]
+enabled = ["ponytail"]
+```
+
+새 세션을 열거나 플러그인을 다시 로드한다. 스킬은 `/ponytail`, `/ponytail-review`, `/ponytail-audit`, `/ponytail-debt`, `/ponytail-gain`, `/ponytail-help`로 보인다. `grok inspect`로 확인. Grok은 스킬 설명을 바탕으로 코딩 작업에서 ponytail을 자동으로 호출할 수 있다. 명시적으로 활성화해야 하면 `/ponytail`(또는 `/ponytail lite`, `/ponytail full`, `/ponytail ultra`)을 사용한다. `SessionStart` 출력으로는 지시문을 주입할 수 없으므로 Grok 라이프사이클 훅은 사용하지 않는다.
+
+체크아웃의 `AGENTS.md`만으로도 지시문 전용 모드는 된다. 제거: `grok plugin uninstall ponytail`.
+
 이게 끝이었다. 그 사람이라면 흐뭇해할 거다. 입 밖으로 내진 않겠지만.
 
 매 세션 켜져 있고, 명령 몇 개가 딸려 온다([Commands](#commands) 참고). `/ponytail ultra`는 코드베이스가 당신에게 단단히 밉보인 날을 위해 있다. 시작할 때와 모드를 바꿀 때 지금 모드를 보여 준다.

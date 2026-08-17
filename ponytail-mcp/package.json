@@ -1,6 +1,6 @@
 {
   "name": "ponytail-mcp",
-  "version": "4.8.4",
+  "version": "4.9.0",
   "description": "MCP server that serves Ponytail's lazy-senior-dev instructions as a prompt and a tool.",
   "private": true,
   "type": "module",
