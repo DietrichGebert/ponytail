@@ -41,9 +41,18 @@ function identifyTask(task) {
 function exec(cmd, opts = {}) {
   try {
     execSync(cmd, { timeout: correctnessTimeoutMs(), encoding: 'utf8', stdio: 'pipe', ...opts });
-    return { ok: true, stderr: '' };
+    return { ok: true, stderr: '', message: '' };
   } catch (e) {
-    return { ok: false, stderr: (e.stderr || e.message || '').slice(0, 500) };
+    // ponytail: the harnesses print their "FAIL: output was ..." diagnostic to
+    // stdout and exit 1, so reporting stderr alone threw away the only useful
+    // line and left every failure as a bare "Command failed: python3 /tmp/...".
+    const stderr = String(e.stderr || '').trim();
+    const stdout = String(e.stdout || '').trim();
+    return {
+      ok: false,
+      stderr: stderr.slice(0, 500),
+      message: (stderr || stdout || e.message || '').slice(0, 500),
+    };
   }
 }
 
@@ -126,7 +135,7 @@ print("PASS")
     const result = exec(`${python()} "${f}"`);
     fs.unlinkSync(f);
     if (result.ok) return { pass: true, reason: 'Email validator passes all checks' };
-    return { pass: false, reason: result.stderr || 'Email validator failed' };
+    return { pass: false, reason: result.message || 'Email validator failed' };
   },
 
   debounce(blocks) {
@@ -171,7 +180,7 @@ setTimeout(() => {
     const result = exec(`node "${f}"`);
     fs.unlinkSync(f);
     if (result.ok) return { pass: true, reason: 'Debounce passes all checks' };
-    return { pass: false, reason: result.stderr || 'Debounce failed' };
+    return { pass: false, reason: result.message || 'Debounce failed' };
   },
 
   csv(blocks) {
@@ -191,20 +200,25 @@ setTimeout(() => {
 import sys, os
 os.chdir(r"${path.dirname(csvPath)}")
 
-# Capture print output
+# Capture print output. ponytail: hold the buffer in its own name and restore
+# stdout in finally. Reading sys.stdout.getvalue() after the except branch had
+# already restored the real stdout raised AttributeError, so ANY exception in
+# the scored snippet (a missing pandas, a genuine bug) surfaced as an
+# inscrutable harness traceback instead of the failure it actually was.
 import io
 _stdout = sys.stdout
-sys.stdout = io.StringIO()
+_buffer = io.StringIO()
+sys.stdout = _buffer
+_error = None
 
 try:
 ${patched.split('\n').map((l) => '    ' + l).join('\n')}
 except Exception as e:
+    _error = type(e).__name__ + ": " + str(e)
+finally:
     sys.stdout = _stdout
-    # If it needs sales.csv in cwd, write it there and retry
-    pass
 
-output = sys.stdout.getvalue()
-sys.stdout = _stdout
+output = _buffer.getvalue()
 
 # Check output contains the number 351 (100.5 + 200.0 + 50.5)
 # Match as a standalone number (not as substring of e.g. 13510)
@@ -212,8 +226,10 @@ import re
 if re.search(r'(?<![\\d])351(?:\\.0)?(?![\\d])', output):
     print("PASS")
 else:
-    # Try running it differently: maybe it defines a function
-    print("FAIL: output was: " + repr(output[:200]))
+    detail = "FAIL: output was: " + repr(output[:200])
+    if _error:
+        detail += " (raised " + _error + ")"
+    print(detail)
     sys.exit(1)
 `;
     const f = tmpFile('.py', harness);
@@ -221,7 +237,7 @@ else:
     try { fs.unlinkSync(f); } catch (e) {}
     try { fs.unlinkSync(csvPath); } catch (e) {}
     if (result.ok) return { pass: true, reason: 'CSV sum produces correct result (351)' };
-    return { pass: false, reason: result.stderr || 'CSV sum failed' };
+    return { pass: false, reason: result.message || 'CSV sum failed' };
   },
 
   countdown(blocks) {
