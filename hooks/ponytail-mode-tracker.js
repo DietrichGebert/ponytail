@@ -56,11 +56,17 @@ function finish() {
       }
 
       if (isReportOnly) {
-        writeHookOutput(
-          'UserPromptSubmit',
-          mode,
-          'PONYTAIL MODE ACTIVE — level: ' + mode,
-        );
+        // ponytail: same one-JSON-per-invocation rule as the mode-switch branch
+        // below. On Qoder the ruleset write already opens with this exact
+        // "PONYTAIL MODE ACTIVE — level: X" line, so emitting it here too put
+        // two concatenated JSON objects on stdout — not parseable as either.
+        if (!isQoder) {
+          writeHookOutput(
+            'UserPromptSubmit',
+            mode,
+            'PONYTAIL MODE ACTIVE — level: ' + mode,
+          );
+        }
       } else if (mode && mode !== 'off') {
         setMode(mode);
         modeSwitched = true;
