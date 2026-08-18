@@ -163,10 +163,16 @@ pi install git:github.com/DietrichGebert/ponytail
 
 ### OpenCode
 
-Add to `opencode.json`:
+OpenCode V1 uses the package's root export. Add to `opencode.json`:
 
 ```json
 { "plugin": ["@dietrichgebert/ponytail"] }
+```
+
+OpenCode V2 is beta and has a separate plugin API. Use the explicit V2 export and the plural `plugins` field:
+
+```json
+{ "plugins": ["@dietrichgebert/ponytail/v2"] }
 ```
 
 Run from a checkout instead (the plugin reuses `hooks/` and `skills/`):
@@ -175,9 +181,17 @@ Run from a checkout instead (the plugin reuses `hooks/` and `skills/`):
 { "plugin": ["./.opencode/plugins/ponytail.mjs"] }
 ```
 
+For a V2 checkout, use the V2 adapter's path instead:
+
+```json
+{ "plugins": ["./.opencode/plugins/ponytail-v2.mjs"] }
+```
+
 Injects the ruleset every turn at the active level; adds the `/ponytail` commands (see [Commands](#commands)). OpenCode also auto-loads this repo's `AGENTS.md`, so the rules hold even without the plugin. The plugin adds the `lite/full/ultra/off` levels.
 
 The `./` path resolves against your project's `opencode.json`; to share one checkout across projects, point it at the absolute path of the `.mjs` instead (it finds its `hooks/` and `skills/` relative to its own file).
+
+The V2 beta does not currently expose a command lifecycle hook. Its `/ponytail <level>` command applies the requested level to that command prompt, but cannot persist an interactive switch for later turns. Set a persistent level with `PONYTAIL_DEFAULT_MODE` or `defaultMode` in the Ponytail config described below; the context hook reads that default on every turn. V1 mode switching is unchanged.
 
 ### Gemini CLI
 
