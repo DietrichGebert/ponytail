@@ -256,7 +256,7 @@ enabled = ["ponytail"]
 
 새 세션마다 적용할 레벨은 `PONYTAIL_DEFAULT_MODE` 환경 변수(`lite`/`full`/`ultra`/`off`)로, 또는 `~/.config/ponytail/config.json`의 `defaultMode` 필드(Windows에선 `%APPDATA%\ponytail\config.json`)로 정한다. 기본값은 `full`이다.
 
-Cursor, Windsurf, Cline, GitHub Copilot(에디터), Aider, Kiro, Zed, CodeWhale: 이 저장소에서 맞는 규칙 파일을 복사하면 된다([`.cursor/rules/`](.cursor/rules/), [`.windsurf/rules/`](.windsurf/rules/), [`.clinerules/`](.clinerules/), [`.github/copilot-instructions.md`](.github/copilot-instructions.md), [`AGENTS.md`](AGENTS.md), [`.kiro/steering/`](.kiro/steering/)).
+Cursor: 저장소 루트를 `~/.cursor/plugins/local/ponytail`에 복사한 다음 **Developer: Reload Window**. 팀: Dashboard → Plugins → Import from GitHub `DietrichGebert/ponytail`. 폴백은 그대로 [`.cursor/rules/ponytail.mdc`](.cursor/rules/ponytail.mdc)를 프로젝트에 복사. Windsurf, Cline, GitHub Copilot(에디터), Aider, Kiro, Zed, CodeWhale: 이 저장소에서 맞는 규칙 파일을 복사하면 된다([`.windsurf/rules/`](.windsurf/rules/), [`.clinerules/`](.clinerules/), [`.github/copilot-instructions.md`](.github/copilot-instructions.md), [`AGENTS.md`](AGENTS.md), [`.kiro/steering/`](.kiro/steering/)).
 
 Kiro: `.kiro/steering/ponytail.md`를 `~/.kiro/steering/`(전역)이나 프로젝트의 `.kiro/steering/`에 복사한다.
 
@@ -277,7 +277,7 @@ Codex 확장을 쓰는 VS Code는 이 저장소가 함께 싣는 `AGENTS.md`를 
 | `/ponytail-gain` | 벤치마크로 잰 효과 스코어보드(코드 절감, 비용 절감, 속도 향상)를 보여 준다. |
 | `/ponytail-help` | 위 명령들의 빠른 참조. |
 
-명령들은 스킬을 지원하는 호스트가 있어야 돈다(Claude Code, Codex, Devin CLI, OpenCode, Gemini, pi, Swival). Codex에선 스킬이라 `@`로 부른다(`@ponytail-review`). 지시문 전용 어댑터(Cursor, Windsurf, Cline, Copilot, Kiro, Antigravity)는 명령 없이 늘 켜진 룰셋만 불러온다.
+명령들은 스킬을 지원하는 호스트가 있어야 돈다(Claude Code, Codex, Cursor, Devin CLI, OpenCode, Gemini, pi, Swival). Codex에선 스킬이라 `@`로 부른다(`@ponytail-review`). 지시문 전용 어댑터(Windsurf, Cline, Copilot, Kiro, Antigravity)는 명령 없이 늘 켜진 룰셋만 불러온다.
 
 ## Development
 

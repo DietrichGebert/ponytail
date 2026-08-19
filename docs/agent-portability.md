@@ -15,7 +15,7 @@ to load in a given agent.
 | pi | `pi-extension/`, `skills/`, `hooks/` | Package extension: injects the ruleset each turn through the shared instruction builder and registers the `/ponytail` commands. |
 | Hermes Agent | `plugin.yaml`, `__init__.py`, `skills/` | Native Hermes plugin: injects active mode through `pre_llm_call`, rewrites gateway `/ponytail-*` skill commands into agent prompts, registers `/ponytail` mode switching, and exposes bundled skills as `ponytail:<skill>`. |
 | Gemini CLI | `gemini-extension.json`, `AGENTS.md`, `commands/`, `skills/` | Extension manifest points `contextFileName` at `AGENTS.md` for always-on rules, and reuses the existing `commands/*.toml` and `skills/`, which Gemini CLI auto-discovers. The Claude/Codex hook map is not placed at Gemini's auto-discovered `hooks/hooks.json` path. |
-| Cursor | `.cursor/rules/ponytail.mdc` | Always-on project rule. |
+| Cursor | `.cursor-plugin/plugin.json`, `.cursor-plugin/marketplace.json`, `skills/`, `.cursor/rules/`, `.opencode/command/` | Cursor Plugin: copy the repo root to `~/.cursor/plugins/local/ponytail` then Developer: Reload Window (no symlink outside that folder). Teams import `DietrichGebert/ponytail` from GitHub. Skills, always-on `.mdc` rule, and OpenCode markdown slash commands. Intensity is honor-system. Fallback: copy `.cursor/rules/ponytail.mdc` into a project. |
 | Windsurf | `.windsurf/rules/ponytail.md` | Project rule. |
 | Cline | `.clinerules/ponytail.md` | Project rule. |
 | GitHub Copilot | `.github/copilot-instructions.md` | Repository instruction file. |

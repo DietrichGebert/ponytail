@@ -1,0 +1,14 @@
+{
+  "name": "ponytail",
+  "version": "4.9.0",
+  "description": "Lazy senior dev mode. Forces the simplest, shortest solution that actually works: YAGNI, stdlib first, no unrequested abstractions.",
+  "author": { "name": "Dietrich Gebert" },
+  "homepage": "https://github.com/DietrichGebert/ponytail",
+  "repository": "https://github.com/DietrichGebert/ponytail",
+  "license": "MIT",
+  "keywords": ["yagni", "minimalism", "code-review", "productivity"],
+  "logo": "assets/logo.png",
+  "skills": "./skills/",
+  "rules": "./.cursor/rules/",
+  "commands": "./.opencode/command/"
+}

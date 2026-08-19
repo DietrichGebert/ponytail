@@ -1,0 +1,14 @@
+{
+  "name": "ponytail",
+  "owner": {
+    "name": "Dietrich Gebert"
+  },
+  "plugins": [
+    {
+      "name": "ponytail",
+      "description": "Forces the laziest solution that works. YAGNI, stdlib first, one line over fifty.",
+      "source": "./",
+      "category": "productivity"
+    }
+  ]
+}
