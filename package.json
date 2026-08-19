@@ -19,7 +19,8 @@
   "main": "./.opencode/plugins/ponytail.mjs",
   "exports": {
     ".": "./.opencode/plugins/ponytail.mjs",
-    "./plugin": "./.opencode/plugins/ponytail.mjs"
+    "./plugin": "./.opencode/plugins/ponytail.mjs",
+    "./v2": "./.opencode/v2/ponytail.mjs"
   },
   "files": [
     "AGENTS.md",
