@@ -33,6 +33,24 @@
             "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/ponytail-mode-tracker.js\"",
             "timeout": 5,
             "statusMessage": "Tracking ponytail mode..."
+          },
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/ponytail-spend.js\"",
+            "timeout": 5,
+            "statusMessage": "Checking ponytail spend budget..."
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/ponytail-spend.js\"",
+            "timeout": 5,
+            "statusMessage": "Checking ponytail spend budget..."
           }
         ]
       }

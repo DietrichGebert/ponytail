@@ -43,6 +43,11 @@ function finish() {
           }
           return; // don't fall through to the session-mode switch
         }
+        // `/ponytail spend ...` belongs to the spend firewall, which answers
+        // on this same event from ponytail-spend.js. It names a budget, not an
+        // intensity level, so the tracker must leave the session mode alone —
+        // otherwise asking about the budget silently resets the mode.
+        if (arg === 'spend') return;
         if (arg === 'lite') mode = 'lite';
         else if (arg === 'full') mode = 'full';
         else if (arg === 'ultra') mode = 'ultra';

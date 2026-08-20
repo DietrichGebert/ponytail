@@ -7,6 +7,10 @@
           {
             "type": "command",
             "command": "node PONYTAIL_DIR/hooks/ponytail-mode-tracker.js"
+          },
+          {
+            "type": "command",
+            "command": "node PONYTAIL_DIR/hooks/ponytail-spend.js"
           }
         ]
       }
@@ -18,6 +22,14 @@
           {
             "type": "command",
             "command": "node PONYTAIL_DIR/hooks/ponytail-subagent.js"
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node PONYTAIL_DIR/hooks/ponytail-spend.js"
           }
         ]
       }
