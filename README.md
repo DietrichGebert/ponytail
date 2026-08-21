@@ -285,6 +285,35 @@ Amp (Sourcegraph) reads `AGENTS.md` from the working directory and parent direct
 
 Jules (Google) reads `AGENTS.md` from the repository root, which this repo ships, so it picks up the ruleset with no setup.
 
+### DeepSeek Harness (dsh)
+
+The [dsh adapter](dsh/) is a Cordis plugin that injects the active mode's
+ruleset into the system prompt every turn, registers the six ponytail skills,
+and exposes a `ponytail` tool for level switching (`lite`/`full`/`ultra`/
+`review`/`off`) that persists through the shared `hooks/ponytail-config.js`.
+
+```yaml
+# profile cordis.patch.yml
+- insert:
+    - id: ponytail
+      name: '/path/to/ponytail/dsh/src/index.js'
+      config:
+        mode: full      # lite | full (default) | ultra | review | off
+```
+
+Or from a DeepSeek Harness source checkout / global dsh, patching this repo's
+`dsh/cordis.patch.yml`:
+
+```bash
+pnpm dsh web --patch ./dsh/cordis.patch.yml      # source checkout
+dsh web --patch ./dsh/cordis.patch.yml           # global install
+```
+
+Then ask: "Use ponytail on this task" or "set ponytail to ultra". Running from
+a checkout also works with zero setup — dsh auto-loads `AGENTS.md` (like
+CodeWhale/Amp/Jules); the plugin adds the always-on injection and level tool on
+top.
+
 Which files map to which agent: [Agent portability](docs/agent-portability.md).
 
 ### Uninstall
