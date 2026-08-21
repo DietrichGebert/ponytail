@@ -57,3 +57,22 @@ test('README install section lists dsh', () => {
   const readme = readFileSync(join(repo, 'README.md'), 'utf8')
   assert.match(readme, /DeepSeek Harness/)
 })
+
+test('skill descriptions extract the FULL frontmatter folded block (CRLF-safe)', () => {
+  // Mirrors skillDescription(): the folded `description: >` block must be read
+  // whole, not just its first line, and CRLF (Windows checkout) must not break
+  // the parse. This guards the regression where only the first line survived.
+  function descFrom(body) {
+    const normalized = String(body).replace(/\r\n/g, '\n')
+    const fm = normalized.match(/^---\n([\s\S]*?)\n---/)
+    if (!fm) return ''
+    const m = fm[1].match(/^description:\s*>\s*\n((?:  [^\n]*\n)+)/m)
+    return m ? m[1].split('\n').map((l) => l.trim()).filter(Boolean).join(' ') : ''
+  }
+  const SKILLS = ['ponytail', 'ponytail-review', 'ponytail-audit', 'ponytail-debt', 'ponytail-gain', 'ponytail-help']
+  for (const s of SKILLS) {
+    const body = readFileSync(join(repo, 'skills', s, 'SKILL.md'), 'utf8')
+    const desc = descFrom(body)
+    assert.ok(desc.length > 50, `${s} description too short (${desc.length}ch) — folded block truncated`)
+  }
+})

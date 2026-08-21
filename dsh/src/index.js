@@ -74,7 +74,9 @@ const SKILLS = [
 
 function readSkillBody(name) {
   try {
-    return readFileSync(join(REPO_ROOT, 'skills', name, 'SKILL.md'), 'utf8')
+    // Normalize CRLF (upstream files are checked out as CRLF on Windows) so
+    // frontmatter parsing and the injected ruleset are LF-clean.
+    return readFileSync(join(REPO_ROOT, 'skills', name, 'SKILL.md'), 'utf8').replace(/\r\n/g, '\n')
   } catch {
     return ''
   }
@@ -86,9 +88,16 @@ function stripFrontmatter(text) {
 
 function skillDescription(name) {
   const body = readSkillBody(name)
-  const m = String(body).match(/^---[\s\S]*?^description:\s*>\s*\n((?:^  .*\n?)+)/m)
+  // Extract the frontmatter `description: >` folded block. Confine to the
+  // frontmatter first (--- ... ---), then read the 2-space-indented folded
+  // lines (no ^ anchor per continuation line — a per-line ^ with optional
+  // newline backtracked to the first line only). Stops at the next 0-indent
+  // frontmatter key (argument-hint, license, …).
+  const fm = String(body).match(/^---\n([\s\S]*?)\n---/)
+  if (!fm) return name
+  const m = fm[1].match(/^description:\s*>\s*\n((?:  [^\n]*\n)+)/m)
   if (m) {
-    return m[1].split('\n').map((l) => l.trim()).join(' ').trim() || name
+    return m[1].split('\n').map((l) => l.trim()).filter(Boolean).join(' ').trim() || name
   }
   return name
 }
