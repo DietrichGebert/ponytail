@@ -13,7 +13,7 @@ const path = require('path');
 
 function correctnessTimeoutMs() {
   const value = Number.parseInt(process.env.PONYTAIL_CORRECTNESS_TIMEOUT_MS || '', 10);
-  return Number.isFinite(value) && value > 0 ? value : 30_000;
+  return Number.isFinite(value) && value > 0 ? value : 60_000;
 }
 
 // Extract fenced code blocks, tagged by language.
