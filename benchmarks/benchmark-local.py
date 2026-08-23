@@ -154,6 +154,8 @@ def main():
     parsed_url = urllib.parse.urlparse(args.ollama_url)
     if parsed_url.scheme not in ("http", "https"):
         parser.error(f"Invalid --ollama-url scheme: '{parsed_url.scheme}'. Only 'http' and 'https' are supported.")
+    if not parsed_url.netloc:
+        parser.error(f"--ollama-url must include a host, e.g. http://localhost:11434 (got '{args.ollama_url}').")
 
     run(args.model, args.repeat, args.ollama_url)
 

@@ -23,6 +23,9 @@ jobs:
       - name: Install Python deps for correctness checks
         run: pip install pandas
 
+      - name: Install MCP deps
+        run: npm install --prefix ponytail-mcp
+
       - name: Check rule copies
         run: node scripts/check-rule-copies.js
 

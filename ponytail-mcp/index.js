@@ -3,13 +3,17 @@
 // prompt (user-invoked) and a tool (for hosts that pull context via tools).
 // It does NOT replace the always-on adapters; it's the clean option for hosts
 // whose only injection point is the prompt menu (see #70).
+import fs from "node:fs";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
 
 import { MODES, buildInstructions, resolveMode } from "./instructions.js";
 
-const server = new McpServer({ name: "ponytail", version: "0.1.0" });
+const { version } = JSON.parse(
+  await fs.promises.readFile(new URL("../package.json", import.meta.url), "utf8")
+);
+const server = new McpServer({ name: "ponytail", version });
 
 const modeArg = z
   .enum(MODES)

@@ -25,7 +25,11 @@ function filterSkillBodyForMode(body, mode) {
         if (labelMode) return labelMode === effectiveMode;
       }
 
-      const exampleLabel = line.match(/^-\s*([^:]+):\s*/);
+      // Require a quoted value: every worked example is `- lite: "..."`. Without
+      // this, an ordinary rule bullet that happens to start with a mode word
+      // (e.g. "- Full: ...") is silently dropped in every other mode — it looks
+      // like a worked example but is really prose meant to survive verbatim.
+      const exampleLabel = line.match(/^-\s*([^:]+):\s*"/);
       if (exampleLabel) {
         const labelMode = normalizeMode(exampleLabel[1].trim());
         if (labelMode) return labelMode === effectiveMode;
@@ -57,7 +61,7 @@ function getFallbackInstructions(mode) {
     'Deletion over addition. Boring over clever. Fewest files possible. ' +
     'Ship the lazy version and question the complex request in the same response — never stall. ' +
     'Between two same-size stdlib options, pick the one correct on edge cases. ' +
-    'Mark intentional simplifications with a `ponytail:` comment — a shortcut with a known ceiling names the ceiling and the upgrade path in the comment.\n\n' +
+    'Mark deliberate simplifications that cut a real corner with a known ceiling, using a `ponytail:` comment that names the ceiling and upgrade path.\n\n' +
     '## Output\n\n' +
     'Code first. Then at most three short lines: what was skipped, when to add it. ' +
     'If the explanation is longer than the code, delete the explanation. ' +
