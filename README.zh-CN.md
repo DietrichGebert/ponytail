@@ -1,21 +1,21 @@
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="assets/logo-dark.png">
-    <img src="assets/logo.png" width="220" alt="Ponytail，懒得恰到好处的资深开发者">
+    <img src="assets/logo.png" width="220" alt="Ponytail，那个懒惰的资深开发者">
   </picture>
 </p>
 
 <h1 align="center">Ponytail</h1>
 
 <p align="center">
-  <em>不说话。写一行。能跑。</em>
+  <em>他一言不发。写下一行。搞定。</em>
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/github/stars/DietrichGebert/ponytail?style=flat-square&color=111111&label=stars" alt="星标">
-  <img src="https://img.shields.io/github/v/release/DietrichGebert/ponytail?style=flat-square&color=111111&label=release" alt="发行版">
+  <img src="https://img.shields.io/github/stars/DietrichGebert/ponytail?style=flat-square&color=111111&label=stars" alt="Stars">
+  <img src="https://img.shields.io/github/v/release/DietrichGebert/ponytail?style=flat-square&color=111111&label=release" alt="Release">
   <img src="https://img.shields.io/npm/v/@dietrichgebert/ponytail?style=flat-square&color=111111&label=npm" alt="npm">
-  <img src="https://img.shields.io/badge/works%20with-14%20agents-111111?style=flat-square" alt="支持 14 种智能体">
+  <img src="https://img.shields.io/badge/works%20with-20%20agents-111111?style=flat-square" alt="支持 20 种 Agent">
   <img src="https://img.shields.io/badge/license-MIT-111111?style=flat-square" alt="MIT 许可证">
 </p>
 
@@ -25,87 +25,91 @@
 </p>
 
 <p align="center">
-  <strong>代码少约 54%（最高 94%）&middot; 成本低约 20% &middot; 速度快约 27% &middot; 100% 安全</strong><br>
-  <sub>在真实 Claude Code 会话中，让同一个智能体编辑真实开源仓库（FastAPI + React），分别启用和不启用此 skill 后测得。约 54% 是 12 个功能任务的平均值（Haiku 4.5，n=4）；智能体容易过度构建的场景（如日期选择器）可达 94%，而原本已足够精简的代码则几乎没有差异。ponytail 保留了所有安全保护；单纯要求“写一行代码”的提示词则会漏掉其中一项。（早期单次 benchmark 将 80–94% 写成统一数字；和公平的智能体基线相比，那是每项任务的上限，不是平均值。）<a href="benchmarks/results/2026-06-18-agentic.md">完整报告</a> &middot; <a href="benchmarks/">复现方法</a>。</sub>
+  <strong>代码减少约 54%（最高 94%）&middot; 成本降低约 20% &middot; 速度提升约 27% &middot; 100% 安全</strong><br>
+  <sub>数据来自真实的 Claude Code 会话：让同一个 Agent 在启用和未启用该技能的情况下，编辑一个真实的开源仓库（FastAPI + React）。约 54% 是 12 项功能任务的平均值（Haiku 4.5，n=4）；当 Agent 会过度实现时（比如日期选择器），降幅可达 94%；而当代码已经足够精简时，降幅则接近零。ponytail 会保留所有安全防护，而单纯一句“写成单行”的提示会漏掉其中一项。（早期单轮基准测试将 80–94% 作为一个笼统数字；与公平的 Agent 基准相比，这其实是单项任务的上限，而不是平均值。）<a href="benchmarks/results/2026-06-18-agentic.md">完整报告</a> &middot; <a href="benchmarks/">复现实验</a>。</sub>
 </p>
 
 <p align="center">
-  <sub>社区译本。<a href="README.md">英文 README</a> 是基准且最新的版本。</sub>
+  <sub>社区翻译。最新且作为基准的版本请参阅<a href="README.md">英文 README</a>。</sub>
 </p>
 
 ---
 
-你一定见过这种人：长马尾、椭圆眼镜，比版本控制系统还早进公司。你递给他五十行代码；他扫一眼，不说话，直接换成一行。
+<p align="center">
+  <a href="https://ponytail.dev/soon"><img src="assets/waitlist-banner.png" alt="有新东西要来了，加入候补名单" width="760"></a>
+</p>
 
-Ponytail 把他放进你的 AI 智能体里。
+你认识这种人。留着长马尾，戴着椭圆眼镜，在公司待得比版本控制还久。你给他看五十行代码；他看了一眼，一言不发，然后把它们换成一行。
+
+Ponytail 把他塞进你的 AI Agent 里。
 
 ## 前后对比
 
-你要一个日期选择器。智能体装上 flatpickr，写一个包装组件，加一份样式表，然后开始讨论时区。
+你让 Agent 做一个日期选择器。它安装 flatpickr，写一个封装组件，加一份样式表，然后开始讨论时区。
 
-有了 ponytail：
+用了 ponytail：
 
 ```html
-<!-- ponytail: browser has one -->
+<!-- ponytail: 浏览器自带 -->
 <input type="date">
 ```
 
-更多幸存案例见 [examples/](examples/)。
+更多幸存者见 [examples/](examples/)。
 
 ## 数据
 
-最诚实的衡量方式，是让真实智能体做真实工作：让无头 Claude Code 会话编辑 [tiangolo 的 full-stack-fastapi-template](https://github.com/fastapi/full-stack-fastapi-template)（一个真实的 FastAPI + React 仓库），按它留下的 `git diff` 评分。12 个功能任务，同一个智能体分别启用和不启用 skill，n=4，Haiku 4.5。
+真正诚实的测量方式，是让真实的 Agent 干真实的活：在无界面的 Claude Code 会话中编辑 [tiangolo 的 full-stack-fastapi-template](https://github.com/fastapi/full-stack-fastapi-template)（一个真实的 FastAPI + React 仓库），再根据它留下的 `git diff` 评分。十二张功能工单，同一个 Agent，分别启用和不启用该技能，n=4，Haiku 4.5。
 
 <p align="center">
-  <img src="assets/benchmark-agentic.svg" width="860" alt="各方案相对无 skill 基线的代码行数、token、成本和耗时百分比（Haiku 4.5）。ponytail 在每项指标都最低（LOC 46%、token 78%、成本 80%、耗时 73%）；caveman 的 token、成本和耗时超过 100%；yagni-oneliner 的 LOC 为 67%。安全性为独立的对抗性层级：baseline、caveman 和 ponytail 均为 100%，yagni-oneliner 为 95%。">
+  <img src="assets/benchmark-agentic.svg" width="860" alt="各实验组在代码行数、Token、成本和耗时上占无技能基准的百分比（Haiku 4.5）。ponytail 的每项指标都最低（代码行数 46%、Token 78%、成本 80%、耗时 73%）；caveman 的 Token、成本和耗时均超过 100%；yagni-oneliner 的代码行数为 67%。安全性采用独立的对抗测试层级：基准组、caveman 和 ponytail 均为 100%，yagni-oneliner 为 95%。">
 </p>
 
-| 相对无 skill 基线 | LOC | token | 成本 | 耗时 | 安全 |
+| 相比无技能基准 | 代码行数 | Token | 成本 | 耗时 | 安全性 |
 |---|--:|--:|--:|--:|--:|
 | **ponytail** | **-54%** | **-22%** | **-20%** | **-27%** | **100%** |
-| caveman（简短表述对照组） | -20% | +7% | +3% | +2% | 100% |
-| “YAGNI + 单行代码”提示词 | -33% | -14% | -21% | -30% | 95% |
+| caveman（精简措辞对照组） | -20% | +7% | +3% | +2% | 100% |
+| “YAGNI + 单行代码”提示 | -33% | -14% | -21% | -30% | 95% |
 
-ponytail 是唯一同时降低每项指标、并保持完整安全性的方案。降幅最大的地方，正是容易过度构建的场景：它会优先用原生 `<input>`，而不是组件，所以日期选择器从 404 行缩到 23 行，颜色选择器从 287 行缩到 23 行；对已经足够精简的代码，变化则接近零。完整方法、逐任务表格和限制说明见 [benchmarks/results/2026-06-18-agentic.md](benchmarks/results/2026-06-18-agentic.md)。
+ponytail 是唯一让所有指标都下降的实验组，也是唯一在做到这一点的同时仍保持完全安全的实验组。遇到真正的过度实现陷阱时，降幅最大（日期选择器从 404 行降到 23 行，颜色选择器从 287 行降到 23 行，因为它会直接使用原生 `<input>`，而不是再造一个组件）；遇到已经足够精简的代码时，降幅则接近零。完整方法、逐项任务表格和局限性见：[benchmarks/results/2026-06-18-agentic.md](benchmarks/results/2026-06-18-agentic.md)。
 
 <details>
-<summary><strong>较早的单次数据（独立生成）</strong></summary>
+<summary><strong>早期单轮数据（独立生成）</strong></summary>
 
-五个日常任务，三个模型，三个方案（无 skill、[caveman](https://github.com/JuliusBrussee/caveman)、ponytail），每项运行十次，报告中位数。一个提示词，一次回答，统计回答中的代码行数：
+五项日常任务，三种模型，三个实验组（无技能、[caveman](https://github.com/JuliusBrussee/caveman)、ponytail），运行十次，报告中位数。一次提示，一次补全，统计回答中的代码行数：
 
 <p align="center">
-  <img src="assets/benchmark-3model.svg" width="860" alt="Haiku、Sonnet 和 Opus 三个方案的代码行数中位数">
+  <img src="assets/benchmark-3model.svg" width="860" alt="Haiku、Sonnet 和 Opus 各实验组的代码行数中位数">
 </p>
 
-结果显示**代码减少 80–94%**。但正如 [#126](https://github.com/DietrichGebert/ponytail/issues/126) 合理指出的，无 skill 的基线模型会用说明和选项填充回答，因此其中一部分差距只是对话式基线造成的假象。上面的智能体数据才是修正后、站得住脚的版本。可通过 `npx promptfoo eval -c benchmarks/promptfooconfig.yaml` 复现单次运行。
+结果显示，**代码减少了 80–94%**。[#126](https://github.com/DietrichGebert/ponytail/issues/126) 很公允地指出，裸模型基准会用说明和选项把回答撑长，因此这个差距有一部分只是对话式基准带来的假象。上面的 Agent 数据才是修正后、站得住脚的版本。运行 `npx promptfoo eval -c benchmarks/promptfooconfig.yaml` 即可复现单轮测试。
 
 </details>
 
-**这条规则从来不是“token 越少越好”。** 它是：只写任务真正需要的东西，绝不砍掉验证、错误处理、安全性或无障碍支持。代码之所以变少，是因为只留下必要部分，不是为了炫技。对遵循这套阶梯的模型而言，更低的成本和延迟只是副产品；一个为逐级斟酌而消耗大量思考 token 的简洁推理模型反而可能更慢、更贵（GPT-5.5 就是如此）。
+**规则从来都不是“Token 越少越好”。** 规则是：只写任务真正需要的内容，但绝不删减校验、错误处理、安全性或无障碍支持。代码之所以少，是因为它只保留必要部分，不是因为在玩代码高尔夫。对那些会遵循这套阶梯的模型来说，成本和延迟下降只是副作用；而一个措辞简练、却会花推理 Token 反复权衡各级选项的模型，结果可能恰好相反（GPT-5.5 就是如此）。
 
-## 它怎么工作
+## 工作原理
 
-写代码前，智能体会在第一个成立的层级停下：
+写代码之前，Agent 会沿着阶梯向下，在第一个可行的台阶停下：
 
 ```
-1. 这东西有必要存在吗？       → 没必要：跳过（YAGNI）
-2. 代码库里已经有了吗？        → 复用，别重写
-3. 标准库能做吗？              → 用标准库
-4. 原生平台功能能做吗？        → 用原生功能
-5. 已安装的依赖能解决吗？      → 用已有依赖
-6. 一行能搞定吗？              → 一行
-7. 最后才是：写出能工作的最小实现
+1. 这东西真的需要存在吗？    → 不需要：跳过（YAGNI）
+2. 代码库里已经有了吗？      → 复用，别重写
+3. 标准库能做吗？            → 用标准库
+4. 平台有原生功能吗？        → 用原生功能
+5. 已安装的依赖能做吗？      → 用现有依赖
+6. 一行能搞定吗？            → 那就一行
+7. 到这一步才写：能工作的最小实现
 ```
 
-这套阶梯是在理解问题*之后*才运行，不是拿来替代理解：先读会被改到的代码，追完真实流程，再选层级。方案可以懒，阅读绝不能懒。
+这套阶梯是在它理解问题*之后*才使用的，而不是拿来代替理解：它会先阅读改动涉及的代码，追踪真实流程，然后再选择该停在哪一级。解法可以偷懒，理解绝不偷懒。
 
-懒，不等于疏忽：信任边界的验证、防止数据丢失的处理、安全性和无障碍支持，绝不在删减之列。
+懒，但不失职：信任边界校验、数据丢失处理、安全性和无障碍支持，永远不在删减清单上。
 
 ## 安装
 
 这是 ponytail 这辈子会要求你付出的最大努力：
 
-Claude Code 和 Codex 插件会运行两个很小的 Node.js 生命周期钩子，因此 `node` 必须在你的 PATH 中（Nix/nvm 用户注意：它必须出现在非交互 shell 的 PATH 中）。如果不在，skills 仍然可用；只是原本始终启用的自动激活会保持安静，而不会每个提示词都报错。
+Claude Code 和 Codex 插件会运行两个很小的 Node.js 生命周期钩子，所以 `node` 必须在 PATH 中（Nix/nvm 用户请注意：它必须位于非交互式 shell 的 PATH 中）。如果不在，技能仍然可用；只是常驻激活不会生效，也不会在每条提示时反复报错。
 
 ### Claude Code
 
@@ -115,20 +119,20 @@ Claude Code 和 Codex 插件会运行两个很小的 Node.js 生命周期钩子�
 ```
 /plugin install ponytail@ponytail
 ```
-（必须分两次发送提示词，安装才会成功）
+（必须分成两条提示发送，安装才能成功）
 
-桌面应用没有 `/plugin` 命令，请从 UI 安装：Customize、个人插件旁的 +、Create plugin and add marketplace、Add from repository，然后输入仓库 URL（感谢 @NiklasDHahn，#98）。
+在 Claude Code 桌面应用的 Code 标签页中也是同样的步骤：把上面两条 `/plugin` 命令输入提示框，或者点击旁边的 **+** 按钮，依次选择 **Plugins** → **Add plugin** 来浏览已配置的市场；市场可在侧栏的 **Customize** 中管理。
 
 ### Codex
 
 ```bash
 codex plugin marketplace add DietrichGebert/ponytail
-codex
+codex plugin add ponytail@ponytail
 ```
 
-打开 `/plugins`，选择 Ponytail marketplace 并安装 Ponytail。然后打开 `/hooks`，审核并信任它的两个生命周期钩子，再新开一个线程。
+运行 `codex`，打开 `/hooks`，检查并信任它的两个生命周期钩子，然后新建一个会话。
 
-这一次安装同样覆盖 Codex 桌面应用：安装后重启应用，它就会识别该插件。
+同一次安装也适用于 Codex 桌面应用：安装后重启应用，它就会加载插件。
 
 ### GitHub Copilot CLI
 
@@ -137,21 +141,21 @@ copilot plugin marketplace add DietrichGebert/ponytail
 copilot plugin install ponytail@ponytail
 ```
 
-在交互式 Copilot CLI 会话中，可以使用等价的斜杠命令：
+在交互式 Copilot CLI 会话中，请使用对应的斜杠命令：
 
 ```
 /plugin marketplace add DietrichGebert/ponytail
 /plugin install ponytail@ponytail
 ```
 
-Copilot CLI 会给插件命令加上插件名命名空间。例如：
+Copilot CLI 会用插件名为插件命令划分命名空间。例如：
 
 ```text
 /ponytail:ponytail ultra
 /ponytail:ponytail-review
 ```
 
-### Pi agent harness
+### Pi Agent 框架
 
 ```
 pi install git:github.com/DietrichGebert/ponytail
@@ -159,21 +163,21 @@ pi install git:github.com/DietrichGebert/ponytail
 
 ### OpenCode
 
-在 `opencode.json` 中加入：
+添加到 `opencode.json`：
 
 ```json
 { "plugin": ["@dietrichgebert/ponytail"] }
 ```
 
-也可以直接从 checkout 运行（该插件会复用 `hooks/` 和 `skills/`）：
+也可以改为从本地检出版本运行（插件会复用 `hooks/` 和 `skills/`）：
 
 ```json
 { "plugin": ["./.opencode/plugins/ponytail.mjs"] }
 ```
 
-它会在每个回合注入当前强度的规则集，并加入 `/ponytail` 命令（见[命令](#命令)）。OpenCode 还会自动加载此仓库的 `AGENTS.md`，所以即使没有插件，规则仍然生效。插件额外提供 `lite/full/ultra/off` 强度等级。
+它会在每一轮按当前级别注入规则集，并添加 `/ponytail` 命令（见[命令](#命令)）。OpenCode 还会自动加载本仓库的 `AGENTS.md`，因此即使没有插件，规则依然生效。插件额外提供 `lite/full/ultra/off` 级别。
 
-`./` 路径以项目的 `opencode.json` 为基准解析。若要让多个项目共用同一个 checkout，请改为指向 `.mjs` 的绝对路径（它会相对自身位置查找 `hooks/` 和 `skills/`）。
+`./` 路径相对于项目的 `opencode.json` 解析；如果想让多个项目共用一份检出版本，请改为填写 `.mjs` 文件的绝对路径（它会相对于自身位置找到 `hooks/` 和 `skills/`）。
 
 ### Gemini CLI
 
@@ -181,35 +185,58 @@ pi install git:github.com/DietrichGebert/ponytail
 gemini extensions install https://github.com/DietrichGebert/ponytail
 ```
 
-它会在每个会话中把规则集作为常驻上下文载入，并注册 `/ponytail` 命令；`skills/` 也会一并提供，在任务需要时启用。Gemini 适配器刻意不在根目录提供 `hooks/hooks.json`：Gemini 会自动加载该路径，而 Ponytail 的生命周期钩子使用的是 Claude/Codex 事件名称。
+它会在每个会话中把规则集作为常驻上下文加载，并注册 `/ponytail` 命令；`skills/` 也会一并提供，并在任务需要时启用。
+Gemini 适配器有意不提供根目录下的 `hooks/hooks.json`：Gemini 会自动加载该路径，而 Ponytail 的生命周期钩子使用的是 Claude/Codex 的事件名。
+
+### Qoder
+
+Qoder 会把仓库根目录中的 `AGENTS.md` 自动加载为常驻上下文，因此直接从 ponytail 的检出版本运行，无需任何设置。若只想添加项目级规则，请把 [`.qoder/rules/ponytail.md`](.qoder/rules/ponytail.md) 复制到项目的 `.qoder/rules/` 中。六项 ponytail 技能（`/ponytail`、`/ponytail-review`、`/ponytail-audit`、`/ponytail-debt`、`/ponytail-gain`、`/ponytail-help`）可通过 Qoder 的 Skill 系统使用；位于 [`.qoder-plugin/plugin.json`](.qoder-plugin/plugin.json) 的插件清单指向 `skills/` 目录。
+
+若要获得完整的插件级支持（自动激活模式 + 每条提示都注入规则集），请把 [`hooks/qoder-hooks.json`](hooks/qoder-hooks.json) 中的钩子加入 `.qoder/settings.json`。把 `PONYTAIL_DIR` 替换为 ponytail 检出版本所在的路径。Qoder 的 `UserPromptSubmit` 钩子会在第一条提示时激活默认模式，并在每一轮注入规则集；带有 `task|Task` 匹配器的 `PreToolUse` 会把规则集注入子 Agent。级别切换（`/ponytail lite|full|ultra|off`）会自动生效。
 
 ### Antigravity CLI
 
-Google 正在把 Gemini CLI 改名为 Antigravity CLI（`agy` 二进制）；同一个扩展也可安装到那里：
+Google 正在把 Gemini CLI 更名为 Antigravity CLI（二进制文件名为 `agy`）；同一个扩展也可以安装到那里：
 
 ```bash
 agy plugin install https://github.com/DietrichGebert/ponytail
 ```
 
-它复用仓库中的 `gemini-extension.json`。有一点不同：Antigravity 会把 `/ponytail` 命令变成 skills，所以不再从斜杠菜单中选择，而是直接在聊天中输入（例如把 `/ponytail-review` 当作消息发送）。在迁移完成前（约 2026 年 6 月 18 日），`gemini extensions install` 仍然可用。若想作为常驻规则运行，请把规则集放入 `.agents/rules/`。
+它会复用本仓库的 `gemini-extension.json`。有一点不同：Antigravity 会把 `/ponytail` 命令转换成技能，因此你需要在聊天中输入它们（例如把 `/ponytail-review` 作为一条消息发送），而不是从斜杠菜单中选择。在迁移完成前（约为 2026 年 6 月 18 日），`gemini extensions install` 也仍然有效。如果想把它作为常驻规则运行，请把规则集放进 `.agents/rules/`。
+
+### Hermes Agent
+
+```bash
+hermes plugins install DietrichGebert/ponytail --enable
+```
+
+安装后重启 Hermes。插件会在每次调用 LLM 前注入当前启用的 Ponytail 模式，把随附技能注册为 `ponytail:<skill>`，并添加 `/ponytail`、`/ponytail-review`、`/ponytail-audit`、`/ponytail-debt`、`/ponytail-gain` 和 `/ponytail-help`。在共享网关中，请通过 Hermes 的斜杠命令访问控制，把 `/ponytail` 限制给可信用户；运行时模式仅在当前进程中有效。
 
 ### CodeWhale
 
-它读取项目根目录的 `AGENTS.md`，完全无需配置。把 [`AGENTS.md`](AGENTS.md) 复制到你的项目，或直接在本仓库的 checkout 中运行 `codewhale`。就这么简单。
+它会读取项目根目录中的 `AGENTS.md`，无需设置。把 [`AGENTS.md`](AGENTS.md) 复制到你的项目，或者从本仓库的检出版本运行 `codewhale`。就这么简单。
 
 ### Swival
 
-先把集合暂存到你的库中，再添加需要的 skills：
+先把集合暂存到技能库中，再添加所需的技能：
 
 ```bash
 swival skills add --global https://github.com/DietrichGebert/ponytail  # 暂存到 ~/.config/swival/library
-swival skills add ponytail                                             # 将集合安装到此项目
-swival skills add --global ponytail                                    # 或在所有项目中启用
+swival skills add ponytail                                             # 把该集合安装到当前项目
+swival skills add --global ponytail                                    # 或在每个项目中启用
 ```
 
-Swival 同样会读取项目根目录的 `AGENTS.md` 和全局的 `~/.config/swival/AGENTS.md`，作为仅指令模式的后备方案。
+Swival 也会读取项目根目录中的 `AGENTS.md`，并把全局的 `~/.config/swival/AGENTS.md` 作为仅指令模式的后备方案。
 
-在命令行中，用 `$` 前缀显式启用 skill。例如：`$ponytail-review`。
+在命令行中，用 `$` 前缀显式激活一项技能。例如：`$ponytail-review`。
+
+### Devin CLI
+
+```bash
+devin plugins install DietrichGebert/ponytail
+```
+
+将 ponytail 安装为 Devin 插件；技能可通过 `/ponytail:ponytail`、`/ponytail:ponytail-review` 等命令使用。
 
 ### OpenClaw
 
@@ -217,23 +244,48 @@ Swival 同样会读取项目根目录的 `AGENTS.md` 和全局的 `~/.config/swi
 clawhub install ponytail
 ```
 
-这会从 ClawHub 安装 ponytail 作为 OpenClaw skill；review、audit、debt、gain 和 help skills 也以同样方式安装（`clawhub install ponytail-review` 等）。OpenClaw 会在编程任务中应用它，也会将它作为 `/ponytail` 命令提供。没有 ClawHub 时，请把 [`.openclaw/skills/ponytail`](.openclaw/skills/) 复制到 `~/.openclaw/skills/`。
+从 ClawHub 把 ponytail 安装为 OpenClaw 技能；review、audit、debt、gain 和 help 技能的安装方式相同（分别运行 `clawhub install ponytail-review` 等命令）。OpenClaw 会在编码任务中应用它，也会将它公开为 `/ponytail` 命令。如果不使用 ClawHub，请把 [`.openclaw/skills/ponytail`](.openclaw/skills/) 复制到 `~/.openclaw/skills/`。
 
-就这些。他会满意的，但不会说出来。
+### Grok Build
 
-它会在每个会话中保持启用，并附带少量命令（见[命令](#命令)）。`/ponytail ultra` 留给代码库真正惹毛你的时候。启动和切换强度时会显示当前模式。
+```bash
+grok plugin install DietrichGebert/ponytail --trust
+```
 
-使用 `PONYTAIL_DEFAULT_MODE` 环境变量（`lite`/`full`/`ultra`/`off`），或 `~/.config/ponytail/config.json` 中的 `defaultMode` 字段（Windows 为 `%APPDATA%\ponytail\config.json`），设置每个新会话的强度。默认值为 `full`。
+启用插件（默认关闭）：输入 `/plugins`，打开 Plugins，然后在 `ponytail` 上按空格键；或者在 `~/.grok/config.toml` 中加入：
 
-Cursor、Windsurf、Cline、GitHub Copilot（编辑器）、Aider、Kiro、Zed、CodeWhale、Swival：从本仓库复制对应的规则文件（[`.cursor/rules/`](.cursor/rules/)、[`.windsurf/rules/`](.windsurf/rules/)、[`.clinerules/`](.clinerules/)、[`.github/copilot-instructions.md`](.github/copilot-instructions.md)、[`AGENTS.md`](AGENTS.md)、[`.kiro/steering/`](.kiro/steering/)）。
+```toml
+[plugins]
+enabled = ["ponytail"]
+```
+
+新建会话（或重新加载插件）。技能将显示为 `/ponytail`、`/ponytail-review`、`/ponytail-audit`、`/ponytail-debt`、`/ponytail-gain`、`/ponytail-help`。使用 `grok inspect` 验证。Grok 可以根据 ponytail 的技能说明，在编码任务中自动调用它；需要明确激活时，请使用 `/ponytail`（或 `/ponytail lite`、`/ponytail full`、`/ponytail ultra`）。Grok 不使用生命周期钩子，因为其 SessionStart 输出无法注入指令。
+
+即使没有插件，从检出版本运行时，`AGENTS.md` 仍可以仅指令模式工作。
+
+就这些。他会感到骄傲。只是不会说出来。
+
+ponytail 会在每个会话中启用，并提供少量命令（见[命令](#命令)）。如果代码库真的伤害过你，`/ponytail ultra` 正是为此而生。启动和切换模式时显示的文本会标明当前模式。
+
+可以用环境变量 `PONYTAIL_DEFAULT_MODE`（`lite`/`full`/`ultra`/`off`），或 `~/.config/ponytail/config.json` 中的 `defaultMode` 字段（Windows 上为 `%APPDATA%\ponytail\config.json`），为所有新会话设置级别。默认为 `full`。
+
+启用时，通过 Agent 工具生成的每个子 Agent 也会收到这套规则集。若只想限定到某些 Agent 类型（例如，不对只读搜索 Agent 启用），请把环境变量 `PONYTAIL_SUBAGENT_MATCHER` 设为一个正则表达式，用它匹配子 Agent 的 `agent_type`。它可匹配字符串中的任意位置，且不区分大小写：`explore|general` 匹配两者之一，`^general$` 为精确匹配，插件 Agent 类型的形式则类似 `plugin:name`。未设置时会注入所有子 Agent（默认行为）；正则表达式无效，或者平台未报告某个子 Agent 的类型时，也会回退为注入。
+
+Cursor、Windsurf、Cline、GitHub Copilot Chat（VS Code、JetBrains 和 Visual Studio 的编辑器扩展，不是[安装](#安装)中介绍的独立 Copilot CLI）、Aider、Kiro、Zed、CodeWhale、Swival、Qoder：从本仓库复制对应的规则文件（[`.cursor/rules/`](.cursor/rules/)、[`.windsurf/rules/`](.windsurf/rules/)、[`.clinerules/`](.clinerules/)、[`.github/copilot-instructions.md`](.github/copilot-instructions.md)、[`AGENTS.md`](AGENTS.md)、[`.kiro/steering/`](.kiro/steering/)、[`.qoder/rules/`](.qoder/rules/)）。
 
 Kiro：把 `.kiro/steering/ponytail.md` 复制到 `~/.kiro/steering/`（全局）或项目中的 `.kiro/steering/`。
 
-GitHub Copilot CLI 后备方案（仅指令模式）：它会读取项目中的 `AGENTS.md` 和 `.github/copilot-instructions.md`；若想在所有项目中运行 ponytail，请复制规则到 `~/.copilot/copilot-instructions.md`。此方式保留常驻指导，但不会加入插件的强度切换或钩子。
+GitHub Copilot CLI 后备方案（仅指令模式）：它会读取项目中的 `AGENTS.md` 和 `.github/copilot-instructions.md`；也可以把规则复制到 `~/.copilot/copilot-instructions.md`，让 ponytail 在所有项目中运行。这种方式会保留常驻指引，但不会添加插件的模式切换或钩子。
 
-带 Codex 扩展的 VS Code 会读取 `AGENTS.md`，本仓库已提供该文件，因此在仓库根目录无需设置即可运行（将其置于 `~/.codex/AGENTS.md` 则可全局生效）。
+带有 Codex 扩展的 VS Code 会读取 `AGENTS.md`，而本仓库已经提供该文件，因此从仓库根目录运行时无需设置（`~/.codex/AGENTS.md` 可让 Codex 全局生效）。
 
-各智能体与文件的映射见：[智能体可移植性](docs/agent-portability.md)。
+JetBrains Junie 可以读取 `AGENTS.md`，但需要先在 Settings → Tools → Junie → Project Settings → Guidelines Path 中指向该文件（目前还不会自动读取）。本仓库已提供 `AGENTS.md`；`.junie/guidelines.md` 是 Junie 的旧版路径。
+
+Amp（Sourcegraph）会从工作目录及其父目录一直读取 `AGENTS.md`，直到 `$HOME`；本仓库已经提供该文件，因此无需设置即可使用（`~/.config/amp/AGENTS.md` 可用于全局设置）。
+
+Jules（Google）会读取仓库根目录中的 `AGENTS.md`；本仓库已经提供该文件，因此它无需设置便会加载规则集。
+
+各文件与各 Agent 的对应关系见：[Agent 可移植性](docs/agent-portability.md)。
 
 ### 卸载
 
@@ -241,54 +293,70 @@ GitHub Copilot CLI 后备方案（仅指令模式）：它会读取项目中的 
 |------|---------|
 | Claude Code | `/plugin remove ponytail` |
 | Codex | `codex plugin remove ponytail` |
-| Pi agent | `pi uninstall ponytail` |
-| Cursor / Windsurf / Cline / 等 | 删除已复制的规则文件 |
+| Devin CLI | `devin plugins remove ponytail` |
+| Grok Build | `grok plugin uninstall ponytail` |
+| Pi Agent | `pi uninstall ponytail` |
+| Cursor / Windsurf / Cline / Qoder / 等 | 删除复制的规则文件 |
 
-上述命令会删除插件自身的文件，但会保留 ponytail 写入插件目录外的少量状态：模式标记、`~/.config/ponytail/config.json`，以及（若你接受了设置提示）`~/.claude/settings.json` 中的 `statusLine` 条目。运行 `node scripts/uninstall.js` 可以一并清理。**必须在执行上述宿主删除命令之前运行它**——该脚本本身是插件文件，先删除插件就会把它一并删掉（或者从另一个仓库克隆中运行）。它只会删除指向 ponytail 自身脚本的 `statusLine` 条目，因此你自行设置的状态栏不会受影响。
+这些命令会删除插件自己的文件，但会留下少量由 ponytail 写在插件目录之外的状态：模式标志、`~/.config/ponytail/config.json`，以及（如果你接受了设置提示）`~/.claude/settings.json` 中的一项 `statusLine`。运行 `node scripts/uninstall.js` 也可清理这些内容。**请在执行上面的宿主卸载命令前运行它**——这个脚本本身就是插件文件，先卸载插件也会把脚本删掉（或者从本仓库的另一份克隆中运行）。只有当 statusLine 指向 ponytail 自己的脚本时，它才会删除该条目，因此你自行设置的状态栏不会受影响。
 
 ## 命令
 
-| 命令 | 用途 |
+| 命令 | 作用 |
 |---------|--------------|
-| `/ponytail [lite \| full \| ultra \| off]` | 设置强度，或关闭它。没有参数时显示当前强度。 |
-| `/ponytail-review` | 从过度工程的角度审查当前 diff，并给出可删除项。 |
-| `/ponytail-audit` | 审计整个仓库是否过度工程，而不只看 diff。 |
-| `/ponytail-debt` | 收集标为 `ponytail:`、留待以后处理的简化项，免得“以后”变成“永远不”。 |
-| `/ponytail-gain` | 显示 benchmark 测得的影响记分板（更少代码、更低成本、更快速度）。 |
+| `/ponytail [lite \| full \| ultra \| off]` | 设置强度或将其关闭。不带参数时报告当前级别。 |
+| `/ponytail-review` | 检查当前差异中的过度设计，并交回一份删除清单。 |
+| `/ponytail-audit` | 审计整个仓库中的过度设计，而不只是当前差异。 |
+| `/ponytail-debt` | 把你用 `ponytail:` 延后的捷径收集成债务账本，免得“以后”变成“永远不做”。 |
+| `/ponytail-gain` | 显示基准测试测得的效果记分牌（更少代码、更低成本、更快速度）。 |
 | `/ponytail-help` | 上述命令的快速参考。 |
 
-命令需要支持 skills 的宿主（Claude Code、Codex、OpenCode、Gemini、pi、Swival）。在 Codex 中它们是 skills，用 `@` 调用（`@ponytail-review`）。仅指令适配器（Cursor、Windsurf、Cline、Copilot、Kiro、Antigravity）会加载常驻规则集，但没有这些命令。
+命令需要支持技能的宿主（Claude Code、Codex、Devin CLI、OpenCode、Gemini、pi、Swival、Hermes Agent、Qoder、Grok Build）。在 Codex 中，它们是技能，使用 `@` 调用（如 `@ponytail-review`）。仅指令模式的适配器（Cursor、Windsurf、Cline、Copilot、Kiro、Antigravity）会加载常驻规则集，但不提供这些命令。
 
 ## 开发
 
-修改精简的规则文本时，保持各智能体副本同步：
+修改精简版规则文本时，请保持所有 Agent 副本同步：
 
 ```bash
 node scripts/check-rule-copies.js
 npm test
 ```
 
-OpenClaw skill 包（`.openclaw/skills/`）由 `skills/` 生成。修改 skill 后，请重新运行 `node scripts/build-openclaw-skills.js`；如果生成内容过期，测试套件会失败。要将 skills 发布到 ClawHub，请先运行一次 `clawhub login`，再运行 `node scripts/publish-openclaw-skills.js`（它会按 `package.json` 中的版本发布全部六个；传入 `--dry-run` 可预览）。
+OpenClaw 技能包（`.openclaw/skills/`）由 `skills/` 生成；修改技能后，请重新运行 `node scripts/build-openclaw-skills.js`，否则测试套件会因内容过期而失败。若要把技能发布到 ClawHub，先运行一次 `clawhub login`，再运行 `node scripts/publish-openclaw-skills.js`（它会按 `package.json` 中的版本发布全部六项技能；传入 `--dry-run` 可先预览）。
 
-correctness benchmark 会启动 Python 进行电子邮件和 CSV 检查；它会先尝试 `python3`，再尝试 `python`。CSV 检查要求本地安装 `pandas`。
+正确性基准测试会启动 Python 来检查电子邮件和 CSV；它会先尝试 `python3`，再尝试 `python`。CSV 检查要求本机安装 `pandas`。
 
 ## 常见问题
 
+**能和 [caveman](https://github.com/JuliusBrussee/caveman) 一起用吗？**
+能，而且你应该这么做。Caveman 精简 Agent 说的话；ponytail 精简 Agent 造的东西。两者各管一半，互不重叠：caveman 对代码逐字节保持原样，ponytail 则不碰措辞。用精简的话，谈精简的代码。
+
 **需要配置文件吗？**
-不需要。可以用可选的 `~/.config/ponytail/config.json` 或 `PONYTAIL_DEFAULT_MODE` 环境变量设置默认强度，但都不是必需的。
+不需要。可以选择用 `~/.config/ponytail/config.json` 或环境变量 `PONYTAIL_DEFAULT_MODE` 设置默认级别，但什么都不配置也能用。
 
-**如果我真的需要那个 120 行的缓存类呢？**
-你不需要。非要坚持的话，他也会写。慢慢地，正确地，同时盯着你。
+**可我真的需要那个 120 行的缓存类呢？**
+你不需要。非要坚持的话，他也会写。慢慢地。正确地。一边盯着你。
 
-**它能扩展吗？**
-你从未写下的代码可以无限扩展。零 bug，零 CVE，从此以后 100% 正常运行。
+**能扩展吗？**
+你没写的代码可以无限扩展。零 Bug，零 CVE，自古以来可用率 100%。
 
 **为什么叫“ponytail”？**
-你很清楚原因。
+你明明知道为什么。
+
+## 赞助商
+
+<p align="center">
+  <a href="https://greenpt.com/">
+    <picture>
+      <source media="(prefers-color-scheme: dark)" srcset="assets/logo-greenpt-dark.svg">
+      <img src="assets/logo-greenpt.svg" width="260" alt="GreenPT">
+    </picture>
+  </a>
+</p>
 
 ## 许可证
 
-[MIT](LICENSE)。能用的最短许可证。
+[MIT](LICENSE)。够用的最短许可证。
 
 ## Star 历史
 
@@ -296,6 +364,6 @@ correctness benchmark 会启动 Python 进行电子邮件和 CSV 检查；它会
  <picture>
    <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=DietrichGebert/ponytail&type=Date&theme=dark" />
    <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=DietrichGebert/ponytail&type=Date" />
-   <img alt="Star 历史图表" src="https://api.star-history.com/chart?repos=DietrichGebert/ponytail&type=Date" />
+   <img alt="Star 历史图" src="https://api.star-history.com/chart?repos=DietrichGebert/ponytail&type=Date" />
  </picture>
 </a>
