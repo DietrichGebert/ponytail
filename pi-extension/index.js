@@ -71,6 +71,7 @@ export default function ponytailExtension(pi) {
   function syncStatus(ctx) {
     if (ctx) lastCtx = ctx;
     const c = ctx || lastCtx;
+    if (c?.mode !== "tui") return;
     // ponytail: hide the indicator but keep the ruleset active (#324).
     if (hideStatus) return;
     if (!c?.ui?.setStatus) return;
@@ -186,7 +187,7 @@ export default function ponytailExtension(pi) {
     hideStatus = getHideStatus();
     currentMode = resolveSessionMode(entries, configuredDefaultMode);
     syncStatus(ctx);
-    if (!getQuietStartup()) {
+    if (ctx?.mode === "tui" && !getQuietStartup()) {
       ctx?.ui?.notify?.(`Ponytail loaded: ${currentMode}`, "info");
     }
   });

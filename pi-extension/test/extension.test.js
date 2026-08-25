@@ -33,6 +33,7 @@ function createPiHarness() {
 
 function createCommandContext(overrides = {}) {
   return {
+    mode: "tui",
     isIdle: () => true,
     sessionManager: { getEntries: () => [] },
     ui: { notify() {} },
@@ -177,6 +178,28 @@ test("status bar renders the mode and flips active on agent_start", async () => 
   assert.equal(statusWrites.at(-2).key, "ponytail");
   assert.match(statusWrites.at(-2).text, /○.*ULTRA/);
   assert.match(statusWrites.at(-1).text, /●.*ULTRA/);
+}));
+
+test("RPC startup keeps Ponytail active without decorative UI", async () => withTempConfig(async () => {
+  const { events } = createPiHarness();
+  const notifications = [];
+  const statusWrites = [];
+  const ctx = createCommandContext({
+    mode: "rpc",
+    ui: {
+      notify: (message) => notifications.push(message),
+      setStatus: (key, text) => statusWrites.push({ key, text }),
+      theme: { fg: (_color, text) => text },
+    },
+  });
+
+  await events.get("session_start")({ reason: "startup" }, ctx);
+  await events.get("agent_start")({}, ctx);
+  const injected = await events.get("before_agent_start")({ systemPrompt: "BASE" }, ctx);
+
+  assert.deepEqual(notifications, []);
+  assert.deepEqual(statusWrites, []);
+  assert.match(injected.systemPrompt, /PONYTAIL MODE ACTIVE/);
 }));
 
 test("status bar stays silent when ui lacks a theme", async () => withTempConfig(async () => {
