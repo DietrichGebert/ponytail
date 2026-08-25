@@ -2,7 +2,6 @@
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const path = require('path');
 
 let plugin;
 test.before(async () => {
@@ -10,31 +9,28 @@ test.before(async () => {
   plugin = (await import('@dietrichgebert/ponytail/v2')).default;
 });
 
-function context(style = 'add') {
+function context() {
   const commands = new Map();
   const skills = [];
   const hooks = {};
+  const prompts = [];
   return {
     commands,
     skills,
     hooks,
+    prompts,
     value: {
       command: {
         transform: async (callback) => callback({
-          update(name, update) {
-            const command = { name, template: '' };
-            update(command);
-            commands.set(name, command);
-          },
+          add(command) { commands.set(command.name, command); },
         }),
       },
       skill: {
-        transform: async (callback) => callback(style === 'source'
-          ? { source: (source) => skills.push(source) }
-          : { add: (skill) => skills.push(skill) }),
+        transform: async (callback) => callback({ add: (skill) => skills.push(skill) }),
       },
       session: {
         hook: async (name, callback) => { hooks[name] = callback; },
+        prompt: async (prompt) => { prompts.push(prompt); },
       },
     },
   };
@@ -47,19 +43,37 @@ test('exports the V2 id/setup contract and registers commands and beta skills', 
   await plugin.setup(ctx.value);
   assert.ok(ctx.commands.has('ponytail'));
   assert.ok(ctx.commands.has('ponytail-review'));
-  assert.match(ctx.commands.get('ponytail').template, /Switch to ponytail/);
+  assert.equal(typeof ctx.commands.get('ponytail').execute, 'function');
   assert.ok(ctx.skills.some((skill) => skill.id === 'ponytail'));
   assert.ok(ctx.skills.some((skill) => skill.id === 'ponytail-review'));
   assert.match(ctx.skills.find((skill) => skill.id === 'ponytail').description, /laziest solution/);
 });
 
-test('uses the documented V2 skill source draft when available', async () => {
-  const ctx = context('source');
+test('executes commands through the V2 session prompt API', async () => {
+  const ctx = context();
   await plugin.setup(ctx.value);
-  assert.deepEqual(ctx.skills, [{
-    type: 'directory',
-    path: path.resolve(__dirname, '..', 'skills'),
-  }]);
+  await ctx.commands.get('ponytail').execute({
+    sessionID: 'session-1',
+    prompt: { text: 'ultra', files: [{ id: 'attachment' }] },
+    delivery: 'queue',
+  });
+  assert.equal(ctx.prompts.length, 1);
+  assert.equal(ctx.prompts[0].sessionID, 'session-1');
+  assert.equal(ctx.prompts[0].delivery, 'queue');
+  assert.deepEqual(ctx.prompts[0].files, [{ id: 'attachment' }]);
+  assert.match(ctx.prompts[0].text, /Switch to ponytail ultra mode/);
+  assert.doesNotMatch(ctx.prompts[0].text, /\$ARGUMENTS/);
+});
+
+test('appends arguments when a command template has no placeholder', async () => {
+  const ctx = context();
+  await plugin.setup(ctx.value);
+  await ctx.commands.get('ponytail-review').execute({
+    sessionID: 'session-1',
+    prompt: { text: 'focus on staged files' },
+    delivery: 'steer',
+  });
+  assert.match(ctx.prompts[0].text, /\n\nfocus on staged files$/);
 });
 
 test('context hook preserves one system entry for Qwen compatibility', async () => {

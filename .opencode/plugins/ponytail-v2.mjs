@@ -30,6 +30,13 @@ function skillDefinitions() {
   });
 }
 
+function expandCommandTemplate(template, input) {
+  const expanded = template.replaceAll('$ARGUMENTS', input);
+  return !template.includes('$ARGUMENTS') && input.trim()
+    ? `${expanded}\n\n${input}`.trim()
+    : expanded.trim();
+}
+
 export default {
   id: 'ponytail',
   setup: async (ctx) => {
@@ -38,16 +45,22 @@ export default {
         const name = path.basename(file, '.md');
         const parsed = parseCommandFile(path.join(commandDir, file));
         if (!parsed) continue;
-        commands.update(name, (command) => Object.assign(command, parsed));
+        commands.add({
+          name,
+          description: parsed.description,
+          execute: async ({ sessionID, prompt, delivery }) => {
+            await ctx.session.prompt({
+              ...prompt,
+              sessionID,
+              text: expandCommandTemplate(parsed.template, prompt.text),
+              delivery,
+            });
+          },
+        });
       }
     });
 
     await ctx.skill.transform((skills) => {
-      // V2 beta 17595 uses add(); the current documented draft uses source().
-      if (typeof skills.source === 'function') {
-        skills.source({ type: 'directory', path: skillsDir });
-        return;
-      }
       for (const skill of skillDefinitions()) skills.add(skill);
     });
 
