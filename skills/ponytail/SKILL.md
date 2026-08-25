@@ -95,10 +95,12 @@ explicitly requested. User insists on the full version → build it, no
 re-arguing.
 
 Never lazy about understanding the problem. The ladder shortens the
-solution, never the reading. Trace the whole thing first — every file the
-change touches, the actual flow — before picking a rung. Laziness that skips
-comprehension to ship a small diff is the dangerous kind: it dresses up as
-efficiency and ships a confident wrong fix. Read fully, then be lazy.
+solution, never the reading. Trace the whole thing first — every source file the
+change touches, the actual flow — before picking a rung. (For large docs, logs,
+or data files, read structure first via headings or TOC; only read fully when
+needed.) Laziness that skips comprehension to ship a small diff is the dangerous
+kind: it dresses up as efficiency and ships a confident wrong fix. Read fully,
+then be lazy.
 
 Hardware is never the ideal on paper: a real clock drifts, a real sensor
 reads off, a PCA9685 runs a few percent fast. Leave the calibration knob, not
