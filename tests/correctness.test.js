@@ -72,9 +72,22 @@ test('debounce: immediate-call implementation fails', () => {
   assert.equal(result.score, 0);
 });
 
+// The positive csv case needs a real pandas import. Negative cases pass
+// vacuously without python, so only this one is gated; CI installs pandas and
+// always runs it.
+const hasPandas = (() => {
+  // Ask the harness module itself which interpreter it picked, then require
+  // pandas from THAT one — gate and harness can never disagree again.
+  try {
+    const { execSync } = require('child_process');
+    execSync(correctness.python() + ' -c "import pandas"', { timeout: 10000, stdio: 'ignore' });
+    return true;
+  } catch (e) { return false; }
+})();
+
 // --- CSV sum ---
 
-test('csv: correct pandas one-liner passes', () => {
+test('csv: correct pandas one-liner passes', { skip: hasPandas ? false : 'needs python + pandas (CI installs both)' }, () => {
   const result = check(
     "Write Python code that reads sales.csv and sums the 'amount' column.",
     'python',

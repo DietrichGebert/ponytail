@@ -24,3 +24,7 @@ ponytail-*.gif
 
 # agentic benchmark workspaces (agent output, kept locally for inspection)
 benchmarks/agentic/runs/
+
+# local tool state, not repo content
+.token-optimizer/
+.opencode/mcp-triage.json

@@ -3,11 +3,10 @@
 // Injects the ponytail ruleset into every chat's system prompt at the active
 // intensity, persists /ponytail mode switches, and registers slash commands so
 // they work when the package is installed from npm. Reuses the shared
-// instruction builder so Claude Code, Codex, pi, and OpenCode all read one
-// source of truth.
+// instruction builder (hooks/ponytail-instructions.js) — one source of truth.
 //
 // OpenCode loads this as a server plugin — add it to your opencode.json:
-//   { "plugin": ["@dietrichgebert/ponytail"] }
+//   { "plugin": ["@81117105108108/ponytail"] }
 
 import { createRequire } from 'module';
 import fs from 'fs';

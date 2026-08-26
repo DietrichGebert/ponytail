@@ -1,14 +1,6 @@
 #!/usr/bin/env node
-// Version-consistency guard. Ponytail declares its version in seven files across
-// five host ecosystems, and every release bumps all of them by hand.
-//
-// tests/gemini-extension.test.js already checks the four plugin manifests agree
-// with each other, but that can't catch the failure mode that shipped in v4.8.0:
-// every manifest stayed stale at 4.7.0 *together* while the release moved on, so
-// they "agreed" and the test passed (#260, #262). It also ignores the two
-// package.json files. This check closes both gaps:
-//   1. every version-bearing file must share one pinned X.Y.Z version, and
-//   2. on a release-tag CI run, that shared version must equal the tag.
+// Version-consistency guard: package.json must be pinned X.Y.Z semver, and on
+// a release-tag CI run must equal the tag (#260, #262).
 
 const fs = require('fs');
 const path = require('path');
@@ -19,14 +11,7 @@ const PINNED_SEMVER = /^\d+\.\d+\.\d+$/;
 // Every file that declares the project version, and who reads it. Add new host
 // manifests here so a future ecosystem can't drift unnoticed.
 const VERSION_FILES = [
-  '.claude-plugin/plugin.json',  // Claude Code plugin — what users install
-  '.codex-plugin/plugin.json',   // Codex plugin
-  '.devin-plugin/plugin.json',   // Devin CLI plugin
-  '.github/plugin/plugin.json',  // Copilot plugin
-  '.qoder-plugin/plugin.json',   // Qoder plugin
-  'gemini-extension.json',       // Gemini CLI extension
-  'package.json',                // pi-package / repo root
-  'ponytail-mcp/package.json',   // MCP server (private, internal-only)
+  'package.json',                // opencode plugin version
 ];
 
 function readVersion(relPath) {

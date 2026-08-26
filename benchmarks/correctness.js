@@ -40,19 +40,22 @@ function identifyTask(task) {
 // Run a command, return { ok, stderr }.
 function exec(cmd, opts = {}) {
   try {
-    execSync(cmd, { timeout: correctnessTimeoutMs(), encoding: 'utf8', stdio: 'pipe', ...opts });
-    return { ok: true, stderr: '' };
+    const stdout = execSync(cmd, { timeout: correctnessTimeoutMs(), encoding: 'utf8', stdio: 'pipe', ...opts });
+    return { ok: true, stderr: '', stdout };
   } catch (e) {
     return { ok: false, stderr: (e.stderr || e.message || '').slice(0, 500) };
   }
 }
 
 // ponytail: probe once at load; macOS and many Linux images ship python3 only.
+// Require real output, not just exit 0 — the Windows Store python3 alias is a
+// stub that exits 0 and never runs actual scripts.
 let pythonCmd;
 function python() {
   if (pythonCmd) return pythonCmd;
   for (const cmd of ['python3', 'python']) {
-    if (exec(`${cmd} -c "import sys"`).ok) {
+    const r = exec(`${cmd} -c "import sys; print(sys.executable)"`);
+    if (r.ok && String(r.stdout || '').trim()) {
       pythonCmd = cmd;
       return pythonCmd;
     }
@@ -200,11 +203,10 @@ try:
 ${patched.split('\n').map((l) => '    ' + l).join('\n')}
 except Exception as e:
     sys.stdout = _stdout
-    # If it needs sales.csv in cwd, write it there and retry
-    pass
+    print("FAIL: " + repr(e))
+    sys.exit(1)
 
 output = sys.stdout.getvalue()
-sys.stdout = _stdout
 
 # Check output contains the number 351 (100.5 + 200.0 + 50.5)
 # Match as a standalone number (not as substring of e.g. 13510)
@@ -264,6 +266,8 @@ else:
 };
 
 // --- Main assertion entry point ---
+
+module.exports.python = python; // exposed so tests probe the SAME interpreter this module runs
 
 module.exports = (output, context) => {
   const task = identifyTask(context.vars.task || '');

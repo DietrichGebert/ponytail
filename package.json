@@ -1,20 +1,25 @@
 {
-  "name": "@dietrichgebert/ponytail",
-  "version": "4.9.0",
+  "name": "@81117105108108/ponytail",
+  "version": "5.0.0",
   "description": "Lazy senior dev mode for AI agents. The best code is the code you never wrote.",
-  "keywords": ["opencode-plugin", "opencode", "ponytail", "pi-package", "pi", "skills", "qoder"],
+  "keywords": [
+    "opencode-plugin",
+    "opencode",
+    "ponytail",
+    "skills"
+  ],
   "license": "MIT",
   "author": {
     "name": "Dietrich Gebert",
     "url": "https://github.com/DietrichGebert"
   },
-  "homepage": "https://github.com/DietrichGebert/ponytail",
+  "homepage": "https://github.com/81117105108108/PT-Fork",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/DietrichGebert/ponytail.git"
+    "url": "git+https://github.com/81117105108108/PT-Fork.git"
   },
   "bugs": {
-    "url": "https://github.com/DietrichGebert/ponytail/issues"
+    "url": "https://github.com/81117105108108/PT-Fork/issues"
   },
   "main": "./.opencode/plugins/ponytail.mjs",
   "exports": {
@@ -26,22 +31,16 @@
     "hooks/",
     "skills/",
     ".opencode/",
-    ".qoder/",
-    ".qoder-plugin/",
-    "pi-extension/",
     "scripts/uninstall.js",
-    "assets/",
-    "LICENSE"
+    "LICENSE",
+    "assets/logo-dark.svg",
+    "assets/benchmark-agentic.svg",
+    "assets/benchmark-3model.svg"
   ],
   "scripts": {
-    "test": "node --test tests/*.test.js && npm test --prefix pi-extension && npm test --prefix ponytail-mcp"
-  },
-  "pi": {
-    "extensions": ["./pi-extension/index.js"],
-    "skills": ["./skills"]
+    "test": "node --test tests/*.test.js"
   },
   "publishConfig": {
     "access": "public"
   }
 }
-
