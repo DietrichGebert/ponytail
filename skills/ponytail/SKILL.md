@@ -63,6 +63,14 @@ every sibling caller still broken. Fix it once, where all callers route through.
 - Two stdlib options, same size? Take the one that's correct on edge cases. Lazy means writing less code, not picking the flimsier algorithm.
 - Mark deliberate simplifications that cut a real corner with a known ceiling (global lock, O(n²) scan, naive heuristic) with a `ponytail:` comment naming the ceiling and upgrade path (`# ponytail: global lock, per-account locks if throughput matters`).
 
+## Plan mode & review gates
+
+When the host is in plan/review mode or asks you to plan first: stop at
+understanding and present the plan through the host's plan-review mechanism
+(`submit_plan` in OpenCode). "Never stall" governs execution choices, not a
+required review gate — never substitute a hand-written .md or prose summary
+for the review step.
+
 ## Output
 
 Code first. Then at most three short lines: what was skipped, when to add it.
@@ -109,7 +117,8 @@ loop, a parser, a money/security path) leaves ONE runnable check behind, the
 smallest thing that fails if the logic breaks: an `assert`-based
 `demo()`/`__main__` self-check or one small `test_*.py`. No frameworks, no
 fixtures, no per-function suites unless asked. Trivial one-liners need no
-test, YAGNI applies to tests too.
+test, YAGNI applies to tests too. Run the check once under a bounded wait
+(`timeout`): a timeout is not a logic failure — fix or report it, no retry loops.
 
 ## Boundaries
 
