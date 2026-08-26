@@ -263,6 +263,15 @@ Start a new session (or reload plugins). Skills show as `/ponytail`, `/ponytail-
 
 `AGENTS.md` still works instruction-only from a checkout without the plugin.
 
+### AtomCode
+
+```
+/plugin marketplace add https://github.com/DietrichGebert/ponytail
+/plugin install ponytail@ponytail
+```
+
+AtomCode's plugin protocol is Claude Code-compatible, so the repo needs no separate adapter: it reads the same `.claude-plugin/` manifest, and the six skills plus the lifecycle hooks load as-is. Hooks follow AtomCode's trust flow: install prints them and leaves them inactive until you run `atomcode plugin trust ponytail`, then they load on the next session. The skills land in the `/` menu namespaced `ponytail:` (`/ponytail:ponytail` switches levels, `/ponytail:ponytail-review`, and so on); the repo's Claude-specific `commands/*.toml` files are silently skipped, the skills cover the same invocations.
+
 That was it. He'd be proud. He won't say it.
 
 Active every session, with a handful of commands (see [Commands](#commands)). `/ponytail ultra` exists for when the codebase has wronged you personally. Startup and mode-change text shows the current mode.
@@ -295,6 +304,7 @@ Which files map to which agent: [Agent portability](docs/agent-portability.md).
 | Codex | `codex plugin remove ponytail` |
 | Devin CLI | `devin plugins remove ponytail` |
 | Grok Build | `grok plugin uninstall ponytail` |
+| AtomCode | `/plugin uninstall ponytail@ponytail` |
 | Pi agent | `pi uninstall ponytail` |
 | Cursor / Windsurf / Cline / Qoder / etc. | Delete the copied rule file |
 
@@ -311,7 +321,7 @@ These remove the plugin's own files. They leave behind a small amount of state p
 | `/ponytail-gain` | Show the measured impact scoreboard (less code, less cost, more speed) from the benchmark. |
 | `/ponytail-help` | Quick reference for the commands above. |
 
-Commands need a skill-capable host (Claude Code, Codex, Devin CLI, OpenCode, Gemini, pi, Swival, Hermes Agent, Qoder, Grok Build). In Codex they're skills, invoke with `@` (`@ponytail-review`). The instruction-only adapters (Cursor, Windsurf, Cline, Copilot, Kiro, Antigravity) load the always-on ruleset without the commands.
+Commands need a skill-capable host (Claude Code, Codex, Devin CLI, OpenCode, Gemini, pi, Swival, Hermes Agent, Qoder, Grok Build, AtomCode). In Codex they're skills, invoke with `@` (`@ponytail-review`). The instruction-only adapters (Cursor, Windsurf, Cline, Copilot, Kiro, Antigravity) load the always-on ruleset without the commands.
 
 ## Development
 
