@@ -30,12 +30,13 @@
     "AGENTS.md",
     "hooks/",
     "skills/",
-    ".opencode/",
+    ".opencode/plugins/",
     "scripts/uninstall.js",
     "LICENSE",
     "assets/logo-dark.svg",
     "assets/benchmark-agentic.svg",
-    "assets/benchmark-3model.svg"
+    "assets/benchmark-3model.svg",
+    ".opencode/command/"
   ],
   "scripts": {
     "test": "node --test tests/*.test.js"
