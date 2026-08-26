@@ -102,7 +102,7 @@ The most effort ponytail will ever ask of you:
 Add to `opencode.json`:
 
 ```json
-{ "plugin": ["@81117105108108/ponytail"] }
+{ "plugin": ["@quillllllll/ponytail"] }
 ```
 
 Run from a checkout instead (the plugin reuses `hooks/` and `skills/`):
@@ -117,7 +117,7 @@ The `./` path resolves against your project's `opencode.json`; to share one chec
 
 ### Uninstall
 
-Remove the `"plugin"` entry from your `opencode.json`, then `npm uninstall @81117105108108/ponytail` if you installed from the registry.
+Remove the `"plugin"` entry from your `opencode.json`, then `npm uninstall @quillllllll/ponytail` if you installed from the registry.
 
 That leaves two small state files outside the project: the mode flag (`~/.config/opencode/.ponytail-active`) and the optional default-level config (`~/.config/ponytail/config.json`). Run `node scripts/uninstall.js` to clean them up — **before** removing the package, since the script ships inside it.
 

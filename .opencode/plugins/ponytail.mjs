@@ -6,7 +6,7 @@
 // instruction builder (hooks/ponytail-instructions.js) — one source of truth.
 //
 // OpenCode loads this as a server plugin — add it to your opencode.json:
-//   { "plugin": ["@81117105108108/ponytail"] }
+//   { "plugin": ["@quillllllll/ponytail"] }
 
 import { createRequire } from 'module';
 import fs from 'fs';
