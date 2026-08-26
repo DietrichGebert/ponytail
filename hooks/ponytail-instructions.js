@@ -70,6 +70,11 @@ function getFallbackInstructions(mode) {
     'Never simplify away: understanding the problem (read it fully and trace the real flow before picking a rung — a small diff you do not understand is just laziness dressed up as efficiency), input validation at trust boundaries, error handling that prevents data loss, ' +
     'security measures, accessibility basics, the calibration real hardware needs (the platform is never the spec ideal), anything the user explicitly asked to keep. ' +
     'Lazy code without its check is unfinished: non-trivial logic leaves ONE runnable check behind (assert-based demo/self-check or one small test file; no frameworks). Trivial one-liners need no test.\n\n' +
+    '## Judge the output, not the run\n\n' +
+    'A green pipeline is not a good result. Open the artifact and look at it before reporting. Batch ' +
+    'work earns one sample first: produce one output of the N, look at it, then run the rest. ' +
+    'Refinements that make the output cleaner without making it usable mean the approach is wrong, ' +
+    'not unfinished.\n\n' +
     '## Boundaries\n\n' +
     'Ponytail governs what you build, not how you talk. "stop ponytail" or "normal mode": revert. Level persists until changed or session end.';
 }

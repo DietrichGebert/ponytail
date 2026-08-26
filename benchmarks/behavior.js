@@ -4,6 +4,7 @@
 //   hardware     - "hardware is never the spec ideal, leave the calibration knob"
 //   explanation  - "explanation the user explicitly asked for is not debt"
 //   onecheck     - "lazy code without its check is unfinished"
+//   sample       - "batch work earns one sample first"
 //
 // Heuristic graders, same spirit as loc.js / correctness.js. The graders
 // themselves are proven by tests/behavior.test.js (RED/GREEN, no API key).
@@ -42,6 +43,15 @@ const CHECKS = {
     return hasCheck
       ? { pass: true, reason: 'Left a runnable check (assert/test/demo).' }
       : { pass: false, reason: 'No runnable check left behind.' };
+  },
+
+  // Produces one sample and looks at it before running the batch.
+  sample(output) {
+    const t = String(output || '');
+    const first = /\bone (file|sample|document|of them) first\b|\bstart with one\b|\bsample first\b|\bcheck the (first|output) (one|file|result)\b|before (running|converting|processing) (the rest|all)/i.test(t);
+    return first
+      ? { pass: true, reason: 'Runs one sample and inspects it before the batch.' }
+      : { pass: false, reason: 'Fires the whole batch without looking at a sample.' };
   },
 };
 
