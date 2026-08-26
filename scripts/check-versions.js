@@ -24,6 +24,7 @@ const VERSION_FILES = [
   '.devin-plugin/plugin.json',   // Devin CLI plugin
   '.github/plugin/plugin.json',  // Copilot plugin
   '.qoder-plugin/plugin.json',   // Qoder plugin
+  'plugin.json',                 // Agent Plugins v1 portable manifest
   'gemini-extension.json',       // Gemini CLI extension
   'package.json',                // pi-package / repo root
   'ponytail-mcp/package.json',   // MCP server (private, internal-only)

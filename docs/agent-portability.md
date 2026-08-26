@@ -4,13 +4,33 @@ Ponytail is an agent-portable skill distribution. The skills in `skills/` hold
 the core behavior; host-specific files are adapters that make that behavior easy
 to load in a given agent.
 
+## Agent Plugins v1 portable core
+
+The repository root is a conforming [Agent Plugins v1](https://agent-plugins.org/specification)
+package. Any client that implements the spec loads ponytail with no adapter:
+
+| Path | Role |
+|------|------|
+| `plugin.json` | The one portable manifest (`$schema` pins spec `1.0.0`). Metadata only — the schema is closed, so it carries no component paths. |
+| `skills/<name>/SKILL.md` | The six skills, discovered from the fixed `skills/` location. Each conforms to the [Agent Skills](https://agentskills.io/specification) spec. |
+| `mcp.json` | Not shipped. `ponytail-mcp/` is a private workspace package with uninstalled dependencies, so declaring it here would hand clients a server that cannot start. Wire it up manually per `ponytail-mcp/README.md`. |
+
+Everything else below is a host adapter, not a portable component. Agent Plugins
+v1 standardizes only skills and MCP servers: commands, hooks, rules, and
+marketplace metadata have no portable form, so they stay on the host-specific
+paths each agent already discovers. `tests/agent-plugins.test.js` guards the
+core — most importantly that no adapter's component keys (`skills`, `commands`,
+`hooks`) leak into root `plugin.json`, and that no `SKILL.md` grows a
+frontmatter field that would make a conforming client silently skip the skill.
+
 ## Supported Adapters
 
 | Host | Files | Notes |
 |------|-------|-------|
+| Agent Plugins v1 clients | `plugin.json`, `skills/` | Portable core, see above. No adapter needed. |
 | Claude Code | `.claude-plugin/plugin.json`, `commands/`, `hooks/claude-codex-hooks.json`, `hooks/` | Full plugin install with session activation, mode tracking, commands, and statusline support. |
 | Codex | `.codex-plugin/plugin.json`, `hooks/claude-codex-hooks.json`, `hooks/`, `skills/` | Plugin install with the same skills plus lifecycle hooks for activation and mode tracking. |
-| Grok Build | root `plugin.json`, `.grok-plugin/marketplace.json`, `skills/`, `commands/` | `grok plugin install DietrichGebert/ponytail --trust`, then enable. Grok can auto-invoke ponytail from its coding-task skill description; `/ponytail` makes activation explicit. Grok lifecycle hooks are not used because passive hook output cannot inject instructions. |
+| Grok Build | root `plugin.json`, `.grok-plugin/marketplace.json`, `skills/`, `commands/` | `grok plugin install DietrichGebert/ponytail --trust`, then enable. Reads the portable manifest directly. Grok can auto-invoke ponytail from its coding-task skill description; `/ponytail` makes activation explicit. Grok lifecycle hooks are not used because passive hook output cannot inject instructions. |
 | OpenCode | `.opencode/plugins/ponytail.mjs`, `.opencode/command/`, `hooks/`, `skills/` | Server plugin injects the ruleset each turn via `experimental.chat.system.transform` and persists `/ponytail` switches; reuses the shared instruction builder. |
 | pi | `pi-extension/`, `skills/`, `hooks/` | Package extension: injects the ruleset each turn through the shared instruction builder and registers the `/ponytail` commands. |
 | Hermes Agent | `plugin.yaml`, `__init__.py`, `skills/` | Native Hermes plugin: injects active mode through `pre_llm_call`, rewrites gateway `/ponytail-*` skill commands into agent prompts, registers `/ponytail` mode switching, and exposes bundled skills as `ponytail:<skill>`. |
@@ -36,7 +56,9 @@ to load in a given agent.
 
 Keep adapters thin. When a host supports skills or hooks, point it at the
 existing `skills/` and `hooks/` files. When a host only supports project
-instructions, keep its copied rule text aligned with `AGENTS.md`.
+instructions, keep its copied rule text aligned with `AGENTS.md`. Never add
+component paths or host-specific keys to root `plugin.json`; it is the portable
+Agent Plugins v1 manifest and its schema is closed.
 
 ## Portable Behavior
 
