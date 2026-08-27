@@ -15,7 +15,7 @@
   <img src="https://img.shields.io/github/stars/DietrichGebert/ponytail?style=flat-square&color=111111&label=stars" alt="Stars">
   <img src="https://img.shields.io/github/v/release/DietrichGebert/ponytail?style=flat-square&color=111111&label=release" alt="Release">
   <img src="https://img.shields.io/npm/v/@dietrichgebert/ponytail?style=flat-square&color=111111&label=npm" alt="npm">
-  <img src="https://img.shields.io/badge/works%20with-20%20agents-111111?style=flat-square" alt="Works with 20 agents">
+  <img src="https://img.shields.io/badge/works%20with-21%20agents-111111?style=flat-square" alt="Works with 21 agents">
   <img src="https://img.shields.io/badge/license-MIT-111111?style=flat-square" alt="MIT license">
 </p>
 
@@ -133,6 +133,40 @@ codex plugin add ponytail@ponytail
 Run `codex` and open `/hooks`, review and trust its two lifecycle hooks, and start a new thread.
 
 This same install also covers the Codex desktop app: restart the app after installing and it picks up the plugin.
+
+### Muse
+
+Muse Code discovers project skills from `.agents/skills/` when the workspace is trusted. Zero-setup from a checkout:
+
+```bash
+muse --trust-workspace
+```
+
+Then in session, either let the model auto-invoke ponytail on any coding task (the `ponytail` skill says “use on ANY coding task”) or ask explicitly:
+
+```
+/skills use ponytail
+/skills use ponytail-review
+```
+
+The six skills are `ponytail` (`lite`/`full`/`ultra` — `full` is default, switch with “/ponytail ultra”, “stop ponytail” to pause), `ponytail-review`, `ponytail-audit`, `ponytail-debt`, `ponytail-gain`, `ponytail-help`. `AGENTS.md` at the repo root is also read as always-on project rules, so the ladder applies even without an explicit skill call.
+
+User-level install (available everywhere, not just this repo):
+
+```bash
+muse skills install .agents/skills/ponytail --scope user
+muse skills install .agents/skills/ponytail-review --scope user
+# repeat for ponytail-audit, ponytail-debt, ponytail-gain, ponytail-help
+```
+
+Validate the install:
+
+```bash
+muse skills validate .agents/skills/ponytail --json
+muse skills list --source project --trust-workspace --json
+```
+
+No hooks or extra config required — Muse 0.2.1 has no plugin hook lifecycle; skills + `AGENTS.md` cover the contract. If you previously used `skills/` directly, `muse skills import --from claude --dry-run` will show no claude source (Muse also scans `.claude/skills` and `.codex/skills` as import-only).
 
 ### GitHub Copilot CLI
 
@@ -322,7 +356,9 @@ node scripts/check-rule-copies.js
 npm test
 ```
 
-The OpenClaw skill package (`.openclaw/skills/`) is generated from `skills/`; rerun `node scripts/build-openclaw-skills.js` after changing a skill, the test suite fails if it is stale. To publish the skills to ClawHub, run `clawhub login` once, then `node scripts/publish-openclaw-skills.js` (it publishes all six at the `package.json` version; pass `--dry-run` to preview).
+The OpenClaw skill package (`.openclaw/skills/`) is generated from `skills/`; rerun `node scripts/build-openclaw-skills.js` after changing a skill, the test suite fails if it is stale.
+
+The Muse Code skill package (`.agents/skills/`) is generated from `skills/`; rerun `node scripts/build-muse-skills.js` after changing a skill, the test suite fails if it is stale (`tests/muse-skills.test.js`). To publish the skills to ClawHub, run `clawhub login` once, then `node scripts/publish-openclaw-skills.js` (it publishes all six at the `package.json` version; pass `--dry-run` to preview).
 
 The correctness benchmark spawns Python for email and CSV checks; `python3` is tried before `python`. CSV checks need `pandas` installed locally.
 
