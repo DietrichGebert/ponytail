@@ -91,8 +91,19 @@ function getPonytailInstructions(mode) {
   }
 }
 
+function getPonytailActivationContext(mode) {
+  const configuredMode = normalizePersistedMode(mode) || DEFAULT_MODE;
+  const skill = INDEPENDENT_MODES.has(configuredMode)
+    ? 'ponytail-' + configuredMode
+    : 'ponytail';
+
+  return 'PONYTAIL MODE ACTIVE — level: ' + configuredMode +
+    '. Read and apply the canonical /' + skill + ' skill.';
+}
+
 module.exports = {
   filterSkillBodyForMode,
   getFallbackInstructions,
+  getPonytailActivationContext,
   getPonytailInstructions,
 };

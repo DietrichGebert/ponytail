@@ -3,13 +3,13 @@
 //
 // Runs on every session start:
 //   1. Writes flag file at $CLAUDE_CONFIG_DIR/.ponytail-active (defaults to ~/.claude; statusline reads this)
-//   2. Emits ponytail ruleset as hidden SessionStart context
+//   2. Emits compact Claude/Codex context or the full Copilot ruleset
 //   3. Detects missing statusline config and emits setup nudge
 
 const fs = require('fs');
 const path = require('path');
 const { getDefaultMode, getClaudeDir, isShellSafe } = require('./ponytail-config');
-const { getPonytailInstructions } = require('./ponytail-instructions');
+const { getPonytailActivationContext, getPonytailInstructions } = require('./ponytail-instructions');
 const {
   clearMode,
   isCodex,
@@ -38,8 +38,10 @@ try {
   // Silent fail -- flag is best-effort, don't block the hook
 }
 
-// 2. Emit the ponytail ruleset, filtered to the active intensity level.
-let output = getPonytailInstructions(mode);
+// 2. Emit compact Claude/Codex context or the full Copilot ruleset.
+let output = isCopilot
+  ? getPonytailInstructions(mode)
+  : getPonytailActivationContext(mode);
 
 // 3. Detect missing statusline config — nudge Claude to help set it up
 if (!isCodex && !isCopilot) try {

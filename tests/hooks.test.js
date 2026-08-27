@@ -26,6 +26,12 @@ function run(script, env, input = '') {
   });
 }
 
+function assertCompactPonytailContext(context, mode, skill = 'ponytail') {
+  assert.match(context, new RegExp('PONYTAIL MODE ACTIVE — level: ' + mode));
+  assert.match(context, new RegExp('Read and apply the canonical /' + skill + ' skill\\.'));
+  assert.doesNotMatch(context, /lazy senior developer/i);
+}
+
 // Keep the base env clean so the default-dir / native-Claude checks are
 // deterministic; the CLAUDE_CONFIG_DIR and codex/copilot cases set these
 // explicitly where needed. run() spreads process.env, so a PLUGIN_DATA /
@@ -62,10 +68,7 @@ let output = JSON.parse(result.stdout);
 assert.equal(output.systemMessage, 'PONYTAIL:ULTRA');
 assert.equal(output.additionalContext, undefined, 'Codex must not emit additionalContext at top level (#573)');
 assert.equal(output.hookSpecificOutput.hookEventName, 'SessionStart');
-assert.match(
-  output.hookSpecificOutput.additionalContext,
-  /PONYTAIL MODE ACTIVE — level: ultra/,
-);
+assertCompactPonytailContext(output.hookSpecificOutput.additionalContext, 'ultra');
 
 result = run(
   'ponytail-mode-tracker.js',
@@ -133,6 +136,7 @@ assert.equal(
   fs.readFileSync(path.join(home, '.claude', '.ponytail-active'), 'utf8'),
   'full',
 );
+assertCompactPonytailContext(result.stdout, 'full');
 
 // CLAUDE_CONFIG_DIR overrides ~/.claude for the flag file (issue #34).
 const home2 = path.join(temp, 'home2');
@@ -197,6 +201,7 @@ assert.equal(
 );
 output = JSON.parse(result.stdout);
 assert.match(output.additionalContext, /PONYTAIL MODE ACTIVE — level: full/);
+assert.match(output.additionalContext, /lazy senior developer/i);
 
 // VS Code Copilot never sets COPILOT_PLUGIN_DATA — it only injects
 // CLAUDE_PLUGIN_ROOT pointed at an agent-plugins/.../.vscode install path
@@ -248,9 +253,9 @@ assert.equal(
 output = JSON.parse(result.stdout);
 assert.deepEqual(output, {});
 
-// SubagentStart hook: when ponytail mode is active it injects the ruleset into
-// each subagent (issue #252). Native Claude must get the hookSpecificOutput JSON
-// form, not raw stdout, or the context is dropped.
+// SubagentStart hook: when ponytail mode is active it injects platform-specific
+// context into each subagent (issue #252). Native Claude must get the
+// hookSpecificOutput JSON form, not raw stdout, or the context is dropped.
 const subHome = path.join(temp, 'sub-home');
 const subFlag = path.join(subHome, '.claude', '.ponytail-active');
 fs.mkdirSync(path.dirname(subFlag), { recursive: true });
@@ -261,10 +266,14 @@ result = run('ponytail-subagent.js', subEnv);
 assert.equal(result.status, 0, result.stderr);
 output = JSON.parse(result.stdout);
 assert.equal(output.hookSpecificOutput.hookEventName, 'SubagentStart');
-assert.match(
-  output.hookSpecificOutput.additionalContext,
-  /PONYTAIL MODE ACTIVE — level: full/,
-);
+assertCompactPonytailContext(output.hookSpecificOutput.additionalContext, 'full');
+
+// Review remains an independent mode, so it must point to its own canonical skill.
+fs.writeFileSync(subFlag, 'review');
+result = run('ponytail-subagent.js', subEnv);
+assert.equal(result.status, 0, result.stderr);
+output = JSON.parse(result.stdout);
+assertCompactPonytailContext(output.hookSpecificOutput.additionalContext, 'review', 'ponytail-review');
 
 // No flag → ponytail off → inject nothing (empty stdout, no failure).
 fs.unlinkSync(subFlag);
@@ -283,7 +292,7 @@ output = JSON.parse(result.stdout);
 assert.equal(output.systemMessage, 'PONYTAIL:FULL');
 assert.equal(output.additionalContext, undefined, 'Codex must not emit additionalContext at top level (#573)');
 assert.equal(output.hookSpecificOutput.hookEventName, 'SubagentStart');
-assert.match(output.hookSpecificOutput.additionalContext, /PONYTAIL MODE ACTIVE — level: full/);
+assertCompactPonytailContext(output.hookSpecificOutput.additionalContext, 'full');
 
 // SubagentStart scoping (issue #506): PONYTAIL_SUBAGENT_MATCHER limits the
 // injection to agent types whose name matches the regex. Unset keeps the
@@ -422,6 +431,7 @@ assert.match(
   output.hookSpecificOutput.additionalContext,
   /PONYTAIL MODE ACTIVE — level: full/,
 );
+assert.match(output.hookSpecificOutput.additionalContext, /lazy senior developer/i);
 // writeDefaultMode must merge into existing config, not overwrite it (#490).
 const mergeHome = path.join(temp, 'merge-home');
 const mergeConfigDir = path.join(mergeHome, '.config', 'ponytail');

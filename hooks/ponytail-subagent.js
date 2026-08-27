@@ -3,15 +3,16 @@
 //
 // SessionStart context is parent-thread only and never reaches subagents, so
 // without this every Task-spawned agent runs ponytail-unaware (issue #252).
-// When ponytail mode is active, inject the same ruleset into each subagent.
+// When ponytail mode is active, inject compact Claude/Codex context or the
+// full Qoder ruleset into each subagent.
 //
 // Scoping (opt-in, issue #506): set PONYTAIL_SUBAGENT_MATCHER to a regex and
-// the ruleset is injected only into subagents whose agent_type matches. The
+// the platform-specific context is injected only into subagents whose agent_type matches. The
 // regex is unanchored and case-insensitive — "explore|general" matches either,
 // "^general$" is exact. Unset means inject into every subagent, as before.
 
-const { getPonytailInstructions } = require('./ponytail-instructions');
-const { readMode, writeHookOutput } = require('./ponytail-runtime');
+const { getPonytailActivationContext, getPonytailInstructions } = require('./ponytail-instructions');
+const { isQoder, readMode, writeHookOutput } = require('./ponytail-runtime');
 
 const mode = readMode();
 
@@ -22,7 +23,10 @@ if (!mode || mode === 'off') {
 
 function inject() {
   try {
-    writeHookOutput('SubagentStart', mode, getPonytailInstructions(mode));
+    const context = isQoder
+      ? getPonytailInstructions(mode)
+      : getPonytailActivationContext(mode);
+    writeHookOutput('SubagentStart', mode, context);
   } catch (e) {
     // Silent fail — a stdout error at hook exit must not surface as a hook failure.
   }
