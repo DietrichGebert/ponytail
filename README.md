@@ -263,6 +263,20 @@ Start a new session (or reload plugins). Skills show as `/ponytail`, `/ponytail-
 
 `AGENTS.md` still works instruction-only from a checkout without the plugin.
 
+### ZCode
+
+ZCode loads skills from `~/.zcode/skills/` (global) or `.zcode/skills/` (per project). Copy the six skills there and refresh:
+
+```bash
+git clone https://github.com/DietrichGebert/ponytail
+mkdir -p ~/.zcode/skills
+cp -r ponytail/skills/* ~/.zcode/skills/
+```
+
+Then in ZCode: **Settings → Skills → Refresh** — the six skills should show up enabled. Invoke them from chat with `$ponytail`, or from the `/` menu's Skills group. Instruction-tier: no `/ponytail` level hooks; to turn it off, disable the skills in Settings → Skills.
+
+Using several agents? `~/.agents/skills/` works too — ZCode reads it, so other tools can share the same copy. If the skills already sit on disk for another agent, ZCode's **Settings → Skills → Import** (Copy or Symlink) is an alternative to `cp`.
+
 That was it. He'd be proud. He won't say it.
 
 Active every session, with a handful of commands (see [Commands](#commands)). `/ponytail ultra` exists for when the codebase has wronged you personally. Startup and mode-change text shows the current mode.
@@ -296,6 +310,7 @@ Which files map to which agent: [Agent portability](docs/agent-portability.md).
 | Devin CLI | `devin plugins remove ponytail` |
 | Grok Build | `grok plugin uninstall ponytail` |
 | Pi agent | `pi uninstall ponytail` |
+| ZCode | Delete the `ponytail*` folders in `~/.zcode/skills/` |
 | Cursor / Windsurf / Cline / Qoder / etc. | Delete the copied rule file |
 
 These remove the plugin's own files. They leave behind a small amount of state ponytail writes outside the plugin folder: the mode flag, `~/.config/ponytail/config.json`, and (if you accepted the setup nudge) a `statusLine` entry in `~/.claude/settings.json`. Run `node scripts/uninstall.js` to clean those up too. **Run it before the host remove command above** — the script is itself a plugin file, so removing the plugin first deletes it (or run it from a separate clone of this repo). It only removes the statusLine entry if it points at ponytail's own script, so a statusline you set up yourself is left untouched.
