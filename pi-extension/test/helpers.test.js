@@ -13,8 +13,9 @@ import {
   writeDefaultMode,
 } from "../index.js";
 
-test("parsePonytailCommand falls back to full when invoked bare and default is off", () => {
-  assert.deepEqual(parsePonytailCommand("", "off"), { type: "set-mode", mode: "full" });
+test("parsePonytailCommand reports status when invoked bare (#639)", () => {
+  assert.deepEqual(parsePonytailCommand("", "off"), { type: "status" });
+  assert.deepEqual(parsePonytailCommand("   ", "full"), { type: "status" });
 });
 
 test("parsePonytailCommand parses modes, status, and default subcommand", () => {
