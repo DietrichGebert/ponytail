@@ -134,6 +134,25 @@ Run `codex` and open `/hooks`, review and trust its two lifecycle hooks, and sta
 
 This same install also covers the Codex desktop app: restart the app after installing and it picks up the plugin.
 
+### DeepSeek Harness (DSH)
+
+The maintained DSH adapter is distributed as the standalone
+[`dsh-ponytail`](https://github.com/NOirBRight/dsh-ponytail) bundle. It targets
+DeepSeek Harness `dsh-v0.1.2-alpha.3`, keeps this repository's six skills as its
+source content, and adds session-backed `off` / `lite` / `full` / `ultra`
+modes, `/ponytail` commands, subagent inheritance, and responsive Web/mobile
+settings without changing DSH Core:
+
+```bash
+dsh plugin --profile web add github:NOirBRight/dsh-ponytail#v0.2.0
+```
+
+The release also provides a prebuilt
+[`dsh-ponytail-skills-0.2.0.tgz`](https://github.com/NOirBRight/dsh-ponytail/releases/download/v0.2.0/dsh-ponytail-skills-0.2.0.tgz)
+for profile setups that do not allow build scripts. The published package name
+is `dsh-ponytail-skills`; the repository and DSH integration remain
+`dsh-ponytail`.
+
 ### GitHub Copilot CLI
 
 ```bash
