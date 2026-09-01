@@ -121,6 +121,10 @@ The Claude Code and Codex plugins run two tiny Node.js lifecycle hooks, so `node
 ```
 (You have to send two separate prompts for the install to work) 
 
+The installed hooks block agent-issued `git commit` and `git push` commands until
+`/ponytail-review` has reviewed the exact current diff. Run the review again
+after changing the diff.
+
 Same steps in the Claude Code Desktop app's Code tab: type the two `/plugin` commands above into the prompt box, or click the **+** button next to it, choose **Plugins** → **Add plugin** to browse your configured marketplaces, and manage marketplaces from **Customize** in the sidebar.
 
 ### Codex
