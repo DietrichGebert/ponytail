@@ -6,6 +6,7 @@
 // can't see.
 
 const fs = require('fs');
+const os = require('os');
 const path = require('path');
 const { getConfigPath, getClaudeDir } = require('../hooks/ponytail-config');
 
@@ -20,7 +21,19 @@ function removeIfExists(filePath, label) {
   }
 }
 
-removeIfExists(path.join(getClaudeDir(), '.ponytail-active'), 'mode flag');
+// Not every host keeps the flag in ~/.claude — hooks/ponytail-runtime.js writes
+// it beside each host's own state: Codex $PLUGIN_DATA, Copilot
+// $COPILOT_PLUGIN_DATA, Qoder ~/.qoder. Uninstall runs from a plain shell where
+// those vars are usually unset, so sweep every location ponytail writes to.
+const stateDirs = new Set([
+  getClaudeDir(),
+  path.join(os.homedir(), '.qoder'),
+  process.env.PLUGIN_DATA,
+  process.env.COPILOT_PLUGIN_DATA,
+].filter(Boolean));
+for (const dir of stateDirs) {
+  removeIfExists(path.join(dir, '.ponytail-active'), 'mode flag');
+}
 removeIfExists(getConfigPath(), 'config file');
 
 const settingsPath = path.join(getClaudeDir(), 'settings.json');

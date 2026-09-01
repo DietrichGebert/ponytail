@@ -27,6 +27,17 @@ fs.mkdirSync(claudeDir, { recursive: true });
 const flagPath = path.join(claudeDir, '.ponytail-active');
 fs.writeFileSync(flagPath, 'full');
 
+// Codex, Copilot and Qoder keep the flag beside their own state, not in
+// ~/.claude (hooks/ponytail-runtime.js). Uninstall must sweep those too.
+const qoderFlagPath = path.join(home, '.qoder', '.ponytail-active');
+fs.mkdirSync(path.dirname(qoderFlagPath), { recursive: true });
+fs.writeFileSync(qoderFlagPath, 'ultra');
+
+const codexDir = path.join(temp, 'codex-plugin-data');
+fs.mkdirSync(codexDir, { recursive: true });
+const codexFlagPath = path.join(codexDir, '.ponytail-active');
+fs.writeFileSync(codexFlagPath, 'lite');
+
 const configDir = path.join(temp, 'config-home', 'ponytail');
 fs.mkdirSync(configDir, { recursive: true });
 const configPath = path.join(configDir, 'config.json');
@@ -41,11 +52,14 @@ const env = {
   HOME: home,
   USERPROFILE: home,
   XDG_CONFIG_HOME: path.join(temp, 'config-home'),
+  PLUGIN_DATA: codexDir,
 };
 
 let result = runUninstall(env);
 assert.equal(result.status, 0, result.stderr);
 assert.equal(fs.existsSync(flagPath), false, 'mode flag must be removed');
+assert.equal(fs.existsSync(qoderFlagPath), false, 'Qoder mode flag must be removed');
+assert.equal(fs.existsSync(codexFlagPath), false, 'Codex mode flag must be removed');
 assert.equal(fs.existsSync(configPath), false, 'config file must be removed');
 
 const settingsAfter = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
