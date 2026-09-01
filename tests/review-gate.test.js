@@ -42,6 +42,7 @@ test('commit and push require a review for the unchanged diff', () => {
   assert.equal(marked.status, 0, marked.stderr);
   assert.equal(marked.stdout, '', 'one-shot review should not replace the user prompt');
 
+  git(repo, 'add', 'file.txt');
   assert.equal(run(gate, env, event('git commit -am update')).stdout, '');
   assert.equal(run(gate, env, event('git -C "' + repo + '" push')).stdout, '');
   assert.equal(run(gate, env, event('git -C "/path with spaces" push')).stdout, '');

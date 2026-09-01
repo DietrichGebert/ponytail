@@ -16,12 +16,11 @@ const git = (cwd, args) => {
 function snapshot(cwd) {
   if (typeof cwd !== 'string' || !cwd.trim()) return null;
   const root = (git(cwd, ['rev-parse', '--show-toplevel']) || '').trim();
-  const status = git(cwd, ['status', '--porcelain=v1', '-z', '--untracked-files=all']);
   const diff = git(cwd, ['diff', 'HEAD', '--binary']) || git(cwd, ['diff', '--binary']);
-  if (!root || status === null || diff === null) return null;
+  if (!root || diff === null) return null;
   let resolvedRoot;
   try { resolvedRoot = fs.realpathSync.native(root); } catch (_) { resolvedRoot = path.resolve(root); }
-  const hash = crypto.createHash('sha256').update(status + '\0' + diff);
+  const hash = crypto.createHash('sha256').update(diff);
   const untracked = git(cwd, ['ls-files', '--others', '--exclude-standard', '-z']);
   if (untracked === null) return null;
   for (const name of untracked.split('\0').filter(Boolean)) {
