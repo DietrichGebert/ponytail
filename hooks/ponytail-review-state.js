@@ -21,9 +21,18 @@ function snapshot(cwd) {
   if (!root || status === null || diff === null) return null;
   let resolvedRoot;
   try { resolvedRoot = fs.realpathSync.native(root); } catch (_) { resolvedRoot = path.resolve(root); }
+  const hash = crypto.createHash('sha256').update(status + '\0' + diff);
+  const untracked = git(cwd, ['ls-files', '--others', '--exclude-standard', '-z']);
+  if (untracked === null) return null;
+  for (const name of untracked.split('\0').filter(Boolean)) {
+    try {
+      hash.update('\0' + name + '\0');
+      hash.update(fs.readFileSync(path.join(resolvedRoot, name)));
+    } catch (_) { return null; }
+  }
   return {
     root: resolvedRoot,
-    fingerprint: crypto.createHash('sha256').update(status + '\0' + diff).digest('hex'),
+    fingerprint: hash.digest('hex'),
   };
 }
 
