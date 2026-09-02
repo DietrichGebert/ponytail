@@ -196,9 +196,17 @@ For full plugin-tier support (automatic mode activation + ruleset injection on e
 
 ### Kimi Code
 
-Merge the `[[hooks]]` block from [`hooks/kimi-code-hooks.toml`](hooks/kimi-code-hooks.toml) into `~/.kimi-code/config.toml`, replacing `PONYTAIL_DIR` with the path to your ponytail checkout. The `UserPromptSubmit` hook activates the default mode on first prompt, tracks `/ponytail lite|full|ultra|off` switches, and injects the ruleset on every prompt — Kimi Code appends a hook's stdout to the model context on exit 0, which is how the ruleset gets in. Subagent injection is not available: in kimi 0.38–0.40.1 a `PreToolUse` hook's stdout is discarded on exit 0 and `SubagentStart` is observation-only, so no hook channel reaches a sub-agent's context (the template has a commented-out block ready if a future version appends `PreToolUse` stdout).
+Kimi Code 0.40+:
 
-For the commands, copy or symlink the six skill directories from `skills/` into `~/.kimi-code/skills/` — `/ponytail`, `/ponytail-review`, `/ponytail-audit`, `/ponytail-debt`, `/ponytail-gain`, `/ponytail-help`. The mode tracker parses the raw prompt text itself, so level switches keep working even if you skip the skills.
+```
+/plugins install https://github.com/DietrichGebert/ponytail
+```
+
+Then `/reload` (or start a new session). The plugin's `UserPromptSubmit` hook activates the default mode on first prompt, tracks `/ponytail lite|full|ultra|off` switches, and injects the ruleset on every prompt — Kimi Code appends a hook's stdout to the model context on exit 0, which is how the ruleset gets in. The six skills ship with the plugin: `/ponytail`, `/ponytail-review`, `/ponytail-audit`, `/ponytail-debt`, `/ponytail-gain`, `/ponytail-help`. Manage with `/plugins list`, `/plugins disable ponytail`, `/plugins enable ponytail`.
+
+Subagent injection is not available yet: in kimi 0.38–0.40.1 a `PreToolUse` hook's stdout is discarded on exit 0 and `SubagentStart` is observation-only, so no hook channel reaches a sub-agent's context. The plugin manifest still registers the `PreToolUse` hook — a harmless no-op today that starts working by itself if a future Kimi Code version appends `PreToolUse` stdout.
+
+On Kimi Code older than 0.40 (no plugin support), wire it up manually: merge the `[[hooks]]` block from [`hooks/kimi-code-hooks.toml`](hooks/kimi-code-hooks.toml) into `~/.kimi-code/config.toml`, replacing `PONYTAIL_DIR` with the path to your ponytail checkout, and copy the six `skills/` directories into `~/.kimi-code/skills/`. Same injection and commands, manual wiring. The mode tracker parses the raw prompt text itself, so level switches keep working even if you skip the skills.
 
 Kimi Code also reads `AGENTS.md` from the project root, which this repo ships — the instruction-only fallback works from a checkout with zero setup.
 
@@ -303,7 +311,7 @@ Which files map to which agent: [Agent portability](docs/agent-portability.md).
 | Codex | `codex plugin remove ponytail` |
 | Devin CLI | `devin plugins remove ponytail` |
 | Grok Build | `grok plugin uninstall ponytail` |
-| Kimi Code | Remove the `[[hooks]]` blocks from `~/.kimi-code/config.toml` and the copied skills from `~/.kimi-code/skills/` |
+| Kimi Code | `/plugins remove ponytail` (0.40+); on older versions remove the `[[hooks]]` block from `~/.kimi-code/config.toml` and the copied skills from `~/.kimi-code/skills/` |
 | Pi agent | `pi uninstall ponytail` |
 | Cursor / Windsurf / Cline / Qoder / etc. | Delete the copied rule file |
 

@@ -1,0 +1,19 @@
+{
+  "name": "ponytail",
+  "version": "4.9.0",
+  "description": "Lazy senior dev mode. Forces the simplest, shortest solution that actually works: YAGNI, stdlib first, no unrequested abstractions.",
+  "skills": "./skills/",
+  "hooks": [
+    {
+      "event": "UserPromptSubmit",
+      "command": "node ./hooks/ponytail-mode-tracker.js",
+      "timeout": 5
+    },
+    {
+      "event": "PreToolUse",
+      "matcher": "Agent",
+      "command": "node ./hooks/ponytail-subagent.js",
+      "timeout": 5
+    }
+  ]
+}
