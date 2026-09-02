@@ -79,6 +79,38 @@ test('kimi-code-hooks.toml registers UserPromptSubmit with only valid keys', () 
   assert.ok(toml.includes('# matcher = "Agent"'), 'must keep the commented PreToolUse block scoped to the Agent tool');
 });
 
+test('kimi.plugin.json is a valid plugin manifest', () => {
+  const manifest = JSON.parse(fs.readFileSync(path.join(root, 'kimi.plugin.json'), 'utf8'));
+  assert.match(manifest.name, /^[a-z0-9][a-z0-9_-]{0,63}$/, 'name must be a valid plugin id');
+  assert.ok(manifest.version, 'manifest must declare a version');
+  assert.ok(manifest.description, 'manifest must declare a description');
+
+  assert.ok(manifest.skills, 'manifest must point at the skills directory');
+  const skillsDir = path.join(root, manifest.skills);
+  assert.ok(fs.existsSync(skillsDir), `skills path must exist: ${manifest.skills}`);
+  for (const skill of ['ponytail', 'ponytail-review', 'ponytail-audit', 'ponytail-debt', 'ponytail-gain', 'ponytail-help']) {
+    assert.ok(fs.existsSync(path.join(skillsDir, skill, 'SKILL.md')), `missing skill: ${skill}`);
+  }
+
+  // Hook entries are the same shape as config.toml [[hooks]] blocks; the CLI
+  // runs them with cwd at the plugin root, so ./ paths resolve there.
+  assert.ok(Array.isArray(manifest.hooks), 'manifest hooks must be an array');
+  const events = manifest.hooks.map((h) => h.event);
+  assert.ok(events.includes('UserPromptSubmit'), 'must register UserPromptSubmit');
+  assert.ok(events.includes('PreToolUse'), 'must register PreToolUse (unlocks subagent injection when kimi appends its stdout)');
+  for (const hook of manifest.hooks) {
+    for (const key of Object.keys(hook)) {
+      assert.ok(['event', 'matcher', 'command', 'timeout'].includes(key), `invalid hook key: ${key}`);
+    }
+    assert.ok(hook.command, 'hook must declare a command');
+    const script = hook.command.match(/(\.\/hooks\/\S+\.js)/);
+    assert.ok(script, `command must reference a ./hooks/ script: ${hook.command}`);
+    assert.ok(fs.existsSync(path.join(root, script[1])), `hook script must exist: ${script[1]}`);
+  }
+  const preToolUse = manifest.hooks.find((h) => h.event === 'PreToolUse');
+  assert.equal(preToolUse.matcher, 'Agent', 'PreToolUse must be scoped to the Agent tool');
+});
+
 test('mode-tracker detects kimi via payload client_type and injects plain text', () => {
   const home = path.join(temp, 'home-payload');
   fs.mkdirSync(home, { recursive: true });
