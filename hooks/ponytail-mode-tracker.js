@@ -3,7 +3,7 @@
 // Inspects user input for /ponytail commands and writes mode to flag file
 
 const { getDefaultMode, isDeactivationCommand, writeDefaultMode } = require('./ponytail-config');
-const { clearMode, isQoder, readMode, setMode, writeHookOutput } = require('./ponytail-runtime');
+const { clearMode, isQoder, readMode, setKimiFromClientType, setMode, writeHookOutput } = require('./ponytail-runtime');
 const { getPonytailInstructions } = require('./ponytail-instructions');
 
 let input = '';
@@ -15,7 +15,16 @@ function finish() {
   try {
     // Strip UTF-8 BOM some shells prepend when piping (breaks JSON.parse)
     const data = JSON.parse(input.replace(/^\uFEFF/, ''));
-    const prompt = (data.prompt || '').trim().toLowerCase();
+    // Kimi Code identifies itself in the payload, not the environment. Flip
+    // the runtime before any flag-file access so state lands under the
+    // Kimi home and output goes out as plain text. Returns live isKimi.
+    const isKimi = setKimiFromClientType(data.client_type);
+    // Kimi Code sends prompt as content parts ([{type:"text",text:"..."}]);
+    // every other host sends a plain string.
+    const rawPrompt = Array.isArray(data.prompt)
+      ? data.prompt.map((part) => (part && part.text) || '').join('\n')
+      : data.prompt;
+    const prompt = (rawPrompt || '').trim().toLowerCase();
 
     // Match /ponytail commands
     let modeSwitched = false;
@@ -64,10 +73,10 @@ function finish() {
       } else if (mode && mode !== 'off') {
         setMode(mode);
         modeSwitched = true;
-        // ponytail: Qoder needs the full ruleset every turn, so when a mode
-        // switch happens we fold the confirmation into the ruleset output
-        // below (one JSON on stdout) instead of emitting two separate writes.
-        if (!isQoder) {
+        // ponytail: Qoder and Kimi Code need the full ruleset every turn, so
+        // when a mode switch happens we fold the confirmation into the ruleset
+        // output below (one write on stdout) instead of emitting two.
+        if (!isQoder && !isKimi) {
           writeHookOutput(
             'UserPromptSubmit',
             mode,
@@ -88,12 +97,13 @@ function finish() {
       writeHookOutput('UserPromptSubmit', 'off', 'PONYTAIL MODE OFF');
     }
 
-    // Qoder has no SessionStart event, so UserPromptSubmit does double duty:
-    // activate the default mode on first prompt (if no flag exists yet), then
-    // inject the ruleset on every prompt. Claude Code/Codex do this in
-    // SessionStart via ponytail-activate.js; Qoder can't, so we do it here.
-    // Skip when deactivated — user just turned ponytail off.
-    if (isQoder && !deactivated) {
+    // Qoder has no SessionStart event and Kimi Code's SessionStart is
+    // observe-only (stdout ignored), so for both, UserPromptSubmit does double
+    // duty: activate the default mode on first prompt (if no flag exists yet),
+    // then inject the ruleset on every prompt. Claude Code/Codex do this in
+    // SessionStart via ponytail-activate.js; Qoder and Kimi Code can't, so we
+    // do it here. Skip when deactivated — user just turned ponytail off.
+    if ((isQoder || isKimi) && !deactivated) {
       let currentMode = readMode();
       if (!currentMode) {
         // First prompt in session — initialize from config/env default
@@ -103,8 +113,8 @@ function finish() {
         }
       }
       if (currentMode && currentMode !== 'off') {
-        // ponytail: one JSON per invocation — mode-switch confirmation is
-        // folded into the ruleset header so Qoder gets both in one write.
+        // ponytail: one write per invocation — mode-switch confirmation is
+        // folded into the ruleset header so the host gets both in one output.
         const header = modeSwitched
           ? 'PONYTAIL MODE CHANGED — level: ' + currentMode + '\n\n'
           : '';
