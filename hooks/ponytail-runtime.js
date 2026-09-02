@@ -107,7 +107,7 @@ function writeHookOutput(event, mode, context = '') {
   if (isKimi) {
     // Kimi Code has no hookSpecificOutput JSON form — plain stdout is the
     // whole protocol. UserPromptSubmit stdout is appended to the model
-    // context on exit 0; PreToolUse stdout is discarded (kimi 0.38).
+    // context on exit 0; PreToolUse stdout is discarded (kimi 0.38–0.40.1).
     process.stdout.write(context);
     return;
   }

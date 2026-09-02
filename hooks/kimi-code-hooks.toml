@@ -12,7 +12,7 @@ event = "UserPromptSubmit"
 command = "node PONYTAIL_DIR/hooks/ponytail-mode-tracker.js"
 timeout = 5
 
-# Subagent injection is intentionally not configured: in kimi 0.38 a
+# Subagent injection is intentionally not configured: in kimi 0.38–0.40.1 a
 # PreToolUse hook's stdout is discarded on exit 0, SubagentStart is
 # observation-only (stdout ignored), and updatedInput rewrites are not
 # honored — no hook channel reaches a sub-agent's context. Should a future

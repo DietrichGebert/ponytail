@@ -40,7 +40,7 @@ function run(script, env, input = '') {
   });
 }
 
-// Shape observed from a live kimi 0.38 session: prompt is an array of
+// Shape observed from live kimi 0.38–0.40.1 sessions: prompt is an array of
 // content parts, not a plain string.
 function kimiPayload(prompt) {
   return JSON.stringify({
@@ -72,7 +72,7 @@ test('kimi-code-hooks.toml registers UserPromptSubmit with only valid keys', () 
   for (const key of keys) {
     assert.ok(['event', 'matcher', 'command', 'timeout'].includes(key), `invalid [[hooks]] key: ${key}`);
   }
-  // Subagent injection is documented as unavailable (kimi 0.38 discards
+  // Subagent injection is documented as unavailable (kimi 0.38–0.40.1 discards
   // PreToolUse stdout; SubagentStart is observation-only), with a commented
   // block ready — the file must keep that guidance and the Agent tool name.
   assert.ok(toml.includes('SubagentStart'), 'must document the SubagentStart limitation');
