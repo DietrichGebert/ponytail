@@ -37,6 +37,7 @@ delete process.env.COPILOT_PLUGIN_DATA;
 // A leaked subagent matcher would scope the inject-into-every-subagent assertions.
 delete process.env.PONYTAIL_SUBAGENT_MATCHER;
 delete process.env.QODER_SESSION_ID;
+delete process.env.ZCODE_APP_VERSION;
 
 const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'ponytail-hooks-'));
 // Runs on normal exit and on assertion-throw exit; force makes it idempotent.
@@ -422,6 +423,59 @@ assert.match(
   output.hookSpecificOutput.additionalContext,
   /PONYTAIL MODE ACTIVE — level: full/,
 );
+
+// Zcode: parses hook stdout as strict JSON, so the native-Claude raw-text
+// SessionStart output is silently discarded (#798). Same hookSpecificOutput
+// shape as Qoder, but Zcode does have SessionStart — activate.js injects the
+// ruleset at startup and the mode-tracker only speaks up on mode switches.
+const zcodeHome = path.join(temp, 'zcode-home');
+const zcodeState = path.join(zcodeHome, '.claude', '.ponytail-active');
+fs.mkdirSync(zcodeHome, { recursive: true });
+
+const zcodeEnv = {
+  HOME: zcodeHome,
+  USERPROFILE: zcodeHome,
+  ZCODE_APP_VERSION: '3.10.2',
+  PONYTAIL_DEFAULT_MODE: 'full',
+};
+
+// SessionStart: flag written, ruleset emitted as hookSpecificOutput JSON.
+result = run('ponytail-activate.js', zcodeEnv);
+assert.equal(result.status, 0, result.stderr);
+assert.equal(fs.readFileSync(zcodeState, 'utf8'), 'full');
+output = JSON.parse(result.stdout);
+assert.equal(output.systemMessage, undefined, 'Zcode must not emit systemMessage');
+assert.equal(output.hookSpecificOutput.hookEventName, 'SessionStart');
+assert.match(
+  output.hookSpecificOutput.additionalContext,
+  /PONYTAIL MODE ACTIVE — level: full/,
+);
+
+// '@ponytail lite': mode tracker updates the flag and confirms via JSON.
+result = run(
+  'ponytail-mode-tracker.js',
+  zcodeEnv,
+  JSON.stringify({ prompt: '@ponytail lite' }),
+);
+assert.equal(result.status, 0, result.stderr);
+assert.equal(fs.readFileSync(zcodeState, 'utf8'), 'lite');
+output = JSON.parse(result.stdout);
+assert.equal(output.hookSpecificOutput.hookEventName, 'UserPromptSubmit');
+assert.match(
+  output.hookSpecificOutput.additionalContext,
+  /PONYTAIL MODE CHANGED — level: lite/,
+);
+
+// "stop ponytail": deactivates, clears flag, short confirmation as JSON.
+result = run(
+  'ponytail-mode-tracker.js',
+  zcodeEnv,
+  JSON.stringify({ prompt: 'stop ponytail' }),
+);
+assert.equal(result.status, 0, result.stderr);
+assert.equal(fs.existsSync(zcodeState), false, 'flag must be cleared after stop ponytail');
+output = JSON.parse(result.stdout);
+assert.equal(output.hookSpecificOutput.additionalContext, 'PONYTAIL MODE OFF');
 // writeDefaultMode must merge into existing config, not overwrite it (#490).
 const mergeHome = path.join(temp, 'merge-home');
 const mergeConfigDir = path.join(mergeHome, '.config', 'ponytail');
