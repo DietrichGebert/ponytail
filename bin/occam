@@ -1,0 +1,2 @@
+#!/usr/bin/env bash
+python3 -m occam_core.cli "$@"

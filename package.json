@@ -1,47 +1,26 @@
 {
-  "name": "@quillllllll/ponytail",
-  "version": "5.0.0",
-  "description": "Lazy senior dev mode for AI agents. The best code is the code you never wrote.",
-  "keywords": [
-    "opencode-plugin",
-    "opencode",
-    "ponytail",
-    "skills"
-  ],
-  "license": "MIT",
-  "author": {
-    "name": "Dietrich Gebert",
-    "url": "https://github.com/DietrichGebert"
+  "name": "@quillllllll/occam-core",
+  "version": "2.0.0",
+  "description": "Optimal Code Complexity & Adaptive Minimization Engine - AST-driven context and code optimization.",
+  "type": "module",
+  "main": "./.opencode/plugins/occam.mjs",
+  "bin": {
+    "occam": "./bin/occam"
   },
-  "homepage": "https://github.com/81117105108108/PT-Fork",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/81117105108108/PT-Fork.git"
-  },
-  "bugs": {
-    "url": "https://github.com/81117105108108/PT-Fork/issues"
-  },
-  "main": "./.opencode/plugins/ponytail.mjs",
-  "exports": {
-    ".": "./.opencode/plugins/ponytail.mjs",
-    "./plugin": "./.opencode/plugins/ponytail.mjs"
-  },
-  "files": [
-    "AGENTS.md",
-    "hooks/",
-    "skills/",
-    ".opencode/plugins/",
-    "scripts/uninstall.js",
-    "LICENSE",
-    "assets/logo-dark.svg",
-    "assets/benchmark-agentic.svg",
-    "assets/benchmark-3model.svg",
-    ".opencode/command/"
-  ],
   "scripts": {
-    "test": "node --test tests/*.test.js"
+    "test": "python3 -m unittest discover tests",
+    "lint": "python3 -m occam_core.cli check occam_core/*.py tests/*.py",
+    "bench": "python3 -c 'import occam_core.engine as e; print(e.analyze_source(open(\"occam_core/engine.py\").read()))'"
   },
-  "publishConfig": {
-    "access": "public"
-  }
+  "keywords": [
+    "occam",
+    "compiler",
+    "ast",
+    "parsimony",
+    "llm-optimizer",
+    "opencode",
+    "agent-efficiency"
+  ],
+  "author": "quill",
+  "license": "MIT"
 }

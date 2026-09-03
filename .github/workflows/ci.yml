@@ -1,0 +1,39 @@
+name: OCCAM-CORE CI
+
+on:
+  push:
+    branches: [ main, feat/* ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.10", "3.11", "3.12"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Syntax Compilation Check
+        run: |
+          python3 -m py_compile occam_core/__init__.py occam_core/engine.py occam_core/cli.py tests/*.py
+
+      - name: Execute Unit & Invariant Test Battery
+        run: |
+          python3 -m unittest discover tests -v
+
+      - name: Run OCCAM Self-Audit
+        run: |
+          python3 -m occam_core.cli check occam_core/engine.py occam_core/cli.py

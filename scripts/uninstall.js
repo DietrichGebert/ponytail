@@ -1,23 +1,17 @@
 #!/usr/bin/env node
-// Removes state ponytail wrote outside its own plugin files. `npm uninstall`
-// removes the plugin itself; this cleans up what it can't see.
+import { existsSync, rmSync } from 'fs';
+import { homedir } from 'os';
+import { join } from 'path';
 
-const fs = require('fs');
-const path = require('path');
-const os = require('os');
-const { getConfigPath } = require('../hooks/ponytail-config');
+const targets = [
+  join(homedir(), '.config', 'opencode', '.occam-active'),
+  join(homedir(), '.config', 'occam')
+];
 
-const configHome =
-  process.env.XDG_CONFIG_HOME || path.join(os.homedir(), '.config');
-
-for (const [p, label] of [
-  [path.join(configHome, 'opencode', '.ponytail-active'), 'mode flag'],
-  [getConfigPath(), 'config file'],
-]) {
-  try {
-    fs.unlinkSync(p);
-    console.log(`Removed ${label}: ${p}`);
-  } catch (e) {
-    if (e.code !== 'ENOENT') throw e;
+for (const target of targets) {
+  if (existsSync(target)) {
+    rmSync(target, { recursive: true, force: true });
+    console.log(`[OCCAM-CLEANUP] Removed: ${target}`);
   }
 }
+console.log('[OCCAM-CLEANUP] Uninstalled cleanly.');
