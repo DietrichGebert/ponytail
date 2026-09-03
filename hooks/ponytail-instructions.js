@@ -7,6 +7,9 @@ const { DEFAULT_MODE, normalizeMode, normalizePersistedMode } = require('./ponyt
 
 const INDEPENDENT_MODES = new Set(['review']);
 const SKILL_PATH = path.join(__dirname, '..', 'skills', 'ponytail', 'SKILL.md');
+// AGENTS.md is the canonical compact body (scripts/check-rule-copies.js keeps
+// the instruction-only adapters aligned with it). About half the size of SKILL.md.
+const COMPACT_PATH = path.join(__dirname, '..', 'AGENTS.md');
 
 function filterSkillBodyForMode(body, mode) {
   const effectiveMode = normalizeMode(mode) || DEFAULT_MODE;
@@ -91,8 +94,31 @@ function getPonytailInstructions(mode) {
   }
 }
 
+// Compact variant for subagents (PONYTAIL_SUBAGENT_RULESET=compact): the
+// AGENTS.md body instead of the full skill. The level header stays so a
+// subagent still knows which mode its parent is in; the intensity table and
+// worked examples are the part that is dropped. Falls back to the built-in
+// text if AGENTS.md is missing, same as the full path.
+function getCompactInstructions(mode) {
+  const configuredMode = normalizePersistedMode(mode) || DEFAULT_MODE;
+
+  if (INDEPENDENT_MODES.has(configuredMode)) {
+    return getPonytailInstructions(configuredMode);
+  }
+
+  const effectiveMode = normalizeMode(configuredMode) || DEFAULT_MODE;
+
+  try {
+    const body = fs.readFileSync(COMPACT_PATH, 'utf8').replace(/^---[\s\S]*?---\s*/, '').trim();
+    return 'PONYTAIL MODE ACTIVE — level: ' + effectiveMode + '\n\n' + body;
+  } catch (e) {
+    return getFallbackInstructions(effectiveMode);
+  }
+}
+
 module.exports = {
   filterSkillBodyForMode,
+  getCompactInstructions,
   getFallbackInstructions,
   getPonytailInstructions,
 };
