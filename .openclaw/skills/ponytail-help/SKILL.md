@@ -15,10 +15,10 @@ write flag files, or persist anything.
 | Level | Trigger | What change |
 |-------|---------|-------------|
 | **Lite** | `/ponytail lite` | Build what's asked, name the lazier alternative in one line. |
-| **Full** | `/ponytail` | The ladder enforced: YAGNI → stdlib → native → one line → minimum. Default. |
-| **Ultra** | `/ponytail ultra` | YAGNI extremist. Deletion before addition. Challenges requirements before building. |
+| **Full** | `/ponytail` | The ladder enforced for an ordinary bounded task. |
+| **Ultra** | `/ponytail ultra` | Explicit only; deletion before addition. |
 
-Level sticks until changed or session end.
+The level applies to the current task. Without an explicit level, Ponytail adapts to the work. Ultra is never automatic.
 
 ## Skills
 
@@ -42,7 +42,7 @@ Say "stop ponytail" or "normal mode". Resume anytime with `/ponytail`.
 
 ## Configure Default Mode
 
-Default mode = `full`, auto-active every session. Change it:
+Legacy hosts may configure a default mode. Codex uses native adaptive routing and does not need global mode state.
 
 **Environment variable** (highest priority):
 ```bash
