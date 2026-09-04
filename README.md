@@ -109,7 +109,7 @@ Lazy, not negligent: trust-boundary validation, data-loss handling, security, an
 
 The most effort ponytail will ever ask of you:
 
-The Claude Code and Codex plugins run two tiny Node.js lifecycle hooks, so `node` needs to be on your PATH (note for Nix/nvm users: it must be on the non-interactive shell's PATH). If it isn't, the skills still work, the always-on activation just stays quiet instead of erroring on every prompt.
+The Claude Code plugin runs two tiny Node.js lifecycle hooks, so `node` needs to be on your PATH (note for Nix/nvm users: it must be on the non-interactive shell's PATH). If it isn't, the skills still work, the always-on activation just stays quiet instead of erroring on every prompt.
 
 ### Claude Code
 
@@ -130,7 +130,7 @@ codex plugin marketplace add DietrichGebert/ponytail
 codex plugin add ponytail@ponytail
 ```
 
-Codex uses the skill natively: it adapts per task and has no lifecycle hooks, blanket subagent injection, status spam, or global mode state. The legacy hook behavior remains for hosts that use it.
+Codex uses the skill natively: the manifest skills root flows through the OpenAI implicit-invocation policy into Codex's `skills/list` namespace, where it adapts per task. It has no lifecycle hooks, blanket subagent injection, status spam, or global mode state. The legacy hook behavior remains for hosts that use it.
 
 This same install also covers the Codex desktop app: restart the app after installing and it picks up the plugin.
 

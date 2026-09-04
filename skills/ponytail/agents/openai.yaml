@@ -1,0 +1,7 @@
+interface:
+  display_name: "Ponytail"
+  short_description: "Adaptive minimalism for coding work"
+  default_prompt: "Use $ponytail to choose the smallest correct implementation for this coding task."
+policy:
+  products: [codex]
+  allow_implicit_invocation: true
