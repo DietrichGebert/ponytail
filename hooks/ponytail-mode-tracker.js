@@ -117,14 +117,21 @@ function finish() {
 }
 
 process.stdin.on('data', chunk => { input += chunk; });
-process.stdin.on('end', finish);
+// Exit on 'end', not just finish(): the fallback timer below must stay ref'd
+// (see #790) so it can actually fire when stdin is stuck, and a ref'd timer
+// would otherwise keep the process alive for its full 1000ms on this normal
+// fast path.
+process.stdin.on('end', () => { finish(); process.exit(0); });
 
 // Never hang the session. On Windows, Claude Code runs this hook through a
 // PowerShell `if {}` wrapper that can swallow the piped prompt JSON, so stdin
 // 'end' never fires and the hook blocks forever — freezing the session (#443).
 // On error, or after a short fallback, process whatever arrived (recovering the
-// mode if data came without EOF) and exit. unref() keeps the timer from adding
-// latency to the normal path, where 'end' fires first. Mirrors the best-effort,
-// never-block contract the other lifecycle hooks already follow.
+// mode if data came without EOF) and exit. The fallback timer MUST stay ref'd:
+// on Windows a stuck ref'd stdin handle keeps the event loop alive, and an
+// unref'd timer competing with it is never scheduled — so the fallback was
+// dead code in exactly the #443/#790 case it exists for, and the hook hung
+// until Claude Code's external 5s watchdog killed it (#790). Mirrors the
+// best-effort, never-block contract the other lifecycle hooks already follow.
 process.stdin.on('error', () => { finish(); process.exit(0); });
-setTimeout(() => { finish(); process.exit(0); }, 1000).unref();
+setTimeout(() => { finish(); process.exit(0); }, 1000);
