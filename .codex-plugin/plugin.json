@@ -1,7 +1,7 @@
 {
   "name": "ponytail",
   "version": "4.9.0",
-  "description": "Lazy senior dev mode. Forces the simplest, shortest solution that actually works: YAGNI, stdlib first, no unrequested abstractions.",
+  "description": "Outcome-first engineering. Chooses the best complete result, then removes complexity that does not help deliver or prove it.",
   "author": {
     "name": "Dietrich Gebert",
     "url": "https://github.com/DietrichGebert"
@@ -11,19 +11,18 @@
   "license": "MIT",
   "keywords": ["yagni", "minimalism", "code-review", "productivity"],
   "skills": "./skills/",
-  "hooks": "./hooks/claude-codex-hooks.json",
   "interface": {
     "displayName": "Ponytail",
-    "shortDescription": "Lazy senior developer mode",
-    "longDescription": "Prefer YAGNI, the standard library, native platform features, and the smallest correct implementation.",
+    "shortDescription": "Outcome-first engineering",
+    "longDescription": "Choose the best complete outcome first; prefer simplicity, reuse, standard-library, and native features when materially equivalent.",
     "developerName": "Dietrich Gebert",
     "category": "Productivity",
-    "capabilities": ["Instructions", "Lifecycle hooks"],
+    "capabilities": ["Instructions"],
     "websiteURL": "https://github.com/DietrichGebert/ponytail",
     "defaultPrompt": [
       "Use Ponytail mode for this task.",
       "Review this diff for over-engineering.",
-      "Find the smallest correct implementation."
+      "Find the strongest complete implementation with no unjustified complexity."
     ],
     "brandColor": "#111111",
     "composerIcon": "./assets/logo.png",

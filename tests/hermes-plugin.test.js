@@ -107,7 +107,8 @@ print(json.dumps({'ctx': ctx}))
   const { ctx } = JSON.parse(output);
 
   assert.match(ctx, /PONYTAIL MODE ACTIVE — level: ultra/);
-  assert.match(ctx, /The best\s+code is the code never written/);
+  assert.match(ctx, /outcome-first senior developer/);
+  assert.match(ctx, /best complete outcome is the target/i);
   assert.match(ctx, /ultra/i);
   assert.doesNotMatch(ctx, /^---/);
   assert.doesNotMatch(ctx, /\|\s*\*\*Lite\*\*/i);

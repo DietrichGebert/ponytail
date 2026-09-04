@@ -1,6 +1,6 @@
 # Platform-Native Solutions
 
-The lazy senior dev's first question is always: *does the platform already do this?*
+After locking the complete outcome, ask whether the platform already delivers it without a material quality or capability loss.
 
 This document answers that question for the most common cases. Before reaching for a package, scan here. The platform ships with your app for free, doesn't break on updates, and was written by people whose job is exactly that problem.
 

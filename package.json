@@ -1,7 +1,7 @@
 {
   "name": "@dietrichgebert/ponytail",
   "version": "4.9.0",
-  "description": "Lazy senior dev mode for AI agents. The best code is the code you never wrote.",
+  "description": "Outcome-first engineering for AI agents: best complete result, then least justified complexity.",
   "keywords": ["opencode-plugin", "opencode", "ponytail", "pi-package", "pi", "skills", "qoder"],
   "license": "MIT",
   "author": {
@@ -44,4 +44,3 @@
     "access": "public"
   }
 }
-
