@@ -106,9 +106,9 @@ test('ponytail-mode-tracker self-exits when stdin never closes (no freeze)', asy
   assert.equal(code, 0, 'hook must exit cleanly when stdin never closes');
 });
 
-test('Claude and Codex manifests point at the shared host-specific hook config', () => {
-  for (const rel of HOST_PLUGIN_MANIFESTS) {
-    const manifest = JSON.parse(fs.readFileSync(path.join(root, rel), 'utf8'));
-    assert.equal(manifest.hooks, `./${HOOKS_JSON}`, `${rel} must not rely on root hooks auto-discovery`);
-  }
+test('Claude retains hooks while Codex uses native instructions', () => {
+  const claude = JSON.parse(fs.readFileSync(path.join(root, '.claude-plugin/plugin.json'), 'utf8'));
+  const codex = JSON.parse(fs.readFileSync(path.join(root, '.codex-plugin/plugin.json'), 'utf8'));
+  assert.equal(claude.hooks, `./${HOOKS_JSON}`);
+  assert.equal(codex.hooks, undefined);
 });
