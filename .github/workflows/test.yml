@@ -20,6 +20,12 @@ jobs:
         with:
           python-version: '3.12'
 
+      - name: Install Codex CLI
+        run: curl -fsSL https://chatgpt.com/codex/install.sh | sh
+
+      - name: Add Codex CLI to PATH
+        run: echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
       - name: Install Python deps for correctness checks
         run: pip install pandas
 
@@ -33,4 +39,4 @@ jobs:
         run: node scripts/check-versions.js
 
       - name: Run tests
-        run: npm test
+        run: PONYTAIL_TEST_CODEX=1 npm test

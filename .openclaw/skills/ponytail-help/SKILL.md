@@ -15,16 +15,17 @@ write flag files, or persist anything.
 | Level | Trigger | What change |
 |-------|---------|-------------|
 | **Lite** | `/ponytail lite` | Build what's asked, name the lazier alternative in one line. |
-| **Full** | `/ponytail` | The ladder enforced: YAGNI → stdlib → native → one line → minimum. Default. |
-| **Ultra** | `/ponytail ultra` | YAGNI extremist. Deletion before addition. Challenges requirements before building. |
+| **Adaptive** | `/ponytail` | Choose intensity per task. Codex default. |
+| **Full** | `/ponytail full` | The ladder enforced for an ordinary bounded task. |
+| **Ultra** | `/ponytail ultra` | Explicit only; deletion before addition. |
 
-Level sticks until changed or session end.
+The level applies to the current task. Without an explicit level, Ponytail adapts to the work. Legacy hook hosts may persist configured levels. Ultra is never automatic on Codex.
 
 ## Skills
 
 | Skill | Trigger | What it does |
 |-------|---------|--------------|
-| **ponytail** | `/ponytail` | Lazy mode itself. Simplest solution that works. |
+| **ponytail** | `/ponytail` | Adaptive per-task minimalism. |
 | **ponytail-review** | `/ponytail-review` | Over-engineering review: `L42: yagni: factory, one product. Inline.` |
 | **ponytail-audit** | `/ponytail-audit` | Whole-repo over-engineering audit: ranked list of what to delete. |
 | **ponytail-debt** | `/ponytail-debt` | Harvest `ponytail:` shortcut comments into a tracked ledger. |
@@ -35,14 +36,14 @@ Codex uses `@ponytail`, `@ponytail-review`, and `@ponytail-help`; Claude Code
 and OpenCode use the slash-command forms above (OpenCode ships all six as
 slash commands).
 
-## Deactivate
+## Deactivate (legacy hook hosts)
 
 Say "stop ponytail" or "normal mode". Resume anytime with `/ponytail`.
 `/ponytail off` also works.
 
-## Configure Default Mode
+## Configure Default Mode (legacy hook hosts)
 
-Default mode = `full`, auto-active every session. Change it:
+Legacy hosts may configure a default mode. Codex uses native adaptive routing and does not need global mode state.
 
 **Environment variable** (highest priority):
 ```bash
