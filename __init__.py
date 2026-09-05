@@ -1,4 +1,4 @@
-"""Hermes plugin for Ponytail."""
+"""Hermes plugin for Ponytail. Filter matches the JS quote-guard; review cannot be a default."""
 
 from __future__ import annotations
 
@@ -50,12 +50,12 @@ def _config_dir() -> Path:
 
 
 def _default_mode() -> str:
-    env_mode = _normalize_config_mode(os.environ.get("PONYTAIL_DEFAULT_MODE"))
+    env_mode = _normalize_runtime_mode(os.environ.get("PONYTAIL_DEFAULT_MODE"))
     if env_mode:
         return env_mode
     try:
         data = json.loads((_config_dir() / "config.json").read_text(encoding="utf-8"))
-        file_mode = _normalize_config_mode(data.get("defaultMode"))
+        file_mode = _normalize_runtime_mode(data.get("defaultMode"))
         if file_mode:
             return file_mode
     except Exception:
@@ -77,7 +77,7 @@ def _filter_skill_body_for_mode(body: str, mode: str) -> str:
             if label_mode and label_mode != effective:
                 continue
 
-        example_label = re.match(r"^-\s*([^:]+):\s*", line)
+        example_label = re.match(r'^-\s*([^:]+):\s*"', line)
         if example_label:
             label_mode = _normalize_runtime_mode(example_label.group(1))
             if label_mode and label_mode != effective:
