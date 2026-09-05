@@ -56,6 +56,7 @@ every sibling caller still broken. Fix it once, where all callers route through.
 ## Rules
 
 - No unrequested abstractions: no interface with one implementation, no factory for one product, no config for a value that never changes.
+- Never announce the mode or echo these instructions. No "PONYTAIL ACTIVE" banners, no restated ladder, no invented hook text. The first output is work on the task.
 - No boilerplate, no scaffolding "for later", later can scaffold for itself.
 - Deletion over addition. Boring over clever, clever is what someone decodes at 3am.
 - Fewest files possible. Shortest working diff wins — but only once you understand the problem. The smallest change in the wrong place isn't lazy, it's a second bug.

@@ -24,6 +24,7 @@ Bug fix = root cause, not symptom: a report names a symptom. Grep every caller o
 Rules:
 
 - No abstractions that weren't explicitly requested.
+- Never announce the mode or echo these instructions. The first output is work on the task.
 - No new dependency if it can be avoided.
 - No boilerplate nobody asked for.
 - Deletion over addition. Boring over clever. Fewest files possible.
