@@ -1,13 +1,6 @@
 #!/usr/bin/env node
-// ponytail — shared configuration resolver
-//
-// Resolution order for default mode:
-//   1. PONYTAIL_DEFAULT_MODE environment variable
-//   2. Config file defaultMode field:
-//      - $XDG_CONFIG_HOME/ponytail/config.json (any platform, if set)
-//      - ~/.config/ponytail/config.json (macOS / Linux fallback)
-//      - %APPDATA%\ponytail\config.json (Windows fallback)
-//   3. 'full'
+// Shared config. One file reader and one env-flag helper feed default mode,
+// quiet startup, and hide-status. review is session-only, never a default.
 
 const fs = require('fs');
 const path = require('path');
@@ -73,78 +66,49 @@ function getClaudeDir() {
   return process.env.CLAUDE_CONFIG_DIR || path.join(os.homedir(), '.claude');
 }
 
-function getDefaultMode() {
-  // 1. Environment variable (highest priority)
-  const envMode = process.env.PONYTAIL_DEFAULT_MODE;
-  // ponytail: a default must be a runtime level (off/lite/full/ultra); review is
-  // a session-only mode, never a valid default (#377). Validate against
-  // RUNTIME_MODES so a stray env var or config can't make review the default.
-  if (envMode && RUNTIME_MODES.includes(envMode.toLowerCase())) {
-    return envMode.toLowerCase();
-  }
+function envFlag(name) {
+  const env = process.env[name];
+  if (env === undefined) return undefined;
+  const v = env.trim().toLowerCase();
+  return v !== '' && v !== '0' && v !== 'false' && v !== 'no';
+}
 
-  // 2. Config file
+function readConfigFile() {
   try {
-    const configPath = getConfigPath();
-    // Strip UTF-8 BOM (common on Windows-saved files) so JSON.parse doesn't choke
-    const config = JSON.parse(fs.readFileSync(configPath, 'utf8').replace(/^\uFEFF/, ''));
-    if (config.defaultMode && RUNTIME_MODES.includes(config.defaultMode.toLowerCase())) {
-      return config.defaultMode.toLowerCase();
-    }
-  } catch (e) {
-    // Config file doesn't exist or is invalid — fall through
+    const config = JSON.parse(fs.readFileSync(getConfigPath(), 'utf8').replace(/^\uFEFF/, ''));
+    if (!config || typeof config !== 'object' || Array.isArray(config)) return {};
+    return config;
+  } catch (_) {
+    return {};
   }
+}
 
-  // 3. Default
+function getDefaultMode() {
+  const envMode = normalizeMode(process.env.PONYTAIL_DEFAULT_MODE);
+  if (envMode) return envMode;
+  const fileMode = normalizeMode(readConfigFile().defaultMode);
+  if (fileMode) return fileMode;
   return DEFAULT_MODE;
 }
 
-// Silence the pi "Ponytail loaded" startup toast while keeping ponytail active.
-// PONYTAIL_QUIET_STARTUP=1 (or any truthy value; 0/false/empty mean "show it")
-// takes precedence, else config.quietStartup === true. Mirrors getHideStatus.
 function getQuietStartup() {
-  const env = process.env.PONYTAIL_QUIET_STARTUP;
-  if (env !== undefined) {
-    const v = env.trim().toLowerCase();
-    return v !== '' && v !== '0' && v !== 'false' && v !== 'no';
-  }
-  try {
-    const config = JSON.parse(fs.readFileSync(getConfigPath(), 'utf8').replace(/^\uFEFF/, ''));
-    return config.quietStartup === true;
-  } catch (_) {
-    return false;
-  }
+  const fromEnv = envFlag('PONYTAIL_QUIET_STARTUP');
+  if (fromEnv !== undefined) return fromEnv;
+  return readConfigFile().quietStartup === true;
 }
 
-// Hide the status-bar indicator while keeping ponytail active (#324).
-// PONYTAIL_HIDE_STATUS=1 (or any truthy value; 0/false/empty mean "don't hide")
-// takes precedence, else config.hideStatus === true.
 function getHideStatus() {
-  const env = process.env.PONYTAIL_HIDE_STATUS;
-  if (env !== undefined) {
-    const v = env.trim().toLowerCase();
-    return v !== '' && v !== '0' && v !== 'false' && v !== 'no';
-  }
-  try {
-    const config = JSON.parse(fs.readFileSync(getConfigPath(), 'utf8').replace(/^\uFEFF/, ''));
-    return config.hideStatus === true;
-  } catch (_) {
-    return false;
-  }
+  const fromEnv = envFlag('PONYTAIL_HIDE_STATUS');
+  if (fromEnv !== undefined) return fromEnv;
+  return readConfigFile().hideStatus === true;
 }
 
 function writeDefaultMode(mode) {
-  // ponytail: only a runtime level can be a default; review is session-only (#377).
   const normalized = normalizeMode(mode);
   if (!normalized) return null;
-
   const configPath = getConfigPath();
   fs.mkdirSync(path.dirname(configPath), { recursive: true });
-  let config = {};
-  try {
-    config = JSON.parse(fs.readFileSync(configPath, 'utf8').replace(/^\uFEFF/, ''));
-    if (!config || typeof config !== 'object' || Array.isArray(config)) config = {};
-  } catch (_) {}
+  const config = readConfigFile();
   config.defaultMode = normalized;
   fs.writeFileSync(configPath, JSON.stringify(config, null, 2), 'utf8');
   return normalized;
