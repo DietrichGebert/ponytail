@@ -48,13 +48,19 @@ function exec(cmd, opts = {}) {
 }
 
 // ponytail: probe once at load; macOS and many Linux images ship python3 only.
+// A bare `python3` can resolve to a minimal interpreter (uv/pyenv shim) that
+// lacks pandas while the system one has it, so prefer a pandas-capable
+// interpreter first and fall back to any working one.
+const PY_CANDIDATES = ['python3', 'python', '/usr/bin/python3'];
 let pythonCmd;
 function python() {
   if (pythonCmd) return pythonCmd;
-  for (const cmd of ['python3', 'python']) {
-    if (exec(`${cmd} -c "import sys"`).ok) {
-      pythonCmd = cmd;
-      return pythonCmd;
+  for (const probe of ['import pandas', 'import sys']) {
+    for (const cmd of PY_CANDIDATES) {
+      if (exec(`${cmd} -c "${probe}"`).ok) {
+        pythonCmd = cmd;
+        return pythonCmd;
+      }
     }
   }
   pythonCmd = 'python3';
