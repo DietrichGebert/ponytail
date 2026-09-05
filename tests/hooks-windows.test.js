@@ -15,10 +15,6 @@ const { spawn } = require('child_process');
 
 const root = path.join(__dirname, '..');
 const HOOKS_JSON = 'hooks/claude-codex-hooks.json';
-const HOST_PLUGIN_MANIFESTS = [
-  '.claude-plugin/plugin.json',
-  '.codex-plugin/plugin.json',
-];
 // PowerShell 5.1 rejects these POSIX shell guards when a host runs `command`.
 const POSIX_GUARD_SYNTAX = /\bcommand\s+-v\b|&&|\|\||>\/dev\/null|2>&1/;
 // Pull the hooks/<script> a command launches, so we can check it exists.
@@ -106,9 +102,47 @@ test('ponytail-mode-tracker self-exits when stdin never closes (no freeze)', asy
   assert.equal(code, 0, 'hook must exit cleanly when stdin never closes');
 });
 
-test('Claude and Codex manifests point at the shared host-specific hook config', () => {
-  for (const rel of HOST_PLUGIN_MANIFESTS) {
+// Issue #791: Claude Code gets its own exec-form hook config so Windows hook
+// dispatch spawns node directly (no shell, no console flash). Codex keeps the
+// shared shell-form file — its hook schema has no `args` field.
+test('Claude and Codex manifests point at a hooks config that ships', () => {
+  const expected = {
+    '.claude-plugin/plugin.json': './hooks/claude-hooks.json',
+    '.codex-plugin/plugin.json': `./${HOOKS_JSON}`,
+  };
+  for (const [rel, hooks] of Object.entries(expected)) {
     const manifest = JSON.parse(fs.readFileSync(path.join(root, rel), 'utf8'));
-    assert.equal(manifest.hooks, `./${HOOKS_JSON}`, `${rel} must not rely on root hooks auto-discovery`);
+    assert.equal(manifest.hooks, hooks, `${rel} must not rely on root hooks auto-discovery`);
+    assert.ok(
+      fs.existsSync(path.join(root, hooks.replace(/^\.\//, ''))),
+      `${rel} points at a hooks config that must ship: ${hooks}`,
+    );
+  }
+});
+
+test('claude-hooks.json uses exec form so Windows spawns node with no shell (#791)', () => {
+  const config = JSON.parse(fs.readFileSync(path.join(root, 'hooks/claude-hooks.json'), 'utf8'));
+  const entries = Object.values(config.hooks)
+    .flat()
+    .flatMap((entry) => entry.hooks);
+  assert.ok(entries.length > 0, 'expected at least one Claude hook entry');
+  for (const hook of entries) {
+    assert.ok(
+      Array.isArray(hook.args) && hook.args.length > 0,
+      `exec-form hook must carry args: ${hook.command}`,
+    );
+    assert.doesNotMatch(
+      hook.command,
+      /\s/,
+      `exec-form command must be a bare executable, not a shell string: ${hook.command}`,
+    );
+    const script = hook.args
+      .map((a) => String(a).match(HOOK_SCRIPT)?.[1])
+      .find(Boolean);
+    assert.ok(script, `exec-form args must reference a hooks/ script: ${hook.args}`);
+    assert.ok(
+      fs.existsSync(path.join(root, 'hooks', script)),
+      `exec-form hook references a missing hook script: ${script}`,
+    );
   }
 });
