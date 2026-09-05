@@ -28,7 +28,7 @@ Render plain ASCII bars. The bar length shows the measured cut vs no-skill.
   Cost            no-skill  ████████████████████  100%
                   ponytail  ████████████████····    80%   ▼ 20%
   Time            no-skill  ████████████████████  100%
-                  ponytail  ██████████████▇·····    73%   ▼ 27%
+                  ponytail  ██████████████▋·····    73%   ▼ 27%
 
   This repo:  /ponytail-debt  (shortcuts you deferred)
               /ponytail-audit (what's still cuttable)
