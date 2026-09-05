@@ -1,7 +1,5 @@
 #!/usr/bin/env node
-// Hermes support is a real plugin, not just copied rules: the repo root must be
-// installable with `hermes plugins install owner/repo`, register bundled skills,
-// inject active mode context, and expose slash commands.
+// Hermes plugin tests. Includes quote-guard filter parity and review-not-default.
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -50,8 +48,8 @@ test('Hermes plugin manifest matches runtime skills, hooks, commands, and packag
     .sort();
 
   assert.match(manifest, /^name:\s*ponytail$/m);
-  assert.match(manifest, new RegExp(`^version:\\s*${packageJson.version}$`, 'm'));
-  assert.match(manifest, new RegExp(`^author:\\s*${packageJson.author.name}$`, 'm'));
+  assert.match(manifest, new RegExp(`^version:\s*${packageJson.version}$`, 'm'));
+  assert.match(manifest, new RegExp(`^author:\s*${packageJson.author.name}$`, 'm'));
   assert.deepEqual(commands.filter((name) => manifest.includes(`  - ${name}`)), commands);
   assert.deepEqual(skillDirs.filter((name) => manifest.includes(`  - ${name}`)), skillDirs);
   assert.match(manifest, /pre_llm_call/);
@@ -210,6 +208,41 @@ result = mod.rewrite_gateway_command(event=Event(), gateway=Gateway())
 print(json.dumps(result))
 `);
   assert.equal(output, 'null');
+});
+
+test('Hermes filter keeps unquoted rule bullets that start with a mode word', () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'ponytail-config-'));
+  const output = python(String.raw`
+import importlib.util, json
+spec = importlib.util.spec_from_file_location('ponytail_hermes_plugin', '__init__.py')
+mod = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(mod)
+body = '- Full: do not confuse this rule label with the mode name.\n- lite: "real worked example"\n- ultra: "ultra example"\n'
+print(json.dumps({'ctx': mod._filter_skill_body_for_mode(body, 'ultra')}))
+`, { XDG_CONFIG_HOME: tmp });
+  const { ctx } = JSON.parse(output);
+  assert.match(ctx, /Full: do not confuse/);
+  assert.doesNotMatch(ctx, /- lite:/);
+  assert.match(ctx, /ultra example/);
+});
+
+test('Hermes default mode rejects review from env and config', () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'ponytail-config-'));
+  fs.mkdirSync(path.join(tmp, 'ponytail'), { recursive: true });
+  fs.writeFileSync(path.join(tmp, 'ponytail', 'config.json'), JSON.stringify({ defaultMode: 'review' }));
+  const output = python(String.raw`
+import importlib.util, json
+spec = importlib.util.spec_from_file_location('ponytail_hermes_plugin', '__init__.py')
+mod = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(mod)
+print(json.dumps({
+    'env': mod._default_mode(),
+    'injected': mod.build_injected_context(None),
+}))
+`, { XDG_CONFIG_HOME: tmp, PONYTAIL_DEFAULT_MODE: 'review' });
+  const data = JSON.parse(output);
+  assert.equal(data.env, 'full');
+  assert.match(data.injected, /level: full/);
 });
 
 test('Hermes gateway rewrite preserves every skill command and ignores unrelated text', () => {
