@@ -14,7 +14,7 @@ can't quietly become permanent.
 Grep the repo for comment markers, skipping `node_modules`, `.git`, and build
 output:
 
-`grep -rnE '(#|//) ?ponytail:' .`  (add other comment prefixes if your stack uses them)
+`grep -rnE '(#|//|/\\*) ?ponytail:' .`
 
 Each hit is one ledger row. The comment prefix keeps prose that merely mentions
 the convention out of the ledger.
