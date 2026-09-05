@@ -194,16 +194,16 @@ os.chdir(r"${path.dirname(csvPath)}")
 # Capture print output
 import io
 _stdout = sys.stdout
-sys.stdout = io.StringIO()
+_buf = io.StringIO()
+sys.stdout = _buf
 
 try:
 ${patched.split('\n').map((l) => '    ' + l).join('\n')}
 except Exception as e:
-    sys.stdout = _stdout
-    # If it needs sales.csv in cwd, write it there and retry
+    # Swallow: the output check below reports a FAIL verdict either way.
     pass
 
-output = sys.stdout.getvalue()
+output = _buf.getvalue()
 sys.stdout = _stdout
 
 # Check output contains the number 351 (100.5 + 200.0 + 50.5)
