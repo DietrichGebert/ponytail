@@ -1,14 +1,5 @@
 #!/usr/bin/env node
-// Generate the OpenClaw / ClawHub skill package (.openclaw/skills/) from the
-// canonical skills/. OpenClaw skills are SKILL.md (frontmatter + body), the same
-// format ponytail already uses, with one difference: `description` must be a
-// single line under 160 chars. The canonical descriptions are long (tuned for
-// Claude's skill picker), so each ships a short one here. The body is copied
-// verbatim from skills/<name>/SKILL.md so the ruleset never drifts; only the
-// frontmatter is rewritten.
-//
-// Run:  node scripts/build-openclaw-skills.js
-// tests/openclaw-skills.test.js fails if the committed copies are stale.
+// Generate .openclaw/skills/ from skills/. Short one-line descriptions, verbatim bodies.
 
 const fs = require('fs');
 const path = require('path');
@@ -21,7 +12,7 @@ const DESCRIPTIONS = {
   'ponytail-review': 'Review a diff for over-engineering. Finds what to delete: reinvented stdlib, needless deps, speculative abstractions. One line per finding.',
   'ponytail-audit': 'Audit the whole repo for over-engineering. A ranked list of what to delete, simplify, or replace with stdlib or native features.',
   'ponytail-debt': 'Harvest every ponytail: shortcut comment into one debt ledger, so deferrals get tracked instead of forgotten. One-shot report.',
-  'ponytail-gain': 'Show ponytail measured impact as a scoreboard: less code, less cost, more speed, from the benchmark medians. One-shot display.',
+  'ponytail-gain': 'Show ponytail measured impact as a scoreboard: less code, less cost, more speed, from the agentic benchmark means. One-shot display.',
   'ponytail-help': "Quick reference for ponytail's modes, skills, and commands. One-shot display.",
 };
 
