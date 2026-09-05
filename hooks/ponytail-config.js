@@ -73,17 +73,7 @@ function getClaudeDir() {
   return process.env.CLAUDE_CONFIG_DIR || path.join(os.homedir(), '.claude');
 }
 
-function getDefaultMode() {
-  // 1. Environment variable (highest priority)
-  const envMode = process.env.PONYTAIL_DEFAULT_MODE;
-  // ponytail: a default must be a runtime level (off/lite/full/ultra); review is
-  // a session-only mode, never a valid default (#377). Validate against
-  // RUNTIME_MODES so a stray env var or config can't make review the default.
-  if (envMode && RUNTIME_MODES.includes(envMode.toLowerCase())) {
-    return envMode.toLowerCase();
-  }
-
-  // 2. Config file
+function getConfigFileDefaultMode() {
   try {
     const configPath = getConfigPath();
     // Strip UTF-8 BOM (common on Windows-saved files) so JSON.parse doesn't choke
@@ -94,9 +84,31 @@ function getDefaultMode() {
   } catch (e) {
     // Config file doesn't exist or is invalid — fall through
   }
+  return null;
+}
 
-  // 3. Default
-  return DEFAULT_MODE;
+function getDefaultMode() {
+  // 1. Environment variable (highest priority)
+  const envMode = process.env.PONYTAIL_DEFAULT_MODE;
+  // ponytail: a default must be a runtime level (off/lite/full/ultra); review is
+  // a session-only mode, never a valid default (#377). Validate against
+  // RUNTIME_MODES so a stray env var or config can't make review the default.
+  if (envMode && RUNTIME_MODES.includes(envMode.toLowerCase())) {
+    return envMode.toLowerCase();
+  }
+
+  // 2. Config file, else 3. built-in default
+  return getConfigFileDefaultMode() || DEFAULT_MODE;
+}
+
+// PONYTAIL_DEFAULT_MODE=off set for one process (e.g. a headless `claude -p`
+// worker) exempts only that session — it must not wipe the shared mode flag
+// other sessions rely on (#809). True only when the env override says off
+// while the configured default is something else; a config-file off means off
+// everywhere, so the normal clearing stands.
+function isPerProcessOff() {
+  const envMode = (process.env.PONYTAIL_DEFAULT_MODE || '').trim().toLowerCase();
+  return envMode === 'off' && getConfigFileDefaultMode() !== 'off';
 }
 
 // Silence the pi "Ponytail loaded" startup toast while keeping ponytail active.
@@ -155,6 +167,8 @@ module.exports = {
   VALID_MODES,
   RUNTIME_MODES,
   getDefaultMode,
+  getConfigFileDefaultMode,
+  isPerProcessOff,
   getConfigDir,
   getConfigPath,
   getClaudeDir,

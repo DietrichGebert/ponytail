@@ -489,4 +489,55 @@ try {
   if (prevEnvModeRev === undefined) delete process.env.PONYTAIL_DEFAULT_MODE; else process.env.PONYTAIL_DEFAULT_MODE = prevEnvModeRev;
 }
 
+// Issue #809: a per-process PONYTAIL_DEFAULT_MODE=off (e.g. one headless
+// `claude -p` worker) exempts only that session — SessionStart must not delete
+// the shared flag other sessions' subagents read.
+const sharedHome = path.join(temp, 'shared-flag-home');
+const sharedFlagDir = path.join(sharedHome, '.claude');
+const sharedFlag = path.join(sharedFlagDir, '.ponytail-active');
+fs.mkdirSync(sharedFlagDir, { recursive: true });
+fs.writeFileSync(sharedFlag, 'full');
+result = run('ponytail-activate.js', {
+  HOME: sharedHome,
+  USERPROFILE: sharedHome,
+  XDG_CONFIG_HOME: path.join(sharedHome, '.config'),
+  PONYTAIL_DEFAULT_MODE: 'off',
+});
+assert.equal(result.status, 0, result.stderr);
+assert.equal(
+  fs.readFileSync(sharedFlag, 'utf8'),
+  'full',
+  'per-process PONYTAIL_DEFAULT_MODE=off must leave the shared flag alone (#809)',
+);
+
+// ...and that exempt session's subagents stay clean too.
+result = run('ponytail-subagent.js', {
+  HOME: sharedHome,
+  USERPROFILE: sharedHome,
+  XDG_CONFIG_HOME: path.join(sharedHome, '.config'),
+  PONYTAIL_DEFAULT_MODE: 'off',
+});
+assert.equal(result.status, 0, result.stderr);
+assert.equal(result.stdout, '', 'an exempt session must inject nothing into its subagents (#809)');
+
+// A config-file off still means off everywhere: stale flags get cleared.
+const cfgHome = path.join(temp, 'config-off-home');
+const cfgDir = path.join(cfgHome, '.config', 'ponytail');
+fs.mkdirSync(cfgDir, { recursive: true });
+fs.writeFileSync(path.join(cfgDir, 'config.json'), JSON.stringify({ defaultMode: 'off' }));
+const cfgFlagDir = path.join(cfgHome, '.claude');
+fs.mkdirSync(cfgFlagDir, { recursive: true });
+fs.writeFileSync(path.join(cfgFlagDir, '.ponytail-active'), 'full');
+result = run('ponytail-activate.js', {
+  HOME: cfgHome,
+  USERPROFILE: cfgHome,
+  XDG_CONFIG_HOME: path.join(cfgHome, '.config'),
+});
+assert.equal(result.status, 0, result.stderr);
+assert.equal(
+  fs.existsSync(path.join(cfgFlagDir, '.ponytail-active')),
+  false,
+  'a config-file off must still clear a stale flag',
+);
+
 console.log('hook compatibility checks passed');

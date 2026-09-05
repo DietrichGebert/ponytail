@@ -8,7 +8,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const { getDefaultMode, getClaudeDir, isShellSafe } = require('./ponytail-config');
+const { getDefaultMode, getClaudeDir, isPerProcessOff, isShellSafe } = require('./ponytail-config');
 const { getPonytailInstructions } = require('./ponytail-instructions');
 const {
   clearMode,
@@ -23,9 +23,12 @@ const settingsPath = path.join(claudeDir, 'settings.json');
 
 const mode = getDefaultMode();
 
-// "off" mode — skip activation entirely, don't write flag or emit rules
+// "off" mode — skip activation entirely, don't write flag or emit rules.
+// A per-process PONYTAIL_DEFAULT_MODE=off exempts only this session: it must
+// not delete the shared flag other sessions' subagents read (#809). An off
+// resolved from config still clears stale state as before.
 if (mode === 'off') {
-  clearMode();
+  if (!isPerProcessOff()) clearMode();
   const hookOutput = (isCodex || isCopilot) ? '' : 'OK';
   writeHookOutput('SessionStart', 'off', hookOutput);
   process.exit(0);

@@ -11,7 +11,14 @@
 // "^general$" is exact. Unset means inject into every subagent, as before.
 
 const { getPonytailInstructions } = require('./ponytail-instructions');
+const { isPerProcessOff } = require('./ponytail-config');
 const { readMode, writeHookOutput } = require('./ponytail-runtime');
+
+// A per-process PONYTAIL_DEFAULT_MODE=off exempts this session entirely:
+// inject nothing, without touching the shared flag other sessions use (#809).
+if (isPerProcessOff()) {
+  process.exit(0);
+}
 
 const mode = readMode();
 
