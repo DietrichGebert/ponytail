@@ -112,3 +112,23 @@ test('Claude and Codex manifests point at the shared host-specific hook config',
     assert.equal(manifest.hooks, `./${HOOKS_JSON}`, `${rel} must not rely on root hooks auto-discovery`);
   }
 });
+
+// compact is a fresh model window on Codex experimental context management
+// (and a summarization cut on Claude). Re-injecting the SessionStart ruleset
+// there makes the agent greet like a new session instead of continuing.
+test('SessionStart does not re-inject the ruleset on compact', () => {
+  const config = JSON.parse(fs.readFileSync(path.join(root, HOOKS_JSON), 'utf8'));
+  const matchers = (config.hooks.SessionStart || []).map((entry) => entry.matcher);
+  assert.ok(matchers.length > 0, 'expected a SessionStart matcher');
+  for (const matcher of matchers) {
+    assert.equal(typeof matcher, 'string');
+    assert.doesNotMatch(
+      matcher,
+      /(^|\|)\s*compact\s*(\||$)/,
+      `SessionStart matcher still includes compact: ${matcher}`,
+    );
+    assert.match(matcher, /\bstartup\b/);
+    assert.match(matcher, /\bresume\b/);
+    assert.match(matcher, /\bclear\b/);
+  }
+});
