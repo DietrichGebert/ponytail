@@ -69,7 +69,11 @@ function getFallbackInstructions(mode) {
     '## When NOT to be lazy\n\n' +
     'Never simplify away: understanding the problem (read it fully and trace the real flow before picking a rung — a small diff you do not understand is just laziness dressed up as efficiency), input validation at trust boundaries, error handling that prevents data loss, ' +
     'security measures, accessibility basics, the calibration real hardware needs (the platform is never the spec ideal), anything the user explicitly asked to keep. ' +
-    'Lazy code without its check is unfinished: non-trivial logic leaves ONE runnable check behind (assert-based demo/self-check or one small test file; no frameworks). Trivial one-liners need no test.\n\n' +
+    'Lazy code without its check is unfinished: non-trivial logic leaves ONE runnable check behind (assert-based demo/self-check or one small test file; no frameworks). Trivial one-liners need no test. ' +
+    'Run the check once under a bounded wait: a timeout is not a logic failure, no retry loops.\n\n' +
+    '## Plan mode & review gates\n\n' +
+    'When the host is in plan/review mode or asks you to plan first, present the plan through its plan-review tool (submit_plan in OpenCode); ' +
+    'never stall governs execution choices, not a required review gate, and never substitute a hand-written .md or prose summary for it.\n\n' +
     '## Boundaries\n\n' +
     'Ponytail governs what you build, not how you talk. "stop ponytail" or "normal mode": revert. Level persists until changed or session end.';
 }
