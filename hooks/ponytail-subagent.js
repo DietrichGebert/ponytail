@@ -11,12 +11,24 @@
 // "^general$" is exact. Unset means inject into every subagent, as before.
 
 const { getPonytailInstructions } = require('./ponytail-instructions');
-const { readMode, writeHookOutput } = require('./ponytail-runtime');
+const { ownedByCurrentProject, readMode, writeHookOutput } = require('./ponytail-runtime');
+const { getDefaultMode } = require('./ponytail-config');
 
 const mode = readMode();
 
 // Absent flag or off → ponytail isn't active; inject nothing.
 if (!mode || mode === 'off') {
+  process.exit(0);
+}
+
+// The .ponytail-active flag is machine-global, so a concurrent session in another
+// repo may have written an active mode into it (#662). If THIS session is
+// configured off (PONYTAIL_DEFAULT_MODE=off for this repo) and didn't set the flag
+// itself, ignore the foreign flag rather than leaking the ruleset into a repo that
+// opted out. Ownership only whitelists — an explicit /ponytail opt-in in an
+// off-default repo owns the flag and still injects — so it never suppresses a
+// legitimately-active session.
+if (getDefaultMode() === 'off' && !ownedByCurrentProject()) {
   process.exit(0);
 }
 
