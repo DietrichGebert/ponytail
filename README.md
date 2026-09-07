@@ -92,6 +92,14 @@ This showed **80-94% less code**. [#126](https://github.com/DietrichGebert/ponyt
 
 **The rule was never "fewest tokens."** It is: write only what the task needs, and never cut validation, error handling, security, or accessibility. The code ends up small because it is necessary, not golfed. Lower cost and latency are a side effect on the models that follow the ladder; a terse reasoning model that spends thinking tokens deliberating the rungs can go the other way (on GPT-5.5 it does).
 
+## Built with Ponytail
+
+<p align="center">
+  <a href="https://theretriever.app"><img src="assets/retriever.jpg" alt="Retriever, a Mac data recovery app built with ponytail" width="760"></a>
+</p>
+
+[Retriever](https://theretriever.app) gets lost files back from memory cards, USB sticks and external drives. A Rust engine for disk imaging and file carving plus a native SwiftUI app, every line written by Claude Code running ponytail: 8,200 lines of Rust, 2,500 lines of Swift, 7 dependencies in total, 48 tests, first release five days after the first commit. Scan and look for free, pay once. More real apps on [ponytail.dev/built](https://ponytail.dev/built).
+
 ## How it works
 
 Before writing code, the agent stops at the first rung that holds:
