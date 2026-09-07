@@ -4,6 +4,10 @@ $Flag = Join-Path $ClaudeDir ".ponytail-active"
 if (-not (Test-Path $Flag)) {
     exit 0
 }
+# hideStatus: activate drops this marker when the badge is silenced (#659)
+if (Test-Path (Join-Path $ClaudeDir ".ponytail-hidden")) {
+    exit 0
+}
 
 $Mode = ""
 try {

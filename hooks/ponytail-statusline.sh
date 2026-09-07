@@ -1,7 +1,10 @@
 #!/usr/bin/env bash
 # CLAUDE_CONFIG_DIR overrides ~/.claude, matching where the hooks write the flag (issue #34)
-flag="${CLAUDE_CONFIG_DIR:-$HOME/.claude}/.ponytail-active"
+dir="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
+flag="$dir/.ponytail-active"
 [ -f "$flag" ] || exit 0
+# hideStatus: activate drops this marker when the badge is silenced (#659)
+[ -f "$dir/.ponytail-hidden" ] && exit 0
 
 mode=$(head -n1 "$flag" | tr -d '[:space:]')
 
