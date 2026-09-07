@@ -228,6 +228,17 @@ hermes plugins install DietrichGebert/ponytail --enable
 
 Restart Hermes after installing. The plugin injects the active Ponytail mode before each LLM turn, registers the bundled skills as `ponytail:<skill>`, and adds `/ponytail`, `/ponytail-review`, `/ponytail-audit`, `/ponytail-debt`, `/ponytail-gain`, and `/ponytail-help`. In shared gateways, restrict `/ponytail` to trusted users with Hermes slash-command access controls; runtime mode is process-local.
 
+### DeepSeek Harness (DSH)
+
+A native DSH bundle lives in [`.dsh-plugin/`](.dsh-plugin/): it registers the six `/ponytail*` slash commands and serves the six skills through the skill registry's global layer (so they reach every agent/preset, including the web profile whose host skill-filesystem row is disabled). It is a thin adapter: the skills are read from this repo's `skills/` directly, the same single source of truth the other hosts reference.
+
+```bash
+# from a checkout of this repo, linked live:
+dsh plugin --profile web add /absolute/path/to/ponytail/.dsh-plugin
+```
+
+Restart `dsh web` after installing. Once the package is published to npm as `dsh-plugin-ponytail`, the same command takes the package name instead of a path; the npm tarball ships a generated `skills/` copy (prepack, byte-checked by `tests/dsh-plugin.test.js`) so it stays self-contained.
+
 ### CodeWhale
 
 Reads `AGENTS.md` from the project root, zero setup. Copy [`AGENTS.md`](AGENTS.md) to your project, or run `codewhale` from a checkout of this repo. That's it.
