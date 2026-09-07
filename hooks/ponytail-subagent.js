@@ -73,5 +73,6 @@ function finish() {
 process.stdin.on('data', chunk => { input += chunk; });
 process.stdin.on('end', finish);
 // Never block the session (#443): recover on stdin error or a short fallback.
+// The fallback stays ref'd so it fires even when stdin never ends (#790).
 process.stdin.on('error', () => { finish(); process.exit(0); });
-setTimeout(() => { finish(); process.exit(0); }, 1000).unref();
+setTimeout(() => { finish(); process.exit(0); }, 1000);

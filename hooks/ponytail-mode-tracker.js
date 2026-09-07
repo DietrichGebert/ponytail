@@ -123,8 +123,9 @@ process.stdin.on('end', finish);
 // PowerShell `if {}` wrapper that can swallow the piped prompt JSON, so stdin
 // 'end' never fires and the hook blocks forever — freezing the session (#443).
 // On error, or after a short fallback, process whatever arrived (recovering the
-// mode if data came without EOF) and exit. unref() keeps the timer from adding
-// latency to the normal path, where 'end' fires first. Mirrors the best-effort,
+// mode if data came without EOF) and exit. The fallback stays ref'd so it fires
+// even when stdin never ends (#790) — an unref'd timer never runs while the
+// ref'd stdin handle is open. Mirrors the best-effort,
 // never-block contract the other lifecycle hooks already follow.
 process.stdin.on('error', () => { finish(); process.exit(0); });
-setTimeout(() => { finish(); process.exit(0); }, 1000).unref();
+setTimeout(() => { finish(); process.exit(0); }, 1000);
