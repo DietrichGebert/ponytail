@@ -1,0 +1,8 @@
+{
+  "version": 1,
+  "hooks": {
+    "sessionStart": [
+      { "command": "node \"__PONYTAIL_ROOT__/hooks/ponytail-cursor.js\"" }
+    ]
+  }
+}

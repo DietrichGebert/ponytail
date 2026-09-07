@@ -30,6 +30,8 @@
     ".qoder-plugin/",
     "pi-extension/",
     "scripts/uninstall.js",
+    "scripts/cursor.js",
+    "docs/cursor.md",
     "assets/",
     "LICENSE"
   ],
