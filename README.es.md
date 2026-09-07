@@ -116,6 +116,32 @@ El mayor esfuerzo que ponytail te va a pedir:
 
 Los plugins de Claude Code y Codex ejecutan dos pequeños lifecycle hooks de Node.js, así que `node` debe estar en tu PATH (nota para usuarios de Nix/nvm: debe estar en el PATH del shell no-interactivo). Si no lo está, los skills igualmente funcionan, la activación automática simplemente queda en silencio en vez de lanzar un error en cada prompt.
 
+### Una línea, todos los agentes que tengas
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/DietrichGebert/ponytail/main/install.sh | bash
+```
+
+Detecta los agentes de esta máquina que se pueden instalar a nivel de máquina e instala ponytail en cada uno, ejecutando los mismos comandos por host que se documentan abajo. Los hosts que se configuran por proyecto quedan manuales; están más abajo. Necesita Node.js 18+. Se puede volver a ejecutar sin riesgo: una segunda pasada simplemente vuelve a lanzar el comando de instalación propio de cada host, y en un archivo compartido con vos se reescribe únicamente el bloque entre los marcadores de ponytail, así que lo que hayas escrito alrededor se queda. Un archivo propio de ponytail, como la regla de steering de Kiro, se reemplaza entero.
+
+Míralo primero, sin cambiar nada:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/DietrichGebert/ponytail/main/install.sh | bash -s -- --dry-run
+```
+
+Como cualquier `curl | bash`, esto ejecuta un script descargado de este repositorio. Ejecuta el comando de instalación propio de cada host, flags de confianza incluidas (`--trust`, `--enable`), porque son los comandos de abajo — `--dry-run` imprime la lista exacta antes. Desde un clon, `bash install.sh` corre la copia local. Para fijar una release, definí la variable en el shell que ejecuta el script, no en `curl`: `curl -fsSL <url> | PONYTAIL_REF=<tag> bash`.
+
+En Windows, con PowerShell:
+
+```powershell
+irm https://raw.githubusercontent.com/DietrichGebert/ponytail/main/install.ps1 | iex
+```
+
+`iex` no puede pasar flags, así que para usarlas ejecutalo como script block: `& ([scriptblock]::Create((irm https://raw.githubusercontent.com/DietrichGebert/ponytail/main/install.ps1))) --dry-run`. Desde un clon, Windows PowerShell bloquea scripts por defecto, así que usá `powershell -ExecutionPolicy Bypass -File .\install.ps1`.
+
+O instala host por host:
+
 ### Claude Code
 
 ```
@@ -124,6 +150,13 @@ Los plugins de Claude Code y Codex ejecutan dos pequeños lifecycle hooks de Nod
 ```
 
 La app de escritorio no tiene el comando `/plugin`. Instálala desde la interfaz: Customize, el + junto a los plugins personales, Create plugin and add marketplace, Add from repository, y luego ingresa la URL del repo (gracias @NiklasDHahn, #98).
+
+Desde una terminal en vez de una sesión, que es lo que ejecuta el instalador de arriba:
+
+```bash
+claude plugin marketplace add DietrichGebert/ponytail
+claude plugin install ponytail@ponytail
+```
 
 ### Codex
 

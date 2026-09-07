@@ -1,0 +1,4 @@
+# Shells are parsed by line ending, so a Windows clone must not turn install.sh
+# into CRLF: bash then fails on `set -euo pipefail` and runs unguarded.
+*.sh text eol=lf
+*.ps1 text eol=crlf

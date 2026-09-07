@@ -116,6 +116,32 @@ ponytail이 당신에게 요구할 수고의 최대치:
 
 Claude Code와 Codex 플러그인은 자그마한 Node.js 라이프사이클 훅 두 개를 돌리니, `node`가 PATH에 잡혀 있어야 한다(Nix/nvm 사용자라면 비대화형 셸의 PATH에 있어야 한다). 없어도 스킬은 멀쩡히 돌아간다. 다만 늘 켜져 있던 자동 활성화가 매 프롬프트마다 에러를 뱉는 대신 조용히 비활성으로 남을 뿐이다.
 
+### 한 줄로, 가진 에이전트 전부
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/DietrichGebert/ponytail/main/install.sh | bash
+```
+
+이 머신에서 머신 단위로 설치할 수 있는 에이전트를 찾아내서, 아래에 호스트별로 적어둔 그 명령들을 그대로 돌려 각각에 ponytail을 설치한다. 프로젝트 단위로 설정하는 호스트는 수동으로 남으며, 아래에 따로 적어두었다. Node.js 18+ 필요. 다시 돌려도 안전하다: 두 번째 실행은 각 호스트의 설치 명령을 그대로 다시 실행할 뿐이고, 사용자와 공유하는 파일에서는 ponytail 자체 마커 사이의 블록만 다시 쓰므로 그 주위에 직접 써둔 내용은 그대로 남는다. Kiro의 steering 규칙처럼 ponytail 소유인 파일은 통째로 교체된다.
+
+아무것도 건드리지 않고 먼저 확인:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/DietrichGebert/ponytail/main/install.sh | bash -s -- --dry-run
+```
+
+여느 `curl | bash`와 마찬가지로 이 저장소에서 받아온 스크립트를 실행한다. 각 호스트의 설치 명령을 신뢰 플래그(`--trust`, `--enable`)까지 그대로 실행한다. 아래에 적힌 그 명령들이기 때문이고, `--dry-run`이 실행 전에 정확한 목록을 출력한다. 클론에서는 `bash install.sh`가 로컬 사본을 돌린다. 릴리스를 고정하려면 `curl`이 아니라 스크립트를 실행하는 셸에 변수를 지정한다: `curl -fsSL <url> | PONYTAIL_REF=<tag> bash`.
+
+Windows에서는 PowerShell로:
+
+```powershell
+irm https://raw.githubusercontent.com/DietrichGebert/ponytail/main/install.ps1 | iex
+```
+
+`iex`는 플래그를 넘기지 못하니, 플래그가 필요하면 script block으로 실행한다: `& ([scriptblock]::Create((irm https://raw.githubusercontent.com/DietrichGebert/ponytail/main/install.ps1))) --dry-run`. 클론에서는 Windows PowerShell이 기본적으로 스크립트를 막으므로 `powershell -ExecutionPolicy Bypass -File .\install.ps1`으로 실행한다.
+
+또는 호스트별로 하나씩 설치:
+
 ### Claude Code
 
 ```
@@ -127,6 +153,13 @@ Claude Code와 Codex 플러그인은 자그마한 Node.js 라이프사이클 훅
 (설치가 되려면 두 프롬프트를 따로 보내야 한다)
 
 데스크톱 앱에는 `/plugin` 명령이 없다. 대신 UI에서 설치한다: Customize, 개인 플러그인 옆의 +, Create plugin and add marketplace, Add from repository, 그다음 저장소 URL 입력(감사합니다 @NiklasDHahn, #98).
+
+세션이 아니라 터미널에서, 그리고 위의 설치 스크립트가 실제로 돌리는 것:
+
+```bash
+claude plugin marketplace add DietrichGebert/ponytail
+claude plugin install ponytail@ponytail
+```
 
 ### Codex
 

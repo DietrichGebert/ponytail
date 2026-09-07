@@ -1,13 +1,15 @@
 #!/usr/bin/env node
 // ponytail — removes state ponytail wrote outside the plugin's own files:
-// the mode flag, the config file, and the statusLine entry it added to
-// settings.json. Plugin files themselves are removed by each host's own
-// uninstall command (see README); this only cleans up what those commands
-// can't see.
+// the ruleset scripts/install.js wrote into global instruction files, the mode
+// flag, the config file, and the statusLine entry it added to settings.json.
+// Plugin files themselves are removed by each host's own uninstall command
+// (see README); this only cleans up what those commands can't see.
 
 const fs = require('fs');
+const os = require('os');
 const path = require('path');
 const { getConfigPath, getClaudeDir } = require('../hooks/ponytail-config');
+const { HOSTS, BEGIN, END } = require('./install.js');
 
 const STATUSLINE_SCRIPT = 'ponytail-statusline';
 
@@ -17,6 +19,42 @@ function removeIfExists(filePath, label) {
     console.log(`Removed ${label}: ${filePath}`);
   } catch (e) {
     if (e.code !== 'ENOENT') throw e;
+  }
+}
+
+// scripts/install.js writes the ruleset into instruction files the host CLIs
+// know nothing about, so their own uninstall commands cannot see them either.
+// Same job as the statusLine cleanup below: undo what ponytail wrote outside
+// the plugin folder.
+for (const host of HOSTS.filter((h) => h.file)) {
+  const target = path.join(os.homedir(), host.file);
+  let content;
+  try {
+    content = fs.readFileSync(target, 'utf8');
+  } catch (e) {
+    if (e.code === 'ENOENT') continue;
+    throw e;
+  }
+
+  if (host.copy) {
+    // Same ownership test the installer applies before it writes: the directory
+    // is the user's own, so a file that no longer carries our title is theirs.
+    if (host.owner && content.includes(host.owner)) {
+      removeIfExists(target, `${host.name} rules`);
+    }
+    continue;
+  }
+
+  const begin = content.indexOf(BEGIN);
+  const end = content.indexOf(END);
+  if (begin === -1 || end < begin) continue;
+  const stripped = (content.slice(0, begin) + content.slice(end + END.length)).trim();
+  if (stripped) {
+    fs.writeFileSync(target, `${stripped}\n`, 'utf8');
+    console.log(`Removed ponytail block from ${target}`);
+  } else {
+    // Nothing but our block was in there — the file only existed because of us.
+    removeIfExists(target, `${host.name} instructions`);
   }
 }
 

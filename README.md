@@ -127,6 +127,32 @@ The most effort ponytail will ever ask of you:
 
 The Claude Code and Codex plugins run two tiny Node.js lifecycle hooks, so `node` needs to be on your PATH (note for Nix/nvm users: it must be on the non-interactive shell's PATH). If it isn't, the skills still work, the always-on activation just stays quiet instead of erroring on every prompt.
 
+### One line, every agent you have
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/DietrichGebert/ponytail/main/install.sh | bash
+```
+
+Detects the agents on this machine that can be installed machine-wide and installs ponytail into each, running the same per-host commands documented below. Hosts configured per project rather than machine-wide stay manual; they are covered further down. Needs Node.js 18+. Safe to rerun: a second run just re-issues each host's own install command, and in a file you share with it only the block between ponytail's own markers is rewritten, so anything you wrote around it stays. A file that is ponytail's own, like Kiro's steering rule, is replaced wholesale.
+
+See it first, change nothing:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/DietrichGebert/ponytail/main/install.sh | bash -s -- --dry-run
+```
+
+Like any `curl | bash`, this executes a script fetched from this repository. It runs each host's own install command, trust flags included (`--trust`, `--enable`), because those are the commands below — `--dry-run` prints the exact list first. From a clone, `bash install.sh` runs the local copy. To pin a release, set the variable for the shell that runs the script, not for `curl`: `curl -fsSL <url> | PONYTAIL_REF=<tag> bash`.
+
+On Windows, PowerShell:
+
+```powershell
+irm https://raw.githubusercontent.com/DietrichGebert/ponytail/main/install.ps1 | iex
+```
+
+`iex` cannot forward flags, so to pass any, run it as a script block: `& ([scriptblock]::Create((irm https://raw.githubusercontent.com/DietrichGebert/ponytail/main/install.ps1))) --dry-run`. From a clone, Windows PowerShell blocks scripts by default, so run `powershell -ExecutionPolicy Bypass -File .\install.ps1`.
+
+Or install one host at a time:
+
 ### Claude Code
 
 ```
@@ -136,6 +162,13 @@ The Claude Code and Codex plugins run two tiny Node.js lifecycle hooks, so `node
 /plugin install ponytail@ponytail
 ```
 (You have to send two separate prompts for the install to work) 
+
+From a terminal instead of a session, and what the installer above runs:
+
+```bash
+claude plugin marketplace add DietrichGebert/ponytail
+claude plugin install ponytail@ponytail
+```
 
 Same steps in the Claude Code Desktop app's Code tab: type the two `/plugin` commands above into the prompt box, or click the **+** button next to it, choose **Plugins** → **Add plugin** to browse your configured marketplaces, and manage marketplaces from **Customize** in the sidebar.
 
@@ -314,7 +347,7 @@ Which files map to which agent: [Agent portability](docs/agent-portability.md).
 | Pi agent | `pi uninstall ponytail` |
 | Cursor / Windsurf / Cline / Qoder / etc. | Delete the copied rule file |
 
-These remove the plugin's own files. They leave behind a small amount of state ponytail writes outside the plugin folder: the mode flag, `~/.config/ponytail/config.json`, and (if you accepted the setup nudge) a `statusLine` entry in `~/.claude/settings.json`. Run `node scripts/uninstall.js` to clean those up too. **Run it before the host remove command above** — the script is itself a plugin file, so removing the plugin first deletes it (or run it from a separate clone of this repo). It only removes the statusLine entry if it points at ponytail's own script, so a statusline you set up yourself is left untouched.
+These remove the plugin's own files. They leave behind a small amount of state ponytail writes outside the plugin folder: the mode flag, `~/.config/ponytail/config.json`, any ruleset the one-line installer wrote into a global instruction file, and (if you accepted the setup nudge) a `statusLine` entry in `~/.claude/settings.json`. Run `node scripts/uninstall.js` to clean those up too. **Run it before the host remove command above** — the script is itself a plugin file, so removing the plugin first deletes it (or run it from a separate clone of this repo). It only removes the statusLine entry if it points at ponytail's own script, so a statusline you set up yourself is left untouched.
 
 ## Commands
 
@@ -339,6 +372,8 @@ npm test
 ```
 
 The OpenClaw skill package (`.openclaw/skills/`) is generated from `skills/`; rerun `node scripts/build-openclaw-skills.js` after changing a skill, the test suite fails if it is stale. To publish the skills to ClawHub, run `clawhub login` once, then `node scripts/publish-openclaw-skills.js` (it publishes all six at the `package.json` version; pass `--dry-run` to preview).
+
+`scripts/install.js` mirrors the per-host install commands from the Install section above; when a host's command changes, update both. `node scripts/install.js --dry-run` prints the plan without touching anything.
 
 The correctness benchmark spawns Python for email and CSV checks; `python3` is tried before `python`. CSV checks need `pandas` installed locally.
 

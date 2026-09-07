@@ -32,6 +32,26 @@ to load in a given agent.
 | Zed | `AGENTS.md` | Auto-includes `AGENTS.md` from the worktree root as one of its default rule files for the Agent Panel. Instruction-tier. |
 | Generic agents | `AGENTS.md` or `skills/*/SKILL.md` | Copy the compact rule file or load the skill files directly. |
 
+## Installer
+
+`scripts/install.js` (via `install.sh`, or `install.ps1` on Windows) installs ponytail into every adapter it
+finds on the machine. Its host table is a copy of the per-host commands in the
+README; `tests/install.test.js` asserts each command appears verbatim in that
+host's README section, so the two cannot drift apart unnoticed. Rows
+are one of two kinds, matching the tiers above: plugin-tier hosts are detected
+by their CLI on PATH and installed with that host's own command;
+instruction-tier hosts are detected by the config directory they already have
+and get the ruleset written between `<!-- ponytail:begin -->` and
+`<!-- ponytail:end -->`, so rerunning never disturbs what the user wrote around
+it. A file that is ponytail's own, like Kiro's steering rule, is replaced
+wholesale instead, because its frontmatter has to stay on line 1. A host with neither a CLI nor a documented global path stays manual.
+
+Both shims fetch a source archive rather than the npm package, so the installer
+is deliberately absent from `package.json`'s `files`. The ruleset it writes
+comes from `.agents/rules/ponytail.md`, not `AGENTS.md`, whose closing note is
+addressed to agents working on this repo. `scripts/uninstall.js` removes the
+blocks it wrote.
+
 ## Adapter Rule
 
 Keep adapters thin. When a host supports skills or hooks, point it at the

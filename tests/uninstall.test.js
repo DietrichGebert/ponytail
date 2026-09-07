@@ -106,6 +106,41 @@ assert.equal(
   'malformed settings.json must be left unchanged',
 );
 
+// The one-line installer writes the ruleset into global instruction files that
+// no host uninstall command knows about, so this script has to take them back
+// out: the block only, leaving whatever the user wrote around it.
+const BEGIN = '<!-- ponytail:begin -->';
+const END = '<!-- ponytail:end -->';
+
+function seed(relPath, content) {
+  const target = path.join(home, ...relPath.split('/'));
+  fs.mkdirSync(path.dirname(target), { recursive: true });
+  fs.writeFileSync(target, content);
+  return target;
+}
+
+const shared = seed('.config/amp/AGENTS.md', `# My own rules\n\nAlways use tabs.\n\n${BEGIN}\nRULES\n${END}\n`);
+const oursOnly = seed('.codex/AGENTS.md', `${BEGIN}\nRULES\n${END}\n`);
+const kiro = seed('.kiro/steering/ponytail.md', '---\ntitle: Ponytail, lazy senior dev mode\n---\n\nrules\n');
+
+result = runUninstall(env);
+assert.equal(result.status, 0, result.stderr);
+
+const sharedAfter = fs.readFileSync(shared, 'utf8');
+assert.ok(!sharedAfter.includes(BEGIN), 'the ponytail block must be removed from a shared file');
+assert.ok(sharedAfter.includes('Always use tabs.'), "a shared file's own content must survive");
+assert.equal(fs.existsSync(oursOnly), false, 'a file that held nothing but our block must be removed');
+assert.equal(fs.existsSync(kiro), false, "ponytail's own steering file must be removed");
+
+// A steering file the user replaced with their own rules is not ours to delete.
+// The same ownership string the installer checks before it writes, so the two
+// sides cannot disagree about which files belong to ponytail. A file that only
+// mentions the word somewhere is not enough.
+const mine = seed('.kiro/steering/ponytail.md', '---\ntitle: my own steering\n---\n\nI removed Ponytail from this file.\n');
+result = runUninstall(env);
+assert.equal(result.status, 0, result.stderr);
+assert.ok(fs.existsSync(mine), 'a steering file the user rewrote must be left alone');
+
 // Running on an already-clean machine must not throw.
 result = runUninstall({ HOME: path.join(temp, 'home-empty'), USERPROFILE: path.join(temp, 'home-empty') });
 assert.equal(result.status, 0, result.stderr);
