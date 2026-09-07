@@ -20,6 +20,15 @@ const isCopilot = Boolean(process.env.COPILOT_PLUGIN_DATA) ||
   isVsCodeCopilotRoot(process.env.CLAUDE_PLUGIN_ROOT);
 const isCodex = !isCopilot && Boolean(process.env.PLUGIN_DATA);
 const isQoder = !isCopilot && !isCodex && Boolean(process.env.QODER_SESSION_ID);
+// Kiro exposes no distinctive env var to hook subprocesses, so the Kiro hooks
+// template declares its identity explicitly rather than us sniffing for a
+// variable Kiro doesn't set. A `--host=kiro` argv flag is shell-agnostic (no
+// $env:/export split between PowerShell and bash), with PONYTAIL_HOST=kiro as an
+// env-var alternative. Deterministic beats a guess at Kiro internals.
+const isKiro = !isCopilot && !isCodex && !isQoder && (
+  String(process.env.PONYTAIL_HOST || '').toLowerCase() === 'kiro' ||
+  process.argv.slice(2).some(a => a === '--host=kiro' || a === '--kiro')
+);
 
 let stateDir = getClaudeDir();
 if (isCodex) stateDir = process.env.PLUGIN_DATA;
@@ -27,6 +36,7 @@ if (isCodex) stateDir = process.env.PLUGIN_DATA;
 // getClaudeDir() rather than building a path from undefined.
 if (isCopilot) stateDir = process.env.COPILOT_PLUGIN_DATA || getClaudeDir();
 if (isQoder) stateDir = path.join(os.homedir(), '.qoder');
+if (isKiro) stateDir = path.join(os.homedir(), '.kiro');
 
 const statePath = path.join(stateDir, STATE_FILE);
 
@@ -79,6 +89,14 @@ function writeHookOutput(event, mode, context = '') {
     process.stdout.write(JSON.stringify(output));
     return;
   }
+  if (isKiro) {
+    // Kiro injects a command hook's raw stdout as context on exit 0 for
+    // SessionStart and UserPromptSubmit (the two events the Kiro hooks template
+    // wires up). Emit the context verbatim (no JSON envelope); empty context
+    // writes nothing.
+    process.stdout.write(context);
+    return;
+  }
   // Native Claude: SessionStart accepts raw stdout, but SubagentStart needs the
   // hookSpecificOutput JSON form or the context is dropped.
   if (event === 'SubagentStart') {
@@ -93,6 +111,7 @@ module.exports = {
   clearMode,
   isCodex,
   isCopilot,
+  isKiro,
   isQoder,
   readMode,
   setMode,

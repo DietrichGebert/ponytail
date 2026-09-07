@@ -1,0 +1,22 @@
+{
+  "_comment": "Reference template for Kiro plugin-tier ponytail. Copy the 'hooks' array into a hook file under .kiro/hooks/ponytail.json (project) or ~/.kiro/hooks/ponytail.json (global). Replace PONYTAIL_DIR with the path to your ponytail checkout (e.g. ~/.kiro/plugins/ponytail). Kiro injects a command hook's stdout as context only for SessionStart and UserPromptSubmit (exit 0); the --host=kiro flag routes the shared scripts to Kiro's raw-stdout output and its own ~/.kiro state dir. node must be on PATH. The always-on ruleset still works without these hooks via .kiro/steering/ponytail.md; these hooks add /ponytail level switching. No subagent-injection hook: Kiro has no SubagentStart event, and a PreToolUse hook's stdout is ignored on exit 0 (it can only block via stderr+exit 2), so it cannot inject the ruleset into a sub-agent. The always-on steering rule covers agents instead.",
+  "version": "v1",
+  "hooks": [
+    {
+      "name": "ponytail-activate",
+      "trigger": "SessionStart",
+      "action": {
+        "type": "command",
+        "command": "node PONYTAIL_DIR/hooks/ponytail-activate.js --host=kiro"
+      }
+    },
+    {
+      "name": "ponytail-mode-tracker",
+      "trigger": "UserPromptSubmit",
+      "action": {
+        "type": "command",
+        "command": "node PONYTAIL_DIR/hooks/ponytail-mode-tracker.js --host=kiro"
+      }
+    }
+  ]
+}
