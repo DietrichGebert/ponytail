@@ -4,7 +4,7 @@
     "sessionStart": [
       {
         "type": "command",
-        "bash": "node \"${PLUGIN_ROOT}/hooks/ponytail-activate.js\"",
+        "bash": "S=$(printf '%s' \"${PLUGIN_ROOT}/hooks/ponytail-activate.js\" | tr '\\\\' '/'); command -v node >/dev/null 2>&1 && [ -f \"$S\" ] && node \"$S\" || true",
         "powershell": "node \"${PLUGIN_ROOT}\\hooks\\ponytail-activate.js\"",
         "timeoutSec": 5
       }
@@ -12,7 +12,7 @@
     "userPromptSubmitted": [
       {
         "type": "command",
-        "bash": "node \"${PLUGIN_ROOT}/hooks/ponytail-mode-tracker.js\"",
+        "bash": "S=$(printf '%s' \"${PLUGIN_ROOT}/hooks/ponytail-mode-tracker.js\" | tr '\\\\' '/'); command -v node >/dev/null 2>&1 && [ -f \"$S\" ] && node \"$S\" || true",
         "powershell": "node \"${PLUGIN_ROOT}\\hooks\\ponytail-mode-tracker.js\"",
         "timeoutSec": 5
       }
