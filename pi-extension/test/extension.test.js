@@ -104,6 +104,21 @@ test("before_agent_start guards missing event and missing systemPrompt (#439, #4
   assert.ok(withBase.systemPrompt.includes("PONYTAIL MODE ACTIVE"));
 }));
 
+test("before_agent_start preserves omp string[] systemPrompt sections", async () => withTempConfig(async () => {
+  const { events } = createPiHarness();
+  const ctx = createCommandContext();
+  await events.get("session_start")({ reason: "startup" }, ctx);
+
+  // omp hands the system prompt as string[] sections; they must survive un-joined
+  // (a template literal would comma-smash them) with the ruleset appended last.
+  const result = await events.get("before_agent_start")({ systemPrompt: ["SECTION A", "SECTION B"] }, ctx);
+  assert.ok(Array.isArray(result.systemPrompt));
+  assert.equal(result.systemPrompt[0], "SECTION A");
+  assert.equal(result.systemPrompt[1], "SECTION B");
+  assert.match(result.systemPrompt.at(-1), /PONYTAIL MODE ACTIVE/);
+  assert.equal(result.systemPrompt.length, 3);
+}));
+
 test("session_start restores latest persisted mode", async () => withTempConfig(async () => {
   const { events } = createPiHarness();
   const ctx = createCommandContext({

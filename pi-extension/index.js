@@ -203,9 +203,13 @@ export default function ponytailExtension(pi) {
 
   pi.on("before_agent_start", async (event) => {
     if (!currentMode || currentMode === "off") return;
+    const instructions = getPonytailInstructions(currentMode);
+    const base = event?.systemPrompt;
+    // omp passes the system prompt as string[] sections; a template literal on
+    // an array would join the sections with commas. pi passes a plain string.
+    if (Array.isArray(base)) return { systemPrompt: [...base, instructions] };
     // Guard a null/undefined event or a missing systemPrompt: don't crash, and
     // don't prepend the literal string "undefined" to the prompt (#439, #440).
-    const base = event?.systemPrompt ? `${event.systemPrompt}\n\n` : "";
-    return { systemPrompt: `${base}${getPonytailInstructions(currentMode)}` };
+    return { systemPrompt: base ? `${base}\n\n${instructions}` : instructions };
   });
 }
