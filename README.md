@@ -95,10 +95,10 @@ This showed **80-94% less code**. [#126](https://github.com/DietrichGebert/ponyt
 ## Built with Ponytail
 
 <p align="center">
-  <a href="https://theretriever.app"><img src="assets/retriever.jpg" alt="Retriever, a Mac data recovery app built with ponytail" width="760"></a>
+  <a href="https://theretriever.app"><img src="assets/retriever-icon.png" width="96" alt="Retriever"></a><br>
+  <a href="https://theretriever.app"><strong>Retriever</strong></a><br>
+  <sub>Mac data recovery. Free to scan, pay once.</sub>
 </p>
-
-[Retriever](https://theretriever.app) gets lost files back from memory cards, USB sticks and external drives. A Rust engine for disk imaging and file carving plus a native SwiftUI app, every line written by Claude Code running ponytail: 8,200 lines of Rust, 2,500 lines of Swift, 7 dependencies in total, 48 tests, first release five days after the first commit. Scan and look for free, pay once. More real apps on [ponytail.dev/built](https://ponytail.dev/built).
 
 ## How it works
 
