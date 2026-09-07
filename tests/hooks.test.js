@@ -422,6 +422,60 @@ assert.match(
   output.hookSpecificOutput.additionalContext,
   /PONYTAIL MODE ACTIVE — level: full/,
 );
+// Kiro: has its own SessionStart, so activate injects the ruleset and
+// mode-tracker only handles /ponytail switches. --host=kiro routes the shared
+// scripts to raw-stdout output (Kiro forwards a command hook's stdout as
+// context) and to the ~/.kiro state dir. Kiro has no settings.json statusLine,
+// so the activate nudge must stay silent.
+const kiroHome = path.join(temp, 'kiro-home');
+const kiroState = path.join(kiroHome, '.kiro', '.ponytail-active');
+fs.mkdirSync(kiroHome, { recursive: true });
+const kiroEnv = { HOME: kiroHome, USERPROFILE: kiroHome, PONYTAIL_DEFAULT_MODE: 'full' };
+
+function runKiro(script, input = '') {
+  return spawnSync(process.execPath, [path.join(root, 'hooks', script), '--host=kiro'], {
+    env: { ...process.env, ...kiroEnv },
+    input,
+    encoding: 'utf8',
+  });
+}
+
+// SessionStart activation: writes the flag under ~/.kiro and emits the ruleset
+// as raw stdout (no JSON envelope), with no statusline nudge.
+result = runKiro('ponytail-activate.js');
+assert.equal(result.status, 0, result.stderr);
+assert.equal(fs.readFileSync(kiroState, 'utf8'), 'full');
+assert.match(result.stdout, /PONYTAIL MODE ACTIVE — level: full/);
+assert.doesNotMatch(result.stdout, /^\s*\{/, 'Kiro output must be raw text, not a JSON envelope');
+assert.ok(
+  !result.stdout.includes('STATUSLINE SETUP NEEDED'),
+  'Kiro has no settings.json statusLine, so the nudge must stay silent',
+);
+assert.equal(
+  fs.existsSync(path.join(kiroHome, '.claude', '.ponytail-active')),
+  false,
+  'Kiro must not write mode state under ~/.claude',
+);
+
+// /ponytail ultra switch: updates the ~/.kiro flag, confirmation as raw stdout.
+result = runKiro('ponytail-mode-tracker.js', JSON.stringify({ prompt: '/ponytail ultra' }));
+assert.equal(result.status, 0, result.stderr);
+assert.equal(fs.readFileSync(kiroState, 'utf8'), 'ultra');
+assert.match(result.stdout, /PONYTAIL MODE CHANGED — level: ultra/);
+
+// PreToolUse subagent injection: when active, emits the ruleset as raw stdout.
+fs.writeFileSync(kiroState, 'full');
+result = runKiro('ponytail-subagent.js');
+assert.equal(result.status, 0, result.stderr);
+assert.match(result.stdout, /PONYTAIL MODE ACTIVE — level: full/);
+assert.doesNotMatch(result.stdout, /^\s*\{/, 'Kiro subagent output must be raw text, not JSON');
+
+// "stop ponytail" clears the ~/.kiro flag and emits the off notice.
+result = runKiro('ponytail-mode-tracker.js', JSON.stringify({ prompt: 'stop ponytail' }));
+assert.equal(result.status, 0, result.stderr);
+assert.equal(fs.existsSync(kiroState), false, 'stop ponytail must clear the ~/.kiro flag');
+assert.match(result.stdout, /PONYTAIL MODE OFF/);
+
 // writeDefaultMode must merge into existing config, not overwrite it (#490).
 const mergeHome = path.join(temp, 'merge-home');
 const mergeConfigDir = path.join(mergeHome, '.config', 'ponytail');
