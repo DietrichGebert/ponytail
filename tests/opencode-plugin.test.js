@@ -77,6 +77,17 @@ test('unsupported /ponytail arguments do not reset the current mode', async () =
   assert.equal(fs.readFileSync(statePath, 'utf8'), 'ultra');
 });
 
+test('bare /ponytail reports and does not write a mode (#639)', async () => {
+  const hooks = await loadPlugin({});
+  fs.writeFileSync(statePath, 'ultra');
+  await hooks['command.execute.before']({ command: 'ponytail', arguments: '', sessionID: 's' });
+  assert.equal(fs.readFileSync(statePath, 'utf8'), 'ultra');
+  await hooks['command.execute.before']({ command: 'ponytail', arguments: '   ', sessionID: 's' });
+  assert.equal(fs.readFileSync(statePath, 'utf8'), 'ultra');
+  const system = await transform(hooks);
+  assert.match(system[0], /PONYTAIL MODE ACTIVE — level: ultra/);
+});
+
 test('unrelated commands do not touch the flag', async () => {
   try { fs.unlinkSync(statePath); } catch (e) {}
   const hooks = await loadPlugin({});

@@ -37,11 +37,11 @@ export function resolveSessionMode(entries, fallbackMode = DEFAULT_MODE) {
 }
 
 export function parsePonytailCommand(text, defaultMode = DEFAULT_MODE) {
-  const fallback = normalizePersistedMode(defaultMode) || DEFAULT_MODE;
   const normalizedText = String(text || "").trim().toLowerCase();
 
+  // README + Claude Code: bare `/ponytail` reports the current level (#639).
   if (!normalizedText) {
-    return { type: "set-mode", mode: fallback === "off" ? "full" : fallback };
+    return { type: "status" };
   }
 
   const [primary, secondary] = normalizedText.split(/\s+/);
