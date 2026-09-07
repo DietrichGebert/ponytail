@@ -28,10 +28,9 @@ test('kiro hooks template uses Kiro v1 schema and wires the shared scripts', () 
   assert.ok(byTrigger.UserPromptSubmit, 'must register a UserPromptSubmit hook');
   assert.match(byTrigger.UserPromptSubmit.action.command, /ponytail-mode-tracker\.js/);
 
-  // PreToolUse (matched to the sub-agent tool) injects into subagents.
-  assert.ok(byTrigger.PreToolUse, 'must register a PreToolUse hook');
-  assert.equal(byTrigger.PreToolUse.matcher, 'invoke_sub_agent');
-  assert.match(byTrigger.PreToolUse.action.command, /ponytail-subagent\.js/);
+  // No subagent hook: Kiro has no SubagentStart, and a PreToolUse hook's stdout
+  // is ignored on exit 0, so it cannot inject the ruleset into a sub-agent.
+  assert.ok(!byTrigger.PreToolUse, 'must not register a PreToolUse subagent hook (Kiro ignores its stdout on exit 0)');
 
   // Every hook must be a command action, declare the Kiro host, and reference
   // the PONYTAIL_DIR placeholder users replace with their checkout path.

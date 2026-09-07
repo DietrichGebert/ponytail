@@ -463,13 +463,6 @@ assert.equal(result.status, 0, result.stderr);
 assert.equal(fs.readFileSync(kiroState, 'utf8'), 'ultra');
 assert.match(result.stdout, /PONYTAIL MODE CHANGED — level: ultra/);
 
-// PreToolUse subagent injection: when active, emits the ruleset as raw stdout.
-fs.writeFileSync(kiroState, 'full');
-result = runKiro('ponytail-subagent.js');
-assert.equal(result.status, 0, result.stderr);
-assert.match(result.stdout, /PONYTAIL MODE ACTIVE — level: full/);
-assert.doesNotMatch(result.stdout, /^\s*\{/, 'Kiro subagent output must be raw text, not JSON');
-
 // "stop ponytail" clears the ~/.kiro flag and emits the off notice.
 result = runKiro('ponytail-mode-tracker.js', JSON.stringify({ prompt: 'stop ponytail' }));
 assert.equal(result.status, 0, result.stderr);

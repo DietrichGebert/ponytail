@@ -90,10 +90,10 @@ function writeHookOutput(event, mode, context = '') {
     return;
   }
   if (isKiro) {
-    // Kiro forwards a command hook's raw stdout as injected context for
-    // SessionStart, UserPromptSubmit, and PreToolUse — the same three events
-    // the Kiro hooks template wires up. So emit the context verbatim (no JSON
-    // envelope) for every event; empty context writes nothing.
+    // Kiro injects a command hook's raw stdout as context on exit 0 for
+    // SessionStart and UserPromptSubmit (the two events the Kiro hooks template
+    // wires up). Emit the context verbatim (no JSON envelope); empty context
+    // writes nothing.
     process.stdout.write(context);
     return;
   }
