@@ -5,6 +5,7 @@
 const { getDefaultMode, isDeactivationCommand, writeDefaultMode } = require('./ponytail-config');
 const { clearMode, isQoder, readMode, setMode, writeHookOutput } = require('./ponytail-runtime');
 const { getPonytailInstructions } = require('./ponytail-instructions');
+const { markReview } = require('./ponytail-review-state');
 
 let input = '';
 let done = false;
@@ -29,7 +30,10 @@ function finish() {
       let isReportOnly = false;
 
       if (cmd === '/ponytail-review' || cmd === '/ponytail:ponytail-review') {
-        mode = 'review';
+        // Review is a one-shot command, not a persistent intensity level. The
+        // marker gates the next commit/push for this exact diff and session.
+        markReview(data.cwd || process.cwd(), data.session_id);
+        return;
       } else if (cmd === '/ponytail' || cmd === '/ponytail:ponytail') {
         // `/ponytail default <mode>` persists the default to config (survives
         // restarts). Plain switches stay session-scoped ("sticks until session
