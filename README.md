@@ -44,6 +44,13 @@
   <a href="https://ponytail.dev/soon"><img src="assets/waitlist-banner.png" alt="Something's coming, join the waitlist" width="760"></a>
 </p>
 
+<p align="center">
+  <strong>Already built with Ponytail</strong><br><br>
+  <a href="https://theretriever.app"><img src="assets/retriever-icon.png" width="96" alt="Retriever"></a><br>
+  <a href="https://theretriever.app"><strong>Retriever</strong></a><br>
+  <sub>Mac data recovery. Free to scan, pay once.</sub>
+</p>
+
 You know him. Long ponytail. Oval glasses. Has been at the company longer than the version control. You show him fifty lines; he looks at them, says nothing, and replaces them with one.
 
 Ponytail puts him inside your AI agent.
@@ -91,14 +98,6 @@ This showed **80-94% less code**. [#126](https://github.com/DietrichGebert/ponyt
 </details>
 
 **The rule was never "fewest tokens."** It is: write only what the task needs, and never cut validation, error handling, security, or accessibility. The code ends up small because it is necessary, not golfed. Lower cost and latency are a side effect on the models that follow the ladder; a terse reasoning model that spends thinking tokens deliberating the rungs can go the other way (on GPT-5.5 it does).
-
-## Built with Ponytail
-
-<p align="center">
-  <a href="https://theretriever.app"><img src="assets/retriever-icon.png" width="96" alt="Retriever"></a><br>
-  <a href="https://theretriever.app"><strong>Retriever</strong></a><br>
-  <sub>Mac data recovery. Free to scan, pay once.</sub>
-</p>
 
 ## How it works
 
