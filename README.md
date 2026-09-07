@@ -342,6 +342,17 @@ The OpenClaw skill package (`.openclaw/skills/`) is generated from `skills/`; re
 
 The correctness benchmark spawns Python for email and CSV checks; `python3` is tried before `python`. CSV checks need `pandas` installed locally.
 
+## Contributing
+
+1. Fork this repository and clone your fork.
+2. Create a focused branch from `main`.
+3. Make your changes and update the relevant documentation.
+4. Run `npm test` and any other checks relevant to your changes.
+5. Run `git diff --check` before committing.
+6. Commit your changes, push the branch to your fork, and open a Pull Request against `main`.
+
+Please keep each Pull Request focused, describe the user-facing impact, and include the validation commands you ran.
+
 ## FAQ
 
 **Can I use it with [caveman](https://github.com/JuliusBrussee/caveman)?**
