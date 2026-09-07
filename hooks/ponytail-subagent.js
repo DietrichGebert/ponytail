@@ -10,7 +10,7 @@
 // regex is unanchored and case-insensitive — "explore|general" matches either,
 // "^general$" is exact. Unset means inject into every subagent, as before.
 
-const { getPonytailInstructions } = require('./ponytail-instructions');
+const { getCompactInstructions, getPonytailInstructions } = require('./ponytail-instructions');
 const { readMode, writeHookOutput } = require('./ponytail-runtime');
 
 const mode = readMode();
@@ -20,9 +20,16 @@ if (!mode || mode === 'off') {
   process.exit(0);
 }
 
+// Payload size (opt-in): PONYTAIL_SUBAGENT_RULESET=compact injects the AGENTS.md
+// body (about half the size of the full skill) into each subagent. A parent that
+// spawns many short subagents pays the full ruleset once per spawn otherwise.
+// Unset, or any other value, keeps the full ruleset, as before.
+const compact = String(process.env.PONYTAIL_SUBAGENT_RULESET || '').trim().toLowerCase() === 'compact';
+
 function inject() {
   try {
-    writeHookOutput('SubagentStart', mode, getPonytailInstructions(mode));
+    const context = compact ? getCompactInstructions(mode) : getPonytailInstructions(mode);
+    writeHookOutput('SubagentStart', mode, context);
   } catch (e) {
     // Silent fail — a stdout error at hook exit must not surface as a hook failure.
   }

@@ -266,6 +266,27 @@ assert.match(
   /PONYTAIL MODE ACTIVE — level: full/,
 );
 
+// PONYTAIL_SUBAGENT_RULESET=compact → the AGENTS.md body instead of the full
+// skill: same level header, no intensity table or worked examples, and
+// measurably smaller. Any other value keeps the full ruleset.
+const fullContext = output.hookSpecificOutput.additionalContext;
+result = run('ponytail-subagent.js', { ...subEnv, PONYTAIL_SUBAGENT_RULESET: 'compact' });
+assert.equal(result.status, 0, result.stderr);
+output = JSON.parse(result.stdout);
+assert.equal(output.hookSpecificOutput.hookEventName, 'SubagentStart');
+const compactContext = output.hookSpecificOutput.additionalContext;
+assert.match(compactContext, /PONYTAIL MODE ACTIVE — level: full/);
+assert.match(compactContext, /lazy senior developer/);
+assert.doesNotMatch(compactContext, /## Intensity/, 'compact ruleset must not carry the intensity table');
+assert.ok(
+  compactContext.length < fullContext.length * 0.6,
+  `compact ruleset (${compactContext.length}) should be well under the full one (${fullContext.length})`,
+);
+result = run('ponytail-subagent.js', { ...subEnv, PONYTAIL_SUBAGENT_RULESET: 'verbose' });
+assert.equal(result.status, 0, result.stderr);
+output = JSON.parse(result.stdout);
+assert.equal(output.hookSpecificOutput.additionalContext, fullContext, 'unknown value keeps the full ruleset');
+
 // No flag → ponytail off → inject nothing (empty stdout, no failure).
 fs.unlinkSync(subFlag);
 result = run('ponytail-subagent.js', subEnv);
