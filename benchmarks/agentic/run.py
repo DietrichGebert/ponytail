@@ -207,11 +207,15 @@ def _selftest_plugin_dir():
     fails loudly (sys.exit) instead of silently passing a non-existent path to --plugin-dir."""
     fails = 0
     sentinel = "/tmp/ponytail-selftest-plugin-dir"
+    prior = os.environ.get("PONYTAIL_PLUGIN_DIR")
     os.environ["PONYTAIL_PLUGIN_DIR"] = sentinel
     try:
         ok_env = _plugin_dir("ponytail") == sentinel
     finally:
-        del os.environ["PONYTAIL_PLUGIN_DIR"]
+        if prior is None:
+            del os.environ["PONYTAIL_PLUGIN_DIR"]
+        else:
+            os.environ["PONYTAIL_PLUGIN_DIR"] = prior   # restore the caller's override
     print(f"{'ok ' if ok_env else 'XX '} plugin_dir   env  override honored")
     fails += 0 if ok_env else 1
     missing = "ponytail-does-not-exist-xyz"          # no env, no cache entry -> must sys.exit
