@@ -255,6 +255,15 @@ enabled = ["ponytail"]
 
 체크아웃의 `AGENTS.md`만으로도 지시문 전용 모드는 된다. 제거: `grok plugin uninstall ponytail`.
 
+### AtomCode
+
+```
+/plugin marketplace add https://github.com/DietrichGebert/ponytail
+/plugin install ponytail@ponytail
+```
+
+AtomCode의 플러그인 프로토콜은 Claude Code와 호환되어서, 별도 어댑터가 필요 없다: `.claude-plugin/`의 같은 매니페스트를 읽고, 스킬 여섯 개와 라이프사이클 훅을 그대로 올린다. 훅은 AtomCode의 신뢰 흐름을 따른다. 설치 시 훅을 보여 주고 `atomcode plugin trust ponytail`을 실행하기 전까지는 비활성으로 남아 있으면서, 다음 세션부터 로드된다. 스킬은 `/` 메뉴에 `ponytail:` 네임스페이스로 들어간다(`/ponytail:ponytail`로 레벨 전환, `/ponytail:ponytail-review` 등). Claude 전용 `commands/*.toml` 파일은 조용히 건너뛰고, 같은 호출은 스킬이 커버한다. 제거: `/plugin uninstall ponytail@ponytail`.
+
 이게 끝이었다. 그 사람이라면 흐뭇해할 거다. 입 밖으로 내진 않겠지만.
 
 매 세션 켜져 있고, 명령 몇 개가 딸려 온다([Commands](#commands) 참고). `/ponytail ultra`는 코드베이스가 당신에게 단단히 밉보인 날을 위해 있다. 시작할 때와 모드를 바꿀 때 지금 모드를 보여 준다.

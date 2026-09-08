@@ -236,6 +236,15 @@ Abre una sesión nueva (o recarga los plugins). Los skills aparecen como `/ponyt
 
 `AGENTS.md` sigue funcionando solo como instrucciones desde un checkout sin el plugin. Desinstalar: `grok plugin uninstall ponytail`.
 
+### AtomCode
+
+```
+/plugin marketplace add https://github.com/DietrichGebert/ponytail
+/plugin install ponytail@ponytail
+```
+
+El protocolo de plugins de AtomCode es compatible con Claude Code, así que el repo no necesita un adaptador aparte: lee el mismo manifiesto de `.claude-plugin/`, y los seis skills más los lifecycle hooks se cargan tal cual. Los hooks siguen el flujo de confianza de AtomCode: la instalación los imprime y los deja inactivos hasta que ejecutes `atomcode plugin trust ponytail`; entonces se cargan en la siguiente sesión. Los skills aparecen en el menú `/` con el prefijo `ponytail:` (`/ponytail:ponytail` cambia el nivel, `/ponytail:ponytail-review`, etc.); los archivos `commands/*.toml` específicos de Claude se ignoran en silencio, los skills cubren las mismas invocaciones. Desinstalar: `/plugin uninstall ponytail@ponytail`.
+
 Eso fue todo. Él estaría orgulloso. No lo va a decir.
 
 Activo en cada sesión, con un puñado de comandos (ver [Comandos](#comandos)). `/ponytail ultra` existe para cuando el codebase te hizo algo personal. El texto de inicio y de cambio de modo muestra el nivel activo.
@@ -262,7 +271,7 @@ Qué archivos corresponden a qué agente: [Portabilidad de agentes](docs/agent-p
 | `/ponytail-debt` | Recolecta los atajos marcados con `ponytail:` que dejaste pendientes en un registro, para que "después" no se convierta en "nunca". |
 | `/ponytail-help` | Referencia rápida de los comandos anteriores. |
 
-Los comandos requieren un host compatible con skills (Claude Code, Codex, Devin CLI, OpenCode, Gemini, pi, Swival). En Codex son skills; se invocan con `@` (`@ponytail-review`). Los adaptadores de solo instrucciones (Cursor, Windsurf, Cline, Copilot, Kiro, Antigravity) cargan el ruleset permanente sin los comandos.
+Los comandos requieren un host compatible con skills (Claude Code, Codex, Devin CLI, OpenCode, Gemini, pi, Swival, AtomCode). En Codex son skills; se invocan con `@` (`@ponytail-review`). Los adaptadores de solo instrucciones (Cursor, Windsurf, Cline, Copilot, Kiro, Antigravity) cargan el ruleset permanente sin los comandos.
 
 ## Desarrollo
 
