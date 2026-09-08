@@ -489,4 +489,41 @@ try {
   if (prevEnvModeRev === undefined) delete process.env.PONYTAIL_DEFAULT_MODE; else process.env.PONYTAIL_DEFAULT_MODE = prevEnvModeRev;
 }
 
+// #736: /ponytail-review is a one-shot skill, not a session level. Persisting
+// `review` makes every later getPonytailInstructions() return a pointer line.
+const latchHome = path.join(temp, 'review-latch-home');
+const latchFlag = path.join(latchHome, '.claude', '.ponytail-active');
+fs.mkdirSync(path.dirname(latchFlag), { recursive: true });
+const latchEnv = { HOME: latchHome, USERPROFILE: latchHome };
+
+fs.writeFileSync(latchFlag, 'full');
+result = run('ponytail-mode-tracker.js', latchEnv, JSON.stringify({ prompt: '/ponytail-review' }));
+assert.equal(result.status, 0, result.stderr);
+assert.equal(
+  fs.readFileSync(latchFlag, 'utf8'),
+  'full',
+  '/ponytail-review must leave an active level untouched (#736)',
+);
+
+result = run(
+  'ponytail-mode-tracker.js',
+  latchEnv,
+  JSON.stringify({ prompt: '/ponytail:ponytail-review src/app.js' }),
+);
+assert.equal(result.status, 0, result.stderr);
+assert.equal(
+  fs.readFileSync(latchFlag, 'utf8'),
+  'full',
+  'namespaced /ponytail:ponytail-review must not latch review either (#736)',
+);
+
+fs.unlinkSync(latchFlag);
+result = run('ponytail-mode-tracker.js', latchEnv, JSON.stringify({ prompt: '/ponytail-review' }));
+assert.equal(result.status, 0, result.stderr);
+assert.equal(
+  fs.existsSync(latchFlag),
+  false,
+  '/ponytail-review must not create a review flag on a fresh session (#736)',
+);
+
 console.log('hook compatibility checks passed');

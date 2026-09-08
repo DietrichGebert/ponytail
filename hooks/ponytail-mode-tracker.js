@@ -28,9 +28,10 @@ function finish() {
       let mode = null;
       let isReportOnly = false;
 
-      if (cmd === '/ponytail-review' || cmd === '/ponytail:ponytail-review') {
-        mode = 'review';
-      } else if (cmd === '/ponytail' || cmd === '/ponytail:ponytail') {
+      // /ponytail-review is a one-shot skill, not a session level (#736).
+      // Matching it here used to setMode('review'), which latched
+      // INDEPENDENT_MODES for the rest of the session.
+      if (cmd === '/ponytail' || cmd === '/ponytail:ponytail') {
         // `/ponytail default <mode>` persists the default to config (survives
         // restarts). Plain switches stay session-scoped ("sticks until session
         // end"), so this is the only path that writes config. review is not a
