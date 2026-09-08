@@ -120,6 +120,32 @@ assert.equal(
   'incidental "normal mode" in a request must not turn ponytail off',
 );
 
+// Unknown /ponytail args (a typo, or a level that isn't a switchable mode like
+// "review") must leave the active mode untouched — silently resetting an
+// active lite session to the default was surprising and clobbered user state.
+result = run(
+  'ponytail-mode-tracker.js',
+  codexEnv,
+  JSON.stringify({ prompt: '/ponytail bogus' }),
+);
+assert.equal(result.status, 0, result.stderr);
+assert.equal(
+  fs.readFileSync(codexState, 'utf8'),
+  'lite',
+  'an unknown /ponytail arg must not reset the active mode',
+);
+result = run(
+  'ponytail-mode-tracker.js',
+  codexEnv,
+  JSON.stringify({ prompt: '/ponytail review' }),
+);
+assert.equal(result.status, 0, result.stderr);
+assert.equal(
+  fs.readFileSync(codexState, 'utf8'),
+  'lite',
+  'review is not a switchable level; it must not clobber the active mode',
+);
+
 const claudeEnv = {
   HOME: home,
   USERPROFILE: home,

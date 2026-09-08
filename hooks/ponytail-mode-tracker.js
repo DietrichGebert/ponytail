@@ -50,9 +50,11 @@ function finish() {
         else if (arg === '') {
           isReportOnly = true;
           mode = readMode() || getDefaultMode();
-        } else {
-          mode = getDefaultMode();
         }
+        // Unknown arg (typo, or a mode like `review` that isn't a switchable
+        // level): leave the current mode untouched rather than silently
+        // resetting it to the default — the pi extension rejects these as
+        // invalid, so the hooks must not quietly clobber an active session.
       }
 
       if (isReportOnly) {
