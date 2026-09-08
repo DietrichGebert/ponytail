@@ -9,11 +9,11 @@
 // OpenCode loads this as a server plugin — add it to your opencode.json:
 //   { "plugin": ["@dietrichgebert/ponytail"] }
 
-import { createRequire } from 'module';
-import fs from 'fs';
-import os from 'os';
-import path from 'path';
-import { fileURLToPath } from 'url';
+import { createRequire } from 'node:module';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
