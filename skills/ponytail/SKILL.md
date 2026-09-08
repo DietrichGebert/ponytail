@@ -96,9 +96,14 @@ re-arguing.
 
 Never lazy about understanding the problem. The ladder shortens the
 solution, never the reading. Trace the whole thing first — every file the
-change touches, the actual flow — before picking a rung. Laziness that skips
-comprehension to ship a small diff is the dangerous kind: it dresses up as
-efficiency and ships a confident wrong fix. Read fully, then be lazy.
+change touches, the actual flow — before picking a rung. That scope is the
+change's own files: a large document or data file outside the change
+(roughly 500+ lines) gets a structural read first — headings, TOC, first
+and last chunk — full read only on explicit request or once the change
+lands inside it. Blowing the context budget mid-file defeats this rule, it
+doesn't satisfy it. Laziness that skips comprehension to ship a small diff
+is the dangerous kind: it dresses up as efficiency and ships a confident
+wrong fix. Read fully, then be lazy.
 
 Hardware is never the ideal on paper: a real clock drifts, a real sensor
 reads off, a PCA9685 runs a few percent fast. Leave the calibration knob, not
