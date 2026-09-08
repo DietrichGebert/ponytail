@@ -210,6 +210,16 @@ Qoder auto-loads `AGENTS.md` from the repo root as always-on context, so running
 
 For full plugin-tier support (automatic mode activation + ruleset injection on every prompt), add the hooks from [`hooks/qoder-hooks.json`](hooks/qoder-hooks.json) to your `.qoder/settings.json`. Replace `PONYTAIL_DIR` with the path to your ponytail checkout. Qoder's `UserPromptSubmit` hook activates the default mode on first prompt and injects the ruleset every turn; `PreToolUse` with `task|Task` matcher injects the ruleset into subagents. Level switches (`/ponytail lite|full|ultra|off`) work automatically.
 
+### Kimi Code
+
+```
+/plugins install https://github.com/DietrichGebert/ponytail
+```
+
+Or run `/plugins`, switch to the **Custom** tab, and paste the repo URL. Run `/reload` (or `/new`) after installing.
+
+The plugin manifest ([`.kimi-plugin/plugin.json`](.kimi-plugin/plugin.json)) ships the six skills, registers the commands from [`.kimi-plugin/commands/`](.kimi-plugin/commands/) as `/ponytail:ponytail`, `/ponytail:ponytail-review`, and so on, injects `AGENTS.md` into the system prompt, and session-starts the ponytail skill — always-on with zero setup. Level switches (`/ponytail:ponytail ultra`) last for the session. The adapter declares no hooks: Kimi Code's hook payload differs from the Claude/Codex event shapes ponytail's lifecycle hooks emit, and the system prompt plus session-start skill already cover always-on behavior.
+
 ### Antigravity CLI
 
 Google is renaming Gemini CLI to Antigravity CLI (the `agy` binary); the same extension installs there:
@@ -308,6 +318,7 @@ Which files map to which agent: [Agent portability](docs/agent-portability.md).
 | Host | Command |
 |------|---------|
 | Claude Code | `/plugin remove ponytail` |
+| Kimi Code | `/plugins remove ponytail` |
 | Codex | `codex plugin remove ponytail` |
 | Devin CLI | `devin plugins remove ponytail` |
 | Grok Build | `grok plugin uninstall ponytail` |
@@ -327,7 +338,8 @@ These remove the plugin's own files. They leave behind a small amount of state p
 | `/ponytail-gain` | Show the measured impact scoreboard (less code, less cost, more speed) from the benchmark. |
 | `/ponytail-help` | Quick reference for the commands above. |
 
-Commands need a skill-capable host (Claude Code, Codex, Devin CLI, OpenCode, Gemini, pi, Swival, Hermes Agent, Qoder, Grok Build). In Codex they're skills, invoke with `@` (`@ponytail-review`). The instruction-only adapters (Cursor, Windsurf, Cline, Copilot, Kiro, Antigravity) load the always-on ruleset without the commands.
+
+Commands need a skill-capable host (Claude Code, Codex, Devin CLI, OpenCode, Gemini, pi, Swival, Hermes Agent, Qoder, Grok Build, Kimi Code). In Codex they're skills, invoke with `@` (`@ponytail-review`). The instruction-only adapters (Cursor, Windsurf, Cline, Copilot, Kiro, Antigravity) load the always-on ruleset without the commands.
 
 ## Development
 
