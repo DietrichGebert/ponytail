@@ -121,6 +121,34 @@ The ladder runs *after* it understands the problem, not instead of it: it reads 
 
 Lazy, not negligent: trust-boundary validation, data-loss handling, security, and accessibility are never on the chopping block.
 
+## Spend firewall
+
+Writing less code is one way not to burn money. Not looping forty times on a
+failing build is the other.
+
+Ponytail can hold a per-session budget, metered from the token usage in the
+agent's own transcript — the numbers you were actually billed for, not an
+estimate. It warns at 75% and stops the session at the limit:
+
+```
+/ponytail spend limit 5
+```
+
+```
+PONYTAIL SPEND WARNING — this session has spent $3.81 of its $5.00 budget (76%).
+$1.19 left. Wrap up the current task, or raise the limit with `/ponytail spend limit <usd>`.
+```
+
+It checks at two points: before a turn starts, and before each tool call. The
+second one is the point — a runaway loop spends its money inside a single turn,
+long before the next prompt boundary.
+
+`/ponytail spend` reports where you stand at any time, with or without a limit
+set. **Off unless you set a limit** — nothing changes on upgrade.
+
+No account, no network call, no third party: the budget is a number in your own
+config file. Full reference in [docs/spend-firewall.md](docs/spend-firewall.md).
+
 ## Install
 
 The most effort ponytail will ever ask of you:
@@ -321,13 +349,14 @@ These remove the plugin's own files. They leave behind a small amount of state p
 | Command | What it does |
 |---------|--------------|
 | `/ponytail [lite \| full \| ultra \| off]` | Set the intensity, or turn it off. No argument reports the current level. |
+| `/ponytail spend [limit <usd> \| reset \| warn \| block \| off]` | Session spend: report it, cap it, or clear the counter. See [Spend firewall](#spend-firewall). |
 | `/ponytail-review` | Review the current diff for over-engineering, hands back a delete-list. |
 | `/ponytail-audit` | Audit the whole repo for over-engineering, not just the diff. |
 | `/ponytail-debt` | Harvest the `ponytail:` shortcuts you've deferred into a ledger, so "later" doesn't become "never". |
 | `/ponytail-gain` | Show the measured impact scoreboard (less code, less cost, more speed) from the benchmark. |
 | `/ponytail-help` | Quick reference for the commands above. |
 
-Commands need a skill-capable host (Claude Code, Codex, Devin CLI, OpenCode, Gemini, pi, Swival, Hermes Agent, Qoder, Grok Build). In Codex they're skills, invoke with `@` (`@ponytail-review`). The instruction-only adapters (Cursor, Windsurf, Cline, Copilot, Kiro, Antigravity) load the always-on ruleset without the commands.
+Commands need a skill-capable host (Claude Code, Codex, Devin CLI, OpenCode, Gemini, pi, Swival, Hermes Agent, Qoder, Grok Build). In Codex they're skills, invoke with `@` (`@ponytail-review`). The instruction-only adapters (Cursor, Windsurf, Cline, Copilot, Kiro, Antigravity) load the always-on ruleset without the commands. `/ponytail` and `/ponytail spend` are the exceptions: they are handled by hooks rather than skills, so they work on any host that runs ponytail's hooks.
 
 ## Development
 
@@ -348,7 +377,7 @@ The correctness benchmark spawns Python for email and CSV checks; `python3` is t
 Yes, and you should. Caveman shrinks what the agent says; ponytail shrinks what it builds. Different halves, no overlap: caveman leaves code byte-for-byte exact, ponytail stays out of the prose. Terse talk about minimal code.
 
 **Does it need a config file?**
-No. An optional `~/.config/ponytail/config.json` or `PONYTAIL_DEFAULT_MODE` env var can set the default level, but nothing is required.
+No. An optional `~/.config/ponytail/config.json` or `PONYTAIL_DEFAULT_MODE` env var can set the default level, and the same file holds the optional [spend budget](docs/spend-firewall.md), but nothing is required.
 
 **What if I really need the 120-line cache class?**
 You don't. Insist anyway and he'll build it. Slowly. Correctly. While looking at you.

@@ -133,11 +133,10 @@ function getHideStatus() {
   }
 }
 
-function writeDefaultMode(mode) {
-  // ponytail: only a runtime level can be a default; review is session-only (#377).
-  const normalized = normalizeMode(mode);
-  if (!normalized) return null;
-
+// Merge top-level keys into config.json, leaving every other key alone. Both
+// the mode default and the spend budget persist through here, so writing one
+// can never drop the other.
+function updateConfig(patch) {
   const configPath = getConfigPath();
   fs.mkdirSync(path.dirname(configPath), { recursive: true });
   let config = {};
@@ -145,8 +144,16 @@ function writeDefaultMode(mode) {
     config = JSON.parse(fs.readFileSync(configPath, 'utf8').replace(/^\uFEFF/, ''));
     if (!config || typeof config !== 'object' || Array.isArray(config)) config = {};
   } catch (_) {}
-  config.defaultMode = normalized;
+  Object.assign(config, patch);
   fs.writeFileSync(configPath, JSON.stringify(config, null, 2), 'utf8');
+  return config;
+}
+
+function writeDefaultMode(mode) {
+  // ponytail: only a runtime level can be a default; review is session-only (#377).
+  const normalized = normalizeMode(mode);
+  if (!normalized) return null;
+  updateConfig({ defaultMode: normalized });
   return normalized;
 }
 
@@ -165,5 +172,6 @@ module.exports = {
   normalizeConfigMode,
   normalizePersistedMode,
   isDeactivationCommand,
+  updateConfig,
   writeDefaultMode,
 };
