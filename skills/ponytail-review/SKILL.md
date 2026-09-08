@@ -5,13 +5,20 @@ description: >
   reinvented standard library, unneeded dependencies, speculative abstractions,
   dead flexibility. One line per finding: location, what to cut, what replaces
   it. Use when the user says "review for over-engineering", "what can we
-  delete", "is this over-engineered", "simplify review", or invokes
-  /ponytail-review. Complements correctness-focused review, this one only
-  hunts complexity.
+  delete", "is this over-engineered", "simplify review", "review my branch",
+  or invokes /ponytail-review. Defaults to uncommitted changes; pass a branch
+  or range to review a whole branch instead. Complements correctness-focused
+  review, this one only hunts complexity.
 ---
 
 Review diffs for unnecessary complexity. One line per finding: location, what
 to cut, what replaces it. The diff's best outcome is getting shorter.
+
+## Scope
+
+Default (no target given): uncommitted changes, working tree plus staged
+(`git diff HEAD`). Given a branch name or a range like `main..HEAD`, diff
+against that instead to review the whole branch.
 
 ## Format
 

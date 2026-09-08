@@ -8,6 +8,12 @@ license: MIT
 Review diffs for unnecessary complexity. One line per finding: location, what
 to cut, what replaces it. The diff's best outcome is getting shorter.
 
+## Scope
+
+Default (no target given): uncommitted changes, working tree plus staged
+(`git diff HEAD`). Given a branch name or a range like `main..HEAD`, diff
+against that instead to review the whole branch.
+
 ## Format
 
 `L<line>: <tag> <what>. <replacement>.`, or `<file>:L<line>: ...` for
