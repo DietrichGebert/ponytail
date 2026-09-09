@@ -10,7 +10,7 @@ const os = require('os');
 const path = require('path');
 const { spawnSync } = require('child_process');
 
-const commands = ['ponytail', 'ponytail-review', 'ponytail-audit', 'ponytail-debt', 'ponytail-gain', 'ponytail-help'];
+const commands = ['ponytail', 'ponytail-review', 'ponytail-audit', 'ponytail-debt', 'ponytail-gain', 'ponytail-help', 'ponytail-jedi'];
 const skillCommands = commands.filter((name) => name !== 'ponytail');
 
 const root = path.join(__dirname, '..');
@@ -86,6 +86,7 @@ print(json.dumps({'skills': ctx.skills, 'hooks': ctx.hooks, 'commands': ctx.comm
     'ponytail-debt',
     'ponytail-gain',
     'ponytail-help',
+    'ponytail-jedi',
     'ponytail-review',
   ]);
   assert.ok(data.skills.every(([, skillPath]) => skillPath.endsWith('/SKILL.md')));
@@ -210,6 +211,24 @@ result = mod.rewrite_gateway_command(event=Event(), gateway=Gateway())
 print(json.dumps(result))
 `);
   assert.equal(output, 'null');
+});
+
+test('Hermes jedi preserves the requirement without changing the mode', () => {
+  const output = python(String.raw`
+import importlib.util, json
+spec = importlib.util.spec_from_file_location('ponytail_hermes_plugin', '__init__.py')
+mod = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(mod)
+mod._handle_mode_command('lite')
+class Event:
+    text = '/ponytail-jedi JSON encoding for Node 24'
+result = mod.rewrite_gateway_command(event=Event())
+print(json.dumps({'text': result['text'], 'mode': mod._current_mode}))
+`);
+  const data = JSON.parse(output);
+  assert.match(data.text, /ponytail:ponytail-jedi/);
+  assert.match(data.text, /JSON encoding for Node 24/);
+  assert.equal(data.mode, 'lite');
 });
 
 test('Hermes gateway rewrite preserves every skill command and ignores unrelated text', () => {

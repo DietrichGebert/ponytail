@@ -17,6 +17,7 @@ SKILL_COMMANDS = {
     "ponytail-debt": "List every deliberate `ponytail:` shortcut and its upgrade path.",
     "ponytail-gain": "Show the measured-impact scoreboard (less code, less cost, more speed).",
     "ponytail-help": "Show the Ponytail command reference.",
+    "ponytail-jedi": "Research reusable open-source solutions before building custom code.",
 }
 
 ROOT = Path(__file__).resolve().parent

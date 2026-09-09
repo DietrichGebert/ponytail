@@ -171,6 +171,11 @@ export default function ponytailExtension(pi) {
     handler: (_args, ctx) => sendAlias("/skill:ponytail-help", "", ctx),
   });
 
+  pi.registerCommand("ponytail-jedi", {
+    description: "Run /skill:ponytail-jedi",
+    handler: (args, ctx) => sendAlias("/skill:ponytail-jedi", args, ctx),
+  });
+
   pi.on("input", async (event) => {
     if (event?.source === "extension") return;
 
