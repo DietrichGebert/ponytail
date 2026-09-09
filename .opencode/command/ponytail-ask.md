@@ -1,0 +1,5 @@
+---
+description: Clarify important requirements without starting implementation
+---
+
+Task: $ARGUMENTS. Read the request and relevant project context. Clarify the desired outcome, constraints, and acceptance criteria. Ask one focused question at a time about the most consequential unknown; do not ask for facts already supplied or discoverable in code. State low-risk assumptions. When clear, return the agreed scope and acceptance criteria; do not invent questions. Do not write code, edit files, install dependencies, or implement. Resume normal work when the user requests it.
