@@ -66,6 +66,10 @@ assert.match(
   output.hookSpecificOutput.additionalContext,
   /PONYTAIL MODE ACTIVE — level: ultra/,
 );
+assert.match(
+  output.hookSpecificOutput.additionalContext,
+  /Security-sensitive paths are exempt/,
+);
 
 result = run(
   'ponytail-mode-tracker.js',
