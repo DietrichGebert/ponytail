@@ -8,6 +8,22 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const plugin = path.resolve(process.argv[2] || fileURLToPath(new URL('../.opencode/v2', import.meta.url)));
+let binary = process.env.OPENCODE_V2_BIN || 'opencode2';
+if (process.platform === 'win32' && !process.env.OPENCODE_V2_BIN) {
+  // ponytail: support native binaries and npm's CLI layout, not arbitrary wrappers;
+  // custom installations can point OPENCODE_V2_BIN at their actual executable.
+  const candidates = (process.env.PATH || '').split(path.delimiter).flatMap((dir) => [
+    path.join(dir, 'opencode2.exe'),
+    path.join(dir, 'node_modules/@opencode/cli/bin/opencode2.exe'),
+    path.join(dir, 'node_modules/@opencode-ai/cli/bin/opencode2.exe'),
+    path.resolve(dir, '../@opencode/cli/bin/opencode2.exe'),
+    path.resolve(dir, '../@opencode-ai/cli/bin/opencode2.exe'),
+  ]);
+  binary = (await Promise.all(candidates.map(async (file) => {
+    try { await fs.access(file); return file; } catch { return undefined; }
+  }))).find(Boolean);
+  assert.ok(binary, 'OpenCode executable not found. Set OPENCODE_V2_BIN to the full path of opencode2.exe.');
+}
 const root = await fs.mkdtemp(path.join(os.tmpdir(), 'ponytail-v2-'));
 const requests = [];
 const provider = http.createServer(async (req, res) => {
@@ -30,7 +46,7 @@ const provider = http.createServer(async (req, res) => {
 });
 provider.listen(0, '127.0.0.1');
 await once(provider, 'listening');
-const env = { ...process.env, HOME: root, PONYTAIL_DEFAULT_MODE: 'full' };
+const env = { ...process.env, HOME: root, USERPROFILE: root, PONYTAIL_DEFAULT_MODE: 'full' };
 for (const key of Object.keys(env)) if (key.startsWith('OPENCODE_')) delete env[key];
 for (const name of ['CONFIG', 'DATA', 'CACHE', 'STATE']) env[`XDG_${name}_HOME`] = path.join(root, name.toLowerCase());
 const configDir = path.join(env.XDG_CONFIG_HOME, 'opencode');
@@ -48,12 +64,13 @@ await fs.writeFile(path.join(configDir, 'opencode.json'), JSON.stringify({
 }));
 let server, url, authorization;
 async function start() {
-  server = spawn(process.env.OPENCODE_V2_BIN || 'opencode2', ['serve', '--hostname', '127.0.0.1', '--port', '0'], { cwd: root, env });
+  server = spawn(binary, ['serve', '--hostname', '127.0.0.1', '--port', '0'], { cwd: root, env });
   let output = '';
   await new Promise((resolve, reject) => {
     const timer = setTimeout(() => reject(new Error(`Server startup timed out: ${output}`)), 30000);
-    server.once('error', reject);
-    server.once('exit', (code) => reject(new Error(`Server exited ${code}: ${output}`)));
+    const fail = (error) => { clearTimeout(timer); reject(error); };
+    server.once('error', fail);
+    server.once('exit', (code) => fail(new Error(`Server exited ${code}: ${output}`)));
     const read = (chunk) => {
       output += chunk;
       const address = output.match(/server listening on (http:\/\/\S+)/);
@@ -76,7 +93,7 @@ async function start() {
   assert.equal(skills.data.filter((s) => s.id.startsWith('ponytail')).length, 6);
 }
 async function stop() {
-  if (!server || server.exitCode !== null) return;
+  if (!server?.pid || server.exitCode !== null || server.signalCode !== null) return;
   const exited = once(server, 'exit');
   server.kill('SIGTERM');
   await exited;
