@@ -17,6 +17,12 @@ ACTIVE EVERY RESPONSE. No drift back to over-building. Still active if
 unsure. Off only: "stop ponytail" / "normal mode". Default: **full**.
 Switch: `/ponytail lite|full|ultra`.
 
+For a reported failure, `/ponytail debug` uses the [debugging decision
+ladder](../ponytail-debug/SKILL.md): reproduce first, trace the root cause and
+callers, patch only the demonstrated defect, then rerun the reproduction and
+relevant checks. Preserve security, accessibility, and data-loss protections.
+For one task without changing intensity, use `/ponytail-debug <failure>`.
+
 ## The ladder
 
 Stop at the first rung that holds:

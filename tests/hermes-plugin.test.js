@@ -10,7 +10,7 @@ const os = require('os');
 const path = require('path');
 const { spawnSync } = require('child_process');
 
-const commands = ['ponytail', 'ponytail-review', 'ponytail-audit', 'ponytail-debt', 'ponytail-gain', 'ponytail-help'];
+const commands = ['ponytail', 'ponytail-review', 'ponytail-audit', 'ponytail-debt', 'ponytail-gain', 'ponytail-help', 'ponytail-debug'];
 const skillCommands = commands.filter((name) => name !== 'ponytail');
 
 const root = path.join(__dirname, '..');
@@ -84,6 +84,7 @@ print(json.dumps({'skills': ctx.skills, 'hooks': ctx.hooks, 'commands': ctx.comm
     'ponytail',
     'ponytail-audit',
     'ponytail-debt',
+    'ponytail-debug',
     'ponytail-gain',
     'ponytail-help',
     'ponytail-review',
@@ -163,6 +164,35 @@ print(json.dumps({'ctx': ctx}))
   assert.match(ctx, /Review diffs for unnecessary complexity/);
   assert.match(ctx, /net: -<N> lines possible/);
   assert.doesNotMatch(ctx, /^---/);
+});
+
+test('Hermes debug startup, switch, and task aliases retain workflow and targets', () => {
+  const output = python(String.raw`
+import importlib.util, json
+spec = importlib.util.spec_from_file_location('ponytail_hermes_plugin', '__init__.py')
+mod = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(mod)
+class Event:
+    def __init__(self, text): self.text = text
+initial = mod._pre_llm_call()['context']
+mod._handle_mode_command('full')
+normal = mod._pre_llm_call()['context']
+mod._handle_mode_command('debug')
+switched = mod._pre_llm_call()['context']
+aliases = {name: mod.rewrite_gateway_command(Event('/' + name + ' src/app.ts'))['text']
+           for name in ['ponytail-debug']}
+print(json.dumps({'initial': initial, 'normal': normal, 'switched': switched,
+                  'mode': mod._current_mode, 'aliases': aliases}))
+`, { PONYTAIL_MODE: 'debug', PONYTAIL_DEFAULT_MODE: 'full' });
+  const data = JSON.parse(output);
+  assert.match(data.initial, /level: debug/);
+  assert.match(data.normal, /level: full/);
+  assert.match(data.switched, /Debugging decision ladder/);
+  assert.equal(data.mode, 'debug');
+  for (const [name, prompt] of Object.entries(data.aliases)) {
+    assert.ok(prompt.includes(`ponytail:${name}`));
+    assert.ok(prompt.includes('src/app.ts'));
+  }
 });
 
 test('Hermes /ponytail command changes mode and pre_llm_call injects current context', () => {

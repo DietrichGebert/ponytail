@@ -34,10 +34,10 @@ function finish() {
         // `/ponytail default <mode>` persists the default to config (survives
         // restarts). Plain switches stay session-scoped ("sticks until session
         // end"), so this is the only path that writes config. review is not a
-        // valid default (#377), so only off/lite/full/ultra are accepted.
+        // valid default (#377); runtime modes including debug are accepted.
         if (arg === 'default') {
           const dmode = parts[2];
-          if (dmode === 'off' || dmode === 'lite' || dmode === 'full' || dmode === 'ultra') {
+          if (dmode === 'off' || dmode === 'lite' || dmode === 'full' || dmode === 'ultra' || dmode === 'debug') {
             writeDefaultMode(dmode);
             writeHookOutput('UserPromptSubmit', dmode, 'PONYTAIL DEFAULT SET — new sessions start in ' + dmode + '.');
           }
@@ -46,6 +46,7 @@ function finish() {
         if (arg === 'lite') mode = 'lite';
         else if (arg === 'full') mode = 'full';
         else if (arg === 'ultra') mode = 'ultra';
+        else if (arg === 'debug') mode = 'debug';
         else if (arg === 'off') mode = 'off';
         else if (arg === '') {
           isReportOnly = true;
@@ -71,7 +72,7 @@ function finish() {
           writeHookOutput(
             'UserPromptSubmit',
             mode,
-            'PONYTAIL MODE CHANGED — level: ' + mode,
+            mode === 'debug' ? getPonytailInstructions(mode) : 'PONYTAIL MODE CHANGED — level: ' + mode,
           );
         }
       } else if (mode === 'off') {
