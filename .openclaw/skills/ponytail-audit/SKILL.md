@@ -6,7 +6,8 @@ license: MIT
 ---
 
 ponytail-review, repo-wide. Scan the whole tree instead of a diff. Rank
-findings biggest cut first.
+findings by reduction in concepts and distributed policy, then by size of the cut.
+Keep boundaries that contain policy; do not move complexity into callers to save lines.
 
 ## Tags
 
@@ -15,14 +16,14 @@ Same as ponytail-review:
 - `delete:` dead code, unused flexibility, speculative feature. Replacement: nothing.
 - `stdlib:` hand-rolled thing the standard library ships. Name the function.
 - `native:` dependency or code doing what the platform already does. Name the feature.
-- `yagni:` abstraction with one implementation, config nobody sets, layer with one caller.
+- `yagni:` speculative abstraction, config nobody sets, layer that contains no necessary policy.
 - `shrink:` same logic, fewer lines. Show the shorter form.
 
 ## Hunt
 
-Deps the stdlib or platform already ships, single-implementation interfaces,
-factories with one product, wrappers that only delegate, files exporting one
-thing, dead flags and config, hand-rolled stdlib.
+Deps the stdlib or platform already ships, speculative interfaces and factories,
+wrappers that only delegate without containing policy, dead flags and config,
+hand-rolled stdlib. One implementation or one export alone is not evidence of bloat.
 
 ## Output
 
