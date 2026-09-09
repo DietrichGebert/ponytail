@@ -262,6 +262,16 @@ clawhub install ponytail
 
 Installs ponytail as an OpenClaw skill from ClawHub; the review, audit, debt, gain, and help skills install the same way (`clawhub install ponytail-review`, and so on). OpenClaw applies it on coding tasks and also exposes it as a `/ponytail` command. Without ClawHub, copy [`.openclaw/skills/ponytail`](.openclaw/skills/) into `~/.openclaw/skills/`.
 
+### IBM Bob
+
+Bob loads skills from `~/.bob/skills/` (global) or `<project>/.bob/skills/`. The [`skills`](https://skills.sh) CLI knows Bob's paths, and `--skill '*'` pulls in all six ponytail skills at once, so there is no need to add them one at a time:
+
+```bash
+npx skills add DietrichGebert/ponytail --agent bob --skill '*' --global --yes
+```
+
+Drop `--global` to install into the current project instead. Bob picks the skills up on its next chat; invoke them as `/ponytail`, `/ponytail-review`, `/ponytail-audit`, `/ponytail-debt`, `/ponytail-gain`, and `/ponytail-help`, or let Bob auto-activate them from their descriptions. `AGENTS.md` at the repo root still works as the instruction-only fallback.
+
 ### Grok Build
 
 ```bash
@@ -312,6 +322,7 @@ Which files map to which agent: [Agent portability](docs/agent-portability.md).
 | Devin CLI | `devin plugins remove ponytail` |
 | Grok Build | `grok plugin uninstall ponytail` |
 | Pi agent | `pi uninstall ponytail` |
+| IBM Bob | `npx skills remove ponytail ponytail-audit ponytail-debt ponytail-gain ponytail-help ponytail-review --agent bob --global --yes` |
 | Cursor / Windsurf / Cline / Qoder / etc. | Delete the copied rule file |
 
 These remove the plugin's own files. They leave behind a small amount of state ponytail writes outside the plugin folder: the mode flag, `~/.config/ponytail/config.json`, and (if you accepted the setup nudge) a `statusLine` entry in `~/.claude/settings.json`. Run `node scripts/uninstall.js` to clean those up too. **Run it before the host remove command above** — the script is itself a plugin file, so removing the plugin first deletes it (or run it from a separate clone of this repo). It only removes the statusLine entry if it points at ponytail's own script, so a statusline you set up yourself is left untouched.
@@ -327,7 +338,7 @@ These remove the plugin's own files. They leave behind a small amount of state p
 | `/ponytail-gain` | Show the measured impact scoreboard (less code, less cost, more speed) from the benchmark. |
 | `/ponytail-help` | Quick reference for the commands above. |
 
-Commands need a skill-capable host (Claude Code, Codex, Devin CLI, OpenCode, Gemini, pi, Swival, Hermes Agent, Qoder, Grok Build). In Codex they're skills, invoke with `@` (`@ponytail-review`). The instruction-only adapters (Cursor, Windsurf, Cline, Copilot, Kiro, Antigravity) load the always-on ruleset without the commands.
+Commands need a skill-capable host (Claude Code, Codex, Devin CLI, OpenCode, Gemini, pi, Swival, Hermes Agent, Qoder, Grok Build, IBM Bob). In Codex they're skills, invoke with `@` (`@ponytail-review`). The instruction-only adapters (Cursor, Windsurf, Cline, Copilot, Kiro, Antigravity) load the always-on ruleset without the commands.
 
 ## Development
 
