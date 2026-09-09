@@ -18,6 +18,7 @@ to load in a given agent.
 | Cursor | `.cursor/rules/ponytail.mdc` | Always-on project rule. |
 | Windsurf | `.windsurf/rules/ponytail.md` | Project rule. |
 | Cline | `.clinerules/ponytail.md` | Project rule. |
+| Cline CLI | `skills/`, `.clinerules/ponytail.md` | `cline skill add DietrichGebert/ponytail` installs native skills; `cline skill list --agent cline` lists them. Project skills can live in `.agents/skills/`, `.cline/skills/`, or `.clinerules/skills/`. The copied rule is an alternative; no Claude/Codex lifecycle hook installation is implied. |
 | GitHub Copilot | `.github/copilot-instructions.md` | Repository instruction file. |
 | GitHub Copilot CLI | `.github/plugin/`, `AGENTS.md`, `.github/copilot-instructions.md`, `~/.copilot/copilot-instructions.md` | Plugin-supported (`copilot plugin marketplace add DietrichGebert/ponytail` + `copilot plugin install ponytail@ponytail`). Fallback instruction mode remains: per-project from `AGENTS.md` or `.github/copilot-instructions.md`, or globally from `~/.copilot/copilot-instructions.md` (instruction-tier, no `/ponytail` levels or hooks). |
 | Antigravity | `AGENTS.md` | Reads `AGENTS.md` at the repo root as always-on rules (like `.cursorrules`/`CLAUDE.md`); `.agents/rules/` also works for workspace rules. Instruction-tier. |

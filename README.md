@@ -195,6 +195,17 @@ Injects the ruleset every turn at the active level; adds the `/ponytail` command
 
 The `./` path resolves against your project's `opencode.json`; to share one checkout across projects, point it at the absolute path of the `.mjs` instead (it finds its `hooks/` and `skills/` relative to its own file).
 
+### Cline CLI
+
+Install the skills with Cline CLI's native skill command (verified with CLI 3.0.61):
+
+```bash
+cline skill add DietrichGebert/ponytail
+cline skill list --agent cline
+```
+
+Select the skills you need during installation, then ask Cline to use `ponytail` for a coding task or `ponytail-review` for a review. From a checkout, `cline skill add ./skills --skill '*' --yes` installs the bundled skills into the current project. Cline CLI discovers project skills in `.agents/skills/`, `.cline/skills/`, and `.clinerules/skills/`. The existing `.clinerules/ponytail.md` remains an instruction-only option. Skill installation does not install Ponytail's Claude/Codex lifecycle hooks or provide their automatic mode tracking. See the [Cline CLI skill command](https://github.com/cline/cline/blob/245a7d0ccb0ed57091faaf8cc337c7a1cc2d070b/apps/cli/src/commands/skill.ts).
+
 ### Gemini CLI
 
 ```bash
@@ -312,6 +323,7 @@ Which files map to which agent: [Agent portability](docs/agent-portability.md).
 | Devin CLI | `devin plugins remove ponytail` |
 | Grok Build | `grok plugin uninstall ponytail` |
 | Pi agent | `pi uninstall ponytail` |
+| Cline CLI skills | `cline skill remove` (select the Ponytail skills to remove) |
 | Cursor / Windsurf / Cline / Qoder / etc. | Delete the copied rule file |
 
 These remove the plugin's own files. They leave behind a small amount of state ponytail writes outside the plugin folder: the mode flag, `~/.config/ponytail/config.json`, and (if you accepted the setup nudge) a `statusLine` entry in `~/.claude/settings.json`. Run `node scripts/uninstall.js` to clean those up too. **Run it before the host remove command above** — the script is itself a plugin file, so removing the plugin first deletes it (or run it from a separate clone of this repo). It only removes the statusLine entry if it points at ponytail's own script, so a statusline you set up yourself is left untouched.
@@ -327,7 +339,7 @@ These remove the plugin's own files. They leave behind a small amount of state p
 | `/ponytail-gain` | Show the measured impact scoreboard (less code, less cost, more speed) from the benchmark. |
 | `/ponytail-help` | Quick reference for the commands above. |
 
-Commands need a skill-capable host (Claude Code, Codex, Devin CLI, OpenCode, Gemini, pi, Swival, Hermes Agent, Qoder, Grok Build). In Codex they're skills, invoke with `@` (`@ponytail-review`). The instruction-only adapters (Cursor, Windsurf, Cline, Copilot, Kiro, Antigravity) load the always-on ruleset without the commands.
+Commands need a skill-capable host (Claude Code, Codex, Devin CLI, OpenCode, Gemini, pi, Swival, Hermes Agent, Qoder, Grok Build). Cline CLI can install the same skills; request them by name. In Codex they're skills, invoke with `@` (`@ponytail-review`). The instruction-only adapters (Cursor, Windsurf, Cline's copied rules, Copilot, Kiro, Antigravity) load the always-on ruleset without the commands.
 
 ## Development
 
