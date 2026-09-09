@@ -60,6 +60,14 @@ test('/ponytail off persists off and transform injects nothing', async () => {
   assert.deepEqual(system, []);
 });
 
+test('/ponytail debug selects the debugging workflow for subsequent turns', async () => {
+  const hooks = await loadPlugin({});
+  await hooks['command.execute.before']({ command: 'ponytail', arguments: 'debug', sessionID: 's' });
+  const system = await transform(hooks);
+  assert.match(system[0], /level: debug/);
+  assert.match(system[0], /Debugging decision ladder/);
+});
+
 test('system.transform merges into existing system entry (Qwen compat, #296)', async () => {
   try { fs.unlinkSync(statePath); } catch (e) {}
   const hooks = await loadPlugin({});

@@ -13,7 +13,7 @@ description: >
   over-engineering, bloat, boilerplate, or unnecessary dependencies. Do NOT
   use for non-coding requests (general knowledge, prose, translation,
   summaries, recipes).
-argument-hint: "[lite|full|ultra]"
+argument-hint: "[lite|full|ultra|debug|off]"
 license: MIT
 ---
 
@@ -28,6 +28,12 @@ code is the code never written.
 ACTIVE EVERY RESPONSE. No drift back to over-building. Still active if
 unsure. Off only: "stop ponytail" / "normal mode". Default: **full**.
 Switch: `/ponytail lite|full|ultra`.
+
+For a reported failure, `/ponytail debug` uses the [debugging decision
+ladder](../ponytail-debug/SKILL.md): reproduce first, trace the root cause and
+callers, patch only the demonstrated defect, then rerun the reproduction and
+relevant checks. Preserve security, accessibility, and data-loss protections.
+For one task without changing intensity, use `/ponytail-debug <failure>`.
 
 ## The ladder
 

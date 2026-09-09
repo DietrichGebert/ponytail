@@ -7,12 +7,12 @@ const require = createRequire(import.meta.url);
 const { getPonytailInstructions } = require("../hooks/ponytail-instructions.js");
 const { getDefaultMode, normalizeMode } = require("../hooks/ponytail-config.js");
 
-// The three intensities the server offers. "off" has no instructions to serve.
-export const MODES = ["lite", "full", "ultra"];
+// The intensities and debugging workflow. "off" has no instructions to serve.
+export const MODES = ["lite", "full", "ultra", "debug"];
 
 // Resolve a requested mode to a runtime intensity. Unknown, empty, or "off"
 // falls back to the configured default, then to "full".
-// ponytail: keep the surface to these three; "off"/"review" aren't served here.
+// ponytail: "off"/"review" aren't served here.
 export function resolveMode(requested) {
   const asked = normalizeMode(requested);
   if (asked && asked !== "off") return asked;

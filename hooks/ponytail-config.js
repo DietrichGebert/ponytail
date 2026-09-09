@@ -2,20 +2,21 @@
 // ponytail — shared configuration resolver
 //
 // Resolution order for default mode:
-//   1. PONYTAIL_DEFAULT_MODE environment variable
-//   2. Config file defaultMode field:
+//   1. PONYTAIL_MODE environment variable (one-launch override)
+//   2. PONYTAIL_DEFAULT_MODE environment variable
+//   3. Config file defaultMode field:
 //      - $XDG_CONFIG_HOME/ponytail/config.json (any platform, if set)
 //      - ~/.config/ponytail/config.json (macOS / Linux fallback)
 //      - %APPDATA%\ponytail\config.json (Windows fallback)
-//   3. 'full'
+//   4. 'full'
 
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
 
 const DEFAULT_MODE = 'full';
-const VALID_MODES = ['off', 'lite', 'full', 'ultra', 'review'];
-const RUNTIME_MODES = ['off', 'lite', 'full', 'ultra'];
+const VALID_MODES = ['off', 'lite', 'full', 'ultra', 'debug', 'review'];
+const RUNTIME_MODES = ['off', 'lite', 'full', 'ultra', 'debug'];
 
 function normalizeMode(mode) {
   if (typeof mode !== 'string') return null;
@@ -74,10 +75,14 @@ function getClaudeDir() {
 }
 
 function getDefaultMode() {
-  // 1. Environment variable (highest priority)
+  const sessionMode = normalizeMode(process.env.PONYTAIL_MODE);
+  if (sessionMode) return sessionMode;
+
+  // Persistent default environment variable, below the one-launch override.
   const envMode = process.env.PONYTAIL_DEFAULT_MODE;
   // ponytail: a default must be a runtime level (off/lite/full/ultra); review is
-  // a session-only mode, never a valid default (#377). Validate against
+  // a session-only mode, never a valid default (#377). Debug is a runnable
+  // workflow and may be selected at startup. Validate against
   // RUNTIME_MODES so a stray env var or config can't make review the default.
   if (envMode && RUNTIME_MODES.includes(envMode.toLowerCase())) {
     return envMode.toLowerCase();
