@@ -1,0 +1,6 @@
+{
+  "name": "ponytail-v2",
+  "private": true,
+  "type": "module",
+  "exports": "./index.mjs"
+}

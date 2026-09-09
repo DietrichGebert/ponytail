@@ -19,7 +19,8 @@
   "main": "./.opencode/plugins/ponytail.mjs",
   "exports": {
     ".": "./.opencode/plugins/ponytail.mjs",
-    "./plugin": "./.opencode/plugins/ponytail.mjs"
+    "./plugin": "./.opencode/plugins/ponytail.mjs",
+    "./v2": "./.opencode/v2/index.mjs"
   },
   "files": [
     "AGENTS.md",
@@ -34,6 +35,7 @@
     "LICENSE"
   ],
   "scripts": {
+    "typecheck:v2": "tsc -p tsconfig.opencode-v2.json",
     "test": "node --test tests/*.test.js && npm test --prefix pi-extension && npm test --prefix ponytail-mcp"
   },
   "pi": {
@@ -42,6 +44,13 @@
   },
   "publishConfig": {
     "access": "public"
+  },
+  "dependencies": {
+    "@opencode/plugin": "0.0.0-beta-19296",
+    "effect": "4.0.0-rc.112"
+  },
+  "devDependencies": {
+    "@types/node": "24.12.2",
+    "typescript": "5.8.2"
   }
 }
-

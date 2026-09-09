@@ -14,9 +14,13 @@ test('root npm test covers bundled subprojects', () => {
   assert.match(packageJson.scripts.test, /npm test --prefix ponytail-mcp/);
 });
 
-test('CI installs MCP dependencies before root npm test', () => {
+test('CI installs root and MCP dependencies before checking V2 and running tests', () => {
   const workflow = fs.readFileSync(path.join(root, '.github', 'workflows', 'test.yml'), 'utf8');
 
+  assert.match(workflow, /run: npm ci\s*\n/);
+  assert.match(workflow, /npm run typecheck:v2/);
+  assert.ok(workflow.indexOf('npm ci') < workflow.indexOf('npm run typecheck:v2'));
+  assert.ok(workflow.indexOf('npm run typecheck:v2') < workflow.indexOf('npm test'));
   assert.match(workflow, /npm install --prefix ponytail-mcp/);
   assert.ok(
     workflow.indexOf('npm install --prefix ponytail-mcp') < workflow.indexOf('npm test'),
