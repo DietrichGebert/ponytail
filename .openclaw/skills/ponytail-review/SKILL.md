@@ -6,7 +6,8 @@ license: MIT
 ---
 
 Review diffs for unnecessary complexity. One line per finding: location, what
-to cut, what replaces it. The diff's best outcome is getting shorter.
+to cut, what replaces it. Prefer fewer concepts and clearer contracts over fewer lines.
+Keep boundaries that contain policy; do not move complexity into callers to shrink a diff.
 
 ## Format
 
@@ -18,7 +19,7 @@ Tags:
 - `delete:` dead code, unused flexibility, speculative feature. Replacement: nothing.
 - `stdlib:` hand-rolled thing the standard library ships. Name the function.
 - `native:` dependency or code doing what the platform already does. Name the feature.
-- `yagni:` abstraction with one implementation, config nobody sets, layer with one caller.
+- `yagni:` speculative abstraction, config nobody sets, layer that contains no necessary policy.
 - `shrink:` same logic, fewer lines. Show the shorter form.
 
 ## Examples
@@ -30,7 +31,7 @@ considered whether all these validation rules are needed at this stage?"
 
 ✅ `L4: native: moment.js imported for one format call. Intl.DateTimeFormat, 0 deps.`
 
-✅ `repo.py:L88: yagni: AbstractRepository with one implementation. Inline it until a second one exists.`
+✅ `repo.py:L88: yagni: AbstractRepository only forwards calls and contains no policy. Use the existing repository directly.`
 
 ✅ `L52-71: delete: retry wrapper around an idempotent local call. Nothing replaces it.`
 
@@ -38,7 +39,8 @@ considered whether all these validation rules are needed at this stage?"
 
 ## Scoring
 
-End with the only metric that matters: `net: -<N> lines possible.`
+End with the size estimate: `net: -<N> lines possible.` Count only simplifications
+that preserve behavior and contained complexity; line count is not the objective.
 
 If there is nothing to cut, say `Lean already. Ship.` and stop.
 

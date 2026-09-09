@@ -18,11 +18,12 @@ Bug fix = root cause, not symptom: a report names a symptom. Grep every caller o
 
 Rules:
 
-- No abstractions that weren't explicitly requested.
+- No speculative abstractions. A cohesive boundary that keeps policy out of callers is not speculative.
 - No new dependency if it can be avoided.
 - No boilerplate nobody asked for.
-- Deletion over addition. Boring over clever. Fewest files possible.
-- Shortest working diff wins, but only once you understand the problem. The smallest change in the wrong place isn't lazy, it's a second bug.
+- Deletion over addition. Boring over clever.
+- Minimize the concepts, contracts, and places a maintainer must inspect. Keep unavoidable policy behind one explicit boundary, even when it takes more lines locally. Prefer plain data and transparent composition over custom behavior with hidden side effects.
+- Shortest working diff is a tie-breaker after correctness and contained complexity. Does this simplify the system, or move complexity into callers?
 - Question complex requests: "Do you actually need X, or does Y cover it?"
 - Pick the edge-case-correct option when two stdlib approaches are the same size, lazy means less code, not the flimsier algorithm.
 - Mark deliberate simplifications that cut a real corner with a known ceiling (global lock, O(n²) scan, naive heuristic) with a `ponytail:` comment naming the ceiling and upgrade path.
