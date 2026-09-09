@@ -29,10 +29,11 @@ Level sticks until changed or session end.
 | **ponytail-audit** | `/ponytail-audit` | Whole-repo over-engineering audit: ranked list of what to delete. |
 | **ponytail-debt** | `/ponytail-debt` | Harvest `ponytail:` shortcut comments into a tracked ledger. |
 | **ponytail-gain** | `/ponytail-gain` | Measured-impact scoreboard: less code, less cost, more speed. |
+| **ponytail-jedi** | `/ponytail-jedi <requirement>` | Research reusable open-source options without installing or changing the saved mode. |
 | **ponytail-help** | `/ponytail-help` | This card. |
 
 Codex uses `@ponytail`, `@ponytail-review`, and `@ponytail-help`; Claude Code
-and OpenCode use the slash-command forms above (OpenCode ships all six as
+and OpenCode use the slash-command forms above (OpenCode ships these as
 slash commands).
 
 ## Deactivate
