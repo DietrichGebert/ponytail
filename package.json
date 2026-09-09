@@ -36,6 +36,10 @@
   "scripts": {
     "test": "node --test tests/*.test.js && npm test --prefix pi-extension && npm test --prefix ponytail-mcp"
   },
+  "omp": {
+    "extensions": ["./pi-extension/index.js"],
+    "skills": ["./skills"]
+  },
   "pi": {
     "extensions": ["./pi-extension/index.js"],
     "skills": ["./skills"]
