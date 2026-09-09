@@ -12,6 +12,8 @@ provides_commands:
   - ponytail-debt
   - ponytail-gain
   - ponytail-help
+  - ponytail-plan
+  - ponytail-ask
 provides_skills:
   - ponytail
   - ponytail-review
@@ -19,3 +21,5 @@ provides_skills:
   - ponytail-debt
   - ponytail-gain
   - ponytail-help
+  - ponytail-plan
+  - ponytail-ask
