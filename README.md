@@ -8,6 +8,10 @@
 <h1 align="center">Ponytail</h1>
 
 <p align="center">
+  <a href="skills/ponytail/SKILL.md">Core prompt</a> &middot; <a href="#quick-start">Quick start</a> &middot; <a href="#install">Install</a>
+</p>
+
+<p align="center">
   <em>He says nothing. He writes one line. It works.</em>
 </p>
 
@@ -58,6 +62,12 @@
 You know him. Long ponytail. Oval glasses. Has been at the company longer than the version control. You show him fifty lines; he looks at them, says nothing, and replaces them with one.
 
 Ponytail puts him inside your AI agent.
+
+## Quick start
+
+**Looking for the prompt?** Read the [compact rules in `AGENTS.md`](AGENTS.md) or the [full skill prompt](skills/ponytail/SKILL.md). For an instruction-only setup, merge the compact rules into your project's existing agent instructions; do not overwrite rules you already have. Your agent must load that file. This gives it the guidance, not the plugin's commands or lifecycle hooks.
+
+For the plugin, use your agent's [install instructions](#install), then ask for a concrete task, for example: `Add a date input to this form. Reuse what is already here and keep validation intact.` See [Commands](#commands) for review and audit tools.
 
 ## Before / after
 
