@@ -4,12 +4,18 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 
 let plugin;
+let decodePrompt, decodeSystem;
 test.before(async () => {
-  delete process.env.PONYTAIL_DEFAULT_MODE;
+  process.env.PONYTAIL_DEFAULT_MODE = 'full';
+  const { Schema } = await import('effect');
+  const { Prompt } = await import('@opencode/schema/prompt-input');
+  const { SystemPart } = await import('@opencode/ai/schema/messages');
+  decodePrompt = Schema.decodeUnknownSync(Prompt);
+  decodeSystem = Schema.decodeUnknownSync(Schema.Array(SystemPart));
   plugin = (await import('@dietrichgebert/ponytail/v2')).default;
 });
 
-function context() {
+function context(storage = new Map()) {
   const commands = new Map();
   const skills = [];
   const hooks = {};
@@ -20,6 +26,10 @@ function context() {
     hooks,
     prompts,
     value: {
+      storage: {
+        get: async (key) => storage.get(key),
+        set: async (key, value) => { storage.set(key, value); },
+      },
       command: {
         transform: async (callback) => callback({
           add(command) { commands.set(command.name, command); },
@@ -30,7 +40,7 @@ function context() {
       },
       session: {
         hook: async (name, callback) => { hooks[name] = callback; },
-        prompt: async (prompt) => { prompts.push(prompt); },
+        prompt: async (prompt) => { decodePrompt(prompt); prompts.push(prompt); },
       },
     },
   };
@@ -54,15 +64,80 @@ test('executes commands through the V2 session prompt API', async () => {
   await plugin.setup(ctx.value);
   await ctx.commands.get('ponytail').execute({
     sessionID: 'session-1',
-    prompt: { text: 'ultra', files: [{ id: 'attachment' }] },
+    prompt: { text: 'ultra', files: [{ uri: 'file:///example.txt' }] },
     delivery: 'queue',
   });
   assert.equal(ctx.prompts.length, 1);
   assert.equal(ctx.prompts[0].sessionID, 'session-1');
   assert.equal(ctx.prompts[0].delivery, 'queue');
-  assert.deepEqual(ctx.prompts[0].files, [{ id: 'attachment' }]);
-  assert.match(ctx.prompts[0].text, /Switch to ponytail ultra mode/);
+  assert.deepEqual(ctx.prompts[0].files, [{ uri: 'file:///example.txt' }]);
+  assert.match(ctx.prompts[0].text, /level: ultra/);
   assert.doesNotMatch(ctx.prompts[0].text, /\$ARGUMENTS/);
+});
+
+test('mode switches apply to the same request, later turns, and only that session', async () => {
+  const storage = new Map();
+  let ctx = context(storage);
+  await plugin.setup(ctx.value);
+  for (const mode of ['ultra', 'off', 'lite']) {
+    await ctx.commands.get('ponytail').execute({
+      sessionID: 'session-1', prompt: { text: mode }, delivery: 'steer',
+    });
+    for (let turn = 0; turn < 2; turn++) {
+      const event = { sessionID: 'session-1', system: [] };
+      await ctx.hooks.context(event);
+      decodeSystem(event.system);
+      if (mode === 'off') assert.deepEqual(event.system, []);
+      else assert.match(event.system[0].text, new RegExp(`level: ${mode}`));
+    }
+    const other = { sessionID: 'session-2', system: [] };
+    await ctx.hooks.context(other);
+    assert.match(other.system[0].text, /level: full/);
+  }
+  ctx = context(storage);
+  await plugin.setup(ctx.value);
+  const resumed = { sessionID: 'session-1', system: [] };
+  await ctx.hooks.context(resumed);
+  assert.match(resumed.system[0].text, /level: lite/);
+});
+
+test('status, invalid arguments, and review preserve the selected mode', async () => {
+  const ctx = context();
+  await plugin.setup(ctx.value);
+  const execute = (text) => ctx.commands.get('ponytail').execute({
+    sessionID: 'session-1', prompt: { text }, delivery: 'queue',
+  });
+  await execute('  ULTRA  ');
+  await execute('');
+  assert.match(ctx.prompts.at(-1).text, /level: ultra/);
+  await execute('ulta');
+  assert.match(ctx.prompts.at(-1).text, /Invalid.*lite.*full.*ultra.*off/);
+  await ctx.commands.get('ponytail-review').execute({
+    sessionID: 'session-1', prompt: { text: '' }, delivery: 'queue',
+  });
+  const event = { sessionID: 'session-1', system: [] };
+  await ctx.hooks.context(event);
+  assert.match(event.system[0].text, /level: ultra/);
+});
+
+test('expanded prompts preserve references without stale mention offsets or mutation', async () => {
+  const ctx = context();
+  await plugin.setup(ctx.value);
+  const prompt = {
+    text: '@file @build @skill',
+    files: [{ uri: 'file:///example.txt', mention: { start: 0, end: 5, text: '@file' } }],
+    agents: [{ name: 'build', mention: { start: 6, end: 12, text: '@build' } }],
+    skills: [{ id: 'ponytail-review', mention: { start: 13, end: 19, text: '@skill' } }],
+  };
+  const original = structuredClone(prompt);
+  await ctx.commands.get('ponytail-review').execute({ sessionID: 'session-1', prompt, delivery: 'queue' });
+  const submitted = ctx.prompts.at(-1);
+  for (const key of ['files', 'agents', 'skills']) {
+    assert.equal(submitted[key][0].mention, undefined);
+    const { mention, ...reference } = prompt[key][0];
+    assert.deepEqual(submitted[key][0], reference);
+  }
+  assert.deepEqual(prompt, original);
 });
 
 test('appends arguments when a command template has no placeholder', async () => {

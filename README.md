@@ -184,14 +184,18 @@ Run from a checkout instead (the plugin reuses `hooks/` and `skills/`):
 For a V2 checkout, use the V2 adapter's path instead:
 
 ```json
-{ "plugins": ["./.opencode/plugins/ponytail-v2.mjs"] }
+{ "plugins": ["./.opencode/v2"] }
 ```
 
 Injects the ruleset every turn at the active level; adds the `/ponytail` commands (see [Commands](#commands)). OpenCode also auto-loads this repo's `AGENTS.md`, so the rules hold even without the plugin. The plugin adds the `lite/full/ultra/off` levels.
 
 The `./` path resolves against your project's `opencode.json`; to share one checkout across projects, point it at the absolute path of the `.mjs` instead (it finds its `hooks/` and `skills/` relative to its own file).
 
-The V2 beta does not currently expose a command lifecycle hook. Its `/ponytail <level>` command applies the requested level to that command prompt, but cannot persist an interactive switch for later turns. Set a persistent level with `PONYTAIL_DEFAULT_MODE` or `defaultMode` in the Ponytail config described below; the context hook reads that default on every turn. V1 mode switching is unchanged.
+In V2, `/ponytail lite|full|ultra|off` stores the mode for the current session before submitting the command prompt. The selection survives plugin reloads and server restarts. Other sessions keep their own selections. Bare `/ponytail` reports the effective mode; invalid levels leave it unchanged. New sessions use `PONYTAIL_DEFAULT_MODE` or `defaultMode` in the Ponytail config described below. One-shot commands such as `/ponytail-review` do not change the mode.
+
+The adapter is tested against OpenCode V2 `0.0.0-beta-19296`. Run `npm run typecheck:v2` and `node --test tests/opencode-v2-plugin.test.js` when updating its API dependency.
+
+For an end-to-end check, run `node scripts/verify-opencode-v2.mjs [plugin-directory]` with `opencode2` on PATH. It starts a private server and a local mock model endpoint, checks outgoing requests and session isolation, then restarts the private server to check persistence. It uses temporary configuration and data directories and makes no paid model calls.
 
 ### Gemini CLI
 
