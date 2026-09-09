@@ -344,6 +344,11 @@ The correctness benchmark spawns Python for email and CSV checks; `python3` is t
 
 ## FAQ
 
+**Can it review a skill folder, a TypeScript extension, or a plugin directory?**
+Yes, when your host agent can read those files. [`ponytail-review`](skills/ponytail-review/SKILL.md) reviews a diff; [`ponytail-audit`](skills/ponytail-audit/SKILL.md) scans the repository. Both report unnecessary complexity without applying fixes. For a narrower review, give the agent the exact paths and scope, for example: `Review skills/my-skill/ and extensions/my-extension.ts for unnecessary complexity. Read related callers and configuration, but report findings only; do not edit files.` These are prompts for the host agent, not a standalone TypeScript analyzer or a correctness/security audit.
+
+To constrain changes, state the allowed paths, behavior to preserve, and required checks in your project instructions or task. If you only want an explanation, say `Explain this behavior; do not write or modify code.` The core skill targets coding tasks, not general prose. Ponytail's guidance does not enforce file permissions or sandbox boundaries; configure those in your host. An unlisted host needs its own instruction/skill loading support; being able to read the prompt does not establish plugin compatibility.
+
 **Can I use it with [caveman](https://github.com/JuliusBrussee/caveman)?**
 Yes, and you should. Caveman shrinks what the agent says; ponytail shrinks what it builds. Different halves, no overlap: caveman leaves code byte-for-byte exact, ponytail stays out of the prose. Terse talk about minimal code.
 
