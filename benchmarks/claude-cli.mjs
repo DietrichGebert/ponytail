@@ -115,6 +115,8 @@ if (process.argv.includes('--self-check')) {
     } catch (error) {
       stdout = error.stdout;
       failure = error.killed ? 'timeout' : `CLI exit ${error.code}`;
+    } finally {
+      fs.rmSync(cwd, { recursive: true, force: true });
     }
     let response;
     try { response = JSON.parse(stdout); } catch { failure = failure || 'Invalid JSON response'; }
