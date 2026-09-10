@@ -29,8 +29,12 @@ The convention is `ponytail: <ceiling>, <upgrade path>`, so pull the ceiling
 and the trigger straight from the comment. Want an owner per row too? add
 `git blame -L<line>,<line>`.
 
-Flag the rot risk: any `ponytail:` comment that names no upgrade path or
-trigger gets a `no-trigger` tag, those are the ones that silently rot.
+Flag the rot risk: any `ponytail:` comment that names no upgrade path, no
+trigger condition, or no ceiling gets a `⚠ no-trigger` tag — these are the
+ones that silently rot into permanent shortcuts.
+
+Well-formed: `// ponytail: global lock, per-account locks if throughput matters`
+Missing trigger: `// ponytail: using simple loop` ⚠ no-trigger — no ceiling or upgrade path named.
 
 End with `<N> markers, <M> with no trigger.` Nothing found: `No ponytail: debt. Clean ledger.`
 
