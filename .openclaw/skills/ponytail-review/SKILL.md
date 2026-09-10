@@ -49,4 +49,10 @@ and performance are explicitly out of scope. Route them to a normal review
 pass, not this one. A single smoke test or `assert`-based
 self-check is the ponytail minimum, not bloat, never flag it for deletion.
 Does not apply the fixes, only lists them.
+
+**Never shrink functional data.** URLs must include protocols (`https://`),
+file paths must remain complete and valid, commands must stay executable.
+A URL without its protocol isn't "the same logic, shorter" — it's a broken
+URL. Functional strings are executable data, not decoration.
+
 "stop ponytail-review" or "normal mode": revert to verbose review style.

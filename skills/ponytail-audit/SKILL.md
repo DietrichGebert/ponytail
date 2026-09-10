@@ -39,3 +39,8 @@ Scope: over-engineering and complexity only. Correctness bugs, security holes,
 and performance are explicitly out of scope. Route them to a normal review
 pass. Lists findings, applies nothing. One-shot.
 "stop ponytail-audit" or "normal mode" to revert.
+
+**Never shrink functional data.** URLs must include protocols (`https://`),
+file paths must remain complete and valid, commands must stay executable.
+A URL without its protocol isn't "the same logic, shorter" — it's a broken
+URL. Functional strings are executable data, not decoration.
