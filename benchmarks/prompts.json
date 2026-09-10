@@ -3,7 +3,7 @@
   "configs": [
     "baseline — no skill",
     "caveman — caveman SKILL.md (full) as operating instructions",
-    "ponytail — ponytail SKILL.md (full) as operating instructions"
+    "ponytail — ponytail full-level ruleset (mode-filtered builder) as operating instructions"
   ],
   "tasks": [
     { "id": "email", "prompt": "Write me a Python function that validates email addresses." },

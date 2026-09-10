@@ -68,6 +68,67 @@ for (const phrase of INVARIANTS) {
   }
 }
 
+// The invariants must live in the ungated core, not inside a per-level block
+// (KTD4): a mode's filtered output must never silently lose a safety carve-out.
+// Strip the `<!-- mode: X -->` blocks and assert each invariant is still present
+// in the remaining ungated region.
+const MODE_BLOCK_RE = /<!--\s*mode:\s*[a-z]+\s*-->[\s\S]*?<!--\s*\/mode:\s*[a-z]+\s*-->/gi;
+const ungated = skill.replace(MODE_BLOCK_RE, '');
+for (const phrase of INVARIANTS) {
+  if (!ungated.includes(phrase)) {
+    console.error(`skills/ponytail/SKILL.md ungated core is missing rule invariant: "${phrase}"`);
+    failed = true;
+  }
+}
+
+// Gated blocks must not leak into AGENTS.md or its compact copies (KTD5): the
+// instruction-tier hosts load them statically with no mode state, so per-level
+// blocks would be dead weight and contradict the mode-less boundary.
+const GATED_BLOCK_PRESENT = /<!--\s*mode:\s*[a-z]+\s*-->|<!--\s*\/mode:\s*[a-z]+\s*-->/i;
+for (const [relPath] of copies) {
+  const actual = read(relPath);
+  if (GATED_BLOCK_PRESENT.test(actual)) {
+    console.error(`${relPath} must not contain gated mode blocks (instruction-tier copies are mode-less)`);
+    failed = true;
+  }
+}
+if (GATED_BLOCK_PRESENT.test(agents)) {
+  console.error('AGENTS.md must not contain gated mode blocks (instruction-tier copies are mode-less)');
+  failed = true;
+}
+
+// Per-level blocks must carry their own semantics, not another level's: a block
+// body that gets swapped or rewritten so one level silently enforces another's
+// rules survives every check above (the ungated core and the no-leak guard never
+// inspect block contents), so pin each level's distinctive phrase here.
+const LEVEL_PHRASES = {
+  lite: 'advisory',
+  full: 'enforced default',
+  ultra: 'deletion-first',
+};
+for (const [level, phrase] of Object.entries(LEVEL_PHRASES)) {
+  const blockMatch = skill.match(
+    new RegExp(`<!--\\s*mode:\\s*${level}\\s*-->([\\s\\S]*?)<!--\\s*\\/mode:\\s*${level}\\s*-->`, 'i')
+  );
+  if (!blockMatch) {
+    console.error(`skills/ponytail/SKILL.md is missing the ${level} mode block`);
+    failed = true;
+    continue;
+  }
+  const block = blockMatch[1];
+  if (!block.includes(phrase)) {
+    console.error(`skills/ponytail/SKILL.md ${level} mode block is missing its distinctive phrase: "${phrase}"`);
+    failed = true;
+  }
+  for (const [otherLevel, otherPhrase] of Object.entries(LEVEL_PHRASES)) {
+    if (otherLevel === level) continue;
+    if (block.includes(otherPhrase)) {
+      console.error(`skills/ponytail/SKILL.md ${level} mode block contains ${otherLevel}'s distinctive phrase: "${otherPhrase}"`);
+      failed = true;
+    }
+  }
+}
+
 if (failed) {
   console.error('Update the copied rule text, AGENTS.md, or SKILL.md so the shared rules match.');
   process.exit(1);

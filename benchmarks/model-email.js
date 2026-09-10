@@ -1,7 +1,9 @@
 // Cross-model email rate at high n: is the parseaddr quirk gpt-5.4-mini-specific?
 const fs = require('fs'), path = require('path');
 const { checkPy, pyBlock, TASKS } = require('./robustness-audit.js');
-const skill = fs.readFileSync(path.join(__dirname, '..', 'skills', 'ponytail', 'SKILL.md'), 'utf8');
+// Use the mode-filtered full ruleset (not the raw SKILL.md, which since #664
+// carries the union of all three levels plus gating markers).
+const skill = require('../hooks/ponytail-instructions').getPonytailInstructions('full');
 const email = TASKS.find(t => t.name === 'email');
 const N = Number(process.env.ME_N) || 100;
 const MODELS = (process.env.ME_MODELS || 'gpt-4.1-mini,gpt-5.4-mini').split(',');

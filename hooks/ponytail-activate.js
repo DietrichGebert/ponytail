@@ -14,6 +14,7 @@ const {
   clearMode,
   isCodex,
   isCopilot,
+  readMode,
   setMode,
   writeHookOutput,
 } = require('./ponytail-runtime');
@@ -21,7 +22,13 @@ const {
 const claudeDir = getClaudeDir();
 const settingsPath = path.join(claudeDir, 'settings.json');
 
-const mode = getDefaultMode();
+// Copilot sessions can switch level mid-session (/ponytail <level>); the
+// switch persists a session flag, and Copilot's writeHookOutput drops all
+// non-SessionStart output, so the change only takes effect on the next
+// SessionStart. Honor the persisted flag there; Claude Code and Codex keep
+// starting at the configured default. 'off' never reaches the flag (it clears
+// it), so readMode() can only return a real level or null.
+const mode = isCopilot ? (readMode() || getDefaultMode()) : getDefaultMode();
 
 // "off" mode — skip activation entirely, don't write flag or emit rules
 if (mode === 'off') {

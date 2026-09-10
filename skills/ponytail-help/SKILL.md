@@ -15,9 +15,9 @@ write flag files, or persist anything.
 
 | Level | Trigger | What change |
 |-------|---------|-------------|
-| **Lite** | `/ponytail lite` | Build what's asked, name the lazier alternative in one line. |
-| **Full** | `/ponytail` | The ladder enforced: YAGNI → stdlib → native → one line → minimum. Default. |
-| **Ultra** | `/ponytail ultra` | YAGNI extremist. Deletion before addition. Challenges requirements before building. |
+| **Lite** | `/ponytail lite` | Advisory: build what's asked, name the lazier alternative in one line, user picks. |
+| **Full** | `/ponytail` | Enforced default: the ladder (YAGNI → stdlib → native → one line → minimum) is binding. |
+| **Ultra** | `/ponytail ultra` | Deletion-first: YAGNI extremist, challenge the requirement before adding. |
 
 Level sticks until changed or session end.
 

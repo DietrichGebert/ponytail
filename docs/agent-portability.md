@@ -38,6 +38,14 @@ Keep adapters thin. When a host supports skills or hooks, point it at the
 existing `skills/` and `hooks/` files. When a host only supports project
 instructions, keep its copied rule text aligned with `AGENTS.md`.
 
+**Instruction-tier boundary:** hosts that load `AGENTS.md` or a compact copy
+(Cursor, Windsurf, Cline, Copilot-chat, Kiro, Zed, CodeWhale, Swival, Junie,
+Amp, Jules, Antigravity, VS Code + Codex extension, generic agents) have no
+mode state and no `/ponytail` command, so they always receive the static
+**full** ruleset — they cannot differentiate lite/ultra. Level switching is a
+plugin-tier capability only (Claude Code, Codex, Copilot CLI, Qoder plugin,
+pi, OpenCode, Hermes, MCP).
+
 ## Portable Behavior
 
 - `skills/ponytail/SKILL.md`: lazy senior dev mode

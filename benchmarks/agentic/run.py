@@ -32,9 +32,11 @@ ROOT = Path(__file__).resolve().parents[2]
 RUNS_DIR = Path(__file__).resolve().parent / "runs"
 
 def _skill(rel): return (ROOT / rel).read_text(encoding="utf-8")
+
 ARMS = {
     "baseline":       lambda: None,
-    "ponytail":       lambda: _skill("skills/ponytail/SKILL.md"),
+    # ponytail activates via --plugin-dir (PLUGIN_ARMS), so this raw-prompt entry is never used.
+    "ponytail":       lambda: None,
     "caveman":        lambda: _skill("benchmarks/arms/caveman-SKILL.md"),
     "yagni":          lambda: "Follow YAGNI principles.",
     "yagni-oneliner": lambda: "Follow YAGNI principles, and prefer one-liner solutions.",

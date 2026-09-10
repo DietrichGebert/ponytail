@@ -67,35 +67,93 @@ def _strip_frontmatter(text: str) -> str:
     return re.sub(r"^---[\s\S]*?---\s*", "", text or "", count=1)
 
 
+# Mode block markers (KTD1): mirror the JS filter's convention exactly. A block
+# whose mode is not the effective mode is dropped entirely; marker lines
+# themselves are stripped from output.
+_MODE_BLOCK_OPEN_RE = re.compile(r"^<!--\s*mode:\s*([a-z]+)\s*-->\s*$")
+_MODE_BLOCK_CLOSE_RE = re.compile(r"^<!--\s*/mode:\s*([a-z]+)\s*-->\s*$")
+
+
 def _filter_skill_body_for_mode(body: str, mode: str) -> str:
     effective = _normalize_runtime_mode(mode) or DEFAULT_MODE
-    lines = []
+    out: list[str] = []
+    skip = False
     for line in _strip_frontmatter(body).splitlines():
+        open_match = _MODE_BLOCK_OPEN_RE.match(line)
+        if open_match:
+            skip = (_normalize_runtime_mode(open_match.group(1)) or open_match.group(1)) != effective
+            continue  # strip the marker line itself
+
+        close_match = _MODE_BLOCK_CLOSE_RE.match(line)
+        if close_match:
+            skip = False
+            continue  # strip the marker line itself
+
+        if skip:
+            continue  # drop the whole non-active block
+
+        # Preserve the original stateless line-drop as a fallback for content
+        # that does not use blocks (KTD2): a bold table row or quoted worked
+        # example whose label is a mode other than the effective one is dropped.
+        # The quote after the colon is load-bearing: it distinguishes a real
+        # per-mode worked example (`- lite: "..."`) from an ordinary rule bullet
+        # that merely starts with a mode word (e.g. "- Full: ..."), which must
+        # survive in every mode. This mirrors the JS filter's quote requirement.
         table_label = re.match(r"^\|\s*\*\*(.+?)\*\*\s*\|", line)
         if table_label:
             label_mode = _normalize_runtime_mode(table_label.group(1))
             if label_mode and label_mode != effective:
                 continue
 
-        example_label = re.match(r"^-\s*([^:]+):\s*", line)
+        example_label = re.match(r'^-\s*([^:]+):\s*"', line)
         if example_label:
             label_mode = _normalize_runtime_mode(example_label.group(1))
             if label_mode and label_mode != effective:
                 continue
 
-        lines.append(line)
-    return "\n".join(lines)
+        out.append(line)
+    return "\n".join(out)
 
 
 def _fallback_instructions(mode: str) -> str:
+    # One per-level enforcement line (R9): the failure path must not silently
+    # reproduce the 96%-identical behavior the levels fix. Mirrors the JS
+    # fallback's stance line.
+    stances = {
+        "lite": "advisory — build what is asked, name the lazier alternative, user picks.",
+        "ultra": "deletion-first — YAGNI extremist, challenge the requirement before adding.",
+    }
+    stance = stances.get(mode, "enforced — the ladder and rules below are binding.")
+    # Lite is advisory (R2): the fallback body must not re-impose the enforced
+    # ladder on the failure path — a stance that says "user picks" followed by
+    # binding mandates silently reproduces full-level enforcement. Full and
+    # ultra keep the enforced body; ultra keeps its deletion-first stance.
+    # Mirrors the JS fallback's mode-conditional body.
+    if mode == "lite":
+        ladder_rules = (
+            "Before any code, consider the lazy option first: does this need to "
+            "exist (YAGNI)? Does it already exist in this codebase? Does the "
+            "stdlib or a native platform feature cover it? Can it be one line? "
+            "Name the lazier alternative in one line and let the user pick. "
+            "Build what was asked. Avoid unrequested abstractions, avoidable "
+            "dependencies, and boilerplate unless the user asked for them. "
+            "Deletion over addition and boring over clever are advisory here, "
+            "not mandates — name the lazier option in the same response and let "
+            "the user pick."
+        )
+    else:
+        ladder_rules = (
+            "Before any code, stop at the first rung that holds: YAGNI, stdlib, "
+            "native platform, installed dependency, one line, then minimum code. "
+            "No unrequested abstractions, avoidable dependencies, boilerplate, or "
+            "speculative scaffolding. Deletion over addition. Boring over clever."
+        )
     return (
         f"PONYTAIL MODE ACTIVE — level: {mode}\n\n"
         "You are a lazy senior developer. Lazy means efficient, not careless. "
         "The best code is the code never written.\n\n"
-        "Before any code, stop at the first rung that holds: YAGNI, stdlib, "
-        "native platform, installed dependency, one line, then minimum code. "
-        "No unrequested abstractions, avoidable dependencies, boilerplate, or "
-        "speculative scaffolding. Deletion over addition. Boring over clever. "
+        f"Level stance: {stance}\n\n"
+        f"{ladder_rules} "
         "Do not simplify away trust-boundary validation, data-loss handling, "
         "security, accessibility, explicitly requested behavior, or one small "
         "runnable check for non-trivial logic."

@@ -29,7 +29,10 @@ try {
     .map(l => { const i = l.indexOf('='); return [l.slice(0, i).trim(), l.slice(i + 1).trim()]; }));
 } catch (_) { /* no .env — fine for --selftest */ }
 const KEY = process.env.OPENAI_API_KEY || kv.OPENAI_API_KEY;
-const SKILL = fs.readFileSync(path.join(ROOT, 'skills', 'ponytail', 'SKILL.md'), 'utf8');
+// Use the mode-filtered full ruleset (not the raw SKILL.md, which since #664
+// carries the union of all three levels plus gating markers) so the audit
+// measures the production injection path.
+const SKILL = require('../hooks/ponytail-instructions').getPonytailInstructions('full');
 
 // task = { name, prompt, names, arity, cases: [[argsArray, expected], ...], good, bad }
 const TASKS = [
