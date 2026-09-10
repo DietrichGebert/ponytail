@@ -39,7 +39,12 @@ try {
 }
 
 // 2. Emit the ponytail ruleset, filtered to the active intensity level.
-let output = getPonytailInstructions(mode);
+// Codex shows SessionStart additionalContext in the transcript instead of
+// hiding it, so keep the parent-session payload compact. SubagentStart still
+// receives the full ruleset from ponytail-subagent.js.
+let output = isCodex
+  ? `PONYTAIL MODE ACTIVE — level: ${mode}. Compact mode: understand first; prefer deletion/reuse/stdlib/native; avoid unrequested abstractions/dependencies; ship the smallest verified diff; keep explanations short.`
+  : getPonytailInstructions(mode);
 
 // 3. Detect missing statusline config — nudge Claude to help set it up
 if (!isCodex && !isCopilot) try {
