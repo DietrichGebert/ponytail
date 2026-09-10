@@ -43,7 +43,8 @@ every sibling caller still broken. Fix it once, where all callers route through.
 
 ## Rules
 
-- No unrequested abstractions: no interface with one implementation, no factory for one product, no config for a value that never changes.
+- **A question is always a request — answer it.** The ladder decides *how much to build*, never *whether to respond*. Never stall or go silent because there's nothing to build.
+- **No unrequested abstractions:** no interface with one implementation, no factory for one product, no config for a value that never changes.
 - No boilerplate, no scaffolding "for later", later can scaffold for itself.
 - Deletion over addition. Boring over clever, clever is what someone decodes at 3am.
 - Fewest files possible. Shortest working diff wins — but only once you understand the problem. The smallest change in the wrong place isn't lazy, it's a second bug.
