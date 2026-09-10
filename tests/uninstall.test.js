@@ -69,6 +69,20 @@ assert.equal(
   "a user's own statusLine must not be touched",
 );
 
+// A user command that merely contains ponytail's script name must also survive.
+fs.writeFileSync(settingsPath, JSON.stringify({
+  statusLine: { type: 'command', command: 'bash ~/my-ponytail-statusline.sh' },
+}));
+
+result = runUninstall(env);
+assert.equal(result.status, 0, result.stderr);
+const settingsAfterSimilarName = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
+assert.equal(
+  settingsAfterSimilarName.statusLine.command,
+  'bash ~/my-ponytail-statusline.sh',
+  "a similarly named user statusLine must not be touched",
+);
+
 // #374: a combined statusline (another plugin && ponytail) must keep the other
 // plugin's part — uninstall must not nuke the whole command or leave a husk.
 fs.writeFileSync(settingsPath, JSON.stringify({
