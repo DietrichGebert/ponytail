@@ -26,8 +26,10 @@ thing, dead flags and config, hand-rolled stdlib.
 
 ## Output
 
-One line per finding, ranked: `<tag> <what to cut>. <replacement>. [path]`.
-End with `net: -<N> lines, -<M> deps possible.` Nothing to cut: `Lean already. Ship.`
+One line per finding, numbered and ranked biggest cut first: `<N>. <tag> <what
+to cut>. <replacement>. [path]`. Numbers let the user reference a finding
+later ("elaborate on 12", "fix 12, 15, 18"). End with `net: -<N> lines, -<M>
+deps possible.` Nothing to cut: `Lean already. Ship.`
 
 ## Boundaries
 
