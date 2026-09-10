@@ -20,6 +20,8 @@ const isCopilot = Boolean(process.env.COPILOT_PLUGIN_DATA) ||
   isVsCodeCopilotRoot(process.env.CLAUDE_PLUGIN_ROOT);
 const isCodex = !isCopilot && Boolean(process.env.PLUGIN_DATA);
 const isQoder = !isCopilot && !isCodex && Boolean(process.env.QODER_SESSION_ID);
+const isKiro = !isCopilot && !isCodex && !isQoder &&
+  (process.env.PONYTAIL_HOST || '').toLowerCase() === 'kiro';
 
 let stateDir = getClaudeDir();
 if (isCodex) stateDir = process.env.PLUGIN_DATA;
@@ -27,6 +29,8 @@ if (isCodex) stateDir = process.env.PLUGIN_DATA;
 // getClaudeDir() rather than building a path from undefined.
 if (isCopilot) stateDir = process.env.COPILOT_PLUGIN_DATA || getClaudeDir();
 if (isQoder) stateDir = path.join(os.homedir(), '.qoder');
+// Kiro: state lives under KIRO_HOME (documented profile redirect) or ~/.kiro.
+if (isKiro) stateDir = process.env.KIRO_HOME || path.join(os.homedir(), '.kiro');
 
 const statePath = path.join(stateDir, STATE_FILE);
 
@@ -79,6 +83,12 @@ function writeHookOutput(event, mode, context = '') {
     process.stdout.write(JSON.stringify(output));
     return;
   }
+  // Kiro: raw stdout is forwarded as context for SessionStart and
+  // UserPromptSubmit hooks (exit 0). Same semantics as native Claude Code.
+  if (isKiro) {
+    process.stdout.write(context);
+    return;
+  }
   // Native Claude: SessionStart accepts raw stdout, but SubagentStart needs the
   // hookSpecificOutput JSON form or the context is dropped.
   if (event === 'SubagentStart') {
@@ -93,6 +103,7 @@ module.exports = {
   clearMode,
   isCodex,
   isCopilot,
+  isKiro,
   isQoder,
   readMode,
   setMode,

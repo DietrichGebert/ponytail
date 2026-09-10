@@ -489,4 +489,71 @@ try {
   if (prevEnvModeRev === undefined) delete process.env.PONYTAIL_DEFAULT_MODE; else process.env.PONYTAIL_DEFAULT_MODE = prevEnvModeRev;
 }
 
+// --- Kiro host support ---
+// isKiro detection via PONYTAIL_HOST=kiro, state at ~/.kiro/, raw stdout output.
+{
+  const kiroHome = path.join(temp, 'kiro-home');
+  fs.mkdirSync(path.join(kiroHome, '.kiro'), { recursive: true });
+  const kiroEnv = {
+    HOME: kiroHome,
+    USERPROFILE: kiroHome,
+    PONYTAIL_HOST: 'kiro',
+    PONYTAIL_DEFAULT_MODE: 'full',
+  };
+  const kiroState = path.join(kiroHome, '.kiro', '.ponytail-active');
+
+  // SessionStart: activates mode, writes raw stdout (not JSON)
+  let r = run('ponytail-activate.js', kiroEnv);
+  assert.equal(r.status, 0, 'kiro activate exit: ' + r.stderr);
+  assert.equal(fs.readFileSync(kiroState, 'utf8'), 'full');
+  assert.match(r.stdout, /PONYTAIL MODE ACTIVE — level: full/);
+  // Raw text, not JSON
+  assert.throws(() => JSON.parse(r.stdout), 'Kiro output must be raw text, not JSON');
+
+  // Mode switch via UserPromptSubmit
+  r = run('ponytail-mode-tracker.js', kiroEnv, JSON.stringify({ prompt: '/ponytail ultra' }));
+  assert.equal(r.status, 0, 'kiro mode switch exit: ' + r.stderr);
+  assert.equal(fs.readFileSync(kiroState, 'utf8'), 'ultra');
+  assert.match(r.stdout, /PONYTAIL MODE CHANGED — level: ultra/);
+  assert.throws(() => JSON.parse(r.stdout), 'Kiro mode output must be raw text, not JSON');
+
+  // Mode off clears state and emits PONYTAIL MODE OFF
+  r = run('ponytail-mode-tracker.js', kiroEnv, JSON.stringify({ prompt: '/ponytail off' }));
+  assert.equal(r.status, 0, 'kiro off exit: ' + r.stderr);
+  assert.equal(fs.existsSync(kiroState), false);
+  assert.match(r.stdout, /PONYTAIL MODE OFF/);
+
+  // "off" activation emits empty string (not 'OK')
+  const kiroOffEnv = { ...kiroEnv, PONYTAIL_DEFAULT_MODE: 'off' };
+  r = run('ponytail-activate.js', kiroOffEnv);
+  assert.equal(r.status, 0, 'kiro off activate: ' + r.stderr);
+  assert.equal(r.stdout, '', 'Kiro off mode must emit empty stdout');
+
+  // KIRO_HOME override for state dir
+  const kiroHomeOverride = path.join(temp, 'kiro-custom');
+  fs.mkdirSync(kiroHomeOverride, { recursive: true });
+  const kiroCustomEnv = { ...kiroEnv, KIRO_HOME: kiroHomeOverride, PONYTAIL_DEFAULT_MODE: 'lite' };
+  r = run('ponytail-activate.js', kiroCustomEnv);
+  assert.equal(r.status, 0, 'kiro KIRO_HOME activate: ' + r.stderr);
+  assert.equal(fs.readFileSync(path.join(kiroHomeOverride, '.ponytail-active'), 'utf8'), 'lite');
+
+  // isKiro is false when PONYTAIL_HOST is not set (falls through to native Claude)
+  const notKiroEnv = { HOME: kiroHome, USERPROFILE: kiroHome, PONYTAIL_DEFAULT_MODE: 'full' };
+  r = run('ponytail-activate.js', notKiroEnv);
+  assert.equal(r.status, 0, 'non-kiro activate: ' + r.stderr);
+  // State goes to ~/.claude, not ~/.kiro
+  assert.equal(
+    fs.readFileSync(path.join(kiroHome, '.claude', '.ponytail-active'), 'utf8'),
+    'full',
+  );
+
+  // Host-collision: PONYTAIL_HOST=kiro + PLUGIN_DATA set → isCodex wins (Codex takes precedence)
+  const collisionEnv = { ...kiroEnv, PLUGIN_DATA: pluginData };
+  r = run('ponytail-activate.js', collisionEnv);
+  assert.equal(r.status, 0, 'collision exit: ' + r.stderr);
+  let collisionOutput;
+  try { collisionOutput = JSON.parse(r.stdout); } catch (e) { collisionOutput = null; }
+  assert.notEqual(collisionOutput, null, 'Codex must win over PONYTAIL_HOST=kiro; output must be JSON');
+}
+
 console.log('hook compatibility checks passed');
