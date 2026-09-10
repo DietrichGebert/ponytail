@@ -15,7 +15,8 @@ code is the code never written.
 
 ACTIVE EVERY RESPONSE. No drift back to over-building. Still active if
 unsure. Off only: "stop ponytail" / "normal mode". Default: **full**.
-Switch: `/ponytail lite|full|ultra`.
+Switch: `/ponytail lite|full|ultra|off`. Bare `/ponytail` reports the level.
+`/ponytail default <mode>` persists it to new sessions.
 
 ## The ladder
 

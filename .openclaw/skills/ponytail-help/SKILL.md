@@ -42,7 +42,13 @@ Say "stop ponytail" or "normal mode". Resume anytime with `/ponytail`.
 
 ## Configure Default Mode
 
-Default mode = `full`, auto-active every session. Change it:
+Default mode = `full`, auto-active every session. `/ponytail off` lasts only for
+the current session — the next one starts at the default again. Change it:
+
+**Command**:
+```
+/ponytail default lite
+```
 
 **Environment variable** (highest priority):
 ```bash

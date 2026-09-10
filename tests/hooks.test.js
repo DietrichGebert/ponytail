@@ -489,4 +489,49 @@ try {
   if (prevEnvModeRev === undefined) delete process.env.PONYTAIL_DEFAULT_MODE; else process.env.PONYTAIL_DEFAULT_MODE = prevEnvModeRev;
 }
 
+// #648: on native Claude a UserPromptSubmit hook's raw stdout becomes
+// additionalContext (model-only), so anything the user asked to see must ride a
+// systemMessage. Report, switch and off all qualify; the ruleset injection that
+// nobody asked to read must stay raw stdout.
+const msgHome = path.join(temp, 'user-message-home');
+const msgEnv = {
+  HOME: msgHome,
+  USERPROFILE: msgHome,
+  XDG_CONFIG_HOME: path.join(msgHome, '.config'),
+};
+
+function systemMessage(prompt) {
+  const r = run('ponytail-mode-tracker.js', msgEnv, JSON.stringify({ prompt }));
+  assert.equal(r.status, 0, r.stderr);
+  if (!r.stdout.startsWith('{')) return null;
+  return JSON.parse(r.stdout).systemMessage || null;
+}
+
+// Switching says which level took effect.
+assert.match(systemMessage('/ponytail ultra') || '', /ultra/, 'a mode switch must be visible to the user');
+
+// Bare /ponytail reports the live level, and does not change it.
+assert.match(systemMessage('/ponytail') || '', /ultra/, 'the level report must be visible to the user');
+assert.equal(fs.readFileSync(path.join(msgHome, '.claude', '.ponytail-active'), 'utf8'), 'ultra',
+  'the report must not change the mode');
+
+// Off names the default it will revert to, since clearMode() is session-scoped.
+const offMsg = systemMessage('/ponytail off') || '';
+assert.match(offMsg, /off/i, 'deactivation must be visible to the user');
+assert.match(offMsg, /default is full/, 'off must name the default that revives ponytail next session');
+
+// Same for the natural-language form.
+assert.match(systemMessage('stop ponytail') || '', /off/i, '"stop ponytail" must be visible to the user');
+
+// A default change is user-visible too, and distinguishable from a switch.
+assert.match(systemMessage('/ponytail default lite') || '', /default set to lite/i,
+  'a default change must be visible to the user');
+
+// The ruleset injection is not a user message: it stays raw stdout so Claude
+// Code keeps treating it as additionalContext.
+const activate = run('ponytail-activate.js', msgEnv);
+assert.equal(activate.status, 0, activate.stderr);
+assert.ok(!activate.stdout.trimStart().startsWith('{'),
+  'SessionStart ruleset must stay raw stdout, not a systemMessage envelope');
+
 console.log('hook compatibility checks passed');

@@ -9,6 +9,24 @@ const { getPonytailInstructions } = require('./ponytail-instructions');
 let input = '';
 let done = false;
 
+// Name the default only when it differs from the live level, so the common case
+// stays a three-word status line and the surprising case explains itself.
+function describeDefault(mode) {
+  const fallback = getDefaultMode();
+  return fallback === mode ? '' : ' (default: ' + fallback + ')';
+}
+
+// Off is session-scoped: clearMode() only drops the flag, and the next
+// SessionStart re-activates at the configured default. Say so here, or the
+// user reads tomorrow's active session as ponytail ignoring them (#648).
+function offMessage() {
+  const fallback = getDefaultMode();
+  return fallback === 'off'
+    ? 'Ponytail off.'
+    : 'Ponytail off for this session — default is ' + fallback +
+      ', so a new session starts there. `/ponytail default off` to persist.';
+}
+
 function finish() {
   if (done) return;
   done = true;
@@ -39,7 +57,12 @@ function finish() {
           const dmode = parts[2];
           if (dmode === 'off' || dmode === 'lite' || dmode === 'full' || dmode === 'ultra') {
             writeDefaultMode(dmode);
-            writeHookOutput('UserPromptSubmit', dmode, 'PONYTAIL DEFAULT SET — new sessions start in ' + dmode + '.');
+            writeHookOutput(
+              'UserPromptSubmit',
+              dmode,
+              'PONYTAIL DEFAULT SET — new sessions start in ' + dmode + '.',
+              'Ponytail default set to ' + dmode + ' — new sessions start there.',
+            );
           }
           return; // don't fall through to the session-mode switch
         }
@@ -60,6 +83,7 @@ function finish() {
           'UserPromptSubmit',
           mode,
           'PONYTAIL MODE ACTIVE — level: ' + mode,
+          'Ponytail: ' + mode + describeDefault(mode),
         );
       } else if (mode && mode !== 'off') {
         setMode(mode);
@@ -72,12 +96,13 @@ function finish() {
             'UserPromptSubmit',
             mode,
             'PONYTAIL MODE CHANGED — level: ' + mode,
+            'Ponytail: ' + mode + describeDefault(mode),
           );
         }
       } else if (mode === 'off') {
         clearMode();
         deactivated = true;
-        writeHookOutput('UserPromptSubmit', 'off', 'PONYTAIL MODE OFF');
+        writeHookOutput('UserPromptSubmit', 'off', 'PONYTAIL MODE OFF', offMessage());
       }
     }
 
@@ -85,7 +110,7 @@ function finish() {
     if (!modeSwitched && !deactivated && isDeactivationCommand(prompt)) {
       clearMode();
       deactivated = true;
-      writeHookOutput('UserPromptSubmit', 'off', 'PONYTAIL MODE OFF');
+      writeHookOutput('UserPromptSubmit', 'off', 'PONYTAIL MODE OFF', offMessage());
     }
 
     // Qoder has no SessionStart event, so UserPromptSubmit does double duty:

@@ -48,7 +48,14 @@ function readMode() {
   }
 }
 
-function writeHookOutput(event, mode, context = '') {
+// `userMessage`, when set, is text the user asked for and must actually see.
+// Every other write is context for the model. The distinction matters because on
+// native Claude a UserPromptSubmit hook's stdout becomes additionalContext —
+// injected into the assistant's conversation, never shown — so a mode report
+// written that way reaches everyone except the person who typed the command
+// (#648). Codex already has a systemMessage channel below; this gives the native
+// path the same, without making every hook write user-visible.
+function writeHookOutput(event, mode, context = '', userMessage = '') {
   if (isCopilot) {
     // Copilot reads additionalContext on SessionStart; ignores output elsewhere.
     process.stdout.write(JSON.stringify(
@@ -84,6 +91,14 @@ function writeHookOutput(event, mode, context = '') {
   if (event === 'SubagentStart') {
     process.stdout.write(JSON.stringify(
       { hookSpecificOutput: { hookEventName: event, additionalContext: context } }));
+    return;
+  }
+  if (userMessage) {
+    const output = { systemMessage: userMessage };
+    if (context) {
+      output.hookSpecificOutput = { hookEventName: event, additionalContext: context };
+    }
+    process.stdout.write(JSON.stringify(output));
     return;
   }
   process.stdout.write(context);
