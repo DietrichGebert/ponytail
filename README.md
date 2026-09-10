@@ -324,6 +324,8 @@ These remove the plugin's own files. They leave behind a small amount of state p
 | `/ponytail-review` | Review the current diff for over-engineering, hands back a delete-list. |
 | `/ponytail-audit` | Audit the whole repo for over-engineering, not just the diff. |
 | `/ponytail-debt` | Harvest the `ponytail:` shortcuts you've deferred into a ledger, so "later" doesn't become "never". |
+
+Two markers, opposite meanings. `ponytail:` flags a deliberate shortcut with a known ceiling, so reading one invites the upgrade. `ponytail-keep:` flags code that only *looks* over-complicated because it took rounds against a bug or a platform limit, naming the symptom the obvious version produces, so reading one means reproducing that symptom before touching it. The colon in the harvest pattern keeps the ledger free of the second kind.
 | `/ponytail-gain` | Show the measured impact scoreboard (less code, less cost, more speed) from the benchmark. |
 | `/ponytail-help` | Quick reference for the commands above. |
 

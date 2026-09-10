@@ -279,6 +279,12 @@ Codex 확장을 쓰는 VS Code는 이 저장소가 함께 싣는 `AGENTS.md`를 
 | `/ponytail-review` | 지금 diff를 과잉 구현 관점에서 훑고, 삭제 목록을 돌려준다. |
 | `/ponytail-audit` | diff만이 아니라 저장소 전체를 과잉 구현 관점에서 감사한다. |
 | `/ponytail-debt` | 미뤄 둔 `ponytail:` 간소화들을 장부로 모아, "나중에"가 "영영"이 되지 않게 한다. |
+
+<!-- TRANSLATION NEEDS HUMAN REVIEW: the paragraph below was written by a
+     contributor who does not read Korean, mirroring the English and Spanish READMEs.
+     Please reword or replace it. -->
+
+마커는 둘이고, 뜻은 반대다. `ponytail:`는 천장이 알려진 의도적 지름길을 표시하므로, 읽으면 개선을 부른다. `ponytail-keep:`는 버그나 플랫폼 제약과 여러 번 씨름한 끝에 나와서 *겉보기에만* 복잡한 코드를 표시하고, 뻔한 방식이 일으키는 증상을 적어 두므로, 읽으면 손대기 전에 그 증상부터 재현해야 한다. 수집 패턴의 콜론 덕분에 장부에는 두 번째 종류가 섞이지 않는다.
 | `/ponytail-gain` | 벤치마크로 잰 효과 스코어보드(코드 절감, 비용 절감, 속도 향상)를 보여 준다. |
 | `/ponytail-help` | 위 명령들의 빠른 참조. |
 

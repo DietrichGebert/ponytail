@@ -260,6 +260,8 @@ Qué archivos corresponden a qué agente: [Portabilidad de agentes](docs/agent-p
 | `/ponytail-review` | Revisa el diff actual en busca de sobre-ingeniería y devuelve una lista de qué eliminar. |
 | `/ponytail-audit` | Audita el repo completo en busca de sobre-ingeniería, no solo el diff. |
 | `/ponytail-debt` | Recolecta los atajos marcados con `ponytail:` que dejaste pendientes en un registro, para que "después" no se convierta en "nunca". |
+
+Dos marcadores, sentidos opuestos. `ponytail:` señala un atajo deliberado con techo conocido, así que leerlo invita a mejorarlo. `ponytail-keep:` señala código que solo *parece* complicado porque salió de varias vueltas contra un bug o un límite de la plataforma, y nombra el síntoma que produce la versión obvia, así que leerlo obliga a reproducir ese síntoma antes de tocarlo. Los dos puntos del patrón de recolección mantienen el registro libre del segundo tipo.
 | `/ponytail-help` | Referencia rápida de los comandos anteriores. |
 
 Los comandos requieren un host compatible con skills (Claude Code, Codex, Devin CLI, OpenCode, Gemini, pi, Swival). En Codex son skills; se invocan con `@` (`@ponytail-review`). Los adaptadores de solo instrucciones (Cursor, Windsurf, Cline, Copilot, Kiro, Antigravity) cargan el ruleset permanente sin los comandos.
