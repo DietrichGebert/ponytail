@@ -23,7 +23,10 @@ function finish() {
     if (/^[/@$]ponytail/.test(prompt)) {
       const parts = prompt.split(/\s+/);
       const cmd = parts[0].replace(/^[@$]/, '/');
-      const arg = parts[1] || '';
+      // Claude Code's Skill invocation relays the arg wrapped in literal
+      // brackets ("ponytail:ponytail [lite]"), unlike a plain slash command.
+      // Strip them so 'lite'/'full'/'ultra'/'off' still match.
+      const arg = (parts[1] || '').replace(/^\[+|\]+$/g, '');
 
       let mode = null;
       let isReportOnly = false;
