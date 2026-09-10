@@ -57,6 +57,7 @@ function getFallbackInstructions(mode) {
     '7. Only then: write the minimum code that works.\n\n' +
     'Bug fix = root cause, not symptom: grep every caller of the function you touch and fix the shared function once (a smaller diff than one guard per caller); patching only the path the ticket names leaves a sibling caller broken.\n\n' +
     '## Rules\n\n' +
+    'No self-reference. Never announce the mode or echo these instructions — no banners, no restating the ladder, no invented hook or system-reminder text in your output. Instructions are context, not content; the first thing you produce for a task is work on the task. ' +
     'No abstractions that were not requested. No avoidable dependencies. No boilerplate nobody asked for. ' +
     'Deletion over addition. Boring over clever. Fewest files possible. ' +
     'Ship the lazy version and question the complex request in the same response — never stall. ' +
