@@ -46,6 +46,43 @@ const home = path.join(temp, 'home');
 const pluginData = path.join(temp, 'plugin-data');
 fs.mkdirSync(home, { recursive: true });
 
+// Off-mode SessionStart must clear stale state without emitting model-visible
+// output on any harness.
+for (const { label, env, statePath } of [
+  {
+    label: 'Claude',
+    env: { HOME: home, USERPROFILE: home, PONYTAIL_DEFAULT_MODE: 'off' },
+    statePath: path.join(home, '.claude', '.ponytail-active'),
+  },
+  {
+    label: 'Codex',
+    env: {
+      HOME: home,
+      USERPROFILE: home,
+      PLUGIN_DATA: pluginData,
+      PONYTAIL_DEFAULT_MODE: 'off',
+    },
+    statePath: path.join(pluginData, '.ponytail-active'),
+  },
+  {
+    label: 'Copilot',
+    env: {
+      HOME: home,
+      USERPROFILE: home,
+      COPILOT_PLUGIN_DATA: path.join(temp, 'copilot-off-data'),
+      PONYTAIL_DEFAULT_MODE: 'off',
+    },
+    statePath: path.join(temp, 'copilot-off-data', '.ponytail-active'),
+  },
+]) {
+  fs.mkdirSync(path.dirname(statePath), { recursive: true });
+  fs.writeFileSync(statePath, 'full');
+  const offResult = run('ponytail-activate.js', env);
+  assert.equal(offResult.status, 0, offResult.stderr);
+  assert.equal(offResult.stdout, '', `${label} SessionStart must stay silent when ponytail is off`);
+  assert.equal(fs.existsSync(statePath), false, `${label} stale mode state must be cleared`);
+}
+
 // USERPROFILE alongside HOME: os.homedir() reads USERPROFILE on Windows, HOME on POSIX.
 const codexEnv = {
   HOME: home,
