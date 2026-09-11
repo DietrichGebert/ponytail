@@ -3,7 +3,7 @@
 // Inspects user input for /ponytail commands and writes mode to flag file
 
 const { getDefaultMode, isDeactivationCommand, writeDefaultMode } = require('./ponytail-config');
-const { clearMode, isQoder, readMode, setMode, writeHookOutput } = require('./ponytail-runtime');
+const { clearMode, isEca, isQoder, readMode, setMode, writeHookOutput } = require('./ponytail-runtime');
 const { getPonytailInstructions } = require('./ponytail-instructions');
 
 let input = '';
@@ -67,7 +67,17 @@ function finish() {
         // ponytail: Qoder needs the full ruleset every turn, so when a mode
         // switch happens we fold the confirmation into the ruleset output
         // below (one JSON on stdout) instead of emitting two separate writes.
-        if (!isQoder) {
+        if (isEca) {
+          // ECA expands skill slash commands before hooks see the prompt, so
+          // a switch arrives as `$ponytail <level>` text. The chatStart
+          // injection still carries the OLD level's rules, so fold the new
+          // level's ruleset into the confirmation (one JSON on stdout).
+          writeHookOutput(
+            'UserPromptSubmit',
+            mode,
+            'PONYTAIL MODE CHANGED — level: ' + mode + '\n\n' + getPonytailInstructions(mode),
+          );
+        } else if (!isQoder) {
           writeHookOutput(
             'UserPromptSubmit',
             mode,

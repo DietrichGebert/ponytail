@@ -279,6 +279,25 @@ Start a new session (or reload plugins). Skills show as `/ponytail`, `/ponytail-
 
 `AGENTS.md` still works instruction-only from a checkout without the plugin.
 
+### ECA
+
+Register the repo as a plugin source in `~/.config/eca/config.json`, then restart ECA:
+
+```json
+{
+  "plugins": {
+    "ponytail": { "source": "https://github.com/DietrichGebert/ponytail.git" },
+    "install": ["ponytail"]
+  }
+}
+```
+
+The plugin registers the six skills — they show up as `/ponytail`, `/ponytail-review`, `/ponytail-audit`, `/ponytail-debt`, `/ponytail-gain`, `/ponytail-help`, and ECA auto-invokes them on coding tasks from their descriptions — and wires the lifecycle hooks through `eca.json`: `chatStart` activates the default mode and injects the ruleset into the system prompt, `preRequest` tracks mode switches, and `subagentStart` injects the ruleset into every subagent (`PONYTAIL_SUBAGENT_MATCHER` scoping works too). The hooks run the shared `hooks/` scripts, so `node` needs to be on your PATH; without it the skills still work and the always-on activation stays quiet. The hooks live in `eca.json`, not `hooks/hooks.json`: ECA plugins and the Gemini extension would both auto-load that path, with incompatible event names.
+
+From a checkout, ECA works with zero setup: it reads `AGENTS.md` as always-on context and discovers the root `skills/` directory.
+
+One quirk: ECA expands a skill slash command into the skill body and drops arguments it has no placeholder for, so `/ponytail ultra` activates without switching the level. Send `$ponytail ultra` instead — the `preRequest` hook parses it, switches the tracked mode subagents inherit, and injects the new level's ruleset. A plain-text switch ("ponytail ultra") steers the current chat once the model has the skill loaded, but only the `$` form updates the tracked mode.
+
 That was it. He'd be proud. He won't say it.
 
 Active every session, with a handful of commands (see [Commands](#commands)). `/ponytail ultra` exists for when the codebase has wronged you personally. Startup and mode-change text shows the current mode.
@@ -311,6 +330,7 @@ Which files map to which agent: [Agent portability](docs/agent-portability.md).
 | Codex | `codex plugin remove ponytail` |
 | Devin CLI | `devin plugins remove ponytail` |
 | Grok Build | `grok plugin uninstall ponytail` |
+| ECA | Remove `"ponytail"` from `plugins.install` in `~/.config/eca/config.json` |
 | Pi agent | `pi uninstall ponytail` |
 | Cursor / Windsurf / Cline / Qoder / etc. | Delete the copied rule file |
 
@@ -327,7 +347,7 @@ These remove the plugin's own files. They leave behind a small amount of state p
 | `/ponytail-gain` | Show the measured impact scoreboard (less code, less cost, more speed) from the benchmark. |
 | `/ponytail-help` | Quick reference for the commands above. |
 
-Commands need a skill-capable host (Claude Code, Codex, Devin CLI, OpenCode, Gemini, pi, Swival, Hermes Agent, Qoder, Grok Build). In Codex they're skills, invoke with `@` (`@ponytail-review`). The instruction-only adapters (Cursor, Windsurf, Cline, Copilot, Kiro, Antigravity) load the always-on ruleset without the commands.
+Commands need a skill-capable host (Claude Code, Codex, Devin CLI, OpenCode, Gemini, pi, Swival, Hermes Agent, Qoder, Grok Build, ECA). In Codex they're skills, invoke with `@` (`@ponytail-review`). The instruction-only adapters (Cursor, Windsurf, Cline, Copilot, Kiro, Antigravity) load the always-on ruleset without the commands.
 
 ## Development
 

@@ -255,6 +255,25 @@ enabled = ["ponytail"]
 
 체크아웃의 `AGENTS.md`만으로도 지시문 전용 모드는 된다. 제거: `grok plugin uninstall ponytail`.
 
+### ECA
+
+`~/.config/eca/config.json`에 저장소를 플러그인 소스로 등록하고 ECA를 재시작한다:
+
+```json
+{
+  "plugins": {
+    "ponytail": { "source": "https://github.com/DietrichGebert/ponytail.git" },
+    "install": ["ponytail"]
+  }
+}
+```
+
+플러그인은 여섯 스킬을 등록한다 — `/ponytail`, `/ponytail-review`, `/ponytail-audit`, `/ponytail-debt`, `/ponytail-gain`, `/ponytail-help`로 보이고, 설명을 바탕으로 코딩 작업에서 자동 호출된다 — 그리고 `eca.json`으로 라이프사이클 훅을 연결한다: `chatStart`는 기본 모드를 활성화하고 룰셋을 시스템 프롬프트에 주입하고, `preRequest`는 모드 전환을 추적하고, `subagentStart`는 모든 서브에이전트에 룰셋을 주입한다(`PONYTAIL_SUBAGENT_MATCHER` 스코핑도 동작). 훅은 공유 `hooks/` 스크립트를 실행하므로 PATH에 `node`가 있어야 한다. 없어도 스킬은 동작하고 늘 켜진 활성화만 조용히 꺼진다. 훅은 `hooks/hooks.json`이 아니라 `eca.json`에 둔다: ECA 플러그인과 Gemini 확장 모두 그 경로를 자동 로드하는데 이벤트 이름이 호환되지 않기 때문이다.
+
+체크아웃에서는 설정이 필요 없다: ECA가 `AGENTS.md`를 늘 켜진 컨텍스트로 읽고 루트의 `skills/` 디렉터리를 발견한다.
+
+한 가지 주의: ECA는 슬래시 명령을 스킬 본문으로 확장하고 placeholder 없는 인수는 버리므로, `/ponytail ultra`는 레벨 전환 없이 활성화만 된다. 대신 `$ponytail ultra`를 보내면 `preRequest` 훅이 파싱해서 서브에이전트가 물려받는 추적 모드를 바꾸고 새 레벨의 룰셋을 주입한다. 제거: `~/.config/eca/config.json`의 `plugins.install`에서 `"ponytail"`를 지운다.
+
 이게 끝이었다. 그 사람이라면 흐뭇해할 거다. 입 밖으로 내진 않겠지만.
 
 매 세션 켜져 있고, 명령 몇 개가 딸려 온다([Commands](#commands) 참고). `/ponytail ultra`는 코드베이스가 당신에게 단단히 밉보인 날을 위해 있다. 시작할 때와 모드를 바꿀 때 지금 모드를 보여 준다.
