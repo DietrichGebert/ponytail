@@ -2,7 +2,7 @@
   "name": "@dietrichgebert/ponytail",
   "version": "4.9.0",
   "description": "Lazy senior dev mode for AI agents. The best code is the code you never wrote.",
-  "keywords": ["opencode-plugin", "opencode", "ponytail", "pi-package", "pi", "skills", "qoder"],
+  "keywords": ["opencode-plugin", "opencode", "ponytail", "pi-package", "pi", "omp", "skills", "qoder"],
   "license": "MIT",
   "author": {
     "name": "Dietrich Gebert",
@@ -29,15 +29,22 @@
     ".qoder/",
     ".qoder-plugin/",
     "pi-extension/",
+    "omp-extension/",
+    "docs/agent-portability.md",
     "scripts/uninstall.js",
     "assets/",
     "LICENSE"
   ],
   "scripts": {
-    "test": "node --test tests/*.test.js && npm test --prefix pi-extension && npm test --prefix ponytail-mcp"
+    "test": "node --test tests/*.test.js && npm test --prefix pi-extension && npm test --prefix ponytail-mcp",
+    "test:omp": "bun test ./omp-extension/test/extension.test.ts"
   },
   "pi": {
     "extensions": ["./pi-extension/index.js"],
+    "skills": ["./skills"]
+  },
+  "omp": {
+    "extensions": ["./omp-extension/index.ts"],
     "skills": ["./skills"]
   },
   "publishConfig": {

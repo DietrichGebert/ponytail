@@ -13,6 +13,7 @@ to load in a given agent.
 | Grok Build | root `plugin.json`, `.grok-plugin/marketplace.json`, `skills/`, `commands/` | `grok plugin install DietrichGebert/ponytail --trust`, then enable. Grok can auto-invoke ponytail from its coding-task skill description; `/ponytail` makes activation explicit. Grok lifecycle hooks are not used because passive hook output cannot inject instructions. |
 | OpenCode | `.opencode/plugins/ponytail.mjs`, `.opencode/command/`, `hooks/`, `skills/` | Server plugin injects the ruleset each turn via `experimental.chat.system.transform` and persists `/ponytail` switches; reuses the shared instruction builder. |
 | pi | `pi-extension/`, `skills/`, `hooks/` | Package extension: injects the ruleset each turn through the shared instruction builder and registers the `/ponytail` commands. |
+| Oh My Pi (OMP) | `omp-extension/`, `pi-extension/index.js` (shared parser only), `skills/`, `hooks/` | Native OMP extension with branch-scoped session state, string-array system policy, and active-skill expansion. The Pi extension is not registered in OMP. |
 | Hermes Agent | `plugin.yaml`, `__init__.py`, `skills/` | Native Hermes plugin: injects active mode through `pre_llm_call`, rewrites gateway `/ponytail-*` skill commands into agent prompts, registers `/ponytail` mode switching, and exposes bundled skills as `ponytail:<skill>`. |
 | Gemini CLI | `gemini-extension.json`, `AGENTS.md`, `commands/`, `skills/` | Extension manifest points `contextFileName` at `AGENTS.md` for always-on rules, and reuses the existing `commands/*.toml` and `skills/`, which Gemini CLI auto-discovers. The Claude/Codex hook map is not placed at Gemini's auto-discovered `hooks/hooks.json` path. |
 | Cursor | `.cursor/rules/ponytail.mdc` | Always-on project rule. |
@@ -47,3 +48,54 @@ instructions, keep its copied rule text aligned with `AGENTS.md`.
 - `skills/ponytail-gain/SKILL.md`: measured-impact scoreboard from the benchmark
 - `skills/ponytail-help/SKILL.md`: quick reference
 - `AGENTS.md`: compact always-on instruction set for agents without skill support
+
+## OMP Development and Compatibility
+
+The OMP entry reuses `hooks/ponytail-config.js`,
+`hooks/ponytail-instructions.js`, and the exported command parser from
+`pi-extension/index.js`. It does not register the Pi extension or duplicate any
+skill body. Policy modules load directly from the installed package; there is
+no marketplace root lookup or asynchronous policy cache. Missing modules fail
+through OMP's extension loader. Skill files are read on each alias invocation,
+so a missing or unreadable skill reports an error and can be retried after repair.
+
+Required native APIs are `before_agent_start.systemPrompt: string[]`,
+`sessionManager.getBranch()`, the session switch/tree/branch/compact events,
+and `getActiveSkills` / `buildSkillPromptMessage` from
+`@oh-my-pi/pi-coding-agent/extensibility/skills`. Aliases use user-invocation
+provenance and send the resulting prompt, not literal `/skill:` text.
+
+The host must dispatch external input before executing or queuing it, and run
+startup policy once per new user run, including promoted queues. The integration
+target is OMP commit `6aef0e8ad51b3bc5ea7a5f2a255c3d48e4c5af72`
+(containing fix `ad3fb437d3`). Its version string is `18.1.17`; that string alone
+does not establish that a published build has these lifecycle fixes. The
+adapter deliberately does not replay input or refresh policy per provider request.
+
+Project-local skill aliases respect `ctx.isProjectTrusted()` when the host
+reports false. The target OMP implementation always returns true: this is a
+compatibility check, **not** an OMP sandbox or security boundary.
+
+Run the focused regressions with Bun and the target OMP coding-agent package
+available to module resolution:
+
+```bash
+bun run test:omp
+```
+
+For an OMP source checkout with its workspace dependencies already installed,
+link its package scope into this checkout if `node_modules/@oh-my-pi` does not
+already exist (`NODE_PATH` alone does not resolve Bun's package subpath imports):
+
+```bash
+mkdir -p node_modules
+ln -s /absolute/path/to/oh-my-pi/node_modules/@oh-my-pi node_modules/@oh-my-pi
+bun run test:omp
+```
+
+The suite uses OMP's real in-memory session manager and skill prompt builder.
+It exercises user stop phrases, branch/session restoration, defaults, system
+block ownership, all five idle/busy aliases, source provenance, and recoverable
+skill read errors. Config changes and skill overrides are isolated and restored
+by the tests. Run the existing `npm test` separately to cover Pi and the other
+adapters, and use `npm pack --dry-run` to inspect the distributed assets.
