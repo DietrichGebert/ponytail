@@ -37,6 +37,10 @@ delete process.env.COPILOT_PLUGIN_DATA;
 // A leaked subagent matcher would scope the inject-into-every-subagent assertions.
 delete process.env.PONYTAIL_SUBAGENT_MATCHER;
 delete process.env.QODER_SESSION_ID;
+// A leaked ECA_AGENT (the suite can run inside an ECA-spawned shell) would
+// steer writeHookOutput into the ECA dialect and mis-fire the native
+// assertions, exactly like a leaked PLUGIN_DATA would.
+delete process.env.ECA_AGENT;
 
 const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'ponytail-hooks-'));
 // Runs on normal exit and on assertion-throw exit; force makes it idempotent.

@@ -1,0 +1,40 @@
+{
+  "hooks": {
+    "ponytail-activate": {
+      "type": "chatStart",
+      "visible": false,
+      "description": "Ponytail: activate the default mode and inject the ruleset into the system prompt",
+      "actions": [
+        {
+          "type": "shell",
+          "shell": "node \"${plugin:root}/hooks/ponytail-activate.js\"",
+          "timeout": 5000
+        }
+      ]
+    },
+    "ponytail-mode-tracker": {
+      "type": "preRequest",
+      "visible": false,
+      "description": "Ponytail: track $ponytail mode switches and confirm the active level",
+      "actions": [
+        {
+          "type": "shell",
+          "shell": "node \"${plugin:root}/hooks/ponytail-mode-tracker.js\"",
+          "timeout": 5000
+        }
+      ]
+    },
+    "ponytail-subagent": {
+      "type": "subagentStart",
+      "visible": false,
+      "description": "Ponytail: inject the active ruleset into every subagent",
+      "actions": [
+        {
+          "type": "shell",
+          "shell": "node \"${plugin:root}/hooks/ponytail-subagent.js\"",
+          "timeout": 5000
+        }
+      ]
+    }
+  }
+}

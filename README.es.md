@@ -236,6 +236,25 @@ Abre una sesión nueva (o recarga los plugins). Los skills aparecen como `/ponyt
 
 `AGENTS.md` sigue funcionando solo como instrucciones desde un checkout sin el plugin. Desinstalar: `grok plugin uninstall ponytail`.
 
+### ECA
+
+Registra el repo como fuente de plugins en `~/.config/eca/config.json` y reinicia ECA:
+
+```json
+{
+  "plugins": {
+    "ponytail": { "source": "https://github.com/DietrichGebert/ponytail.git" },
+    "install": ["ponytail"]
+  }
+}
+```
+
+El plugin registra los seis skills — aparecen como `/ponytail`, `/ponytail-review`, `/ponytail-audit`, `/ponytail-debt`, `/ponytail-gain`, `/ponytail-help`, y ECA los invoca automáticamente en tareas de código según su descripción — y conecta los hooks de ciclo de vida vía `eca.json`: `chatStart` activa el modo default e inyecta el ruleset en el system prompt, `preRequest` registra los cambios de modo y `subagentStart` inyecta el ruleset en cada subagente (el filtrado con `PONYTAIL_SUBAGENT_MATCHER` también funciona). Los hooks ejecutan los scripts compartidos de `hooks/`, así que `node` debe estar en el PATH; si no está, los skills siguen funcionando y la activación permanente queda en silencio. Los hooks viven en `eca.json`, no en `hooks/hooks.json`: los plugins de ECA y la extensión de Gemini cargarían automáticamente esa misma ruta, con nombres de eventos incompatibles.
+
+Desde un checkout, ECA funciona sin configuración: lee `AGENTS.md` como contexto permanente y descubre el directorio `skills/` de la raíz.
+
+Un detalle: ECA expande el cuerpo del skill en los comandos slash y descarta los argumentos sin placeholder, así que `/ponytail ultra` activa sin cambiar el nivel. Envía `$ponytail ultra`: el hook `preRequest` lo interpreta, cambia el modo registrado que heredan los subagentes e inyecta el ruleset del nuevo nivel. Desinstalar: quita `"ponytail"` de `plugins.install` en `~/.config/eca/config.json`.
+
 Eso fue todo. Él estaría orgulloso. No lo va a decir.
 
 Activo en cada sesión, con un puñado de comandos (ver [Comandos](#comandos)). `/ponytail ultra` existe para cuando el codebase te hizo algo personal. El texto de inicio y de cambio de modo muestra el nivel activo.

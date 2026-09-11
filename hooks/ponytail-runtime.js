@@ -20,6 +20,8 @@ const isCopilot = Boolean(process.env.COPILOT_PLUGIN_DATA) ||
   isVsCodeCopilotRoot(process.env.CLAUDE_PLUGIN_ROOT);
 const isCodex = !isCopilot && Boolean(process.env.PLUGIN_DATA);
 const isQoder = !isCopilot && !isCodex && Boolean(process.env.QODER_SESSION_ID);
+// ECA runs every hook process with ECA_AGENT=1 (see eca.dev/config/hooks/).
+const isEca = !isCopilot && !isCodex && !isQoder && process.env.ECA_AGENT === '1';
 
 let stateDir = getClaudeDir();
 if (isCodex) stateDir = process.env.PLUGIN_DATA;
@@ -27,6 +29,9 @@ if (isCodex) stateDir = process.env.PLUGIN_DATA;
 // getClaudeDir() rather than building a path from undefined.
 if (isCopilot) stateDir = process.env.COPILOT_PLUGIN_DATA || getClaudeDir();
 if (isQoder) stateDir = path.join(os.homedir(), '.qoder');
+// ECA has no plugin state dir of its own; reuse the shared XDG config dir that
+// already holds config.json, so the mode flag lives next to the default mode.
+if (isEca) stateDir = getConfigDir();
 
 const statePath = path.join(stateDir, STATE_FILE);
 
@@ -79,6 +84,16 @@ function writeHookOutput(event, mode, context = '') {
     process.stdout.write(JSON.stringify(output));
     return;
   }
+  if (isEca) {
+    // ECA parses exit-0 stdout as JSON: top-level additionalContext reaches the
+    // model on chatStart/preRequest/subagentStart, systemMessage surfaces the
+    // mode (same role Codex uses it for). Plain stdout is display-only there
+    // and never reaches the LLM, so the native raw-text path must not run.
+    const output = { systemMessage: `PONYTAIL:${mode.toUpperCase()}` };
+    if (context) output.additionalContext = context;
+    process.stdout.write(JSON.stringify(output));
+    return;
+  }
   // Native Claude: SessionStart accepts raw stdout, but SubagentStart needs the
   // hookSpecificOutput JSON form or the context is dropped.
   if (event === 'SubagentStart') {
@@ -93,6 +108,7 @@ module.exports = {
   clearMode,
   isCodex,
   isCopilot,
+  isEca,
   isQoder,
   readMode,
   setMode,
