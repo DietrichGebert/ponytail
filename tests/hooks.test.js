@@ -134,6 +134,51 @@ assert.equal(
   'full',
 );
 
+// #663: a mid-session switch must deliver the ruleset, not just the flag. The
+// flag alone reaches the next SessionStart, but subagents read it right away,
+// so the main thread would be the only part of the session left un-ponytailed.
+const switchDir = path.join(temp, 'mid-session-switch');
+result = run(
+  'ponytail-mode-tracker.js',
+  { HOME: home, USERPROFILE: home, CLAUDE_CONFIG_DIR: switchDir, PONYTAIL_DEFAULT_MODE: 'off' },
+  JSON.stringify({ prompt: '/ponytail full' }),
+);
+assert.equal(result.status, 0, result.stderr);
+assert.equal(fs.readFileSync(path.join(switchDir, '.ponytail-active'), 'utf8'), 'full');
+assert.match(result.stdout, /^PONYTAIL MODE CHANGED — level: full/);
+assert.match(
+  result.stdout,
+  /## The ladder/,
+  'a mid-session switch must inject the ruleset, not only confirm the level (#663)',
+);
+
+// Report-only and deactivation stay one line — neither changes what is active.
+result = run(
+  'ponytail-mode-tracker.js',
+  { HOME: home, USERPROFILE: home, CLAUDE_CONFIG_DIR: switchDir },
+  JSON.stringify({ prompt: '/ponytail' }),
+);
+assert.equal(result.status, 0, result.stderr);
+assert.equal(result.stdout, 'PONYTAIL MODE ACTIVE — level: full');
+
+result = run(
+  'ponytail-mode-tracker.js',
+  { HOME: home, USERPROFILE: home, CLAUDE_CONFIG_DIR: switchDir },
+  JSON.stringify({ prompt: '/ponytail off' }),
+);
+assert.equal(result.status, 0, result.stderr);
+assert.equal(result.stdout, 'PONYTAIL MODE OFF');
+assert.equal(fs.existsSync(path.join(switchDir, '.ponytail-active')), false);
+
+// An ordinary prompt must stay silent — only Qoder re-sends rules every turn.
+result = run(
+  'ponytail-mode-tracker.js',
+  { HOME: home, USERPROFILE: home, CLAUDE_CONFIG_DIR: switchDir },
+  JSON.stringify({ prompt: 'write a function' }),
+);
+assert.equal(result.status, 0, result.stderr);
+assert.equal(result.stdout, '', 'non-command prompts must not re-inject the ruleset');
+
 // CLAUDE_CONFIG_DIR overrides ~/.claude for the flag file (issue #34).
 const home2 = path.join(temp, 'home2');
 fs.mkdirSync(home2, { recursive: true });

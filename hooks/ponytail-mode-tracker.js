@@ -64,16 +64,6 @@ function finish() {
       } else if (mode && mode !== 'off') {
         setMode(mode);
         modeSwitched = true;
-        // ponytail: Qoder needs the full ruleset every turn, so when a mode
-        // switch happens we fold the confirmation into the ruleset output
-        // below (one JSON on stdout) instead of emitting two separate writes.
-        if (!isQoder) {
-          writeHookOutput(
-            'UserPromptSubmit',
-            mode,
-            'PONYTAIL MODE CHANGED — level: ' + mode,
-          );
-        }
       } else if (mode === 'off') {
         clearMode();
         deactivated = true;
@@ -92,8 +82,12 @@ function finish() {
     // activate the default mode on first prompt (if no flag exists yet), then
     // inject the ruleset on every prompt. Claude Code/Codex do this in
     // SessionStart via ponytail-activate.js; Qoder can't, so we do it here.
+    // A mode switch takes the same path on every host: the flag alone only
+    // reaches the next SessionStart, while subagents read it immediately, so
+    // without the ruleset here the main thread stays un-ponytailed while its
+    // own subagents are not (#663).
     // Skip when deactivated — user just turned ponytail off.
-    if (isQoder && !deactivated) {
+    if ((isQoder || modeSwitched) && !deactivated) {
       let currentMode = readMode();
       if (!currentMode) {
         // First prompt in session — initialize from config/env default
@@ -104,7 +98,7 @@ function finish() {
       }
       if (currentMode && currentMode !== 'off') {
         // ponytail: one JSON per invocation — mode-switch confirmation is
-        // folded into the ruleset header so Qoder gets both in one write.
+        // folded into the ruleset header so the host gets both in one write.
         const header = modeSwitched
           ? 'PONYTAIL MODE CHANGED — level: ' + currentMode + '\n\n'
           : '';
