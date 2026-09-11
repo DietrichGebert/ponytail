@@ -177,6 +177,41 @@ Copilot CLI namespaces plugin commands by plugin name. For example:
 pi install git:github.com/DietrichGebert/ponytail
 ```
 
+### Oh My Pi (OMP)
+
+```bash
+omp plugin install github:DietrichGebert/ponytail
+```
+
+For local development, link the whole checkout (not just the extension file):
+
+```bash
+omp plugin link /absolute/path/to/ponytail
+```
+
+OMP loads `omp-extension/index.ts` and the six existing skills through the
+package's `omp` manifest. Pi continues to use its separate `pi` entry.
+No Claude marketplace installation or personal harness settings are needed.
+
+- `/ponytail lite|full|ultra|off` changes the current branch's mode.
+- `/ponytail status` reports the current and default modes.
+- `/ponytail default <mode>` saves the default for new sessions. Bare
+  `/ponytail` activates that default, or `full` when the default is `off`.
+- Standalone `stop ponytail` and `normal mode` disable the active mode.
+  Ordinary requests mentioning those phrases and extension-generated input
+  do not.
+- Modes survive session switches, tree navigation, branching, and compaction.
+  The extension owns one system-prompt block and leaves other extensions' blocks alone.
+- `/ponytail-review`, `/ponytail-audit`, `/ponytail-gain`, `/ponytail-debt`, and
+  `/ponytail-help` expand the active skill with your arguments and its source
+  directory. While OMP is busy, the expanded request queues as a follow-up.
+
+The native adapter uses the shared config resolver: `PONYTAIL_DEFAULT_MODE`,
+then the Ponytail config file, then `full`. `PONYTAIL_QUIET_STARTUP=1` hides
+the startup notification without disabling the policy.
+See [OMP development and compatibility](docs/agent-portability.md#omp-development-and-compatibility)
+for the host API requirements and regression checks.
+
 ### OpenCode
 
 Add to `opencode.json`:
