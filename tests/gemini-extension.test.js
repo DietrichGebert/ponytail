@@ -89,3 +89,12 @@ test('Gemini cannot auto-discover Claude/Codex hook events', () => {
     `${GEMINI_AUTO_HOOKS} is auto-loaded by Gemini CLI; keep Claude/Codex hooks on manifest paths`,
   );
 });
+
+test('Antigravity plugin discovers always-on rules in rules/AGENTS.md', () => {
+  const pluginRule = path.join(root, 'rules', 'AGENTS.md');
+  assert.ok(fs.existsSync(pluginRule), 'rules/AGENTS.md must exist for Antigravity always-on discovery');
+  const context = read('rules/AGENTS.md');
+  for (const phrase of RULE_INVARIANTS) {
+    assert.ok(context.includes(phrase), `rules/AGENTS.md missing rule invariant: "${phrase}"`);
+  }
+});

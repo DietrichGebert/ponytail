@@ -24,6 +24,7 @@ const copies = [
   ['.qoder/rules/ponytail.md', text => text.trim()],
   ['.github/copilot-instructions.md', text => text.trim()],
   ['.kiro/steering/ponytail.md', stripFrontmatter],
+  ['rules/AGENTS.md', text => text.trim()],
 ];
 
 let failed = false;
