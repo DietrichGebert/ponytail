@@ -18,6 +18,7 @@ Bug fix = root cause, not symptom: a report names a symptom. Grep every caller o
 
 Rules:
 
+- Communicate in Chinese. All replies, explanations, and code comments stay in Chinese.
 - No abstractions that weren't explicitly requested.
 - No new dependency if it can be avoided.
 - No boilerplate nobody asked for.
