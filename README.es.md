@@ -19,7 +19,7 @@
   <img src="https://img.shields.io/github/stars/DietrichGebert/ponytail?style=flat-square&color=111111&label=stars" alt="Stars">
   <img src="https://img.shields.io/github/v/release/DietrichGebert/ponytail?style=flat-square&color=111111&label=release" alt="Release">
   <img src="https://img.shields.io/npm/v/@dietrichgebert/ponytail?style=flat-square&color=111111&label=npm" alt="npm">
-  <img src="https://img.shields.io/badge/funciona%20con-15%20agentes-111111?style=flat-square" alt="Works with 15 agents">
+  <img src="https://img.shields.io/badge/funciona%20con-20%20agentes-111111?style=flat-square" alt="Works with 20 agents">
   <img src="https://img.shields.io/badge/licencia-MIT-111111?style=flat-square" alt="MIT license">
 </p>
 
@@ -43,6 +43,17 @@
 <p align="center">
   <a href="https://ponytail.dev/soon"><img src="assets/waitlist-banner-es.png" alt="Algo nuevo está por llegar, únete a la lista" width="760"></a>
 </p>
+
+## Ya construido con Ponytail
+
+<a href="https://theretriever.app">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/retriever-logo-dark.svg">
+    <img src="assets/retriever-logo-light.svg" height="128" alt="Retriever">
+  </picture>
+</a>
+
+---
 
 Lo conoces. Cola de caballo larga. Lentes ovalados. Lleva más tiempo en la empresa que el control de versiones. Le muestras cincuenta líneas; las mira, no dice nada, y las reemplaza por una.
 
@@ -120,19 +131,22 @@ Los plugins de Claude Code y Codex ejecutan dos pequeños lifecycle hooks de Nod
 
 ```
 /plugin marketplace add DietrichGebert/ponytail
+```
+```
 /plugin install ponytail@ponytail
 ```
+(Hay que enviar dos prompts separados para que la instalación funcione)
 
-La app de escritorio no tiene el comando `/plugin`. Instálala desde la interfaz: Customize, el + junto a los plugins personales, Create plugin and add marketplace, Add from repository, y luego ingresa la URL del repo (gracias @NiklasDHahn, #98).
+Los mismos pasos en la pestaña Code de la app de escritorio de Claude Code: escribe los dos comandos /plugin de arriba en el recuadro del prompt, o haz clic en el botón + al lado, elige Plugins → Add plugin para explorar tus marketplaces configurados, y administra los marketplaces desde Customize en la barra lateral.
 
 ### Codex
 
 ```bash
 codex plugin marketplace add DietrichGebert/ponytail
-codex
+codex plugin add ponytail@ponytail
 ```
 
-Abre `/plugins`, selecciona el marketplace de Ponytail e instala Ponytail. Luego abre `/hooks`, revisa y autoriza sus dos lifecycle hooks, y empieza un nuevo hilo.
+Ejecuta `codex` y abre `/hooks`, revisa y autoriza sus dos lifecycle hooks, y empieza un nuevo hilo.
 
 Esta misma instalación cubre también la app de escritorio de Codex: reinicia la app después de instalar y detecta el plugin automáticamente.
 
@@ -188,6 +202,13 @@ gemini extensions install https://github.com/DietrichGebert/ponytail
 ```
 
 Carga el ruleset como contexto permanente en cada sesión y registra los comandos `/ponytail`; los `skills/` también se incluyen, activados cuando una tarea los necesita.
+El adaptador de Gemini intencionalmente no incluye un `hooks/hooks.json` en la raíz: Gemini carga ese path automáticamente, mientras que los lifecycle hooks de Ponytail usan nombres de eventos de Claude/Codex.
+
+### Qoder
+
+Qoder carga automáticamente `AGENTS.md` desde la raíz del repo como contexto permanente, así que ejecutar ponytail desde un checkout funciona sin configuración. Para reglas por proyecto, copia [`.qoder/rules/ponytail.md`](.qoder/rules/ponytail.md) al `.qoder/rules/` de tu proyecto. Los seis skills de ponytail (`/ponytail`, `/ponytail-review`, `/ponytail-audit`, `/ponytail-debt`, `/ponytail-gain`, `/ponytail-help`) están disponibles vía el sistema de Skills de Qoder; el manifiesto del plugin en [`.qoder-plugin/plugin.json`](.qoder-plugin/plugin.json) apunta al directorio `skills/`.
+
+Para soporte a nivel de plugin (activación automática de modo + inyección del ruleset en cada prompt), agrega los hooks de [`hooks/qoder-hooks.json`](hooks/qoder-hooks.json) a tu `.qoder/settings.json`. Reemplaza `PONYTAIL_DIR` con el path a tu checkout de ponytail. El hook `UserPromptSubmit` de Qoder activa el modo default en el primer prompt e inyecta el ruleset en cada turno; `PreToolUse` con el matcher `task|Task` inyecta el ruleset en los subagentes. Los cambios de nivel (`/ponytail lite|full|ultra|off`) funcionan automáticamente.
 
 ### Antigravity CLI
 
@@ -199,9 +220,31 @@ agy plugin install https://github.com/DietrichGebert/ponytail
 
 Reutiliza el `gemini-extension.json` de este repo. Una diferencia: Antigravity convierte los comandos `/ponytail` en skills, así que los escribes en el chat (por ejemplo `/ponytail-review` como mensaje) en vez de seleccionarlos de un menú slash. Hasta que la migración se complete (alrededor del 18 de junio de 2026), `gemini extensions install` también funciona. Para usarlo como regla permanente, coloca el ruleset en `.agents/rules/`.
 
+### Hermes Agent
+
+```bash
+hermes plugins install DietrichGebert/ponytail --enable
+```
+
+Reinicia Hermes después de instalar. El plugin inyecta el modo activo de Ponytail antes de cada turno del LLM, registra los skills incluidos como `ponytail:<skill>`, y agrega `/ponytail`, `/ponytail-review`, `/ponytail-audit`, `/ponytail-debt`, `/ponytail-gain` y `/ponytail-help`. En gateways compartidos, restringe `/ponytail` a usuarios de confianza con los controles de acceso a slash commands de Hermes; el modo en runtime es local al proceso.
+
 ### CodeWhale
 
 Lee `AGENTS.md` desde la raíz del proyecto, sin configuración. Copia [`AGENTS.md`](AGENTS.md) a tu proyecto, o ejecuta `codewhale` desde un checkout de este repo. Eso es todo.
+
+### Swival
+
+Primero prepara la colección en tu library, luego agrega los skills que quieras:
+
+```bash
+swival skills add --global https://github.com/DietrichGebert/ponytail  # stage into ~/.config/swival/library
+swival skills add ponytail                                             # install the collection into this project
+swival skills add --global ponytail                                    # or activate it in every project
+```
+
+Swival también lee `AGENTS.md` desde la raíz del proyecto y `~/.config/swival/AGENTS.md` de forma global, el fallback de solo instrucciones.
+
+En la línea de comandos, usa un prefijo `$` para activar un skill de forma explícita. Por ejemplo: `$ponytail-review`.
 
 ### Devin CLI
 
@@ -217,7 +260,7 @@ Instala ponytail como plugin de Devin; los skills quedan disponibles como `/pony
 clawhub install ponytail
 ```
 
-Instala ponytail como skill de OpenClaw desde ClawHub; los skills de review, audit, debt y help se instalan igual (`clawhub install ponytail-review`, etc.). OpenClaw lo aplica en tareas de código y también lo expone como comando `/ponytail`. Sin ClawHub, copia [`.openclaw/skills/ponytail`](.openclaw/skills/) a `~/.openclaw/skills/`.
+Instala ponytail como skill de OpenClaw desde ClawHub; los skills de review, audit, debt, gain y help se instalan igual (`clawhub install ponytail-review`, etc.). OpenClaw lo aplica en tareas de código y también lo expone como comando `/ponytail`. Sin ClawHub, copia [`.openclaw/skills/ponytail`](.openclaw/skills/) a `~/.openclaw/skills/`.
 
 ### Grok Build
 
@@ -234,7 +277,7 @@ enabled = ["ponytail"]
 
 Abre una sesión nueva (o recarga los plugins). Los skills aparecen como `/ponytail`, `/ponytail-review`, `/ponytail-audit`, `/ponytail-debt`, `/ponytail-gain`, `/ponytail-help`. Verifica con `grok inspect`. Grok puede invocar ponytail automáticamente en tareas de código según la descripción del skill; usa `/ponytail` (o `/ponytail lite`, `/ponytail full`, `/ponytail ultra`) cuando necesites activarlo de forma explícita. No se usan hooks de ciclo de vida de Grok: la salida de `SessionStart` no puede inyectar instrucciones.
 
-`AGENTS.md` sigue funcionando solo como instrucciones desde un checkout sin el plugin. Desinstalar: `grok plugin uninstall ponytail`.
+`AGENTS.md` sigue funcionando solo como instrucciones desde un checkout sin el plugin.
 
 Eso fue todo. Él estaría orgulloso. No lo va a decir.
 
@@ -242,7 +285,9 @@ Activo en cada sesión, con un puñado de comandos (ver [Comandos](#comandos)). 
 
 Configura el nivel para cada nueva sesión con la variable de entorno `PONYTAIL_DEFAULT_MODE` (`lite`/`full`/`ultra`/`off`), o con un campo `defaultMode` en `~/.config/ponytail/config.json` (`%APPDATA%\ponytail\config.json` en Windows). El default es `full`.
 
-Cursor, Windsurf, Cline, GitHub Copilot (editor), Aider, Kiro: copia el archivo de reglas correspondiente de este repo ([`.cursor/rules/`](.cursor/rules/), [`.windsurf/rules/`](.windsurf/rules/), [`.clinerules/`](.clinerules/), [`.github/copilot-instructions.md`](.github/copilot-instructions.md), [`AGENTS.md`](AGENTS.md), [`.kiro/steering/`](.kiro/steering/)).
+Mientras está activo, el ruleset también se inyecta en cada subagente creado vía la herramienta Agent. Para limitarlo a tipos de agente específicos (por ejemplo, dejarlo apagado en agentes de búsqueda de solo lectura), configura la variable de entorno `PONYTAIL_SUBAGENT_MATCHER` con un regex evaluado contra el `agent_type` del subagente. No está anclado y no distingue mayúsculas: `explore|general` coincide con cualquiera de los dos, `^general$` es exacto, y los tipos de agente de plugin se ven como `plugin:name`. Si no está definida, se inyecta en cada subagente (el default); un regex inválido, o un subagente cuyo tipo la plataforma no reporta, también se inyecta.
+
+Cursor, Windsurf, Cline, GitHub Copilot Chat (la extensión de editor de VS Code, JetBrains y Visual Studio, no el Copilot CLI standalone cubierto en [Instalación](#instalación)), Aider, Kiro, Zed, CodeWhale, Swival, Qoder: copia el archivo de reglas correspondiente de este repo ([`.cursor/rules/`](.cursor/rules/), [`.windsurf/rules/`](.windsurf/rules/), [`.clinerules/`](.clinerules/), [`.github/copilot-instructions.md`](.github/copilot-instructions.md), [`AGENTS.md`](AGENTS.md), [`.kiro/steering/`](.kiro/steering/), [`.qoder/rules/`](.qoder/rules/)).
 
 Kiro: copia `.kiro/steering/ponytail.md` a `~/.kiro/steering/` (global) o `.kiro/steering/` en tu proyecto.
 
@@ -250,7 +295,26 @@ Fallback de GitHub Copilot CLI (modo solo instrucciones): lee `AGENTS.md` y `.gi
 
 VS Code con la extensión Codex lee `AGENTS.md`, que este repo incluye, así que funciona desde la raíz del repo sin configuración adicional (`~/.codex/AGENTS.md` hace a Codex global).
 
+JetBrains Junie puede leer `AGENTS.md` una vez que lo apuntes en Settings → Tools → Junie → Project Settings → Guidelines Path (todavía no es automático). Este repo incluye `AGENTS.md`; `.junie/guidelines.md` es el path legado de Junie.
+
+Amp (Sourcegraph) lee `AGENTS.md` desde el directorio de trabajo y los directorios padre hasta `$HOME`, que este repo incluye, así que funciona sin configuración (`~/.config/amp/AGENTS.md` funciona de forma global).
+
+Jules (Google) lee `AGENTS.md` desde la raíz del repositorio, que este repo incluye, así que toma el ruleset sin configuración.
+
 Qué archivos corresponden a qué agente: [Portabilidad de agentes](docs/agent-portability.md).
+
+### Desinstalación
+
+| Host | Comando |
+|------|---------|
+| Claude Code | `/plugin remove ponytail` |
+| Codex | `codex plugin remove ponytail` |
+| Devin CLI | `devin plugins remove ponytail` |
+| Grok Build | `grok plugin uninstall ponytail` |
+| Pi agent | `pi uninstall ponytail` |
+| Cursor / Windsurf / Cline / Qoder / etc. | Borra el archivo de reglas copiado |
+
+Estos quitan los archivos del plugin. Dejan un poco de estado que ponytail escribe fuera de la carpeta del plugin: el flag de modo, `~/.config/ponytail/config.json`, y (si aceptaste el setup nudge) una entrada `statusLine` en `~/.claude/settings.json`. Ejecuta `node scripts/uninstall.js` para limpiar eso también. **Ejecútalo antes del comando de remove del host de arriba** — el script es en sí un archivo del plugin, así que quitar el plugin primero lo borra (o ejecútalo desde un clone separado de este repo). Solo quita la entrada statusLine si apunta al script propio de ponytail, así que un statusline que configuraste tú se deja intacto.
 
 ## Comandos
 
@@ -260,9 +324,10 @@ Qué archivos corresponden a qué agente: [Portabilidad de agentes](docs/agent-p
 | `/ponytail-review` | Revisa el diff actual en busca de sobre-ingeniería y devuelve una lista de qué eliminar. |
 | `/ponytail-audit` | Audita el repo completo en busca de sobre-ingeniería, no solo el diff. |
 | `/ponytail-debt` | Recolecta los atajos marcados con `ponytail:` que dejaste pendientes en un registro, para que "después" no se convierta en "nunca". |
+| `/ponytail-gain` | Muestra el marcador de impacto medido (menos código, menos costo, más velocidad) del benchmark. |
 | `/ponytail-help` | Referencia rápida de los comandos anteriores. |
 
-Los comandos requieren un host compatible con skills (Claude Code, Codex, Devin CLI, OpenCode, Gemini, pi, Swival). En Codex son skills; se invocan con `@` (`@ponytail-review`). Los adaptadores de solo instrucciones (Cursor, Windsurf, Cline, Copilot, Kiro, Antigravity) cargan el ruleset permanente sin los comandos.
+Los comandos requieren un host compatible con skills (Claude Code, Codex, Devin CLI, OpenCode, Gemini, pi, Swival, Hermes Agent, Qoder, Grok Build). En Codex son skills; se invocan con `@` (`@ponytail-review`). Los adaptadores de solo instrucciones (Cursor, Windsurf, Cline, Copilot, Kiro, Antigravity) cargan el ruleset permanente sin los comandos.
 
 ## Desarrollo
 
@@ -273,7 +338,7 @@ node scripts/check-rule-copies.js
 npm test
 ```
 
-El paquete de skills de OpenClaw (`.openclaw/skills/`) se genera desde `skills/`; ejecuta `node scripts/build-openclaw-skills.js` después de cambiar un skill, la suite de tests falla si está desactualizado.
+El paquete de skills de OpenClaw (`.openclaw/skills/`) se genera desde `skills/`; ejecuta `node scripts/build-openclaw-skills.js` después de cambiar un skill, la suite de tests falla si está desactualizado. Para publicar los skills en ClawHub, ejecuta `clawhub login` una vez, luego `node scripts/publish-openclaw-skills.js` (publica los seis con la versión de `package.json`; pasa `--dry-run` para previsualizar).
 
 El benchmark de correctness lanza Python para las verificaciones de email y CSV; se prueba `python3` antes que `python`. Las verificaciones de CSV requieren `pandas` instalado localmente.
 
