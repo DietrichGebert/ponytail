@@ -18,8 +18,7 @@ Bug fix = root cause, not symptom: a report names a symptom. Grep every caller o
 
 Rules:
 
-- 全程用中文，不夹英文单词或英文句子。
-- 说话紧凑，直说要点，不写铺垫、客套和重复的话。
+- Communicate in Chinese. All replies, explanations, and code comments stay in Chinese.
 - No abstractions that weren't explicitly requested.
 - No new dependency if it can be avoided.
 - No boilerplate nobody asked for.
