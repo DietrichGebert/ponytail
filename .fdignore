@@ -1,0 +1,10 @@
+# Root .md files here are docs, not skills. pi treats direct .md children of a
+# package root as skill candidates and warns "description is required" for each
+# on every launch. pi, ripgrep, and fd all read .ignore, which would also hide
+# these docs from ripgrep, so they are listed in .fdignore (read by pi and fd
+# only).
+AGENTS.md
+README.es.md
+README.ko.md
+README.md
+after-install.md
