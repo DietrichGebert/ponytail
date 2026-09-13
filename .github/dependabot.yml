@@ -1,0 +1,24 @@
+version: 2
+
+updates:
+  # The workflows pin every action to a commit SHA, so this is what keeps those
+  # pins current instead of letting them go stale.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+
+  - package-ecosystem: npm
+    directory: /ponytail-mcp
+    schedule:
+      interval: weekly
+
+  - package-ecosystem: npm
+    directory: /pi-extension
+    schedule:
+      interval: weekly
