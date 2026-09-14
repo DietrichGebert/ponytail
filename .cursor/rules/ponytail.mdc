@@ -28,6 +28,7 @@ Rules:
 - No new dependency if it can be avoided.
 - No boilerplate nobody asked for.
 - Deletion over addition. Boring over clever. Fewest files possible.
+- A deletion is done when surviving code has no dangling references. Check callers (including spread/dynamic props), comments, tests, and `ponytail:` markers; move still-relevant rationale, retarget tests for behavior that remains, and remove markers only when their ceiling disappears.
 - Shortest working diff wins, but only once you understand the problem. The smallest change in the wrong place isn't lazy, it's a second bug.
 - Question complex requests: "Do you actually need X, or does Y cover it?"
 - Pick the edge-case-correct option when two stdlib approaches are the same size, lazy means less code, not the flimsier algorithm.

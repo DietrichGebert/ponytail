@@ -12,7 +12,7 @@ findings biggest cut first.
 
 Same as ponytail-review:
 
-- `delete:` dead code, unused flexibility, speculative feature. Replacement: nothing.
+- `delete:` dead code, unused flexibility, speculative feature. Check surviving references (including spread/dynamic props), comments, tests, and `ponytail:` markers. Replacement: nothing if no obligations remain; otherwise name the reference updates, rationale to preserve, tests to retarget for surviving behavior, and markers to remove only if their ceiling disappears.
 - `stdlib:` hand-rolled thing the standard library ships. Name the function.
 - `native:` dependency or code doing what the platform already does. Name the feature.
 - `yagni:` abstraction with one implementation, config nobody sets, layer with one caller.
