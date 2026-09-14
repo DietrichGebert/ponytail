@@ -71,7 +71,12 @@ function finish() {
 }
 
 process.stdin.on('data', chunk => { input += chunk; });
-process.stdin.on('end', finish);
+// Exit on 'end' (not just finish()) so the ref'd fallback timer below can't
+// add its full 1000ms to the normal fast path.
+process.stdin.on('end', () => { finish(); process.exit(0); });
 // Never block the session (#443): recover on stdin error or a short fallback.
+// The fallback stays ref'd: on Windows a stuck ref'd stdin keeps the loop
+// alive and an unref'd timer is never scheduled, so the hook hung to the
+// external watchdog instead of exiting at 1s (#790).
 process.stdin.on('error', () => { finish(); process.exit(0); });
-setTimeout(() => { finish(); process.exit(0); }, 1000).unref();
+setTimeout(() => { finish(); process.exit(0); }, 1000);
