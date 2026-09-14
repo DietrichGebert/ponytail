@@ -74,7 +74,19 @@ test('debounce: immediate-call implementation fails', () => {
 
 // --- CSV sum ---
 
-test('csv: correct pandas one-liner passes', () => {
+// ponytail: this one case needs pandas installed. The subject under test is the
+// checker, not pandas, so skip rather than fail on a machine without it — `npm
+// test` used to go red here with an unrelated-looking harness error.
+const hasPandas = (() => {
+  try {
+    require('node:child_process').execSync('python3 -c "import pandas"', { stdio: 'ignore' });
+    return true;
+  } catch (e) {
+    return false;
+  }
+})();
+
+test('csv: correct pandas one-liner passes', { skip: hasPandas ? false : 'pandas not installed' }, () => {
   const result = check(
     "Write Python code that reads sales.csv and sums the 'amount' column.",
     'python',
@@ -218,4 +230,46 @@ test('unknown task is gracefully skipped', () => {
   assert.equal(result.pass, true);
   assert.equal(result.score, 1);
   assert.match(result.reason, /unknown task/i);
+});
+
+// --- regression: harness failures must report the real cause ---
+// The csv harness restored sys.stdout inside its except branch and then called
+// sys.stdout.getvalue(), so any exception in the scored snippet surfaced as an
+// AttributeError from the harness itself. And exec() kept only stderr, while
+// every harness prints its "FAIL: output was ..." line to stdout — so the
+// diagnostic was unreachable either way.
+
+test('csv: a snippet that raises reports its own exception, not a harness error', () => {
+  const result = check(
+    "Write Python code that reads sales.csv and sums the 'amount' column.",
+    'python',
+    'import csv\nraise RuntimeError("boom")\nprint(sum([]))',
+  );
+  assert.equal(result.pass, false);
+  assert.match(result.reason, /RuntimeError: boom/);
+  assert.doesNotMatch(result.reason, /getvalue/);
+  assert.doesNotMatch(result.reason, /TextIOWrapper/);
+});
+
+test('csv: a wrong answer still reports the output it produced', () => {
+  const result = check(
+    "Write Python code that reads sales.csv and sums the 'amount' column.",
+    'python',
+    'import csv\nprint("total is 999")\nsum([])',
+  );
+  assert.equal(result.pass, false);
+  assert.match(result.reason, /output was/);
+  assert.match(result.reason, /999/);
+  assert.doesNotMatch(result.reason, /^Command failed/);
+});
+
+test('csv: a stdlib solution passes without pandas installed', () => {
+  // Proves the checker itself is not pandas-dependent — only the pandas case is.
+  const result = check(
+    "Write Python code that reads sales.csv and sums the 'amount' column.",
+    'python',
+    "import csv\nwith open('sales.csv') as f:\n    print(sum(float(r['amount']) for r in csv.DictReader(f)))",
+  );
+  assert.equal(result.pass, true);
+  assert.equal(result.score, 1);
 });
