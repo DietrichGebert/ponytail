@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import inspect
 import os
 import re
 from pathlib import Path
@@ -194,10 +195,19 @@ def _make_skill_command_handler(ctx: Any, command: str) -> Callable[[str], str]:
 
 def register(ctx: Any) -> None:
     """Register Ponytail hooks, skills, and slash commands with Hermes."""
+    try:
+        parameters = inspect.signature(ctx.register_skill).parameters
+        awareness_supported = (
+            "list_in_awareness" in parameters
+            or any(param.kind is inspect.Parameter.VAR_KEYWORD for param in parameters.values())
+        )
+    except (TypeError, ValueError):
+        awareness_supported = False
     for child in sorted(SKILLS_DIR.iterdir() if SKILLS_DIR.exists() else []):
         skill_md = child / "SKILL.md"
         if child.is_dir() and skill_md.exists():
-            ctx.register_skill(child.name, skill_md)
+            kwargs = {"list_in_awareness": True} if awareness_supported else {}
+            ctx.register_skill(child.name, skill_md, **kwargs)
 
     ctx.register_hook("pre_llm_call", _pre_llm_call)
     ctx.register_hook("pre_gateway_dispatch", rewrite_gateway_command)
