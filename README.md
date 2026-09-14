@@ -179,17 +179,31 @@ pi install git:github.com/DietrichGebert/ponytail
 
 ### OpenCode
 
-Add to `opencode.json`:
+OpenCode 1 — add to `opencode.json`:
 
 ```json
 { "plugin": ["@dietrichgebert/ponytail"] }
 ```
+
+OpenCode 2 uses the `plugins` key instead:
+
+```json
+{ "plugins": ["@dietrichgebert/ponytail"] }
+```
+
+One package serves both: the same entrypoint exposes V1's `server()` hooks and V2's `id` + `setup()` (ruleset injection via a `context` session hook, commands and skills via transforms, one shared mode flag so switching versions keeps the level).
 
 Run from a checkout instead (the plugin reuses `hooks/` and `skills/`):
 
 ```json
 { "plugin": ["./.opencode/plugins/ponytail.mjs"] }
 ```
+
+```json
+{ "plugins": ["./.opencode/plugins/ponytail.mjs"] }
+```
+
+(First snippet on OpenCode 1, second on OpenCode 2.)
 
 Injects the ruleset every turn at the active level; adds the `/ponytail` commands (see [Commands](#commands)). OpenCode also auto-loads this repo's `AGENTS.md`, so the rules hold even without the plugin. The plugin adds the `lite/full/ultra/off` levels.
 
