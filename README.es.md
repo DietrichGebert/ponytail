@@ -279,6 +279,15 @@ Abre una sesión nueva (o recarga los plugins). Los skills aparecen como `/ponyt
 
 `AGENTS.md` sigue funcionando solo como instrucciones desde un checkout sin el plugin.
 
+### Cursor
+
+```bash
+git clone https://github.com/DietrichGebert/ponytail
+node ponytail/scripts/cursor-hooks.js install
+```
+
+Fusiona dos hooks nativos en `~/.cursor/hooks.json` (con `--project` escribe `<proyecto>/.cursor/hooks.json`) y conserva los hooks que ya tengas ahí. Las entradas ejecutan `node` desde ese checkout, así que déjalo donde está o vuelve a correr la instalación si lo mueves. Cursor recarga el archivo al guardarlo; abre un chat nuevo y el ruleset de tu nivel por defecto llega por `sessionStart`. Envía `/ponytail lite`, `/ponytail full`, `/ponytail ultra` o `/ponytail off` como mensaje normal para cambiar el nivel durante el resto de la conversación; `/ponytail` lo reporta. El `subagentStart` de Cursor no puede inyectar contexto, así que los subagentes corren sin el ruleset, y los agentes en la nube nunca disparan `sessionStart`. La regla permanente (`.cursor/rules/ponytail.mdc`) y los hooks son alternativas: mientras la regla esté en el workspace los hooks no inyectan nada y los comandos de modo responden con un aviso; borra la regla para que los hooks manejen el nivel. Contrato, verificación y límites: [docs/cursor-hooks.md](docs/cursor-hooks.md). Desinstalar: `node ponytail/scripts/cursor-hooks.js uninstall`.
+
 Eso fue todo. Él estaría orgulloso. No lo va a decir.
 
 Activo en cada sesión, con un puñado de comandos (ver [Comandos](#comandos)). `/ponytail ultra` existe para cuando el codebase te hizo algo personal. El texto de inicio y de cambio de modo muestra el nivel activo.
@@ -287,7 +296,9 @@ Configura el nivel para cada nueva sesión con la variable de entorno `PONYTAIL_
 
 Mientras está activo, el ruleset también se inyecta en cada subagente creado vía la herramienta Agent. Para limitarlo a tipos de agente específicos (por ejemplo, dejarlo apagado en agentes de búsqueda de solo lectura), configura la variable de entorno `PONYTAIL_SUBAGENT_MATCHER` con un regex evaluado contra el `agent_type` del subagente. No está anclado y no distingue mayúsculas: `explore|general` coincide con cualquiera de los dos, `^general$` es exacto, y los tipos de agente de plugin se ven como `plugin:name`. Si no está definida, se inyecta en cada subagente (el default); un regex inválido, o un subagente cuyo tipo la plataforma no reporta, también se inyecta.
 
-Cursor, Windsurf, Cline, GitHub Copilot Chat (la extensión de editor de VS Code, JetBrains y Visual Studio, no el Copilot CLI standalone cubierto en [Instalación](#instalación)), Aider, Kiro, Zed, CodeWhale, Swival, Qoder: copia el archivo de reglas correspondiente de este repo ([`.cursor/rules/`](.cursor/rules/), [`.windsurf/rules/`](.windsurf/rules/), [`.clinerules/`](.clinerules/), [`.github/copilot-instructions.md`](.github/copilot-instructions.md), [`AGENTS.md`](AGENTS.md), [`.kiro/steering/`](.kiro/steering/), [`.qoder/rules/`](.qoder/rules/)).
+
+Cursor (solo la regla, alternativa a los [hooks](#cursor)), Windsurf, Cline, GitHub Copilot (editor), Aider, Kiro: copia el archivo de reglas correspondiente de este repo ([`.cursor/rules/`](.cursor/rules/), [`.windsurf/rules/`](.windsurf/rules/), [`.clinerules/`](.clinerules/), [`.github/copilot-instructions.md`](.github/copilot-instructions.md), [`AGENTS.md`](AGENTS.md), [`.kiro/steering/`](.kiro/steering/)).
+
 
 Kiro: copia `.kiro/steering/ponytail.md` a `~/.kiro/steering/` (global) o `.kiro/steering/` en tu proyecto.
 
@@ -327,7 +338,9 @@ Estos quitan los archivos del plugin. Dejan un poco de estado que ponytail escri
 | `/ponytail-gain` | Muestra el marcador de impacto medido (menos código, menos costo, más velocidad) del benchmark. |
 | `/ponytail-help` | Referencia rápida de los comandos anteriores. |
 
-Los comandos requieren un host compatible con skills (Claude Code, Codex, Devin CLI, OpenCode, Gemini, pi, Swival, Hermes Agent, Qoder, Grok Build). En Codex son skills; se invocan con `@` (`@ponytail-review`). Los adaptadores de solo instrucciones (Cursor, Windsurf, Cline, Copilot, Kiro, Antigravity) cargan el ruleset permanente sin los comandos.
+
+Los comandos requieren un host compatible con skills (Claude Code, Codex, Devin CLI, OpenCode, Gemini, pi, Swival). En Codex son skills; se invocan con `@` (`@ponytail-review`). Cursor con los [hooks](#cursor) solo tiene el cambio de nivel con `/ponytail`, escrito como mensaje normal. Los adaptadores de solo instrucciones (la regla de Cursor, Windsurf, Cline, Copilot, Kiro, Antigravity) cargan el ruleset permanente sin los comandos.
+
 
 ## Desarrollo
 
