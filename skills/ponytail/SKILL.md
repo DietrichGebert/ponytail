@@ -108,7 +108,7 @@ Lazy code without its check is unfinished. Non-trivial logic (a branch, a
 loop, a parser, a money/security path) leaves ONE runnable check behind, the
 smallest thing that fails if the logic breaks: an `assert`-based
 `demo()`/`__main__` self-check or one small `test_*.py`. No frameworks, no
-fixtures, no per-function suites unless asked. Trivial one-liners need no
+fixtures, no per-function suites unless asked. Security-sensitive paths are exempt from this one-check ceiling: run the relevant existing tests and add enough focused checks to cover each affected trust boundary and abuse case. Trivial one-liners need no
 test, YAGNI applies to tests too.
 
 ## Boundaries

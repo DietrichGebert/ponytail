@@ -55,6 +55,7 @@ const INVARIANTS = [
   'security',
   'accessibility',
   'Lazy code without its check is unfinished', // one-check promoted to headline
+  'Security-sensitive paths are exempt',      // security exception keeps the ceiling from under-testing
 ];
 
 const skill = read('skills/ponytail/SKILL.md');
