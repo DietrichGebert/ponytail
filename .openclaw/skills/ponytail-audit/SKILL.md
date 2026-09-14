@@ -16,13 +16,19 @@ Same as ponytail-review:
 - `stdlib:` hand-rolled thing the standard library ships. Name the function.
 - `native:` dependency or code doing what the platform already does. Name the feature.
 - `yagni:` abstraction with one implementation, config nobody sets, layer with one caller.
+- `defensive:` over-defensive control flow (redundant null checks, dead branches) or a blanket catch/except swallowing every error. Replacement: flatten to guard clauses, one handler at the real boundary.
 - `shrink:` same logic, fewer lines. Show the shorter form.
 
 ## Hunt
 
 Deps the stdlib or platform already ships, single-implementation interfaces,
 factories with one product, wrappers that only delegate, files exporting one
-thing, dead flags and config, hand-rolled stdlib.
+thing, dead flags and config, hand-rolled stdlib. Also flag over-defensive
+control flow: nested condition ladders and redundant guards for states the
+code can't reach, blanket catch/except wrappers swallowing every error.
+Flatten, don't delete: guard clauses and early exits for nested conditionals,
+one handler at the real boundary. Never simplify away error handling that
+prevents data loss.
 
 ## Output
 

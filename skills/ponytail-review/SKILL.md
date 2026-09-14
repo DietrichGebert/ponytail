@@ -24,6 +24,7 @@ Tags:
 - `stdlib:` hand-rolled thing the standard library ships. Name the function.
 - `native:` dependency or code doing what the platform already does. Name the feature.
 - `yagni:` abstraction with one implementation, config nobody sets, layer with one caller.
+- `defensive:` over-defensive control flow (redundant null checks, dead branches) or a blanket catch/except swallowing every error. Replacement: flatten to guard clauses, one handler at the real boundary.
 - `shrink:` same logic, fewer lines. Show the shorter form.
 
 ## Examples
@@ -40,6 +41,10 @@ considered whether all these validation rules are needed at this stage?"
 ✅ `L52-71: delete: retry wrapper around an idempotent local call. Nothing replaces it.`
 
 ✅ `L30-44: shrink: manual loop builds dict. dict(zip(keys, values)), 1 line.`
+
+✅ `L23-25: defensive: nullable value null-checked three times on the way to one use. Check it where it's read, drop the rest.`
+
+✅ `L44-50: defensive: catch (Exception) wraps the whole body. Let the one recoverable error through; anything else is a bug.`
 
 ## Scoring
 
