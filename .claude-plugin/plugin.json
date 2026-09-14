@@ -6,5 +6,5 @@
     "name": "Dietrich Gebert",
     "url": "https://github.com/DietrichGebert"
   },
-  "hooks": "./hooks/claude-codex-hooks.json"
+  "hooks": "./hooks/claude-hooks.json"
 }
