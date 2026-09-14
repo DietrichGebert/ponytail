@@ -48,13 +48,19 @@ function exec(cmd, opts = {}) {
 }
 
 // ponytail: probe once at load; macOS and many Linux images ship python3 only.
+// A bare `python3` can resolve to a minimal interpreter (uv/pyenv shim) that
+// lacks pandas while the system one has it, so prefer a pandas-capable
+// interpreter first and fall back to any working one.
+const PY_CANDIDATES = ['python3', 'python', '/usr/bin/python3'];
 let pythonCmd;
 function python() {
   if (pythonCmd) return pythonCmd;
-  for (const cmd of ['python3', 'python']) {
-    if (exec(`${cmd} -c "import sys"`).ok) {
-      pythonCmd = cmd;
-      return pythonCmd;
+  for (const probe of ['import pandas', 'import sys']) {
+    for (const cmd of PY_CANDIDATES) {
+      if (exec(`${cmd} -c "${probe}"`).ok) {
+        pythonCmd = cmd;
+        return pythonCmd;
+      }
     }
   }
   pythonCmd = 'python3';
@@ -194,16 +200,16 @@ os.chdir(r"${path.dirname(csvPath)}")
 # Capture print output
 import io
 _stdout = sys.stdout
-sys.stdout = io.StringIO()
+_buf = io.StringIO()
+sys.stdout = _buf
 
 try:
 ${patched.split('\n').map((l) => '    ' + l).join('\n')}
 except Exception as e:
-    sys.stdout = _stdout
-    # If it needs sales.csv in cwd, write it there and retry
+    # Swallow: the output check below reports a FAIL verdict either way.
     pass
 
-output = sys.stdout.getvalue()
+output = _buf.getvalue()
 sys.stdout = _stdout
 
 # Check output contains the number 351 (100.5 + 200.0 + 50.5)
