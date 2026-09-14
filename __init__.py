@@ -54,7 +54,7 @@ def _default_mode() -> str:
     if env_mode:
         return env_mode
     try:
-        data = json.loads((_config_dir() / "config.json").read_text(encoding="utf-8"))
+        data = json.loads((_config_dir() / "config.json").read_text(encoding="utf-8-sig"))
         file_mode = _normalize_config_mode(data.get("defaultMode"))
         if file_mode:
             return file_mode
