@@ -255,13 +255,22 @@ enabled = ["ponytail"]
 
 체크아웃의 `AGENTS.md`만으로도 지시문 전용 모드는 된다. 제거: `grok plugin uninstall ponytail`.
 
+### Cursor
+
+```bash
+git clone https://github.com/DietrichGebert/ponytail
+node ponytail/scripts/cursor-hooks.js install
+```
+
+네이티브 훅 두 개를 `~/.cursor/hooks.json`에 합쳐 넣고(`--project`를 붙이면 `<프로젝트>/.cursor/hooks.json`에 쓴다), 이미 있던 다른 훅은 그대로 둔다. 항목들은 그 체크아웃에서 `node`를 실행하니, 체크아웃을 옮기지 말거나 옮긴 뒤 설치를 다시 돌린다. Cursor는 저장하면 파일을 다시 읽는다. 새 채팅을 열면 기본 레벨의 룰셋이 `sessionStart`로 들어온다. `/ponytail lite`, `/ponytail full`, `/ponytail ultra`, `/ponytail off`를 일반 메시지로 보내면 그 대화의 남은 구간 동안 레벨이 바뀌고, `/ponytail`은 현재 레벨을 알려 준다. Cursor의 `subagentStart`는 컨텍스트를 주입할 수 없어서 서브에이전트는 룰셋 없이 돌고, 클라우드 에이전트는 `sessionStart`를 아예 실행하지 않는다. 늘 켜진 규칙(`.cursor/rules/ponytail.mdc`)과 훅은 둘 중 하나만 쓴다. 규칙이 워크스페이스에 있으면 훅은 아무것도 주입하지 않고 모드 명령은 안내문으로 답하니, 훅이 레벨을 관리하게 하려면 규칙을 지운다. 계약, 검증 기록, 한계: [docs/cursor-hooks.md](docs/cursor-hooks.md). 제거: `node ponytail/scripts/cursor-hooks.js uninstall`.
+
 이게 끝이었다. 그 사람이라면 흐뭇해할 거다. 입 밖으로 내진 않겠지만.
 
 매 세션 켜져 있고, 명령 몇 개가 딸려 온다([Commands](#commands) 참고). `/ponytail ultra`는 코드베이스가 당신에게 단단히 밉보인 날을 위해 있다. 시작할 때와 모드를 바꿀 때 지금 모드를 보여 준다.
 
 새 세션마다 적용할 레벨은 `PONYTAIL_DEFAULT_MODE` 환경 변수(`lite`/`full`/`ultra`/`off`)로, 또는 `~/.config/ponytail/config.json`의 `defaultMode` 필드(Windows에선 `%APPDATA%\ponytail\config.json`)로 정한다. 기본값은 `full`이다.
 
-Cursor, Windsurf, Cline, GitHub Copilot(에디터), Aider, Kiro, Zed, CodeWhale: 이 저장소에서 맞는 규칙 파일을 복사하면 된다([`.cursor/rules/`](.cursor/rules/), [`.windsurf/rules/`](.windsurf/rules/), [`.clinerules/`](.clinerules/), [`.github/copilot-instructions.md`](.github/copilot-instructions.md), [`AGENTS.md`](AGENTS.md), [`.kiro/steering/`](.kiro/steering/)).
+Cursor(규칙 파일만, [훅 설치](#cursor)의 대안), Windsurf, Cline, GitHub Copilot(에디터), Aider, Kiro, Zed, CodeWhale: 이 저장소에서 맞는 규칙 파일을 복사하면 된다([`.cursor/rules/`](.cursor/rules/), [`.windsurf/rules/`](.windsurf/rules/), [`.clinerules/`](.clinerules/), [`.github/copilot-instructions.md`](.github/copilot-instructions.md), [`AGENTS.md`](AGENTS.md), [`.kiro/steering/`](.kiro/steering/)).
 
 Kiro: `.kiro/steering/ponytail.md`를 `~/.kiro/steering/`(전역)이나 프로젝트의 `.kiro/steering/`에 복사한다.
 
@@ -282,7 +291,7 @@ Codex 확장을 쓰는 VS Code는 이 저장소가 함께 싣는 `AGENTS.md`를 
 | `/ponytail-gain` | 벤치마크로 잰 효과 스코어보드(코드 절감, 비용 절감, 속도 향상)를 보여 준다. |
 | `/ponytail-help` | 위 명령들의 빠른 참조. |
 
-명령들은 스킬을 지원하는 호스트가 있어야 돈다(Claude Code, Codex, Devin CLI, OpenCode, Gemini, pi, Swival). Codex에선 스킬이라 `@`로 부른다(`@ponytail-review`). 지시문 전용 어댑터(Cursor, Windsurf, Cline, Copilot, Kiro, Antigravity)는 명령 없이 늘 켜진 룰셋만 불러온다.
+명령들은 스킬을 지원하는 호스트가 있어야 돈다(Claude Code, Codex, Devin CLI, OpenCode, Gemini, pi, Swival). Codex에선 스킬이라 `@`로 부른다(`@ponytail-review`). [훅](#cursor)을 쓰는 Cursor는 `/ponytail` 레벨 전환만 되고, 일반 메시지로 입력한다. 지시문 전용 어댑터(Cursor 규칙 파일, Windsurf, Cline, Copilot, Kiro, Antigravity)는 명령 없이 늘 켜진 룰셋만 불러온다.
 
 ## Development
 

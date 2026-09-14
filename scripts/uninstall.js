@@ -1,13 +1,15 @@
 #!/usr/bin/env node
 // ponytail — removes state ponytail wrote outside the plugin's own files:
-// the mode flag, the config file, and the statusLine entry it added to
-// settings.json. Plugin files themselves are removed by each host's own
-// uninstall command (see README); this only cleans up what those commands
-// can't see.
+// the mode flag, the config file, the statusLine entry it added to
+// settings.json, and its entries in ~/.cursor/hooks.json. Plugin files
+// themselves are removed by each host's own uninstall command (see README);
+// this only cleans up what those commands can't see.
 
 const fs = require('fs');
+const os = require('os');
 const path = require('path');
 const { getConfigPath, getClaudeDir } = require('../hooks/ponytail-config');
+const cursorHooks = require('./cursor-hooks');
 
 const STATUSLINE_SCRIPT = 'ponytail-statusline';
 
@@ -21,7 +23,22 @@ function removeIfExists(filePath, label) {
 }
 
 removeIfExists(path.join(getClaudeDir(), '.ponytail-active'), 'mode flag');
+removeIfExists(path.join(os.homedir(), '.cursor', '.ponytail-active'), 'Cursor mode flag');
 removeIfExists(getConfigPath(), 'config file');
+
+// Cursor hooks (#817): drop only ponytail's entries from ~/.cursor/hooks.json,
+// keep every other hook the user configured there.
+try {
+  const hooksFile = cursorHooks.uninstall('user');
+  if (hooksFile) console.log(`Removed ponytail hooks from ${hooksFile}`);
+} catch (e) {
+  if (e instanceof SyntaxError) {
+    // ponytail: malformed hooks.json — can't safely edit it; leave intact, warn
+    console.warn(`~/.cursor/hooks.json is malformed — could not remove the ponytail hook entries. Remove them manually from: ${cursorHooks.hooksPath('user')} (${e.message})`);
+  } else {
+    throw e;
+  }
+}
 
 const settingsPath = path.join(getClaudeDir(), 'settings.json');
 try {
