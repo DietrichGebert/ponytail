@@ -13,6 +13,21 @@ description: >
 Review diffs for unnecessary complexity. One line per finding: location, what
 to cut, what replaces it. The diff's best outcome is getting shorter.
 
+## What to review
+
+No argument: the uncommitted working diff (`git diff HEAD`). An argument names
+a different target instead:
+
+- `branch` — the whole branch, not just the last commit:
+  `git diff $(git merge-base HEAD <base>)..HEAD`, where `<base>` is `origin/HEAD`
+  (fall back to `origin/main`, then `main`).
+- a ref, range or sha — `git diff <range>`, `git show <sha>`.
+- `staged` — `git diff --cached`.
+- a path — `git diff HEAD -- <path>`; an untracked file, review it as written.
+
+Name the target and its line count in one line before the findings, so a review
+of the wrong range is obvious. Nothing to diff: say so, don't invent a target.
+
 ## Format
 
 `L<line>: <tag> <what>. <replacement>.`, or `<file>:L<line>: ...` for
