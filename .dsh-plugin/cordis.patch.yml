@@ -1,0 +1,9 @@
+# dsh-plugin-ponytail bundle patch — one mount:
+# the plugin registers the six slash commands and a skill provider serving
+# the repo-root skills/ in a checkout, with the packaged skills/ as the npm
+# fallback. The provider registers into the skill registry's global
+# (deployment) layer, so every agent/preset sees the skills even though the
+# web profile disables the host skill-filesystem row.
+- insert:
+    - id: dsh-plugin-ponytail
+      name: 'dsh-plugin-ponytail'
