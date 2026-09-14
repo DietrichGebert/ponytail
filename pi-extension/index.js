@@ -78,7 +78,7 @@ export default function ponytailExtension(pi) {
     let theme;
     try { theme = c.ui.theme; if (!theme?.fg) return; } catch { return; }
     if (currentMode === "off") {
-      c.ui.setStatus("ponytail", "");
+      c.ui.setStatus("ponytail", undefined);
       return;
     }
     const levelIcons = { lite: "🌿", full: "⚡", ultra: "🔥" };
