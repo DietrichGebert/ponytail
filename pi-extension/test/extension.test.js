@@ -76,9 +76,9 @@ test("/ponytail updates session mode and injects instructions", async () => with
     data: { mode: "ultra" },
   });
 
-  const result = await events.get("before_agent_start")({ systemPrompt: "BASE" }, ctx);
-  assert.ok(result.systemPrompt.includes("PONYTAIL MODE ACTIVE"));
-  assert.ok(result.systemPrompt.includes("ultra"));
+  const result = await events.get("before_agent_start")({ systemPrompt: ["BASE"] }, ctx);
+  assert.ok(result.systemPrompt.some((s) => s.includes("PONYTAIL MODE ACTIVE")));
+  assert.ok(result.systemPrompt.some((s) => s.includes("ultra")));
 }));
 
 test("before_agent_start guards missing event and missing systemPrompt (#439, #440)", async () => withTempConfig(async () => {
@@ -89,19 +89,19 @@ test("before_agent_start guards missing event and missing systemPrompt (#439, #4
   // #439: a null/undefined event must not crash, and still injects the ruleset.
   for (const bad of [undefined, null]) {
     const r = await events.get("before_agent_start")(bad, ctx);
-    assert.ok(r.systemPrompt.includes("PONYTAIL MODE ACTIVE"));
-    assert.ok(!r.systemPrompt.includes("undefined"), "must not contain the literal 'undefined'");
+    assert.ok(r.systemPrompt.some((s) => s.includes("PONYTAIL MODE ACTIVE")));
+    assert.ok(!r.systemPrompt.some((s) => s.includes("undefined")), "must not contain the literal 'undefined'");
   }
 
   // #440: an event without a systemPrompt must not prepend the literal "undefined".
   const empty = await events.get("before_agent_start")({}, ctx);
-  assert.ok(empty.systemPrompt.includes("PONYTAIL MODE ACTIVE"));
-  assert.ok(!empty.systemPrompt.startsWith("undefined"), "must not start with 'undefined'");
+  assert.ok(empty.systemPrompt.some((s) => s.includes("PONYTAIL MODE ACTIVE")));
+  assert.ok(!empty.systemPrompt.some((s) => s.startsWith("undefined")), "must not start with 'undefined'");
 
-  // A real base prompt is still preserved and prepended.
-  const withBase = await events.get("before_agent_start")({ systemPrompt: "BASE" }, ctx);
-  assert.ok(withBase.systemPrompt.startsWith("BASE\n\n"));
-  assert.ok(withBase.systemPrompt.includes("PONYTAIL MODE ACTIVE"));
+  // A real base prompt is still preserved as a separate part.
+  const withBase = await events.get("before_agent_start")({ systemPrompt: ["BASE"] }, ctx);
+  assert.equal(withBase.systemPrompt[0], "BASE");
+  assert.ok(withBase.systemPrompt.some((s) => s.includes("PONYTAIL MODE ACTIVE")));
 }));
 
 test("session_start restores latest persisted mode", async () => withTempConfig(async () => {
@@ -115,9 +115,9 @@ test("session_start restores latest persisted mode", async () => withTempConfig(
   });
 
   await events.get("session_start")({ reason: "resume" }, ctx);
-  const result = await events.get("before_agent_start")({ systemPrompt: "BASE" }, ctx);
+  const result = await events.get("before_agent_start")({ systemPrompt: ["BASE"] }, ctx);
 
-  assert.ok(result.systemPrompt.includes("lite"));
+  assert.ok(result.systemPrompt.some((s) => s.includes("lite")));
 }));
 
 test("skill alias commands delegate to Pi skill commands", async () => {
@@ -147,7 +147,7 @@ test("normal mode disables persistent instructions", async () => withTempConfig(
   await commands.get("ponytail").handler("ultra", ctx);
   await events.get("input")({ text: "normal mode", source: "interactive" }, ctx);
 
-  const disabled = await events.get("before_agent_start")({ systemPrompt: "BASE" }, ctx);
+  const disabled = await events.get("before_agent_start")({ systemPrompt: ["BASE"] }, ctx);
   assert.equal(disabled, undefined);
 }));
 
@@ -159,8 +159,8 @@ test("a request mentioning normal mode stays active", async () => withTempConfig
   await commands.get("ponytail").handler("ultra", ctx);
   await events.get("input")({ text: "add a normal mode toggle next to dark mode", source: "interactive" }, ctx);
 
-  const result = await events.get("before_agent_start")({ systemPrompt: "BASE" }, ctx);
-  assert.match(result.systemPrompt, /PONYTAIL MODE ACTIVE/);
+  const result = await events.get("before_agent_start")({ systemPrompt: ["BASE"] }, ctx);
+  assert.ok(result.systemPrompt.some((s) => /PONYTAIL MODE ACTIVE/.test(s)));
 }));
 
 test("status bar renders the mode and flips active on agent_start", async () => withTempConfig(async () => {
@@ -204,10 +204,10 @@ test("PONYTAIL_HIDE_STATUS hides the indicator but keeps ponytail active (#324)"
 
   await events.get("session_start")({ reason: "resume" }, ctx);
   await events.get("agent_start")({}, ctx);
-  const injected = await events.get("before_agent_start")({ systemPrompt: "BASE" }, ctx);
+  const injected = await events.get("before_agent_start")({ systemPrompt: ["BASE"] }, ctx);
 
   assert.deepEqual(statusWrites, [], "status bar must not be drawn when hidden");
-  assert.match(injected.systemPrompt, /PONYTAIL MODE ACTIVE/, "ruleset must still inject while status is hidden");
+  assert.ok(injected.systemPrompt.some((s) => /PONYTAIL MODE ACTIVE/.test(s)), "ruleset must still inject while status is hidden");
 }));
 
 test("config.hideStatus hides the indicator but keeps ponytail active (#324)", async () => withTempConfig(async () => {
@@ -221,10 +221,10 @@ test("config.hideStatus hides the indicator but keeps ponytail active (#324)", a
 
   await events.get("session_start")({ reason: "startup" }, ctx);
   await events.get("agent_start")({}, ctx);
-  const injected = await events.get("before_agent_start")({ systemPrompt: "BASE" }, ctx);
+  const injected = await events.get("before_agent_start")({ systemPrompt: ["BASE"] }, ctx);
 
   assert.deepEqual(statusWrites, [], "config.hideStatus must suppress the status bar");
-  assert.match(injected.systemPrompt, /PONYTAIL MODE ACTIVE/, "ruleset must still inject while status is hidden");
+  assert.ok(injected.systemPrompt.some((s) => /PONYTAIL MODE ACTIVE/.test(s)), "ruleset must still inject while status is hidden");
 }));
 
 test("PONYTAIL_HIDE_STATUS=0 does not hide the indicator", async () => withTempConfig(async () => {
