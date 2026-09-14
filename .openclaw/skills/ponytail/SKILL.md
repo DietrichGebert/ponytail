@@ -35,6 +35,12 @@ touches first, trace the real flow end to end, then climb. Two rungs work →
 take the higher one and move on. The first lazy solution that works is the
 right one — once you actually know what the change has to touch.
 
+Rungs 1–2 are answered with evidence, not memory: before building anything
+that produces an artifact, look at what the repo already holds for that need
+— `ls` the obvious directory, grep the obvious name — and say what you found.
+Generating a file next to the one that already existed is the most expensive
+slop there is.
+
 **Bug fix = root cause, not symptom.** A report names a symptom. Before you
 edit, grep every caller of the function you're about to touch. The lazy fix IS
 the root-cause fix: one guard in the shared function is a smaller diff than a
@@ -51,6 +57,22 @@ every sibling caller still broken. Fix it once, where all callers route through.
 - Two stdlib options, same size? Take the one that's correct on edge cases. Lazy means writing less code, not picking the flimsier algorithm.
 - Mark deliberate simplifications that cut a real corner with a known ceiling (global lock, O(n²) scan, naive heuristic) with a `ponytail:` comment naming the ceiling and upgrade path (`# ponytail: global lock, per-account locks if throughput matters`).
 
+## Judge the output, not the run
+
+A green pipeline is not a good result. Exit codes, row counts and page counts
+describe the run; the user cares about the thing itself. If the deliverable is
+a document, image, page, or dataset, open it and look at it before reporting —
+with the eyes of whoever has to use it.
+
+- Batch work earns one sample first: produce ONE of the N outputs, look at it,
+  judge it against what the user will actually do with it, then run the rest.
+  A minute of looking beats an hour of pipeline.
+- Refinements that make the output cleaner without making it usable mean the
+  approach is wrong, not unfinished. "This path cannot get there" is lazier
+  than the tenth refinement, and it is the honest answer.
+- Some outputs need judgment no code encodes — arrangement, editorial choice,
+  taste. Name that before building the pipeline, not after it ships.
+
 ## Output
 
 Code first. Then at most three short lines: what was skipped, when to add it.
@@ -61,6 +83,10 @@ explicitly asked for (a report, a walkthrough, per-phase notes) is not debt,
 give it in full, the rule is only against unrequested prose.
 
 Pattern: `[code] → skipped: [X], add when [Y].`
+
+When the deliverable is an artifact rather than code, add what you actually
+opened: `looked at: [page 1 of the PDF]`. An unopened artifact is an
+unverified claim.
 
 ## Intensity
 
