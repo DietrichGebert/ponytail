@@ -190,6 +190,36 @@ print(json.dumps({'message': message, 'context': injected['context']}))
   assert.match(data.context, /PONYTAIL MODE ACTIVE — level: ultra/);
 });
 
+test('Hermes pre_llm_call does not append the same ruleset to every persisted turn', () => {
+  const output = python(String.raw`
+import importlib.util, json
+spec = importlib.util.spec_from_file_location('ponytail_hermes_plugin', '__init__.py')
+mod = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(mod)
+first = mod._pre_llm_call(conversation_history=[])
+history = [{
+    'role': 'user',
+    'content': 'first task',
+    'api_content': 'first task\\n\\n' + first['context'],
+}]
+second = mod._pre_llm_call(conversation_history=history)
+mod._current_mode = 'ultra'
+switched = mod._pre_llm_call(conversation_history=history)
+history.append({
+    'role': 'user',
+    'content': 'second task',
+    'api_content': 'second task\\n\\n' + switched['context'],
+})
+after_switch = mod._pre_llm_call(conversation_history=history)
+print(json.dumps({'first': first, 'second': second, 'switched': switched, 'after_switch': after_switch}))
+`);
+  const data = JSON.parse(output);
+  assert.match(data.first.context, /PONYTAIL MODE ACTIVE — level: full/);
+  assert.equal(data.second, null);
+  assert.match(data.switched.context, /PONYTAIL MODE ACTIVE — level: ultra/);
+  assert.equal(data.after_switch, null);
+});
+
 test('Hermes gateway rewrite respects slash access denial', () => {
   const output = python(String.raw`
 import importlib.util, json

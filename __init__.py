@@ -122,10 +122,28 @@ def build_injected_context(mode: str | None = None) -> str:
         return _fallback_instructions(effective)
 
 
-def _pre_llm_call(session_id: str = "", **_: Any) -> dict[str, str] | None:
+def _pre_llm_call(
+    session_id: str = "", conversation_history: Any = None, **_: Any
+) -> dict[str, str] | None:
     mode = _current_mode or _default_mode()
     context = build_injected_context(mode)
-    return {"context": context} if context else None
+    if not context:
+        return None
+
+    # Hermes persists hook context in api_content for cache-stable replay.
+    # Re-inject only when the active mode changed or compaction removed it.
+    marker = "PONYTAIL MODE ACTIVE — level: "
+    for message in reversed(conversation_history or []):
+        if not isinstance(message, dict):
+            continue
+        api_content = message.get("api_content")
+        if not isinstance(api_content, str):
+            continue
+        matches = re.findall(rf"{re.escape(marker)}([a-z]+)", api_content)
+        if matches:
+            return None if matches[-1] == mode else {"context": context}
+
+    return {"context": context}
 
 
 def _skill_prompt(command: str, args: str = "") -> str:
