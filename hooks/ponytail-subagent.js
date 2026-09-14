@@ -29,12 +29,25 @@ function inject() {
 }
 
 // A bad regex must never crash the hook; treat it as "no matcher" and inject.
+// The pattern is operator-controlled, so also cap it and warn on stderr
+// (issue #658); a typo should be visible, not silently ignored.
+const MAX_MATCHER_LEN = 256;
+function warn(msg) {
+  // Stderr only; stdout is the hook payload and must stay valid JSON.
+  try { process.stderr.write('ponytail-subagent: ' + msg + '\n'); } catch (e) {}
+}
 let matcherRe = null;
 try {
-  if (process.env.PONYTAIL_SUBAGENT_MATCHER) {
-    matcherRe = new RegExp(process.env.PONYTAIL_SUBAGENT_MATCHER, 'i');
+  const pattern = process.env.PONYTAIL_SUBAGENT_MATCHER;
+  if (pattern) {
+    if (pattern.length > MAX_MATCHER_LEN) {
+      warn('PONYTAIL_SUBAGENT_MATCHER exceeds ' + MAX_MATCHER_LEN + ' chars; ignoring');
+    } else {
+      matcherRe = new RegExp(pattern, 'i');
+    }
   }
 } catch (e) {
+  warn('PONYTAIL_SUBAGENT_MATCHER is invalid (' + (e && e.message) + '); ignoring');
   matcherRe = null;
 }
 
