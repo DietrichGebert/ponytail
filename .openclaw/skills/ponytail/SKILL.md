@@ -43,10 +43,11 @@ every sibling caller still broken. Fix it once, where all callers route through.
 
 ## Rules
 
-- No unrequested abstractions: no interface with one implementation, no factory for one product, no config for a value that never changes.
+- No speculative abstractions: no factory for one product, no config for a value that never changes. A cohesive boundary that keeps policy out of callers is not speculative.
 - No boilerplate, no scaffolding "for later", later can scaffold for itself.
 - Deletion over addition. Boring over clever, clever is what someone decodes at 3am.
-- Fewest files possible. Shortest working diff wins — but only once you understand the problem. The smallest change in the wrong place isn't lazy, it's a second bug.
+- Minimize the concepts, contracts, and places a maintainer must inspect. Keep unavoidable policy behind one explicit boundary, even when it takes more lines locally. Prefer plain data and transparent composition over custom behavior with hidden side effects.
+- Shortest working diff is a tie-breaker after correctness and contained complexity. Does this simplify the system, or move complexity into callers?
 - Complex request? Ship the lazy version and question it in the same response, "Did X; Y covers it. Need full X? Say so." Never stall on an answer you can default.
 - Two stdlib options, same size? Take the one that's correct on edge cases. Lazy means writing less code, not picking the flimsier algorithm.
 - Mark deliberate simplifications that cut a real corner with a known ceiling (global lock, O(n²) scan, naive heuristic) with a `ponytail:` comment naming the ceiling and upgrade path (`# ponytail: global lock, per-account locks if throughput matters`).
@@ -67,7 +68,7 @@ Pattern: `[code] → skipped: [X], add when [Y].`
 | Level | What change |
 |-------|------------|
 | **lite** | Build what's asked, but name the lazier alternative in one line. User picks. |
-| **full** | The ladder enforced. Stdlib and native first. Shortest diff, shortest explanation. Default. |
+| **full** | The ladder enforced. Stdlib and native first. Contained complexity before shortest diff. Default. |
 | **ultra** | YAGNI extremist. Deletion before addition. Ship the one-liner and challenge the rest of the requirement in the same breath. |
 
 Example: "Add a cache for these API responses."

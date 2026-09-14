@@ -2,4 +2,4 @@
 description: Review changes for over-engineering, what can be deleted
 ---
 
-Review the current code changes for over-engineering only, not correctness. One line per finding: L<line>: <tag> <what to cut>. <replacement>. Tags: delete (dead code/speculative feature), stdlib (reinvented standard library), native (dependency doing what the platform does), yagni (abstraction with one implementation), shrink (same logic, fewer lines). End with the net lines removable. If nothing to cut: 'Lean already. Ship.'
+Review the current code changes for over-engineering only, not correctness. One line per finding: L<line>: <tag> <what to cut>. <replacement>. Tags: delete (dead code/speculative feature), stdlib (reinvented standard library), native (dependency doing what the platform does), yagni (speculative abstraction that contains no necessary policy), shrink (same logic, fewer lines). Preserve behavior and boundaries that contain policy; one implementation alone is not evidence of bloat. Line count is a size estimate, not the objective. End with the net lines removable. If nothing to cut: 'Lean already. Ship.'
