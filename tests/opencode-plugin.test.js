@@ -101,4 +101,15 @@ test('parseCommandFile returns null when there is no frontmatter', () => {
   assert.equal(parseCommandFile(bare), null);
 });
 
+test('ruleset carries the plan-gate and bounded-check clauses in every mode and fallback', () => {
+  const { getPonytailInstructions, getFallbackInstructions } = require(path.join(__dirname, '..', 'hooks', 'ponytail-instructions'));
+  for (const mode of ['lite', 'full', 'ultra']) {
+    for (const text of [getPonytailInstructions(mode), getFallbackInstructions(mode)]) {
+      assert.match(text, /submit_plan/, mode + ': missing submit_plan clause');
+      assert.match(text, /review gate/, mode + ': missing review-gate clause');
+      assert.match(text, /no retry loops/, mode + ': missing bounded-check clause');
+    }
+  }
+});
+
 test.after(() => fs.rmSync(tmp, { recursive: true, force: true }));
