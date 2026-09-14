@@ -7,9 +7,8 @@
     {
       "name": "ponytail",
       "source": {
-        "source": "url",
-        "url": "https://github.com/DietrichGebert/ponytail.git",
-        "ref": "main"
+        "source": "local",
+        "path": "./"
       },
       "policy": {
         "installation": "AVAILABLE",

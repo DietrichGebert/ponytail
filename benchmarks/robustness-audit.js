@@ -3,7 +3,7 @@
 // known-lazy-wrong reference so the instrument is verified before any API spend.
 //   node robustness-audit.js --selftest   # no API: prove every check is correct
 //   node robustness-audit.js              # baseline vs ponytail, gpt-5.4-mini, n=20
-const { execSync } = require('child_process');
+const { execFileSync } = require('child_process');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
@@ -13,7 +13,7 @@ let pythonCmd;
 function python() {
   if (pythonCmd) return pythonCmd;
   for (const cmd of ['python3', 'python']) {
-    try { execSync(`${cmd} -c "import sys"`, { stdio: 'pipe' }); pythonCmd = cmd; return pythonCmd; }
+    try { execFileSync(cmd, ['-c', 'import sys'], { stdio: 'pipe' }); pythonCmd = cmd; return pythonCmd; }
     catch (_) {}
   }
   return pythonCmd = 'python3';
@@ -131,7 +131,8 @@ TARGET = ${task.arity}
 names = json.loads(r'''${JSON.stringify(task.names)}''')
 fn = None
 for nm in names:
-    if nm in dir() and callable(eval(nm)): fn = eval(nm); break
+    candidate = globals().get(nm)
+    if callable(candidate): fn = candidate; break
 if fn is None:
     for nm, obj in list(globals().items()):
         if callable(obj) and not nm.startswith('_') and not inspect.isclass(obj):
@@ -147,7 +148,7 @@ for args, expected in cases:
 print('PASS')`;
   const f = path.join(os.tmpdir(), `audit-${process.pid}-${Math.random().toString(36).slice(2)}.py`);
   fs.writeFileSync(f, harness);
-  try { execSync(`${python()} "${f}"`, { timeout: 10000, encoding: 'utf8', stdio: 'pipe' }); return true; }
+  try { execFileSync(python(), [f], { timeout: 10000, encoding: 'utf8', stdio: 'pipe' }); return true; }
   catch (e) { return false; }
   finally { try { fs.unlinkSync(f); } catch (_) {} }
 }
