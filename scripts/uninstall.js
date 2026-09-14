@@ -11,7 +11,7 @@ const path = require('path');
 const { getConfigPath, getClaudeDir } = require('../hooks/ponytail-config');
 const cursorHooks = require('./cursor-hooks');
 
-const STATUSLINE_SCRIPT = 'ponytail-statusline';
+const STATUSLINE_SCRIPT = /(?:^|[\s"'\\/])ponytail-statusline\.(?:sh|ps1)(?=$|[\s"'])/;
 
 function removeIfExists(filePath, label) {
   try {
@@ -49,12 +49,12 @@ try {
   // (e.g. caveman && ponytail), keep the other plugin's command intact.
   // ponytail: splits on && / ; to detect other segments — good enough; a user
   // piping statuslines together is on their own.
-  if (typeof cmd === 'string' && cmd.includes(STATUSLINE_SCRIPT)) {
+  if (typeof cmd === 'string' && STATUSLINE_SCRIPT.test(cmd)) {
     const parts = cmd
       .split(/&&|;/)
       .map((s) => s.trim())
       .filter(Boolean);
-    const others = parts.filter((s) => !s.includes(STATUSLINE_SCRIPT));
+    const others = parts.filter((s) => !STATUSLINE_SCRIPT.test(s));
     if (others.length === 0) {
       delete settings.statusLine;
       fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2), 'utf8');
