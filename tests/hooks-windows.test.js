@@ -11,7 +11,8 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('fs');
 const path = require('path');
-const { spawn } = require('child_process');
+const os = require('os');
+const { spawn, spawnSync } = require('child_process');
 
 const root = path.join(__dirname, '..');
 const HOOKS_JSON = 'hooks/claude-codex-hooks.json';
@@ -110,5 +111,35 @@ test('Claude and Codex manifests point at the shared host-specific hook config',
   for (const rel of HOST_PLUGIN_MANIFESTS) {
     const manifest = JSON.parse(fs.readFileSync(path.join(root, rel), 'utf8'));
     assert.equal(manifest.hooks, `./${HOOKS_JSON}`, `${rel} must not rely on root hooks auto-discovery`);
+  }
+});
+
+// Issue #646: under WSL2 the host expands the plugin root with Windows
+// separators (\home\user\...). A backslashed string is not absolute on Linux,
+// so node resolves the hook relative to cwd and every session start and prompt
+// dies with MODULE_NOT_FOUND. The bash commands have to repair the separators
+// before the path reaches node. Only copilot-hooks.json can do this: its bash
+// and powershell commands are separate fields, so bash-only syntax is safe
+// there, unlike the shared `command` field asserted on above.
+test('copilot bash hooks survive a Windows-separated PLUGIN_ROOT (WSL2)', () => {
+  const config = JSON.parse(fs.readFileSync(path.join(root, 'hooks/copilot-hooks.json'), 'utf8'));
+  const commands = Object.values(config.hooks).flat().map((h) => h.bash);
+  assert.ok(commands.length > 0, 'expected at least one bash hook command');
+
+  const pluginData = fs.mkdtempSync(path.join(os.tmpdir(), 'ponytail-wsl-'));
+  const env = {
+    ...process.env,
+    PLUGIN_ROOT: root.replace(/\//g, '\\'),
+    COPILOT_PLUGIN_DATA: pluginData,
+  };
+
+  try {
+    for (const cmd of commands) {
+      // input: '' closes stdin so the prompt hook does not wait on it.
+      const result = spawnSync('bash', ['-c', cmd], { env, input: '', encoding: 'utf8' });
+      assert.equal(result.status, 0, `hook failed with a backslashed PLUGIN_ROOT: ${cmd}\n${result.stderr}`);
+    }
+  } finally {
+    fs.rmSync(pluginData, { recursive: true, force: true });
   }
 });
