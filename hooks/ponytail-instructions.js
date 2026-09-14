@@ -59,6 +59,7 @@ function getFallbackInstructions(mode) {
     '## Rules\n\n' +
     'No abstractions that were not requested. No avoidable dependencies. No boilerplate nobody asked for. ' +
     'Deletion over addition. Boring over clever. Fewest files possible. ' +
+    'A deletion is done when surviving code has no dangling references. Check callers (including spread/dynamic props), comments, tests, and `ponytail:` markers; move still-relevant rationale, retarget tests for behavior that remains, and remove markers only when their ceiling disappears. ' +
     'Ship the lazy version and question the complex request in the same response — never stall. ' +
     'Between two same-size stdlib options, pick the one correct on edge cases. ' +
     'Mark deliberate simplifications that cut a real corner with a known ceiling, using a `ponytail:` comment that names the ceiling and upgrade path.\n\n' +
