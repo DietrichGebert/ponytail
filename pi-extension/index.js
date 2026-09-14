@@ -67,25 +67,67 @@ export default function ponytailExtension(pi) {
   let isActive = false;
   let lastCtx = null;
 
-  // -- Status bar --
+  // -- Status line --
+  // "🐴 <mode>" — accent while the agent runs, muted when idle. null hides.
+  function ponytailStatus(themeOf) {
+    if (currentMode === "off" || hideStatus) return null;
+    const plain = "🐴 " + currentMode;
+    try {
+      const theme = themeOf?.();
+      return theme?.fg ? "🐴 " + theme.fg(isActive ? "accent" : "muted", currentMode) : plain;
+    } catch {
+      return plain; // theme proxy can throw before initTheme
+    }
+  }
+
+  // Register a real segment in the host's status-line registry — pi.pi is the
+  // host's own module namespace, so this is the object the bar renders from —
+  // and ride the built-in presets so no user config is needed. The ascii
+  // preset stays emoji-free.
+  // Custom-preset hosts bypass the preset tables (they read
+  // statusLine.leftSegments from settings), so also append via a runtime
+  // override — override() is explicitly non-persisted; set() would write the
+  // user's config file.
+  // ponytail: unofficial seam — omp has no extension-segment API as of
+  // 17.4.0; SEGMENTS/presets/settings.override are root exports, so this
+  // breaks if omp stops exporting them. Replace when an official API ships.
+  const hostSegments = pi.pi?.SEGMENTS;
+  if (hostSegments && pi.pi?.STATUS_LINE_PRESETS && !hostSegments.ponytail) {
+    hostSegments.ponytail = {
+      id: "ponytail",
+      render: () => {
+        const text = ponytailStatus(() => pi.pi.theme);
+        return { content: text ?? "", visible: text !== null };
+      },
+    };
+    for (const [name, preset] of Object.entries(pi.pi.STATUS_LINE_PRESETS)) {
+      if (name === "ascii" || !Array.isArray(preset?.leftSegments) || preset.leftSegments.includes("ponytail")) continue;
+      const after = preset.leftSegments.indexOf("mode");
+      preset.leftSegments.splice(after === -1 ? preset.leftSegments.length : after + 1, 0, "ponytail");
+    }
+    const hostSettings = pi.pi.settings;
+    if (
+      typeof hostSettings?.isConfigured === "function" &&
+      hostSettings.get("statusLine.preset") === "custom" &&
+      hostSettings.isConfigured("statusLine.leftSegments")
+    ) {
+      const segments = hostSettings.get("statusLine.leftSegments");
+      if (Array.isArray(segments) && segments.length > 0 && !segments.includes("ponytail")) {
+        const after = segments.indexOf("mode");
+        const next = [...segments.slice(0, after + 1), "ponytail", ...segments.slice(after + 1)];
+        hostSettings.override("statusLine.leftSegments", after === -1 ? [...segments, "ponytail"] : next);
+      }
+    }
+  }
+
   function syncStatus(ctx) {
     if (ctx) lastCtx = ctx;
     const c = ctx || lastCtx;
-    // ponytail: hide the indicator but keep the ruleset active (#324).
-    if (hideStatus) return;
     if (!c?.ui?.setStatus) return;
-    // ponytail: try/catch guards against pi-web theme proxy throwing before initTheme
-    let theme;
-    try { theme = c.ui.theme; if (!theme?.fg) return; } catch { return; }
-    if (currentMode === "off") {
-      c.ui.setStatus("ponytail", "");
-      return;
-    }
-    const levelIcons = { lite: "🌿", full: "⚡", ultra: "🔥" };
-    const icon = levelIcons[currentMode] || "";
-    const label = currentMode.toUpperCase();
-    const indicator = isActive ? theme.fg("accent", "●") : theme.fg("dim", "○");
-    c.ui.setStatus("ponytail", indicator + " 🐴 " + theme.fg("muted", "ponytail: ") + theme.fg("text", icon + " " + label));
+    // Segment hosts render lazily from the registry above; this only nudges a
+    // repaint and clears any legacy hook line. Legacy hosts get a hook line.
+    const text = hostSegments ? undefined : ponytailStatus(() => c.ui?.theme);
+    c.ui.setStatus("ponytail", text ?? undefined);
   }
 
   const setMode = (mode, ctx) => {
