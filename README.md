@@ -177,6 +177,14 @@ Copilot CLI namespaces plugin commands by plugin name. For example:
 pi install git:github.com/DietrichGebert/ponytail
 ```
 
+### Skills CLI
+
+```bash
+npx skills add https://github.com/DietrichGebert/ponytail
+```
+
+Install one skill instead with `--skill`, or add `-g` to install globally.
+
 ### OpenCode
 
 Add to `opencode.json`:
