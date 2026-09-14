@@ -4,16 +4,16 @@
     "sessionStart": [
       {
         "type": "command",
-        "bash": "node \"${PLUGIN_ROOT}/hooks/ponytail-activate.js\"",
-        "powershell": "node \"${PLUGIN_ROOT}\\hooks\\ponytail-activate.js\"",
+        "bash": "node -e \"require(require('node:path').join(process.env.PLUGIN_ROOT, 'hooks/ponytail-activate.js'))\"",
+        "powershell": "node -e \"require(require('node:path').join(process.env.PLUGIN_ROOT, 'hooks/ponytail-activate.js'))\"",
         "timeoutSec": 5
       }
     ],
     "userPromptSubmitted": [
       {
         "type": "command",
-        "bash": "node \"${PLUGIN_ROOT}/hooks/ponytail-mode-tracker.js\"",
-        "powershell": "node \"${PLUGIN_ROOT}\\hooks\\ponytail-mode-tracker.js\"",
+        "bash": "node -e \"require(require('node:path').join(process.env.PLUGIN_ROOT, 'hooks/ponytail-mode-tracker.js'))\"",
+        "powershell": "node -e \"require(require('node:path').join(process.env.PLUGIN_ROOT, 'hooks/ponytail-mode-tracker.js'))\"",
         "timeoutSec": 5
       }
     ]
