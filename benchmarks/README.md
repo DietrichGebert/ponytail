@@ -33,6 +33,16 @@ models where the multi-step decision ladder isn't reliably followed.
 
 Tasks: email validator, JS debounce, CSV sum, React countdown, FastAPI rate-limit (see `promptfooconfig.yaml`). Single-shot completions, default temperature.
 
+### Opus 5 / Fable 5.1 via Claude CLI
+
+The [2026-09-09 comparison](results/2026-09-09-opus-fable.md) uses the same five
+tasks with a safe-mode, tools-disabled Claude CLI and records exact model IDs,
+raw response telemetry, LOC, and the existing lightweight correctness gates.
+It includes incomplete cells and setup failures rather than retrying until a
+preferred result appears. This is single-shot generation, not an agentic test.
+Run `node benchmarks/claude-cli.mjs` from the repository root for a no-cost
+preview; see the report before using `--run`.
+
 ## Median results (10 runs, 2026-06-13; cost re-verified at 30 runs, 2026-06-17)
 
 **Code (lines)**
