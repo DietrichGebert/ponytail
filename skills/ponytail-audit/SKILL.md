@@ -27,9 +27,14 @@ Same as ponytail-review:
 Deps the stdlib or platform already ships, single-implementation interfaces,
 factories with one product, wrappers that only delegate, files exporting one
 thing, dead flags and config, hand-rolled stdlib.
+Before emitting `delete:`, grep the entire tree including tests, fixtures, and
+dynamic/string references; a symbol used only by tests is still used.
 
 ## Output
 
+Open with `git rev-parse --short HEAD` (no network; `unknown base` outside a
+git repo). Re-verify each finding against current HEAD before applying; callers
+appear.
 One line per finding, ranked: `<tag> <what to cut>. <replacement>. [path]`.
 End with `net: -<N> lines, -<M> deps possible.` Nothing to cut: `Lean already. Ship.`
 
