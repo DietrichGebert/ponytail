@@ -103,12 +103,12 @@ export default function ponytailExtension(pi) {
     const message = normalized ? `${skillName} ${normalized}` : skillName;
 
     if (ctx?.isIdle?.() === false) {
-      pi.sendUserMessage(message, { deliverAs: "followUp" });
+      pi.sendUserMessage(message, { deliverAs: "followUp", expandPromptTemplates: true });
       ctx?.ui?.notify?.(`${skillName} queued as follow-up.`, "info");
       return;
     }
 
-    pi.sendUserMessage(message);
+    pi.sendUserMessage(message, { expandPromptTemplates: true });
   };
 
   pi.registerCommand("ponytail", {
