@@ -17,6 +17,8 @@ const ROOT = path.join(__dirname, '..');
 const HOMEPAGE = 'https://github.com/DietrichGebert/ponytail';
 
 const DESCRIPTIONS = {
+  'ponytail-plan': 'Create or simplify a minimal implementation plan. Planning only, no implementation.',
+  'ponytail-ask': 'Clarify consequential unknowns in a coding request. Questions and scope only, no implementation.',
   'ponytail': 'Lazy senior dev mode for any coding task (write, refactor, fix, review): YAGNI, stdlib first, no unrequested abstractions. Not for non-coding requests.',
   'ponytail-review': 'Review a diff for over-engineering. Finds what to delete: reinvented stdlib, needless deps, speculative abstractions. One line per finding.',
   'ponytail-audit': 'Audit the whole repo for over-engineering. A ranked list of what to delete, simplify, or replace with stdlib or native features.',
