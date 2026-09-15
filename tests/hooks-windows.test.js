@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 // Regression test for issues #19 and #593: on Windows the lifecycle hooks run
 // via PowerShell, so the shared `command` field must be cross-platform (plain
-// `node`, no bash-only syntax). commandWindows is not part of the supported
+// polyglot launcher, no bash-only syntax). commandWindows is not part of the supported
 // hooks schema on the Claude.ai plugin marketplace validator, so it is omitted
-// — ${CLAUDE_PLUGIN_ROOT} expansion and `node` work everywhere.
+// — ${CLAUDE_PLUGIN_ROOT} expansion and the launcher work everywhere.
 //
 // The hook also has to point at a script that actually ships in hooks/.
 
@@ -11,7 +11,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('fs');
 const path = require('path');
-const { spawn } = require('child_process');
+const { spawn, spawnSync } = require('child_process');
 
 const root = path.join(__dirname, '..');
 const HOOKS_JSON = 'hooks/claude-codex-hooks.json';
@@ -22,7 +22,7 @@ const HOST_PLUGIN_MANIFESTS = [
 // PowerShell 5.1 rejects these POSIX shell guards when a host runs `command`.
 const POSIX_GUARD_SYNTAX = /\bcommand\s+-v\b|&&|\|\||>\/dev\/null|2>&1/;
 // Pull the hooks/<script> a command launches, so we can check it exists.
-const HOOK_SCRIPT = /hooks[\\/]([\w.-]+\.(?:js|mjs|cjs|ps1|sh))/;
+const HOOK_SCRIPT = /hooks[\\/]([\w.-]+\.(?:js|mjs|cjs|cmd|ps1|sh))/;
 
 // Read inside each case so a missing/malformed file fails as a clean assertion,
 // not a load-time crash.
@@ -54,15 +54,26 @@ test('shared hook commands avoid POSIX-only guard syntax', () => {
   }
 });
 
+test('shared hooks exit quietly when node is unavailable (#708)', { skip: process.platform === 'win32' }, () => {
+  for (const hook of commandHooks()) {
+    const command = hook.command.replace('${CLAUDE_PLUGIN_ROOT}', root);
+    const result = spawnSync('/bin/sh', ['-c', command], {
+      env: { CLAUDE_PLUGIN_ROOT: root, PATH: '' },
+      encoding: 'utf8',
+    });
+    assert.equal(result.status, 0, `hook failed without node: ${result.stderr}`);
+    assert.equal(result.stderr, '', `hook reported an error without node: ${result.stderr}`);
+  }
+});
+
 // Issue #527 / #569: the shared `command` field must be shell-agnostic. `exec`
 // is a bash/zsh builtin with no PowerShell equivalent, but some hosts run
 // `command` through PowerShell on Windows regardless of the commandWindows
 // field — VS Code Copilot always does (it never reads commandWindows), and
 // native Claude Code launched from Git Bash was seen doing the same. `exec
 // node ...` then dies on its first token with CommandNotFoundException, so
-// every hook fails on Windows. Plain `node ...` runs natively in both bash and
-// PowerShell. The wrapper-process pileup that #461 originally used `exec` to
-// avoid is handled separately by each hook's stdin self-exit guard (#443/#477).
+// every hook fails on Windows. The polyglot launcher runs natively in both
+// POSIX shells and cmd.exe, and quietly skips optional hooks without Node.
 test('shared hook commands are shell-agnostic (no bash-only exec prefix)', () => {
   const commands = commandHooks()
     .map((h) => h.command)
@@ -70,7 +81,7 @@ test('shared hook commands are shell-agnostic (no bash-only exec prefix)', () =>
   assert.ok(commands.length > 0, 'expected at least one shared command entry');
   for (const cmd of commands) {
     assert.doesNotMatch(cmd, /(^|\s)exec\s/, `command must not use the bash-only 'exec' builtin (breaks under PowerShell): ${cmd}`);
-    assert.match(cmd, /^node\s+/, `command must invoke node directly so it runs in both bash and PowerShell: ${cmd}`);
+    assert.match(cmd, /run-hook\.cmd/, `command must use the cross-platform launcher: ${cmd}`);
     assert.doesNotMatch(cmd, /;\s*exit 0$/, `command must not leave a shell wrapper waiting on node: ${cmd}`);
   }
 });
