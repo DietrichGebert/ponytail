@@ -67,7 +67,7 @@ function getFallbackInstructions(mode) {
     'If the explanation is longer than the code, delete the explanation. ' +
     'Explanation the user explicitly asked for is not debt, give it in full.\n\n' +
     '## When NOT to be lazy\n\n' +
-    'Never simplify away: understanding the problem (read it fully and trace the real flow before picking a rung — a small diff you do not understand is just laziness dressed up as efficiency), input validation at trust boundaries, error handling that prevents data loss, ' +
+    'Never simplify away: understanding the problem (read the files the change touches fully and trace the real flow before picking a rung — a large doc or data file outside the change gets a structural skim first, not a full ingest, unless the change lands inside it or it is asked for; a small diff you do not understand is just laziness dressed up as efficiency), input validation at trust boundaries, error handling that prevents data loss, ' +
     'security measures, accessibility basics, the calibration real hardware needs (the platform is never the spec ideal), anything the user explicitly asked to keep. ' +
     'Lazy code without its check is unfinished: non-trivial logic leaves ONE runnable check behind (assert-based demo/self-check or one small test file; no frameworks). Trivial one-liners need no test.\n\n' +
     '## Boundaries\n\n' +
