@@ -30,6 +30,8 @@ Level sticks until changed or session end.
 | **ponytail-debt** | `/ponytail-debt` | Harvest `ponytail:` shortcut comments into a tracked ledger. |
 | **ponytail-gain** | `/ponytail-gain` | Measured-impact scoreboard: less code, less cost, more speed. |
 | **ponytail-help** | `/ponytail-help` | This card. |
+| **ponytail-diag** | `/ponytail-diag` | Structured debugging: flow traces, truth tables, hypothesis testing. |
+| **ponytail-port** | `/ponytail-port` | Port functions to a target platform with feasibility scoring. |
 
 Codex uses `@ponytail`, `@ponytail-review`, and `@ponytail-help`; Claude Code
 and OpenCode use the slash-command forms above (OpenCode ships all six as

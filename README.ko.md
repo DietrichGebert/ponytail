@@ -251,7 +251,7 @@ grok plugin install DietrichGebert/ponytail --trust
 enabled = ["ponytail"]
 ```
 
-새 세션을 열거나 플러그인을 다시 로드한다. 스킬은 `/ponytail`, `/ponytail-review`, `/ponytail-audit`, `/ponytail-debt`, `/ponytail-gain`, `/ponytail-help`로 보인다. `grok inspect`로 확인. Grok은 스킬 설명을 바탕으로 코딩 작업에서 ponytail을 자동으로 호출할 수 있다. 명시적으로 활성화해야 하면 `/ponytail`(또는 `/ponytail lite`, `/ponytail full`, `/ponytail ultra`)을 사용한다. `SessionStart` 출력으로는 지시문을 주입할 수 없으므로 Grok 라이프사이클 훅은 사용하지 않는다.
+새 세션을 열거나 플러그인을 다시 로드한다. 스킬은 `/ponytail`, `/ponytail-review`, `/ponytail-audit`, `/ponytail-debt`, `/ponytail-gain`, `/ponytail-help`, `/ponytail-diag`, `/ponytail-port`로 보인다. `grok inspect`로 확인. Grok은 스킬 설명을 바탕으로 코딩 작업에서 ponytail을 자동으로 호출할 수 있다. 명시적으로 활성화해야 하면 `/ponytail`(또는 `/ponytail lite`, `/ponytail full`, `/ponytail ultra`)을 사용한다. `SessionStart` 출력으로는 지시문을 주입할 수 없으므로 Grok 라이프사이클 훅은 사용하지 않는다.
 
 체크아웃의 `AGENTS.md`만으로도 지시문 전용 모드는 된다. 제거: `grok plugin uninstall ponytail`.
 
@@ -290,6 +290,8 @@ Codex 확장을 쓰는 VS Code는 이 저장소가 함께 싣는 `AGENTS.md`를 
 | `/ponytail-debt` | 미뤄 둔 `ponytail:` 간소화들을 장부로 모아, "나중에"가 "영영"이 되지 않게 한다. |
 | `/ponytail-gain` | 벤치마크로 잰 효과 스코어보드(코드 절감, 비용 절감, 속도 향상)를 보여 준다. |
 | `/ponytail-help` | 위 명령들의 빠른 참조. |
+| `/ponytail-diag` | 흐름 추적, 진리 표, 가설 검증을 통한 구조화된 디버깅. |
+| `/ponytail-port` | 타겟 플랫폼으로의 함수 이식 및 실현 가능성 평가. |
 
 명령들은 스킬을 지원하는 호스트가 있어야 돈다(Claude Code, Codex, Devin CLI, OpenCode, Gemini, pi, Swival). Codex에선 스킬이라 `@`로 부른다(`@ponytail-review`). [훅](#cursor)을 쓰는 Cursor는 `/ponytail` 레벨 전환만 되고, 일반 메시지로 입력한다. 지시문 전용 어댑터(Cursor 규칙 파일, Windsurf, Cline, Copilot, Kiro, Antigravity)는 명령 없이 늘 켜진 룰셋만 불러온다.
 
