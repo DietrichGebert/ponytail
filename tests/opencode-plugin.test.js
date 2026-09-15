@@ -27,7 +27,7 @@ test.before(async () => {
   // OpenCode's legacy loader treats every exported function as a plugin and
   // tried to invoke it with the plugin context object, which crashed. The
   // parser now lives in its own .cjs sibling; require it directly.
-  parseCommandFile = require(path.join(__dirname, '..', '.opencode', 'plugins', 'ponytail-frontmatter.cjs')).parseCommandFile;
+  parseCommandFile = require(path.join(__dirname, '..', '.opencode', 'ponytail-frontmatter.cjs')).parseCommandFile;
 });
 
 function transform(hooks) {
