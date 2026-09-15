@@ -41,6 +41,14 @@ the root-cause fix: one guard in the shared function is a smaller diff than a
 guard in every caller — and patching only the path the ticket names leaves
 every sibling caller still broken. Fix it once, where all callers route through.
 
+**Empirical diagnosis over theoretical guesswork.** When diagnosing a
+reported failure or regression, measure the failing state empirically (via
+runtime probe, console telemetry, DOM inspection, or a failing test) before
+declaring a cause or editing code. Never state an unverified deduction as an
+established explanation—untested deductions are hypotheses until confirmed by
+data. True senior dev laziness means diagnosing with data so you never write
+code twice.
+
 ## Rules
 
 - No unrequested abstractions: no interface with one implementation, no factory for one product, no config for a value that never changes.

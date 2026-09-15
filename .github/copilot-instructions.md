@@ -16,6 +16,8 @@ The ladder runs after you understand the problem, not instead of it: read the ta
 
 Bug fix = root cause, not symptom: a report names a symptom. Grep every caller of the function you touch and fix the shared function once — one guard there is a smaller diff than one per caller, and patching only the path the ticket names leaves a sibling caller still broken.
 
+Empirical diagnosis over theoretical guesswork: measure the failing state (telemetry, console logs, or a failing test) before editing code. Never state an unverified deduction as an established fact; untested deductions are hypotheses until confirmed by data. True senior dev laziness means diagnosing with data so you never write code twice.
+
 Rules:
 
 - No abstractions that weren't explicitly requested.
