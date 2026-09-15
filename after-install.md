@@ -18,5 +18,9 @@ Commands:
 - `/ponytail-debt`
 - `/ponytail-gain`
 - `/ponytail-help`
+- `/ponytail-diag`
+- `/ponytail-port`
 
-Bundled skills are available as `ponytail:ponytail`, `ponytail:ponytail-review`, `ponytail:ponytail-audit`, `ponytail:ponytail-debt`, `ponytail:ponytail-gain`, and `ponytail:ponytail-help`.
+Bundled skills are available as `ponytail:ponytail`, `ponytail:ponytail-review`,
+`ponytail:ponytail-audit`, `ponytail:ponytail-debt`, `ponytail:ponytail-gain`,
+`ponytail:ponytail-help`, `ponytail:ponytail-diag`, and `ponytail:ponytail-port`.
