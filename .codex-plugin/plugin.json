@@ -21,9 +21,9 @@
     "capabilities": ["Instructions", "Lifecycle hooks"],
     "websiteURL": "https://github.com/DietrichGebert/ponytail",
     "defaultPrompt": [
-      "Use Ponytail mode for this task.",
-      "Review this diff for over-engineering.",
-      "Find the smallest correct implementation."
+      "@ponytail",
+      "@ponytail-review",
+      "@ponytail-help"
     ],
     "brandColor": "#111111",
     "composerIcon": "./assets/logo.png",
