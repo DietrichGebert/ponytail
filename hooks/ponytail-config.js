@@ -116,6 +116,21 @@ function getQuietStartup() {
   }
 }
 
+// Status-line format template (see pi-extension syncStatus). PONYTAIL_STATUS_FORMAT
+// takes precedence, else config.statusFormat. Undefined/empty -> built-in default,
+// so existing setups keep their indicator unchanged. Placeholders are replaced in
+// syncStatus: {indicator} {emoji} {label} {modeIcon} {mode}. Unknown placeholders
+// are left untouched so a typo renders literally rather than silently swallowing text.
+function getStatusFormat() {
+  const env = process.env.PONYTAIL_STATUS_FORMAT;
+  if (typeof env === 'string' && env.trim() !== '') return env;
+  try {
+    const config = JSON.parse(fs.readFileSync(getConfigPath(), 'utf8').replace(/^\uFEFF/, ''));
+    if (typeof config.statusFormat === 'string' && config.statusFormat.trim() !== '') return config.statusFormat;
+  } catch (_) {}
+  return null;
+}
+
 // Hide the status-bar indicator while keeping ponytail active (#324).
 // PONYTAIL_HIDE_STATUS=1 (or any truthy value; 0/false/empty mean "don't hide")
 // takes precedence, else config.hideStatus === true.
@@ -160,6 +175,7 @@ module.exports = {
   getClaudeDir,
   getHideStatus,
   getQuietStartup,
+  getStatusFormat,
   isShellSafe,
   normalizeMode,
   normalizeConfigMode,
