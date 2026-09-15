@@ -18,10 +18,10 @@ import { fileURLToPath } from 'url';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 // The shared instruction builder is CommonJS; bridge to it from this ES module.
-const require = createRequire(import.meta.url);
-const { getPonytailInstructions } = require('../../hooks/ponytail-instructions');
-const { getDefaultMode, normalizePersistedMode } = require('../../hooks/ponytail-config');
-const { parseCommandFile } = require('./ponytail-frontmatter.cjs');
+const cjsRequire = createRequire(import.meta.url);
+const { getPonytailInstructions } = cjsRequire('../../hooks/ponytail-instructions');
+const { getDefaultMode, normalizePersistedMode } = cjsRequire('../../hooks/ponytail-config');
+const { parseCommandFile } = cjsRequire('./ponytail-frontmatter.cjs');
 
 // OpenCode has no flag-file convention of its own; keep mode beside its config.
 const statePath = path.join(
