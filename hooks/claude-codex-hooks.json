@@ -36,6 +36,19 @@
           }
         ]
       }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/ponytail-review-gate.js\"",
+            "timeout": 5,
+            "statusMessage": "Checking Ponytail review gate..."
+          }
+        ]
+      }
     ]
   }
 }
