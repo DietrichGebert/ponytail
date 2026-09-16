@@ -199,7 +199,7 @@ The adapter targets OpenCode V2 `2.0.5`. It registers both `context` and `genera
 
 For an end-to-end check, run `node scripts/verify-opencode-v2.mjs [plugin-directory]` with `opencode2` on PATH. It starts a private server and a local mock model endpoint, checks outgoing requests and session isolation, then restarts the private server to check persistence. It uses temporary configuration and data directories and makes no paid model calls.
 
-The verifier supports native executables and npm installations on Windows without a shell. For a custom installation or a specific CLI version, set `OPENCODE_V2_BIN` to the actual executable (on Windows, the full path to `opencode2.exe`, not a `.cmd` or `.ps1` wrapper). When testing an installed npm archive, pass its `.opencode/v2` directory as `plugin-directory`.
+The verifier supports native executables and npm installations on Windows without a shell. For a custom installation or a specific CLI version, set `OPENCODE_V2_BIN` to the actual executable (on Windows, the full path to `opencode.exe` in 2.0.5, not a `.cmd` or `.ps1` wrapper). Older `opencode2.exe` layouts are also detected. When testing an installed npm archive, pass its `.opencode/v2` directory as `plugin-directory`.
 
 ### Gemini CLI
 

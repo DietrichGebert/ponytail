@@ -12,17 +12,18 @@ let binary = process.env.OPENCODE_V2_BIN || 'opencode2';
 if (process.platform === 'win32' && !process.env.OPENCODE_V2_BIN) {
   // ponytail: support native binaries and npm's CLI layout, not arbitrary wrappers;
   // custom installations can point OPENCODE_V2_BIN at their actual executable.
-  const candidates = (process.env.PATH || '').split(path.delimiter).flatMap((dir) => [
-    path.join(dir, 'opencode2.exe'),
-    path.join(dir, 'node_modules/@opencode/cli/bin/opencode2.exe'),
-    path.join(dir, 'node_modules/@opencode-ai/cli/bin/opencode2.exe'),
-    path.resolve(dir, '../@opencode/cli/bin/opencode2.exe'),
-    path.resolve(dir, '../@opencode-ai/cli/bin/opencode2.exe'),
-  ]);
+  const candidates = (process.env.PATH || '').split(path.delimiter).flatMap((dir) =>
+    ['opencode.exe', 'opencode2.exe'].flatMap((name) => [
+      path.join(dir, name),
+      path.join(dir, 'node_modules/@opencode/cli/bin', name),
+      path.join(dir, 'node_modules/@opencode-ai/cli/bin', name),
+      path.resolve(dir, '../@opencode/cli/bin', name),
+      path.resolve(dir, '../@opencode-ai/cli/bin', name),
+    ]));
   binary = (await Promise.all(candidates.map(async (file) => {
     try { await fs.access(file); return file; } catch { return undefined; }
   }))).find(Boolean);
-  assert.ok(binary, 'OpenCode executable not found. Set OPENCODE_V2_BIN to the full path of opencode2.exe.');
+  assert.ok(binary, 'OpenCode executable not found. Set OPENCODE_V2_BIN to the full path of opencode.exe.');
 }
 const root = await fs.mkdtemp(path.join(os.tmpdir(), 'ponytail-v2-'));
 const requests = [];
