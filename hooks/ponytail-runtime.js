@@ -27,6 +27,9 @@ const isQoder = !isCopilot && !isCodex && Boolean(process.env.QODER_SESSION_ID);
 // hooks next to CLAUDE_PLUGIN_ROOT, and it needs Cursor-shaped JSON either
 // way, so this check comes after the hosts with their own data dirs.
 const isCursor = !isCopilot && !isCodex && !isQoder && Boolean(process.env.CURSOR_VERSION);
+// ZCode injects ZCODE_APP_VERSION into every child process, hooks included.
+const isZcode = !isCopilot && !isCodex && !isQoder && !isCursor &&
+  Boolean(process.env.ZCODE_APP_VERSION);
 
 let stateDir = getClaudeDir();
 if (isCodex) stateDir = process.env.PLUGIN_DATA;
@@ -95,9 +98,13 @@ function writeHookOutput(event, mode, context = '') {
     process.stdout.write(JSON.stringify(output));
     return;
   }
-  if (isQoder) {
+  if (isQoder || isZcode) {
     // Qoder: hookSpecificOutput JSON, same shape as Codex minus systemMessage.
     // UserPromptSubmit additionalContext is injected into the Agent's conversation.
+    // ZCode parses hook stdout as strict JSON too — raw text fails validation
+    // and is silently discarded (#798). Unlike Qoder it has SessionStart, so
+    // activate.js handles startup injection and only the output shape differs
+    // from Claude Code.
     const output = {};
     if (context) {
       output.hookSpecificOutput = {
@@ -138,6 +145,7 @@ module.exports = {
   isCopilot,
   isCursor,
   isQoder,
+  isZcode,
   readMode,
   setMode,
   writeHookOutput,
