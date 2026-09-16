@@ -84,9 +84,15 @@ async function start() {
     server.stdout.on('data', read);
     server.stderr.on('data', read);
   });
-  await api('/api/plugin/await-activation', {});
-  const plugins = await api('/api/plugin');
-  assert.ok(plugins.data.some((p) => p.id === 'ponytail'), JSON.stringify(plugins));
+  let ponytail;
+  for (let attempt = 0; attempt < 300; attempt++) {
+    const plugins = await api('/api/plugin');
+    ponytail = plugins.data.find((candidate) => candidate.id === 'ponytail');
+    if (ponytail?.state.status === 'active') break;
+    if (ponytail?.state.status === 'failed') assert.fail(JSON.stringify(ponytail));
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+  assert.equal(ponytail?.state.status, 'active', JSON.stringify(ponytail));
   const commands = await api('/api/command');
   assert.equal(commands.data.filter((c) => c.name.startsWith('ponytail')).length, 6);
   const skills = await api('/api/skill');
@@ -112,8 +118,8 @@ async function api(endpoint, body) {
 async function turn(session, mode, expected) {
   const before = requests.length;
   const endpoint = mode === null ? 'prompt' : 'command';
-  await api(`/api/session/${session}/${endpoint}`, mode === null ? { text: 'Reply OK.' } : { command: 'ponytail', text: mode });
-  await api(`/api/session/${session}/wait`, {});
+  await api(`/api/session/${session}/${endpoint}`, mode === null ? { text: 'Reply OK.' } : { name: 'ponytail', text: mode });
+  await api(`/api/experimental/session/${session}/wait`, {});
   const outgoing = requests.slice(before).filter((r) => r.messages?.some((m) => ['system', 'developer'].includes(m.role) && JSON.stringify(m.content).includes('PONYTAIL_V2_VERIFICATION')));
   assert.ok(outgoing.length, `No model request for ${mode}; inspect ${root}`);
   const system = outgoing[0].messages.filter((m) => ['system', 'developer'].includes(m.role)).map((m) => JSON.stringify(m.content)).join('\n');
@@ -121,14 +127,26 @@ async function turn(session, mode, expected) {
   else assert.match(system, new RegExp(`PONYTAIL MODE ACTIVE[^\n]*level: ${expected}`));
   console.log(`${mode === null ? 'next turn' : `/ponytail ${mode}`}: ${expected}`);
 }
+async function generate(session, expected) {
+  const before = requests.length;
+  await api(`/api/session/${session}/generate`, { prompt: 'GENERATE_PROBE: Reply OK.' });
+  const outgoing = requests.slice(before).filter((r) => r.messages?.some((m) => m.role === 'user' && JSON.stringify(m.content).includes('GENERATE_PROBE')));
+  assert.ok(outgoing.length, 'Expected a transient generation request');
+  const system = JSON.stringify(outgoing[0].messages.filter((m) => ['system', 'developer'].includes(m.role)));
+  const mode = system.match(/PONYTAIL MODE ACTIVE.*?level: (\w+)/)?.[1] || 'off';
+  assert.equal(mode, expected, 'Transient generation must use the session mode');
+  console.log(`transient generation: ${expected}`);
+}
 try {
   await start();
   const first = (await api('/api/session', { model: { providerID: 'test', id: 'probe' } })).data.id;
   const second = (await api('/api/session', { model: { providerID: 'test', id: 'probe' } })).data.id;
   await turn(first, 'ultra', 'ultra');
+  await generate(first, 'ultra');
   await turn(first, null, 'ultra');
   await turn(second, null, 'full');
   await turn(first, 'off', 'off');
+  await generate(first, 'off');
   await turn(first, null, 'off');
   await stop();
   await start();

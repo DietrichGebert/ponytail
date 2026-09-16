@@ -46,7 +46,7 @@ function context(storage = new Map()) {
   };
 }
 
-test('exports the V2 id/setup contract and registers commands and beta skills', async () => {
+test('exports the V2 id/setup contract and registers commands and skills', async () => {
   assert.equal(plugin.id, 'ponytail');
   assert.equal(typeof plugin.setup, 'function');
   const ctx = context();
@@ -56,7 +56,9 @@ test('exports the V2 id/setup contract and registers commands and beta skills', 
   assert.equal(typeof ctx.commands.get('ponytail').execute, 'function');
   assert.ok(ctx.skills.some((skill) => skill.id === 'ponytail'));
   assert.ok(ctx.skills.some((skill) => skill.id === 'ponytail-review'));
-  assert.match(ctx.skills.find((skill) => skill.id === 'ponytail').description, /laziest solution/);
+  const ponytail = ctx.skills.find((skill) => skill.id === 'ponytail');
+  assert.match(ponytail.description, /laziest solution/);
+  assert.match(ponytail.path, /skills[/\\]ponytail[/\\]SKILL\.md$/);
 });
 
 test('executes commands through the V2 session prompt API', async () => {
@@ -83,9 +85,9 @@ test('mode switches apply to the same request, later turns, and only that sessio
     await ctx.commands.get('ponytail').execute({
       sessionID: 'session-1', prompt: { text: mode }, delivery: 'steer',
     });
-    for (let turn = 0; turn < 2; turn++) {
+    for (const hook of ['context', 'generate', 'context']) {
       const event = { sessionID: 'session-1', system: [] };
-      await ctx.hooks.context(event);
+      await ctx.hooks[hook](event);
       decodeSystem(event.system);
       if (mode === 'off') assert.deepEqual(event.system, []);
       else assert.match(event.system[0].text, new RegExp(`level: ${mode}`));

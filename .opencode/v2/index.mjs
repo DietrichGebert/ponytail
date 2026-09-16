@@ -19,16 +19,16 @@ const skillsDir = path.resolve(__dirname, '../../skills');
 function skillDefinitions() {
   return fs.readdirSync(skillsDir, { withFileTypes: true }).flatMap((entry) => {
     if (!entry.isDirectory()) return [];
-    const location = path.join(skillsDir, entry.name, 'SKILL.md');
+    const skillPath = path.join(skillsDir, entry.name, 'SKILL.md');
     let source;
-    try { source = fs.readFileSync(location, 'utf8'); } catch (_) { return []; }
+    try { source = fs.readFileSync(skillPath, 'utf8'); } catch (_) { return []; }
     const match = source.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n([\s\S]*)$/);
     if (!match) return [];
     const name = match[1].match(/^name:\s*(.+)$/m)?.[1]?.trim();
     if (!name) return [];
     const description = match[1].match(/^description:\s*>?\s*\r?\n((?:[ \t]+.*(?:\r?\n|$))*)/m)?.[1]
       ?.split(/\r?\n/).map((line) => line.trim()).filter(Boolean).join(' ');
-    return [Schema.decodeUnknownSync(Skill.Info)({ id: name, name, description, location, content: match[2].trim() })];
+    return [Schema.decodeUnknownSync(Skill.Info)({ id: name, name, description, path: skillPath, content: match[2].trim() })];
   });
 }
 
@@ -90,7 +90,8 @@ export default Plugin.define({
       for (const skill of bundledSkills) skills.add(skill);
     });
 
-    await ctx.session.hook('context', async (event) => {
+    /** @param {import('@opencode/plugin/promise/session').SessionContext} event */
+    const inject = async (event) => {
       const mode = await readMode(event.sessionID);
       if (mode === 'off') return;
       const instructions = getPonytailInstructions(mode);
@@ -100,6 +101,8 @@ export default Plugin.define({
       } else {
         event.system.push({ type: 'text', text: instructions });
       }
-    });
+    };
+    await ctx.session.hook('context', inject);
+    await ctx.session.hook('generate', inject);
   },
 });
