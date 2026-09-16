@@ -236,6 +236,17 @@ Abre una sesión nueva (o recarga los plugins). Los skills aparecen como `/ponyt
 
 `AGENTS.md` sigue funcionando solo como instrucciones desde un checkout sin el plugin. Desinstalar: `grok plugin uninstall ponytail`.
 
+### Goose
+
+Goose (AAIF / Linux Foundation) ya entiende los formatos de ponytail, así que la instalación son dos copias y ningún manifiesto:
+
+```bash
+# cada skill se convierte en un comando: /ponytail, /ponytail-review, ...
+cp -r skills/* ~/.agents/skills/     # global, o .agents/skills/ dentro de un proyecto
+```
+
+Para las reglas siempre activas, añade el conjunto compacto de [`AGENTS.md`](AGENTS.md) a `~/.agents/AGENTS.md` (global) o al `AGENTS.md` del proyecto — goose carga `AGENTS.md` y `.goosehints` como archivos de contexto en cada petición, así que la copia es toda la activación. No hay hooks de ciclo de vida que registrar ni bandera de modo; `/ponytail lite|full|ultra|off` elige el nivel por sesión a través del propio skill. Desinstalar: borra las carpetas copiadas y las reglas añadidas.
+
 ### Cursor
 
 ```bash
