@@ -1,0 +1,41 @@
+# Ponytail vs baseline, MiniMax: MiniMax-M3 + MiniMax-M2.7 over the OpenAI-compatible endpoint.
+#   npx promptfoo@latest eval -c benchmarks/promptfooconfig.minimax.yaml --env-file ../.env --repeat 10
+# Needs MINIMAX_API_KEY in ../.env (global endpoint). The MiniMax OpenAI-compatible
+# base URL points at the /v1 chat completions surface; see benchmarks/README.md.
+description: "Ponytail vs baseline on MiniMax (MiniMax-M3, MiniMax-M2.7). LOC + correctness, cost telemetry."
+
+providers:
+  - id: openai:chat:MiniMax-M3
+    config:
+      apiBaseUrl: https://api.minimax.io/v1
+      apiKeyEnvar: MINIMAX_API_KEY
+      max_tokens: 8192
+      temperature: 1
+  - id: openai:chat:MiniMax-M2.7
+    config:
+      apiBaseUrl: https://api.minimax.io/v1
+      apiKeyEnvar: MINIMAX_API_KEY
+      max_tokens: 2048
+      temperature: 1
+
+prompts:
+  - id: file://arms/baseline.js
+    label: baseline (no skill)
+  - id: file://arms/ponytail.js
+    label: ponytail
+
+defaultTest:
+  assert:
+    - type: javascript
+      value: file://loc.js
+      metric: code_loc
+    - type: javascript
+      value: file://correctness.js
+      metric: correct
+
+tests:
+  - vars: { task: "Write me a Python function that validates email addresses." }
+  - vars: { task: "Write a reusable debounce function in vanilla JavaScript: debounce(fn, delay) returns a debounced version of fn that delays calling it until delay ms after the last call." }
+  - vars: { task: "Write Python code that reads sales.csv and sums the 'amount' column." }
+  - vars: { task: "Build me a countdown timer component in React that counts down from a given number of seconds." }
+  - vars: { task: "Add rate limiting to my FastAPI endpoint so users can't spam it." }

@@ -18,6 +18,21 @@ npx promptfoo@latest view
 `--env-file ../.env` is required because promptfoo reads `.env` from the current
 directory (`benchmarks/`), not the repo root where the file lives.
 
+### MiniMax (MiniMax-M3 / MiniMax-M2.7)
+
+Requires a MiniMax API key (global endpoint) and **Node.js ≥ 22.22.0** (same
+promptfoo engine constraint as Claude):
+
+```bash
+cp ../.env.example .env      # add your MINIMAX_API_KEY
+npx promptfoo@latest eval -c promptfooconfig.minimax.yaml --env-file ../.env --repeat 10
+npx promptfoo@latest view
+```
+
+The MiniMax provider is the OpenAI-compatible `openai:chat:<model>` surface with
+`apiBaseUrl` pointed at `https://api.minimax.io/v1`; `MINIMAX_API_KEY` is read
+via `apiKeyEnvar` so the key stays in `.env`. See `promptfooconfig.minimax.yaml`.
+
 ### Local models via Ollama
 
 No API key or promptfoo required. Runs against any model served by Ollama:
