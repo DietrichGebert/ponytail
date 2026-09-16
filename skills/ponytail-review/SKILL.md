@@ -23,8 +23,12 @@ Tags:
 - `delete:` dead code, unused flexibility, speculative feature. Replacement: nothing.
 - `stdlib:` hand-rolled thing the standard library ships. Name the function.
 - `native:` dependency or code doing what the platform already does. Name the feature.
+- `reuse:` equivalent helper, util, or pattern already in this repo. Name the path.
 - `yagni:` abstraction with one implementation, config nobody sets, layer with one caller.
 - `shrink:` same logic, fewer lines. Show the shorter form.
+
+Search the same repo for an existing equivalent before flagging or accepting
+a new helper — rung 2 of the ladder, checked after the fact.
 
 ## Examples
 
@@ -34,6 +38,8 @@ considered whether all these validation rules are needed at this stage?"
 ✅ `L12-38: stdlib: 27-line validator class. "@" in email, 1 line, real validation is the confirmation mail.`
 
 ✅ `L4: native: moment.js imported for one format call. Intl.DateTimeFormat, 0 deps.`
+
+✅ `L18-29: reuse: slugify helper duplicates src/lib/slug.ts slugify. Delete it, import the existing one.`
 
 ✅ `repo.py:L88: yagni: AbstractRepository with one implementation. Inline it until a second one exists.`
 
