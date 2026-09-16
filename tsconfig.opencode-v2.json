@@ -1,0 +1,12 @@
+{
+  "compilerOptions": {
+    "allowJs": true,
+    "checkJs": false,
+    "noEmit": true,
+    "module": "NodeNext",
+    "target": "ES2022",
+    "strictNullChecks": true,
+    "skipLibCheck": true
+  },
+  "include": [".opencode/v2/index.mjs"]
+}

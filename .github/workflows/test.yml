@@ -23,8 +23,14 @@ jobs:
       - name: Install Python deps for correctness checks
         run: pip install pandas
 
+      - name: Install root dependencies
+        run: npm ci
+
       - name: Install MCP deps
         run: npm install --prefix ponytail-mcp
+
+      - name: Typecheck OpenCode V2
+        run: npm run typecheck:v2
 
       - name: Check rule copies
         run: node scripts/check-rule-copies.js
