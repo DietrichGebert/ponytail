@@ -3,7 +3,16 @@
 // Inspects user input for /ponytail commands and writes mode to flag file
 
 const { getDefaultMode, isDeactivationCommand, writeDefaultMode } = require('./ponytail-config');
-const { clearMode, isQoder, readMode, setMode, writeHookOutput } = require('./ponytail-runtime');
+const {
+  clearMode,
+  cursorRuleNotice,
+  cursorRulePath,
+  isCursor,
+  isQoder,
+  readMode,
+  setMode,
+  writeHookOutput,
+} = require('./ponytail-runtime');
 const { getPonytailInstructions } = require('./ponytail-instructions');
 
 let input = '';
@@ -16,6 +25,18 @@ function finish() {
     // Strip UTF-8 BOM some shells prepend when piping (breaks JSON.parse)
     const data = JSON.parse(input.replace(/^\uFEFF/, ''));
     const prompt = (data.prompt || '').trim().toLowerCase();
+
+    // Cursor with the always-on rule in the workspace: no hook can change or
+    // switch off a rule, so answer the command with the notice instead of
+    // writing a mode the rule would contradict (#817). Ordinary prompts
+    // stay silent as usual.
+    if (isCursor && (/^[/@$]ponytail/.test(prompt) || isDeactivationCommand(prompt))) {
+      const rule = cursorRulePath();
+      if (rule) {
+        writeHookOutput('UserPromptSubmit', readMode() || 'off', cursorRuleNotice(rule));
+        return;
+      }
+    }
 
     // Match /ponytail commands
     let modeSwitched = false;
@@ -69,10 +90,14 @@ function finish() {
         // switch happens we fold the confirmation into the ruleset output
         // below (one JSON on stdout) instead of emitting two separate writes.
         if (!isQoder) {
+          // Cursor has no /ponytail command that would load the skill body
+          // for the new level, so the tracker delivers that level's ruleset
+          // along with the confirmation (#817).
+          const header = 'PONYTAIL MODE CHANGED — level: ' + mode;
           writeHookOutput(
             'UserPromptSubmit',
             mode,
-            mode === 'debug' ? getPonytailInstructions(mode) : 'PONYTAIL MODE CHANGED — level: ' + mode,
+            isCursor || mode === 'debug' ? header + '\n\n' + getPonytailInstructions(mode) : header,
           );
         }
       } else if (mode === 'off') {
