@@ -41,6 +41,23 @@ considered whether all these validation rules are needed at this stage?"
 
 ✅ `L30-44: shrink: manual loop builds dict. dict(zip(keys, values)), 1 line.`
 
+## Common patterns (pre-filter)
+
+Before deep analysis, scan imports and trivial patterns for quick wins:
+
+| Signal | What to flag | Replacement |
+|--------|-------------|-------------|
+| `moment`/`dayjs`/`date-fns`/`luxon` | date lib import | `Intl.DateTimeFormat` / native Date |
+| `lodash`/`ramda`/`underscore` | util lib import | native Array/Object methods |
+| `axios`/`node-fetch`/`got` | http lib import | native `fetch()` |
+| `JSON.parse(JSON.stringify(x))` | deep clone pattern | `structuredClone()` |
+| `new Date().toISOString()` | timestamp | `Date.now()` |
+| class with only getters/setters | trivial wrapper | plain object / direct access |
+| `const f = x => g(x)` | pass-through wrapper | inline `g(x)` directly |
+
+These catch import-level over-engineering. Design-level signals (architecture,
+abstractions, dead flexibility) still need the full review.
+
 ## Scoring
 
 End with the only metric that matters: `net: -<N> lines possible.`
