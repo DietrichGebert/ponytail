@@ -43,7 +43,10 @@ function exec(cmd, opts = {}) {
     execSync(cmd, { timeout: correctnessTimeoutMs(), encoding: 'utf8', stdio: 'pipe', ...opts });
     return { ok: true, stderr: '' };
   } catch (e) {
-    return { ok: false, stderr: (e.stderr || e.message || '').slice(0, 500) };
+    // Harnesses print their FAIL verdicts to stdout (and tracebacks to
+    // stderr); prefer stderr, but fall back to stdout so the verdict isn't
+    // swallowed into a bare "Command failed" message.
+    return { ok: false, stderr: (e.stderr || e.stdout || e.message || '').slice(0, 500) };
   }
 }
 
@@ -196,15 +199,18 @@ import io
 _stdout = sys.stdout
 sys.stdout = io.StringIO()
 
+_error = None
 try:
 ${patched.split('\n').map((l) => '    ' + l).join('\n')}
 except Exception as e:
-    sys.stdout = _stdout
-    # If it needs sales.csv in cwd, write it there and retry
-    pass
+    _error = repr(e)
 
 output = sys.stdout.getvalue()
 sys.stdout = _stdout
+
+if _error is not None:
+    print("FAIL: generated code raised: " + _error)
+    sys.exit(1)
 
 # Check output contains the number 351 (100.5 + 200.0 + 50.5)
 # Match as a standalone number (not as substring of e.g. 13510)
