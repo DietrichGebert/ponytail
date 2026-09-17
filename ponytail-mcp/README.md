@@ -13,12 +13,12 @@ prompt menu, or that pull context through tools. See issue #70.
 ## What it exposes
 
 - Prompt `ponytail`, returns the ruleset as a user message. Optional `mode`
-  argument: `lite`, `full`, or `ultra`. Omit it to use the configured default.
+  argument: `lite`, `full`, `ultra`, or `debug`. Omit it to use the configured default.
 - Tool `ponytail_instructions`, same text, plus `structuredContent`
   (`{ mode, instructions }`), for hosts that pull context via tools or code
   execution. Read-only.
 
-Mode resolution reuses `hooks/ponytail-config.js`, so `PONYTAIL_DEFAULT_MODE`
+Mode resolution reuses `hooks/ponytail-config.js`, so `PONYTAIL_MODE`, `PONYTAIL_DEFAULT_MODE`
 and `~/.config/ponytail/config.json` work the same as everywhere else.
 
 ## Run it

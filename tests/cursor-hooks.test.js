@@ -191,6 +191,22 @@ test('beforeSubmitPrompt tracks /ponytail commands and delivers the new level ru
   assert.equal(fs.readFileSync(c.flag, 'utf8'), 'full', 'incidental "normal mode" must not turn ponytail off');
 });
 
+test('Cursor debug mode delivers the workflow and switches back to the intensity ladder', () => {
+  const c = cursorEnv('debug', { PONYTAIL_DEFAULT_MODE: 'full' });
+  writeFlag(c, 'full');
+  const debug = parse(run('ponytail-mode-tracker.js', c.env, JSON.stringify({ prompt: '/ponytail debug' })));
+  assert.equal(debug.continue, true);
+  assert.match(debug.additional_context, /^PONYTAIL MODE CHANGED — level: debug/);
+  assert.match(debug.additional_context, /reproduc/i);
+  assert.match(debug.additional_context, /root cause/i);
+  assert.equal(fs.readFileSync(c.flag, 'utf8'), 'debug');
+
+  const lite = parse(run('ponytail-mode-tracker.js', c.env, JSON.stringify({ prompt: '/ponytail lite' })));
+  assert.match(lite.additional_context, /^PONYTAIL MODE CHANGED — level: lite/);
+  assert.match(lite.additional_context, /Build what's asked/);
+  assert.equal(fs.readFileSync(c.flag, 'utf8'), 'lite');
+});
+
 test('with the always-on rule in the workspace the hooks step back instead of duplicating the ruleset', () => {
   const c = cursorEnv('rule', { PONYTAIL_DEFAULT_MODE: 'full' });
   const rule = path.join(c.project, '.cursor', 'rules', 'ponytail.mdc');

@@ -19,4 +19,6 @@ test("buildInstructions returns the ruleset tagged with the resolved mode", () =
   const text = buildInstructions("ultra");
   assert.match(text, /PONYTAIL MODE ACTIVE/);
   assert.match(text, /ultra/);
+  assert.ok(MODES.includes("debug"));
+  assert.match(buildInstructions("debug"), /Debugging decision ladder/);
 });

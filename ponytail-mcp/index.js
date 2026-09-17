@@ -18,7 +18,7 @@ const server = new McpServer({ name: "ponytail", version });
 const modeArg = z
   .enum(MODES)
   .optional()
-  .describe("Ponytail intensity: lite, full, or ultra. Omit for the configured default.");
+  .describe("Ponytail mode: lite, full, ultra, or debug. Omit for the configured default.");
 
 server.registerPrompt(
   "ponytail",
@@ -36,7 +36,7 @@ server.registerTool(
   "ponytail_instructions",
   {
     title: "Ponytail instructions",
-    description: "Return the Ponytail ruleset for the given intensity (lite, full, or ultra).",
+    description: "Return the Ponytail ruleset for the given mode (lite, full, ultra, or debug).",
     inputSchema: { mode: modeArg },
     outputSchema: { mode: z.string(), instructions: z.string() },
     annotations: { readOnlyHint: true, openWorldHint: false },

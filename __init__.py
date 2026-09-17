@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Any, Callable
 
 DEFAULT_MODE = "full"
-RUNTIME_MODES = {"off", "lite", "full", "ultra"}
+RUNTIME_MODES = {"off", "lite", "full", "ultra", "debug"}
 CONFIG_MODES = RUNTIME_MODES | {"review"}
 SKILL_COMMANDS = {
     "ponytail-review": "Review the current diff or provided target for over-engineering.",
@@ -17,6 +17,7 @@ SKILL_COMMANDS = {
     "ponytail-debt": "List every deliberate `ponytail:` shortcut and its upgrade path.",
     "ponytail-gain": "Show the measured-impact scoreboard (less code, less cost, more speed).",
     "ponytail-help": "Show the Ponytail command reference.",
+    "ponytail-debug": "Reproduce a reported failure and verify a focused root-cause fix.",
 }
 
 ROOT = Path(__file__).resolve().parent
@@ -50,6 +51,9 @@ def _config_dir() -> Path:
 
 
 def _default_mode() -> str:
+    session_mode = _normalize_runtime_mode(os.environ.get("PONYTAIL_MODE"))
+    if session_mode:
+        return session_mode
     env_mode = _normalize_config_mode(os.environ.get("PONYTAIL_DEFAULT_MODE"))
     if env_mode:
         return env_mode
@@ -88,6 +92,14 @@ def _filter_skill_body_for_mode(body: str, mode: str) -> str:
 
 
 def _fallback_instructions(mode: str) -> str:
+    if mode == "debug":
+        return (
+            "PONYTAIL MODE ACTIVE — level: debug\n\n"
+            "Reproduce the reported failure before editing. Trace the root cause and affected callers. "
+            "Apply the smallest complete fix within the requested scope, then rerun the reproduction and relevant existing tests. "
+            "Preserve security, validation, accessibility, and data-loss protections. "
+            "For diagnosis-only requests, report the cause without editing. Report unverified checks."
+        )
     return (
         f"PONYTAIL MODE ACTIVE — level: {mode}\n\n"
         "You are a lazy senior developer. Lazy means efficient, not careless. "
@@ -107,6 +119,12 @@ def build_injected_context(mode: str | None = None) -> str:
     configured = _normalize_config_mode(mode) or _default_mode()
     if configured == "off":
         return ""
+    if configured == "debug":
+        try:
+            body = (SKILLS_DIR / "ponytail-debug" / "SKILL.md").read_text(encoding="utf-8")
+            return f"PONYTAIL MODE ACTIVE — level: debug\n\n{_strip_frontmatter(body)}"
+        except OSError:
+            return _fallback_instructions("debug")
     if configured == "review":
         try:
             body = REVIEW_SKILL.read_text(encoding="utf-8")
@@ -169,10 +187,10 @@ def _handle_mode_command(raw_args: str) -> str:
     arg = (raw_args or "").strip().lower()
     if not arg:
         mode = _current_mode or _default_mode()
-        return f"Ponytail mode: {mode}. Use `/ponytail lite|full|ultra|off`."
+        return f"Ponytail mode: {mode}. Use `/ponytail lite|full|ultra|debug|off`."
     mode = _normalize_runtime_mode(arg)
     if not mode:
-        return "Usage: /ponytail [lite|full|ultra|off]"
+        return "Usage: /ponytail [lite|full|ultra|debug|off]"
     _current_mode = mode
     return f"Ponytail mode set to {mode}."
 
@@ -205,8 +223,8 @@ def register(ctx: Any) -> None:
     ctx.register_command(
         "ponytail",
         _handle_mode_command,
-        description="Set Ponytail lazy senior dev mode: lite, full, ultra, or off.",
-        args_hint="[lite|full|ultra|off]",
+        description="Set Ponytail mode: lite, full, ultra, debug, or off.",
+        args_hint="[lite|full|ultra|debug|off]",
     )
     for command, description in SKILL_COMMANDS.items():
         ctx.register_command(
