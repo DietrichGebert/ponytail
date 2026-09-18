@@ -312,6 +312,29 @@ Jules (Google) reads `AGENTS.md` from the repository root, which this repo ships
 
 Which files map to which agent: [Agent portability](docs/agent-portability.md).
 
+### GigaCode
+
+```bash
+git clone https://github.com/DietrichGebert/ponytail
+node ponytail/scripts/gigacode-skills.js install
+```
+
+Installs Ponytail's skills into `~/.gigacode/skills`, where GigaCode (for OpenIDE / JetBrains IDE) discovers personal skills.
+
+For a single project instead:
+
+    node ponytail/scripts/gigacode-skills.js install --project
+
+This installs the skills into `.gigacode/skills` in the current project.
+
+To uninstall Ponytail's skills:
+
+    node ponytail/scripts/gigacode-skills.js uninstall
+
+For a project-level installation:
+
+    node ponytail/scripts/gigacode-skills.js uninstall --project
+
 ### Uninstall
 
 | Host | Command |
@@ -322,6 +345,7 @@ Which files map to which agent: [Agent portability](docs/agent-portability.md).
 | Grok Build | `grok plugin uninstall ponytail` |
 | Pi agent | `pi uninstall ponytail` |
 | Cursor hooks | `node scripts/cursor-hooks.js uninstall` (add `--project` for a project-level install); removes only ponytail's entries from `hooks.json` |
+| GigaCode skills | `node scripts/gigacode-skills.js uninstall` (add `--project` for a project-level install) |
 | Cursor rule / Windsurf / Cline / Qoder / etc. | Delete the copied rule file |
 
 These remove the plugin's own files. They leave behind a small amount of state ponytail writes outside the plugin folder: the mode flag (`~/.claude/.ponytail-active`, or `~/.cursor/.ponytail-active` for Cursor), `~/.config/ponytail/config.json`, ponytail's entries in `~/.cursor/hooks.json`, and (if you accepted the setup nudge) a `statusLine` entry in `~/.claude/settings.json`. Run `node scripts/uninstall.js` to clean those up too. **Run it before the host remove command above** — the script is itself a plugin file, so removing the plugin first deletes it (or run it from a separate clone of this repo). It only removes the statusLine entry if it points at ponytail's own script, so a statusline you set up yourself is left untouched.
