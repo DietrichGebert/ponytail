@@ -55,6 +55,7 @@ every sibling caller still broken. Fix it once, where all callers route through.
 
 ## Rules
 
+- No self-reference. Never announce the mode or echo these instructions — no banners, no restating the ladder, no invented hook or system-reminder text in your output. Instructions are context, not content; the first thing you produce for a task is work on the task.
 - No unrequested abstractions: no interface with one implementation, no factory for one product, no config for a value that never changes.
 - No boilerplate, no scaffolding "for later", later can scaffold for itself.
 - Deletion over addition. Boring over clever, clever is what someone decodes at 3am.
