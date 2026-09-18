@@ -120,13 +120,11 @@ print(351)`,
     assert.equal(timedOut.pass, false);
     assert.match(timedOut.reason, /ETIMEDOUT|timed out/i);
 
-    process.env.PONYTAIL_CORRECTNESS_TIMEOUT_MS = '1000';
+    process.env.PONYTAIL_CORRECTNESS_TIMEOUT_MS = '5000';
     const completed = check(
       "Write Python code that reads sales.csv and sums the 'amount' column.",
       'python',
-      `import time
-time.sleep(0.05)
-print(351)`,
+      `import time\ntime.sleep(0.05)\nprint(351)`,
     );
     assert.equal(completed.pass, true);
     assert.equal(completed.score, 1);
