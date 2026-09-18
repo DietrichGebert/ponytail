@@ -1,6 +1,12 @@
 #!/usr/bin/env bash
 # CLAUDE_CONFIG_DIR overrides ~/.claude, matching where the hooks write the flag (issue #34)
-flag="${CLAUDE_CONFIG_DIR:-$HOME/.claude}/.ponytail-active"
+state_dir="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
+payload=''
+# ponytail: bounded read so an open, empty statusline pipe can never hang the UI.
+IFS= read -r -t 1 payload || true
+session_id=$(printf '%s' "$payload" | sed -n 's/.*"session_id"[[:space:]]*:[[:space:]]*"\([A-Za-z0-9._-]*\)".*/\1/p')
+flag="$state_dir/.ponytail-active"
+[ -n "$session_id" ] && flag="$state_dir/.ponytail-active.$session_id"
 [ -f "$flag" ] || exit 0
 
 mode=$(head -n1 "$flag" | tr -d '[:space:]')

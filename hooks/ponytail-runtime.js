@@ -38,19 +38,44 @@ if (isCursor) stateDir = path.join(os.homedir(), '.cursor');
 
 const statePath = path.join(stateDir, STATE_FILE);
 
-function setMode(mode) {
-  fs.mkdirSync(path.dirname(statePath), { recursive: true });
-  fs.writeFileSync(statePath, mode);
+function getSessionId(data) {
+  const id = (data && typeof data.session_id === 'string' && data.session_id) ||
+    process.env.QODER_SESSION_ID || '';
+  return /^[A-Za-z0-9._-]+$/.test(id) ? id : null;
 }
 
-function clearMode() {
-  try { fs.unlinkSync(statePath); } catch (e) {}
+function scopedStatePath(data) {
+  const sessionId = getSessionId(data);
+  return sessionId ? path.join(stateDir, `${STATE_FILE}.${sessionId}`) : statePath;
+}
+
+function sweepOldState() {
+  try {
+    const cutoff = Date.now() - 7 * 24 * 60 * 60 * 1000;
+    for (const entry of fs.readdirSync(stateDir)) {
+      if (!entry.startsWith(`${STATE_FILE}.`)) continue;
+      const entryPath = path.join(stateDir, entry);
+      if (fs.statSync(entryPath).mtimeMs < cutoff) fs.unlinkSync(entryPath);
+    }
+  } catch (e) {}
+}
+
+function setMode(mode, data) {
+  const filePath = scopedStatePath(data);
+  fs.mkdirSync(path.dirname(filePath), { recursive: true });
+  sweepOldState();
+  fs.writeFileSync(filePath, mode);
+}
+
+function clearMode(data) {
+  sweepOldState();
+  try { fs.unlinkSync(scopedStatePath(data)); } catch (e) {}
 }
 
 // Live mode written by activate/mode-tracker. Absent flag = ponytail off.
-function readMode() {
+function readMode(data) {
   try {
-    return fs.readFileSync(statePath, 'utf8').trim() || null;
+    return fs.readFileSync(scopedStatePath(data), 'utf8').trim() || null;
   } catch (e) {
     return null;
   }
@@ -134,6 +159,7 @@ module.exports = {
   clearMode,
   cursorRuleNotice,
   cursorRulePath,
+  getSessionId,
   isCodex,
   isCopilot,
   isCursor,

@@ -33,7 +33,7 @@ function finish() {
     if (isCursor && (/^[/@$]ponytail/.test(prompt) || isDeactivationCommand(prompt))) {
       const rule = cursorRulePath();
       if (rule) {
-        writeHookOutput('UserPromptSubmit', readMode() || 'off', cursorRuleNotice(rule));
+        writeHookOutput('UserPromptSubmit', readMode(data) || 'off', cursorRuleNotice(rule));
         return;
       }
     }
@@ -70,7 +70,7 @@ function finish() {
         else if (arg === 'off') mode = 'off';
         else if (arg === '') {
           isReportOnly = true;
-          mode = readMode() || getDefaultMode();
+          mode = readMode(data) || getDefaultMode();
         } else {
           mode = getDefaultMode();
         }
@@ -83,7 +83,7 @@ function finish() {
           'PONYTAIL MODE ACTIVE — level: ' + mode,
         );
       } else if (mode && mode !== 'off') {
-        setMode(mode);
+        setMode(mode, data);
         modeSwitched = true;
         // ponytail: Qoder needs the full ruleset every turn, so when a mode
         // switch happens we fold the confirmation into the ruleset output
@@ -100,7 +100,7 @@ function finish() {
           );
         }
       } else if (mode === 'off') {
-        clearMode();
+        clearMode(data);
         deactivated = true;
         writeHookOutput('UserPromptSubmit', 'off', 'PONYTAIL MODE OFF');
       }
@@ -108,7 +108,7 @@ function finish() {
 
     // Detect deactivation
     if (!modeSwitched && !deactivated && isDeactivationCommand(prompt)) {
-      clearMode();
+      clearMode(data);
       deactivated = true;
       writeHookOutput('UserPromptSubmit', 'off', 'PONYTAIL MODE OFF');
     }
@@ -119,12 +119,12 @@ function finish() {
     // SessionStart via ponytail-activate.js; Qoder can't, so we do it here.
     // Skip when deactivated — user just turned ponytail off.
     if (isQoder && !deactivated) {
-      let currentMode = readMode();
+      let currentMode = readMode(data);
       if (!currentMode) {
         // First prompt in session — initialize from config/env default
         currentMode = getDefaultMode();
         if (currentMode !== 'off') {
-          try { setMode(currentMode); } catch (e) {}
+          try { setMode(currentMode, data); } catch (e) {}
         }
       }
       if (currentMode && currentMode !== 'off') {

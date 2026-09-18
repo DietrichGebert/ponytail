@@ -362,7 +362,7 @@ assert.match(output.hookSpecificOutput.additionalContext, /PONYTAIL MODE ACTIVE 
 // the ruleset via additionalContext on every prompt. Output is
 // hookSpecificOutput JSON (same shape as Codex minus systemMessage).
 const qoderHome = path.join(temp, 'qoder-home');
-const qoderState = path.join(qoderHome, '.qoder', '.ponytail-active');
+const qoderState = path.join(qoderHome, '.qoder', '.ponytail-active.test-session-123');
 fs.mkdirSync(qoderHome, { recursive: true });
 
 const qoderEnv = {
@@ -491,6 +491,140 @@ try {
 } finally {
   if (prevXdgRev === undefined) delete process.env.XDG_CONFIG_HOME; else process.env.XDG_CONFIG_HOME = prevXdgRev;
   if (prevEnvModeRev === undefined) delete process.env.PONYTAIL_DEFAULT_MODE; else process.env.PONYTAIL_DEFAULT_MODE = prevEnvModeRev;
+}
+
+// #809: concurrent sessions must have independent mode flags.
+const scopedHome = path.join(temp, 'scoped-home');
+const scopedEnv = { HOME: scopedHome, USERPROFILE: scopedHome };
+const scopedDir = path.join(scopedHome, '.claude');
+fs.mkdirSync(scopedDir, { recursive: true });
+
+result = run(
+  'ponytail-mode-tracker.js',
+  scopedEnv,
+  JSON.stringify({ session_id: 'aaa', prompt: '/ponytail full' }),
+);
+assert.equal(result.status, 0, result.stderr);
+assert.equal(fs.readFileSync(path.join(scopedDir, '.ponytail-active.aaa'), 'utf8'), 'full');
+
+result = run(
+  'ponytail-subagent.js',
+  scopedEnv,
+  JSON.stringify({ session_id: 'bbb', agent_type: 'general' }),
+);
+assert.equal(result.status, 0, result.stderr);
+assert.equal(result.stdout, '', 'another session must not inherit mode full');
+
+result = run(
+  'ponytail-mode-tracker.js',
+  scopedEnv,
+  JSON.stringify({ session_id: 'bbb', prompt: '/ponytail-review' }),
+);
+assert.equal(result.status, 0, result.stderr);
+assert.equal(fs.readFileSync(path.join(scopedDir, '.ponytail-active.bbb'), 'utf8'), 'review');
+
+result = run(
+  'ponytail-subagent.js',
+  scopedEnv,
+  JSON.stringify({ session_id: 'aaa', agent_type: 'general' }),
+);
+assert.equal(result.status, 0, result.stderr);
+assert.match(JSON.parse(result.stdout).hookSpecificOutput.additionalContext, /level: full/);
+
+// A session started with the default off must only clear its own scoped flag.
+const offHome = path.join(temp, 'off-home');
+const offConfigDir = path.join(offHome, '.config', 'ponytail');
+fs.mkdirSync(offConfigDir, { recursive: true });
+fs.writeFileSync(path.join(offConfigDir, 'config.json'), '{"defaultMode":"off"}');
+const offEnv = { HOME: offHome, USERPROFILE: offHome, XDG_CONFIG_HOME: path.join(offHome, '.config') };
+fs.mkdirSync(path.join(offHome, '.claude'), { recursive: true });
+fs.writeFileSync(path.join(offHome, '.claude', '.ponytail-active.aaa'), 'full');
+
+result = run(
+  'ponytail-activate.js',
+  offEnv,
+  JSON.stringify({ session_id: 'bbb' }),
+);
+assert.equal(result.status, 0, result.stderr);
+assert.equal(fs.readFileSync(path.join(offHome, '.claude', '.ponytail-active.aaa'), 'utf8'), 'full');
+assert.equal(fs.existsSync(path.join(offHome, '.claude', '.ponytail-active.bbb')), false);
+
+// No session id, or an unsafe id, keeps the exact legacy single-file behavior.
+const legacyHome = path.join(temp, 'legacy-home');
+const legacyEnv = { HOME: legacyHome, USERPROFILE: legacyHome };
+const legacyFlag = path.join(legacyHome, '.claude', '.ponytail-active');
+
+result = run('ponytail-mode-tracker.js', legacyEnv, JSON.stringify({ prompt: '/ponytail full' }));
+assert.equal(result.status, 0, result.stderr);
+assert.equal(fs.readFileSync(legacyFlag, 'utf8'), 'full');
+
+result = run(
+  'ponytail-mode-tracker.js',
+  legacyEnv,
+  JSON.stringify({ session_id: '../escape', prompt: '/ponytail ultra' }),
+);
+assert.equal(result.status, 0, result.stderr);
+assert.equal(fs.readFileSync(legacyFlag, 'utf8'), 'ultra');
+assert.deepEqual(fs.readdirSync(path.join(legacyHome, '.claude')), ['.ponytail-active']);
+
+// Qoder resolves its session id from the environment, not hook JSON.
+const qoderScopedHome = path.join(temp, 'qoder-scoped-home');
+const qoderScopedEnv = { HOME: qoderScopedHome, USERPROFILE: qoderScopedHome, QODER_SESSION_ID: 'q1' };
+const qoderOtherEnv = { ...qoderScopedEnv, QODER_SESSION_ID: 'q2' };
+result = run('ponytail-mode-tracker.js', qoderScopedEnv, JSON.stringify({ prompt: 'write code' }));
+assert.equal(result.status, 0, result.stderr);
+result = run('ponytail-mode-tracker.js', qoderOtherEnv, JSON.stringify({ prompt: '/ponytail-review' }));
+assert.equal(result.status, 0, result.stderr);
+assert.equal(fs.readFileSync(path.join(qoderScopedHome, '.qoder', '.ponytail-active.q1'), 'utf8'), 'full');
+assert.equal(fs.readFileSync(path.join(qoderScopedHome, '.qoder', '.ponytail-active.q2'), 'utf8'), 'review');
+
+// Best-effort GC only removes week-old scoped flags; legacy state is untouched.
+const gcHome = path.join(temp, 'gc-home');
+const gcDir = path.join(gcHome, '.claude');
+fs.mkdirSync(gcDir, { recursive: true });
+const oldFlag = path.join(gcDir, '.ponytail-active.old');
+const freshFlag = path.join(gcDir, '.ponytail-active.fresh');
+const gcLegacy = path.join(gcDir, '.ponytail-active');
+fs.writeFileSync(oldFlag, 'full');
+fs.writeFileSync(freshFlag, 'full');
+fs.writeFileSync(gcLegacy, 'full');
+const oldTime = new Date(Date.now() - 8 * 24 * 60 * 60 * 1000);
+fs.utimesSync(oldFlag, oldTime, oldTime);
+
+result = run(
+  'ponytail-mode-tracker.js',
+  { HOME: gcHome, USERPROFILE: gcHome },
+  JSON.stringify({ session_id: 'gc', prompt: '/ponytail ultra' }),
+);
+assert.equal(result.status, 0, result.stderr);
+assert.equal(fs.existsSync(oldFlag), false);
+assert.equal(fs.readFileSync(freshFlag, 'utf8'), 'full');
+assert.equal(fs.readFileSync(gcLegacy, 'utf8'), 'full');
+assert.equal(fs.readFileSync(path.join(gcDir, '.ponytail-active.gc'), 'utf8'), 'ultra');
+
+// Statusline reads the current session first and falls back to the legacy file.
+const statusHome = path.join(temp, 'status-home');
+const statusDir = path.join(statusHome, '.claude');
+fs.mkdirSync(statusDir, { recursive: true });
+fs.writeFileSync(path.join(statusDir, '.ponytail-active.s1'), 'full');
+fs.writeFileSync(path.join(statusDir, '.ponytail-active'), 'ultra');
+const statusEnv = { HOME: statusHome, USERPROFILE: statusHome, CLAUDE_CONFIG_DIR: statusDir };
+let statusline = spawnSync('bash', [path.join(root, 'hooks', 'ponytail-statusline.sh')], {
+  input: JSON.stringify({ session_id: 's1' }),
+  env: { ...process.env, ...statusEnv },
+  encoding: 'utf8',
+});
+assert.equal(statusline.status, 0, statusline.stderr);
+assert.match(statusline.stdout, /\[PONYTAIL\]/);
+
+for (const badInput of ['', 'not-json']) {
+  statusline = spawnSync('bash', [path.join(root, 'hooks', 'ponytail-statusline.sh')], {
+    input: badInput,
+    env: { ...process.env, ...statusEnv },
+    encoding: 'utf8',
+  });
+  assert.equal(statusline.status, 0, statusline.stderr);
+  assert.match(statusline.stdout, /\[PONYTAIL:ULTRA\]/);
 }
 
 console.log('hook compatibility checks passed');

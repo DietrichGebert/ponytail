@@ -1,6 +1,8 @@
 # CLAUDE_CONFIG_DIR overrides ~/.claude, matching where the hooks write the flag (issue #34)
 $ClaudeDir = if ($env:CLAUDE_CONFIG_DIR) { $env:CLAUDE_CONFIG_DIR } else { Join-Path $HOME ".claude" }
-$Flag = Join-Path $ClaudeDir ".ponytail-active"
+$Payload = if ([Console]::IsInputRedirected) { [Console]::In.ReadLine() } else { $null }
+$SessionId = if ($Payload -match '"session_id"\s*:\s*"([A-Za-z0-9._-]+)"') { $Matches[1] } else { $null }
+$Flag = if ($SessionId) { Join-Path $ClaudeDir ".ponytail-active.$SessionId" } else { Join-Path $ClaudeDir ".ponytail-active" }
 if (-not (Test-Path $Flag)) {
     exit 0
 }

@@ -124,7 +124,7 @@ test('sessionStart injects the default-level ruleset as additional_context and k
   assert.match(output.additional_context, /YAGNI extremist/, 'ultra row must survive the level filter');
   assert.doesNotMatch(output.additional_context, /Build what's asked/, 'lite row must be filtered out');
   assert.doesNotMatch(output.additional_context, /STATUSLINE SETUP NEEDED/, 'Cursor has no Claude statusline to nudge about');
-  assert.equal(fs.readFileSync(c.flag, 'utf8'), 'ultra');
+  assert.equal(fs.readFileSync(path.join(c.home, ".cursor", ".ponytail-active.conv-1"), "utf8"), "ultra");
   assert.equal(fs.existsSync(path.join(c.home, '.claude')), false, 'Cursor state must not land in ~/.claude');
 });
 
