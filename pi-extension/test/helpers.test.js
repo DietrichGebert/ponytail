@@ -71,6 +71,32 @@ test("readDefaultMode and writeDefaultMode use XDG config path", () => {
   }
 });
 
+test("readDefaultMode trims and normalizes whitespace in env and config values", () => {
+  const tempDir = mkdtempSync(join(tmpdir(), "ponytail-default-normalize-"));
+  const previousXdg = process.env.XDG_CONFIG_HOME;
+  const previousDefault = process.env.PONYTAIL_DEFAULT_MODE;
+  const configDir = join(tempDir, "ponytail");
+  const configPath = join(configDir, "config.json");
+  mkdirSync(configDir, { recursive: true });
+  process.env.XDG_CONFIG_HOME = tempDir;
+  process.env.PONYTAIL_DEFAULT_MODE = "  FULL  ";
+  writeFileSync(configPath, JSON.stringify({ defaultMode: "\tultra\n" }), "utf8");
+
+  try {
+    assert.equal(readDefaultMode(), "full");
+    process.env.PONYTAIL_DEFAULT_MODE = "\n lite \r\n";
+    assert.equal(readDefaultMode(), "lite");
+    delete process.env.PONYTAIL_DEFAULT_MODE;
+    assert.equal(readDefaultMode(), "ultra");
+  } finally {
+    if (previousXdg === undefined) delete process.env.XDG_CONFIG_HOME;
+    else process.env.XDG_CONFIG_HOME = previousXdg;
+    if (previousDefault === undefined) delete process.env.PONYTAIL_DEFAULT_MODE;
+    else process.env.PONYTAIL_DEFAULT_MODE = previousDefault;
+    rmSync(tempDir, { recursive: true, force: true });
+  }
+});
+
 test("readQuietStartup resolves env var, config file, and default in that order", () => {
   const tempDir = mkdtempSync(join(tmpdir(), "ponytail-quiet-"));
   const previousXdg = process.env.XDG_CONFIG_HOME;
