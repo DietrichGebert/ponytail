@@ -91,8 +91,21 @@ function getPonytailInstructions(mode) {
   }
 }
 
+// Subagents get the condensed fallback (not the full SKILL.md body) to keep
+// Task-worker context small. Independent modes keep their short pointer string.
+function getSubagentInstructions(mode) {
+  const configuredMode = normalizePersistedMode(mode) || DEFAULT_MODE;
+
+  if (INDEPENDENT_MODES.has(configuredMode)) {
+    return 'PONYTAIL MODE ACTIVE — level: ' + configuredMode + '. Behavior defined by /ponytail-' + configuredMode + ' skill.';
+  }
+
+  return getFallbackInstructions(normalizeMode(configuredMode) || DEFAULT_MODE);
+}
+
 module.exports = {
   filterSkillBodyForMode,
   getFallbackInstructions,
   getPonytailInstructions,
+  getSubagentInstructions,
 };
