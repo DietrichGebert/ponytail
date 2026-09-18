@@ -31,6 +31,7 @@
     "pi-extension/",
     "scripts/uninstall.js",
     "scripts/cursor-hooks.js",
+    "scripts/gigacode-skills.js",
     "assets/",
     "LICENSE"
   ],
