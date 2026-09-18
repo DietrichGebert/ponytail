@@ -17,12 +17,16 @@ Same as ponytail-review:
 - `native:` dependency or code doing what the platform already does. Name the feature.
 - `yagni:` abstraction with one implementation, config nobody sets, layer with one caller.
 - `shrink:` same logic, fewer lines. Show the shorter form.
+- `test:` AI-shaped test brittleness: method mirrored 1:1, snapshot-only or mock-call-only assertions, fixture branches in prod code. Replacement: assert observable behavior.
 
 ## Hunt
 
 Deps the stdlib or platform already ships, single-implementation interfaces,
 factories with one product, wrappers that only delegate, files exporting one
-thing, dead flags and config, hand-rolled stdlib.
+thing, dead flags and config, hand-rolled stdlib. Also flag AI-shaped test
+brittleness: tests that mirror a method 1:1, snapshot-only or mock-call-only
+assertions, and — worst — fixture-name, id, or timestamp branches leaking into
+production code to make a test pass. Test behaviors, not methods.
 
 ## Output
 
@@ -33,5 +37,6 @@ End with `net: -<N> lines, -<M> deps possible.` Nothing to cut: `Lean already. S
 
 Scope: over-engineering and complexity only. Correctness bugs, security holes,
 and performance are explicitly out of scope. Route them to a normal review
-pass. Lists findings, applies nothing. One-shot.
+pass. Test brittleness is dead weight to cut, not a correctness fix to keep.
+Lists findings, applies nothing. One-shot.
 "stop ponytail-audit" or "normal mode" to revert.
