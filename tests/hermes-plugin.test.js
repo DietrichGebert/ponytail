@@ -113,6 +113,60 @@ print(json.dumps({'ctx': ctx}))
   assert.doesNotMatch(ctx, /\|\s*\*\*Lite\*\*/i);
 });
 
+// Parity with hooks/ponytail-instructions.js #571 — unquoted "- Full: ..."
+// rule bullets must survive; only quoted `- lite: "..."` examples are filtered.
+test('Hermes mode filter keeps unquoted rule bullets that start with a mode word', () => {
+  const output = python(String.raw`
+import importlib.util, json
+spec = importlib.util.spec_from_file_location('ponytail_hermes_plugin', '__init__.py')
+mod = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(mod)
+body = (
+    '## Rules\n'
+    '- Full: real rule text about something unrelated to intensity.\n'
+    '- Lite: same risk, this is a real rule bullet.\n'
+    '- lite: "real worked example"\n'
+    '- ultra: "real worked example"\n'
+)
+filtered = mod._filter_skill_body_for_mode(body, 'ultra')
+print(json.dumps({'filtered': filtered}))
+`);
+  const { filtered } = JSON.parse(output);
+  assert.match(filtered, /Full: real rule text/, 'unquoted rule bullet must not be treated as a mode example');
+  assert.match(filtered, /Lite: same risk/, 'unquoted rule bullet must not be treated as a mode example');
+  assert.doesNotMatch(filtered, /- lite:/, 'quoted lite example must still be filtered out in ultra mode');
+  assert.match(filtered, /ultra: "real worked example"/);
+  assert.ok(filtered.endsWith('\n'), 'trailing newline preserved like the JS filter');
+});
+
+test('Hermes mode filter still drops non-active intensity table rows and quoted examples', () => {
+  const output = python(String.raw`
+import importlib.util, json
+spec = importlib.util.spec_from_file_location('ponytail_hermes_plugin', '__init__.py')
+mod = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(mod)
+body = (
+    '---\nname: ponytail\n---\n'
+    '| **lite** | keep lite |\n'
+    '| **full** | keep full |\n'
+    '| **ultra** | keep ultra |\n'
+    '- lite: "Lite example"\n'
+    '- full: "Full example"\n'
+    '- ultra: "Ultra example"\n'
+    'Other line'
+)
+filtered = mod._filter_skill_body_for_mode(body, 'ultra')
+print(json.dumps({'filtered': filtered}))
+`);
+  const { filtered } = JSON.parse(output);
+  assert.doesNotMatch(filtered, /keep lite/);
+  assert.doesNotMatch(filtered, /keep full/);
+  assert.match(filtered, /keep ultra/);
+  assert.doesNotMatch(filtered, /Lite example/);
+  assert.match(filtered, /Ultra example/);
+  assert.match(filtered, /Other line/);
+});
+
 test('Hermes mode config respects env, config file, off, and invalid command behavior', () => {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'ponytail-config-'));
   fs.mkdirSync(path.join(tmp, 'ponytail'), { recursive: true });
