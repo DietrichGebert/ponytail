@@ -195,14 +195,14 @@ Injects the ruleset every turn at the active level; adds the `/ponytail` command
 
 The `./` path resolves against your project's `opencode.json`; to share one checkout across projects, point it at the absolute path of the `.mjs` instead (it finds its `hooks/` and `skills/` relative to its own file).
 
-### Gemini CLI
+### Antigravity CLI
 
 ```bash
-gemini extensions install https://github.com/DietrichGebert/ponytail
+agy extensions install https://github.com/DietrichGebert/ponytail
 ```
 
 Loads the ruleset as always-on context every session and registers the `/ponytail` commands; the `skills/` ship too, activated when a task needs them.
-The Gemini adapter intentionally does not ship a root `hooks/hooks.json`: Gemini auto-loads that path, while Ponytail's lifecycle hooks use Claude/Codex event names.
+The Gemini adapter intentionally does not ship a root `hooks/hooks.json`: Antigravity auto-loads that path, while Ponytail's lifecycle hooks use Claude/Codex event names.
 
 ### Qoder
 
