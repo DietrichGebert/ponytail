@@ -30,6 +30,18 @@ test.before(async () => {
   parseCommandFile = require(path.join(__dirname, '..', '.opencode', 'plugins', 'ponytail-frontmatter.cjs')).parseCommandFile;
 });
 
+test('plugin module exposes only the default export (regression guard for #631, #301)', async () => {
+  const url = pathToFileURL(path.join(__dirname, '..', '.opencode', 'plugins', 'ponytail.mjs'));
+  const mod = await import(url);
+  const namedExports = Object.keys(mod).filter((k) => k !== 'default');
+  assert.deepEqual(
+    namedExports,
+    [],
+    'ponytail.mjs must not have named exports — OpenCode\'s legacy getLegacyPlugins() ' +
+    'loader calls every exported function as a plugin factory'
+  );
+});
+
 function transform(hooks) {
   const output = { system: [] };
   return hooks['experimental.chat.system.transform']({ model: {} }, output).then(() => output.system);
