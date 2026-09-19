@@ -204,6 +204,16 @@ gemini extensions install https://github.com/DietrichGebert/ponytail
 Loads the ruleset as always-on context every session and registers the `/ponytail` commands; the `skills/` ship too, activated when a task needs them.
 The Gemini adapter intentionally does not ship a root `hooks/hooks.json`: Gemini auto-loads that path, while Ponytail's lifecycle hooks use Claude/Codex event names.
 
+### Qwen Code
+
+```bash
+qwen extensions install DietrichGebert/ponytail
+```
+
+Qwen Code installs Ponytail through its Gemini CLI extension compatibility: `AGENTS.md` becomes always-on context, the TOML commands are migrated, and the six skills are registered under the `ponytail:` namespace. Ponytail's Claude/Codex lifecycle hooks are not used, so persistent `lite/full/ultra/off` mode tracking is unavailable.
+
+Uninstall: `qwen extensions uninstall ponytail`.
+
 ### Qoder
 
 Qoder auto-loads `AGENTS.md` from the repo root as always-on context, so running ponytail from a checkout works with zero setup. For per-project rules, copy [`.qoder/rules/ponytail.md`](.qoder/rules/ponytail.md) into your project's `.qoder/rules/`. The six ponytail skills (`/ponytail`, `/ponytail-review`, `/ponytail-audit`, `/ponytail-debt`, `/ponytail-gain`, `/ponytail-help`) are available via Qoder's Skill system; the plugin manifest at [`.qoder-plugin/plugin.json`](.qoder-plugin/plugin.json) points at the `skills/` directory.
@@ -318,6 +328,7 @@ Which files map to which agent: [Agent portability](docs/agent-portability.md).
 |------|---------|
 | Claude Code | `/plugin remove ponytail` |
 | Codex | `codex plugin remove ponytail` |
+| Qwen Code | `qwen extensions uninstall ponytail` |
 | Devin CLI | `devin plugins remove ponytail` |
 | Grok Build | `grok plugin uninstall ponytail` |
 | Pi agent | `pi uninstall ponytail` |
@@ -337,7 +348,7 @@ These remove the plugin's own files. They leave behind a small amount of state p
 | `/ponytail-gain` | Show the measured impact scoreboard (less code, less cost, more speed) from the benchmark. |
 | `/ponytail-help` | Quick reference for the commands above. |
 
-Commands need a skill-capable host (Claude Code, Codex, Devin CLI, OpenCode, Gemini, pi, Swival, Hermes Agent, Qoder, Grok Build). In Codex they're skills, invoke with `@` (`@ponytail-review`). Cursor with the [hooks](#cursor) gets `/ponytail` level switching only, typed as a plain message. The instruction-only adapters (Cursor's rule file, Windsurf, Cline, Copilot, Kiro, Antigravity) load the always-on ruleset without the commands.
+Commands need a skill-capable host (Claude Code, Codex, Devin CLI, OpenCode, Gemini, Qwen Code, pi, Swival, Hermes Agent, Qoder, Grok Build). In Codex they're skills, invoked with `@` (`@ponytail-review`); Qwen namespaces extension skills as `/ponytail:ponytail-review`. Cursor with the [hooks](#cursor) gets `/ponytail` level switching only, typed as a plain message. The instruction-only adapters (Cursor's rule file, Windsurf, Cline, Copilot, Kiro, Antigravity) load the always-on ruleset without the commands.
 
 ## Development
 
