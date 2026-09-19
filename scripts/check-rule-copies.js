@@ -55,6 +55,7 @@ const INVARIANTS = [
   'security',
   'accessibility',
   'Lazy code without its check is unfinished', // one-check promoted to headline
+  'Never stall on an answer you can default', // ship first, then question (AGENTS.md said ask first until now)
 ];
 
 const skill = read('skills/ponytail/SKILL.md');
