@@ -41,6 +41,9 @@ delete process.env.QODER_SESSION_ID;
 // hook would otherwise steer every case into the Cursor JSON branch (#817).
 delete process.env.CURSOR_VERSION;
 delete process.env.CURSOR_PROJECT_DIR;
+// Same for CodeBuddy (#854), which sets these only for its plugin hook processes.
+delete process.env.CODEBUDDY_PLUGIN_ROOT;
+delete process.env.CODEBUDDY_CONFIG_DIR;
 
 const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'ponytail-hooks-'));
 // Runs on normal exit and on assertion-throw exit; force makes it idempotent.
@@ -426,6 +429,49 @@ assert.match(
   output.hookSpecificOutput.additionalContext,
   /PONYTAIL MODE ACTIVE — level: full/,
 );
+
+// CodeBuddy (#854): installs the Claude-format plugin as-is and runs its hooks
+// with CODEBUDDY_PLUGIN_ROOT set. The mode flag must live in ~/.codebuddy, not
+// ~/.claude, so a CodeBuddy session can't flip a Claude Code session's mode,
+// and output is hookSpecificOutput JSON with no Claude statusline nudge.
+const codebuddyHome = path.join(temp, 'codebuddy-home');
+const codebuddyState = path.join(codebuddyHome, '.codebuddy', '.ponytail-active');
+fs.mkdirSync(codebuddyHome, { recursive: true });
+const codebuddyEnv = {
+  HOME: codebuddyHome,
+  USERPROFILE: codebuddyHome,
+  CODEBUDDY_PLUGIN_ROOT: root,
+  CLAUDE_PLUGIN_ROOT: root,
+  PONYTAIL_DEFAULT_MODE: 'lite',
+};
+
+result = run('ponytail-activate.js', codebuddyEnv);
+assert.equal(result.status, 0, result.stderr);
+assert.equal(fs.readFileSync(codebuddyState, 'utf8'), 'lite');
+assert.equal(fs.existsSync(path.join(codebuddyHome, '.claude', '.ponytail-active')), false,
+  'CodeBuddy must not write the Claude Code mode flag');
+output = JSON.parse(result.stdout);
+assert.equal(output.hookSpecificOutput.hookEventName, 'SessionStart');
+assert.match(output.hookSpecificOutput.additionalContext, /PONYTAIL MODE ACTIVE — level: lite/);
+assert.doesNotMatch(output.hookSpecificOutput.additionalContext, /STATUSLINE SETUP NEEDED/);
+
+// Plugin skills are namespaced in CodeBuddy, so the switch arrives as /ponytail:ponytail.
+result = run(
+  'ponytail-mode-tracker.js',
+  codebuddyEnv,
+  JSON.stringify({ prompt: '/ponytail:ponytail ultra' }),
+);
+assert.equal(result.status, 0, result.stderr);
+assert.equal(fs.readFileSync(codebuddyState, 'utf8'), 'ultra');
+output = JSON.parse(result.stdout);
+assert.equal(output.hookSpecificOutput.additionalContext, 'PONYTAIL MODE CHANGED — level: ultra');
+
+// CODEBUDDY_CONFIG_DIR moves CodeBuddy's home, and the flag moves with it.
+const codebuddyConfigDir = path.join(temp, 'codebuddy-config');
+result = run('ponytail-activate.js', { ...codebuddyEnv, CODEBUDDY_CONFIG_DIR: codebuddyConfigDir });
+assert.equal(result.status, 0, result.stderr);
+assert.equal(fs.readFileSync(path.join(codebuddyConfigDir, '.ponytail-active'), 'utf8'), 'lite');
+
 // writeDefaultMode must merge into existing config, not overwrite it (#490).
 const mergeHome = path.join(temp, 'merge-home');
 const mergeConfigDir = path.join(mergeHome, '.config', 'ponytail');

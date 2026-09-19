@@ -222,6 +222,15 @@ Swival도 프로젝트 루트의 `AGENTS.md`와 전역의 `~/.config/swival/AGEN
 
 명령줄에서는 `$` 접두사로 스킬을 명시적으로 켠다. 예: `$ponytail-review`.
 
+### CodeBuddy
+
+```
+/plugin marketplace add DietrichGebert/ponytail
+/plugin install ponytail@ponytail
+```
+
+CodeBuddy Code는 Claude Code 플러그인을 그대로 설치한다. 세션 활성화, 룰셋, `/ponytail:ponytail lite|full|ultra|off` 레벨 전환이 모두 되고, 모드 플래그는 `~/.codebuddy/`(또는 `$CODEBUDDY_CONFIG_DIR`)에 두므로 Claude Code 세션의 레벨을 건드리지 않는다. 스킬은 네임스페이스가 붙는다(`/ponytail:ponytail-review` 등). 아직 안 되는 것: 서브에이전트 주입(CodeBuddy는 `SubagentStart` 훅을 실행하지만 출력을 버린다)과 statusline 배지.
+
 ### Devin CLI
 
 ```bash
@@ -291,7 +300,7 @@ Codex 확장을 쓰는 VS Code는 이 저장소가 함께 싣는 `AGENTS.md`를 
 | `/ponytail-gain` | 벤치마크로 잰 효과 스코어보드(코드 절감, 비용 절감, 속도 향상)를 보여 준다. |
 | `/ponytail-help` | 위 명령들의 빠른 참조. |
 
-명령들은 스킬을 지원하는 호스트가 있어야 돈다(Claude Code, Codex, Devin CLI, OpenCode, Gemini, pi, Swival). Codex에선 스킬이라 `@`로 부른다(`@ponytail-review`). [훅](#cursor)을 쓰는 Cursor는 `/ponytail` 레벨 전환만 되고, 일반 메시지로 입력한다. 지시문 전용 어댑터(Cursor 규칙 파일, Windsurf, Cline, Copilot, Kiro, Antigravity)는 명령 없이 늘 켜진 룰셋만 불러온다.
+명령들은 스킬을 지원하는 호스트가 있어야 돈다(Claude Code, CodeBuddy, Codex, Devin CLI, OpenCode, Gemini, pi, Swival). Codex에선 스킬이라 `@`로 부른다(`@ponytail-review`). [훅](#cursor)을 쓰는 Cursor는 `/ponytail` 레벨 전환만 되고, 일반 메시지로 입력한다. 지시문 전용 어댑터(Cursor 규칙 파일, Windsurf, Cline, Copilot, Kiro, Antigravity)는 명령 없이 늘 켜진 룰셋만 불러온다.
 
 ## Development
 
