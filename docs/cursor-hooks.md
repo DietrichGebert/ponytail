@@ -10,7 +10,7 @@ install script and a small output branch in `hooks/ponytail-runtime.js`.
 | `scripts/cursor-hooks.js` | `install` / `uninstall`, merges into `~/.cursor/hooks.json` (or `.cursor/hooks.json` with `--project`). |
 | `hooks/ponytail-activate.js` | `sessionStart`: injects the default-level ruleset. |
 | `hooks/ponytail-mode-tracker.js` | `beforeSubmitPrompt`: tracks `/ponytail` commands, injects the new level's ruleset. |
-| `hooks/ponytail-runtime.js` | Detects Cursor (`CURSOR_VERSION`), keeps state in `~/.cursor/.ponytail-active`, emits Cursor-shaped JSON. |
+| `hooks/ponytail-runtime.js` | Detects Cursor (`CURSOR_VERSION`), keeps state per conversation in `~/.cursor/.ponytail-sessions/<conversation_id>` (plus the legacy `~/.cursor/.ponytail-active`), emits Cursor-shaped JSON. |
 
 ## Install and uninstall
 
@@ -79,10 +79,10 @@ Execution environment (client, 3.20.17):
 
 ## Behavior
 
-- New conversation: `sessionStart` writes `~/.cursor/.ponytail-active` with the
+- New conversation: `sessionStart` writes that conversation's mode file with the
   default level (`PONYTAIL_DEFAULT_MODE`, then `config.json`, then `full`) and
   injects `PONYTAIL MODE ACTIVE — level: <level>` followed by the ruleset filtered
-  to that level. Default `off`: no flag, no output.
+  to that level. Default `off`: records `off` for the conversation, no output.
 - `/ponytail lite|full|ultra` sent as a plain message: the flag changes and the
   turn receives `PONYTAIL MODE CHANGED — level: <level>` plus that level's ruleset
   (about 5,300 characters, under the inline cap). Cursor has no `/ponytail`

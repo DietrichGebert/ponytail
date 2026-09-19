@@ -14,16 +14,16 @@ const cursorHooks = require('./cursor-hooks');
 const STATUSLINE_SCRIPT = 'ponytail-statusline';
 
 function removeIfExists(filePath, label) {
-  try {
-    fs.unlinkSync(filePath);
-    console.log(`Removed ${label}: ${filePath}`);
-  } catch (e) {
-    if (e.code !== 'ENOENT') throw e;
-  }
+  if (!fs.existsSync(filePath)) return;
+  fs.rmSync(filePath, { recursive: true, force: true });
+  console.log(`Removed ${label}: ${filePath}`);
 }
 
 removeIfExists(path.join(getClaudeDir(), '.ponytail-active'), 'mode flag');
+removeIfExists(path.join(getClaudeDir(), '.ponytail-sessions'), 'per-session modes');
 removeIfExists(path.join(os.homedir(), '.cursor', '.ponytail-active'), 'Cursor mode flag');
+removeIfExists(path.join(os.homedir(), '.cursor', '.ponytail-sessions'), 'Cursor per-session modes');
+removeIfExists(path.join(os.homedir(), '.qoder', '.ponytail-sessions'), 'Qoder per-session modes');
 removeIfExists(getConfigPath(), 'config file');
 
 // Cursor hooks (#817): drop only ponytail's entries from ~/.cursor/hooks.json,

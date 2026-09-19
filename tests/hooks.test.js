@@ -349,9 +349,9 @@ assert.equal(result.status, 0, result.stderr);
 output = JSON.parse(result.stdout);
 assert.equal(output.hookSpecificOutput.hookEventName, 'SubagentStart');
 
-// The default (no matcher) path must not depend on stdin: even with stdin
-// closed empty it injects synchronously, preserving the #252 behavior on
-// Windows where the piped JSON can be swallowed (#443).
+// With stdin closed empty (no payload, so no session id) the hook still
+// injects from the legacy flag, preserving the #252 behavior on Windows where
+// the piped JSON can be swallowed (#443).
 result = run('ponytail-subagent.js', scopeEnv, '');
 assert.equal(result.status, 0, result.stderr);
 output = JSON.parse(result.stdout);
@@ -413,11 +413,31 @@ assert.equal(fs.existsSync(qoderState), false, 'flag must be cleared after stop 
 output = JSON.parse(result.stdout);
 assert.equal(output.hookSpecificOutput.additionalContext, 'PONYTAIL MODE OFF');
 
+// The session recorded 'off', so the next ordinary prompt stays off instead of
+// re-initializing the default (off used to last one prompt on Qoder).
+result = run('ponytail-mode-tracker.js', qoderEnv, JSON.stringify({ prompt: 'write another function' }));
+assert.equal(result.status, 0, result.stderr);
+assert.equal(result.stdout, '', 'a Qoder session turned off must stay off on the next prompt');
+
+// A new Qoder session starts from the default, not from another session's mode.
+result = run('ponytail-mode-tracker.js', qoderEnv, JSON.stringify({ prompt: '/ponytail ultra' }));
+result = run(
+  'ponytail-mode-tracker.js',
+  { ...qoderEnv, QODER_SESSION_ID: 'test-session-456' },
+  JSON.stringify({ prompt: 'write a function' }),
+);
+assert.equal(result.status, 0, result.stderr);
+assert.match(
+  JSON.parse(result.stdout).hookSpecificOutput.additionalContext,
+  /PONYTAIL MODE ACTIVE — level: full/,
+  "a new Qoder session must not inherit another session's level",
+);
+
 // Subagent injection via PreToolUse (task|Task matcher): when ponytail is
 // active, the subagent hook injects the ruleset. Qoder shares the same
 // ponytail-subagent.js script; the isQoder branch outputs hookSpecificOutput
 // JSON instead of raw stdout.
-fs.writeFileSync(qoderState, 'full');
+run('ponytail-mode-tracker.js', qoderEnv, JSON.stringify({ prompt: '/ponytail full' }));
 result = run('ponytail-subagent.js', qoderEnv);
 assert.equal(result.status, 0, result.stderr);
 output = JSON.parse(result.stdout);
@@ -426,6 +446,76 @@ assert.match(
   output.hookSpecificOutput.additionalContext,
   /PONYTAIL MODE ACTIVE — level: full/,
 );
+// Concurrent sessions (#662, #809): each session's mode lives in its own file
+// keyed by the payload's session_id, so one session's /ponytail switch, start,
+// or "stop ponytail" no longer changes another session's mode.
+const multiHome = path.join(temp, 'multi-home');
+const multiClaude = path.join(multiHome, '.claude');
+const multiSessions = path.join(multiClaude, '.ponytail-sessions');
+fs.mkdirSync(multiHome, { recursive: true });
+const multiEnv = { HOME: multiHome, USERPROFILE: multiHome, PONYTAIL_DEFAULT_MODE: 'full' };
+function hook(script, payload) {
+  const r = run(script, multiEnv, JSON.stringify(payload));
+  assert.equal(r.status, 0, r.stderr);
+  return r.stdout;
+}
+function subagentLevel(sessionId) {
+  const m = hook('ponytail-subagent.js', { session_id: sessionId, agent_type: 'general-purpose' })
+    .match(/PONYTAIL MODE ACTIVE — level: (\w+)/);
+  return m ? m[1] : null;
+}
+
+hook('ponytail-activate.js', { session_id: 'session-a', source: 'startup' });
+hook('ponytail-mode-tracker.js', { session_id: 'session-a', prompt: '/ponytail ultra' });
+hook('ponytail-activate.js', { session_id: 'session-b', source: 'startup' });
+assert.equal(subagentLevel('session-a'), 'ultra', "another session starting must not reset this session's level");
+assert.equal(subagentLevel('session-b'), 'full');
+assert.equal(subagentLevel('never-started'), 'full', 'a session with no file of its own falls back to the legacy flag');
+assert.match(
+  hook('ponytail-mode-tracker.js', { session_id: 'session-a', prompt: '/ponytail' }),
+  /level: ultra/,
+  "bare /ponytail reports this session's level",
+);
+
+hook('ponytail-mode-tracker.js', { session_id: 'session-b', prompt: 'stop ponytail' });
+assert.equal(subagentLevel('session-b'), null, 'a stopped session injects nothing into its subagents');
+assert.equal(subagentLevel('session-a'), 'ultra', "another session's stop must not turn this one off");
+
+// The session id becomes a file name: path characters are dropped, so a
+// payload can't write outside the sessions dir.
+hook('ponytail-mode-tracker.js', { session_id: '../../escape', prompt: '/ponytail lite' });
+assert.equal(fs.readFileSync(path.join(multiSessions, 'escape'), 'utf8'), 'lite');
+assert.equal(fs.existsSync(path.join(multiHome, 'escape')), false);
+
+// Session files idle past the TTL are pruned when a new session starts.
+const staleSession = path.join(multiSessions, 'stale-session');
+fs.writeFileSync(staleSession, 'full');
+const eightDaysAgo = new Date(Date.now() - 8 * 24 * 60 * 60 * 1000);
+fs.utimesSync(staleSession, eightDaysAgo, eightDaysAgo);
+hook('ponytail-activate.js', { session_id: 'session-c', source: 'startup' });
+assert.equal(fs.existsSync(staleSession), false, 'a stale session file must be pruned');
+assert.ok(fs.existsSync(path.join(multiSessions, 'session-a')), 'recent session files are kept');
+
+// The statusline gets the session JSON on stdin and shows that session's mode.
+// Each shell is exercised where CI can run it: bash off Windows, PowerShell on it.
+function statusline(shell, args, sessionId) {
+  const r = spawnSync(shell, args, {
+    env: { ...process.env, CLAUDE_CONFIG_DIR: multiClaude },
+    input: JSON.stringify({ session_id: sessionId, model: { id: 'x' } }),
+    encoding: 'utf8',
+  });
+  assert.equal(r.status, 0, r.stderr);
+  return r.stdout;
+}
+const statuslineShells = process.platform === 'win32'
+  ? [['powershell', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', path.join(root, 'hooks', 'ponytail-statusline.ps1')]]]
+  : [['bash', [path.join(root, 'hooks', 'ponytail-statusline.sh')]]];
+for (const [shell, args] of statuslineShells) {
+  assert.match(statusline(shell, args, 'session-a'), /\[PONYTAIL:ULTRA\]/, `${shell} statusline: this session's level`);
+  assert.equal(statusline(shell, args, 'session-b'), '', `${shell} statusline: a stopped session shows nothing`);
+  assert.match(statusline(shell, args, 'never-started'), /\[PONYTAIL\]/, `${shell} statusline: falls back to the legacy flag`);
+}
+
 // writeDefaultMode must merge into existing config, not overwrite it (#490).
 const mergeHome = path.join(temp, 'merge-home');
 const mergeConfigDir = path.join(mergeHome, '.config', 'ponytail');

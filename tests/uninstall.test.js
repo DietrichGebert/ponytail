@@ -26,6 +26,9 @@ fs.mkdirSync(claudeDir, { recursive: true });
 
 const flagPath = path.join(claudeDir, '.ponytail-active');
 fs.writeFileSync(flagPath, 'full');
+const sessionsDir = path.join(claudeDir, '.ponytail-sessions');
+fs.mkdirSync(sessionsDir);
+fs.writeFileSync(path.join(sessionsDir, 'some-session-id'), 'ultra');
 
 const configDir = path.join(temp, 'config-home', 'ponytail');
 fs.mkdirSync(configDir, { recursive: true });
@@ -64,6 +67,7 @@ const env = {
 let result = runUninstall(env);
 assert.equal(result.status, 0, result.stderr);
 assert.equal(fs.existsSync(flagPath), false, 'mode flag must be removed');
+assert.equal(fs.existsSync(sessionsDir), false, 'per-session modes must be removed');
 assert.equal(fs.existsSync(configPath), false, 'config file must be removed');
 assert.equal(fs.existsSync(cursorFlagPath), false, 'Cursor mode flag must be removed');
 assert.deepEqual(

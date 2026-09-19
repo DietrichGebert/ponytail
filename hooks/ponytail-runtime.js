@@ -37,23 +37,98 @@ if (isQoder) stateDir = path.join(os.homedir(), '.qoder');
 if (isCursor) stateDir = path.join(os.homedir(), '.cursor');
 
 const statePath = path.join(stateDir, STATE_FILE);
+// One file per host session, so concurrent sessions stop overwriting each
+// other's mode (#662, #809). The statusline scripts read the same layout.
+const sessionsDir = path.join(stateDir, '.ponytail-sessions');
+// ponytail: stale session files are pruned by age when a new session starts;
+// a session idle for longer falls back to the legacy flag. Track session end if
+// that ever bites.
+const SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
-function setMode(mode) {
-  fs.mkdirSync(path.dirname(statePath), { recursive: true });
-  fs.writeFileSync(statePath, mode);
+// The host's id for this session: session_id (Claude Code, Codex, Qoder),
+// conversation_id (Cursor), or QODER_SESSION_ID. It becomes a file name, so
+// only [A-Za-z0-9_-] survives and no payload can point outside sessionsDir.
+function sessionIdFrom(data) {
+  const raw = (data && (data.session_id || data.conversation_id)) || process.env.QODER_SESSION_ID || '';
+  return String(raw).replace(/[^A-Za-z0-9_-]/g, '').slice(0, 128) || null;
 }
 
-function clearMode() {
-  try { fs.unlinkSync(statePath); } catch (e) {}
-}
-
-// Live mode written by activate/mode-tracker. Absent flag = ponytail off.
-function readMode() {
+function readFlag(file) {
   try {
-    return fs.readFileSync(statePath, 'utf8').trim() || null;
+    return fs.readFileSync(file, 'utf8').trim() || null;
   } catch (e) {
     return null;
   }
+}
+
+function pruneSessions(keep) {
+  try {
+    const now = Date.now();
+    for (const name of fs.readdirSync(sessionsDir)) {
+      if (name === keep) continue;
+      const file = path.join(sessionsDir, name);
+      try { if (now - fs.statSync(file).mtimeMs > SESSION_TTL_MS) fs.unlinkSync(file); } catch (e) {}
+    }
+  } catch (e) {}
+}
+
+function writeSessionMode(sessionId, mode) {
+  const file = path.join(sessionsDir, sessionId);
+  const isNew = !fs.existsSync(file);
+  fs.mkdirSync(sessionsDir, { recursive: true });
+  fs.writeFileSync(file, mode);
+  if (isNew) pruneSessions(sessionId);
+}
+
+// ponytail: the legacy flag keeps its old last-write-wins meaning for readers
+// that can't see a session id (statusline commands pinned to an older plugin
+// version, hosts that send no id). Drop the mirror once those are gone.
+function setMode(mode, sessionId) {
+  fs.mkdirSync(path.dirname(statePath), { recursive: true });
+  fs.writeFileSync(statePath, mode);
+  if (sessionId) writeSessionMode(sessionId, mode);
+}
+
+// A session records 'off' explicitly: a missing session file means "not
+// keyed yet" and falls back to the legacy flag, which another session may own.
+function clearMode(sessionId) {
+  try { fs.unlinkSync(statePath); } catch (e) {}
+  if (sessionId) writeSessionMode(sessionId, 'off');
+}
+
+// Live mode written by activate/mode-tracker. Absent flag or 'off' = ponytail
+// off. With a session id, that session's own file wins; fallback: false skips
+// the legacy flag, for callers that need to know the session is new.
+function readMode(sessionId, { fallback = true } = {}) {
+  if (sessionId) {
+    const mode = readFlag(path.join(sessionsDir, sessionId));
+    if (mode || !fallback) return mode;
+  }
+  return readFlag(statePath);
+}
+
+// Hook payloads arrive as JSON on stdin; onInput gets the parsed object, or
+// null when nothing parseable arrived. Never hang the session: on Windows the
+// PowerShell `if {}` wrapper can swallow the piped JSON so 'end' never fires
+// (#443). On error, or after a short fallback, process whatever arrived and
+// exit. unref() keeps the timer off the normal path, where 'end' fires first.
+function readHookInput(onInput) {
+  let input = '';
+  let done = false;
+  const finish = () => {
+    if (done) return;
+    done = true;
+    let data = null;
+    try {
+      // Strip UTF-8 BOM some shells prepend when piping (breaks JSON.parse)
+      data = JSON.parse(input.replace(/^\uFEFF/, ''));
+    } catch (e) {}
+    onInput(data);
+  };
+  process.stdin.on('data', (chunk) => { input += chunk; });
+  process.stdin.on('end', finish);
+  process.stdin.on('error', () => { finish(); process.exit(0); });
+  setTimeout(() => { finish(); process.exit(0); }, 1000).unref();
 }
 
 // Cursor's always-on project rule (.cursor/rules/ponytail.mdc) already puts the
@@ -138,7 +213,9 @@ module.exports = {
   isCopilot,
   isCursor,
   isQoder,
+  readHookInput,
   readMode,
+  sessionIdFrom,
   setMode,
   writeHookOutput,
 };
