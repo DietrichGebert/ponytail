@@ -12,6 +12,7 @@
 
 const { getPonytailInstructions } = require('./ponytail-instructions');
 const { readMode, writeHookOutput } = require('./ponytail-runtime');
+const vm = require('vm');
 
 const mode = readMode();
 
@@ -64,7 +65,18 @@ function finish() {
   } catch (e) {
     // Unparseable payload — fall through and inject to be safe.
   }
-  if (agentType && !matcherRe.test(agentType)) {
+  // .test() is synchronous, so a backtracking-heavy matcher like (a+)+$ would
+  // block the event loop and the fallback timer below could never fire (#658).
+  // Run it under a vm timeout; a timeout fails open like every other doubt.
+  let matches = true;
+  try {
+    if (agentType) {
+      matches = vm.runInNewContext('re.test(s)', { re: matcherRe, s: agentType }, { timeout: 100 });
+    }
+  } catch (e) {
+    matches = true;
+  }
+  if (!matches) {
     process.exit(0);
   }
   inject();
