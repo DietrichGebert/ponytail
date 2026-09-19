@@ -83,7 +83,7 @@ if (!isCodex && !isCopilot && !isCursor) try {
     const scriptPath = path.join(__dirname, scriptName);
     if (isShellSafe(scriptPath)) {
       const command = isWindows
-        ? `powershell -ExecutionPolicy Bypass -File "${scriptPath}"`
+        ? `powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "${scriptPath}"`
         : `bash "${scriptPath}"`;
       const statusLineSnippet =
         '"statusLine": { "type": "command", "command": ' + JSON.stringify(command) + ' }';

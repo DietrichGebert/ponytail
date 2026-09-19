@@ -164,6 +164,12 @@ assert.ok(
   result.stdout.includes(path.join(customConfigDir, 'settings.json')),
   'statusline nudge must reference the CLAUDE_CONFIG_DIR settings.json',
 );
+// The statusline runs on every refresh: PowerShell must skip the user's
+// profile, whose load time and any output would land in the badge.
+assert.match(
+  result.stdout,
+  process.platform === 'win32' ? /powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -File/ : /bash \\"/,
+);
 
 // #483: the statusline nudge fires at most once — after it writes its flag, a
 // later session stays silent instead of re-nagging on every start.
