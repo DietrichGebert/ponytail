@@ -31,7 +31,7 @@
 
 <p align="center">
   <strong>~54% menos de código (hasta 94%) &middot; ~20% más barato &middot; ~27% más rápido &middot; 100% seguro</strong><br>
-  <sub>Medido en sesiones reales de Claude Code editando un repo open-source real (FastAPI + React), contra el mismo agente sin skill. ~54% es el promedio de 12 tareas de feature (Haiku 4.5, n=4); llega al 94% cuando un agente sobre-construye (un selector de fechas) y es casi cero cuando el código ya es mínimo. ponytail mantiene cada guarda de seguridad, mientras que un prompt simple de "escribe one-liners" se salta una. (El benchmark anterior de un solo disparo reportaba 80-94% como cifra plana; contra un baseline agéntico justo, ese es el techo por tarea, no el promedio.) <a href="benchmarks/results/2026-06-18-agentic.md">Reporte completo</a> &middot; <a href="benchmarks/">reprodúcelo</a>.</sub>
+  <sub>Medido en sesiones reales de Claude Code editando un repo open-source real (FastAPI + React), contra el mismo agente sin skill. ~54% es el recorte en el total de líneas de 12 tareas de feature (Haiku 4.5, n=4; el recorte promedio por tarea es ~35%); llega al 94% cuando un agente sobre-construye (un selector de fechas) y es casi cero cuando el código ya es mínimo. ponytail mantiene cada guarda de seguridad, mientras que un prompt simple de "escribe one-liners" se salta una. (El benchmark anterior de un solo disparo reportaba 80-94% como cifra plana; contra un baseline agéntico justo, ese es el techo por tarea, no el promedio.) <a href="benchmarks/results/2026-06-18-agentic.md">Reporte completo</a> &middot; <a href="benchmarks/">reprodúcelo</a>.</sub>
 </p>
 
 <p align="center">
@@ -66,7 +66,7 @@ Más sobrevivientes en [examples/](examples/).
 La medición honesta es un agente real haciendo trabajo real: una sesión headless de Claude Code editando [el template full-stack-fastapi de tiangolo](https://github.com/fastapi/full-stack-fastapi-template) (un repo real de FastAPI + React), evaluada sobre el `git diff` que deja. Doce tickets de feature, el mismo agente con y sin el skill, n=4, Haiku 4.5.
 
 <p align="center">
-  <img src="assets/benchmark-agentic.svg" width="860" alt="Cada variante como porcentaje del baseline sin skill en LOC, tokens, costo y tiempo (Haiku 4.5). ponytail es el más bajo en cada métrica (LOC 46%, tokens 78%, costo 80%, tiempo 73%); caveman sube por encima del 100% en tokens, costo y tiempo; yagni-oneliner LOC 67%. Seguridad, tier adversarial aparte: baseline, caveman y ponytail 100%, yagni-oneliner 95%.">
+  <img src="assets/benchmark-agentic.svg" width="860" alt="Cada variante como porcentaje del baseline sin skill en LOC, tokens, costo y tiempo (Haiku 4.5). ponytail es el más bajo en LOC y tokens (LOC 46%, tokens 78%, costo 80%, tiempo 73%); caveman sube por encima del 100% en tokens, costo y tiempo; yagni-oneliner LOC 67%, tokens 86%, costo 78%, tiempo 70%. Seguridad, tier adversarial aparte: baseline, caveman y ponytail 100%, yagni-oneliner 95%.">
 </p>
 
 | vs baseline sin skill | LOC | tokens | costo | tiempo | seguro |
@@ -75,7 +75,7 @@ La medición honesta es un agente real haciendo trabajo real: una sesión headle
 | caveman (control de prosa concisa) | -20% | +7% | +3% | +2% | 100% |
 | prompt "YAGNI + one-liners" | -33% | -14% | -21% | -30% | 95% |
 
-ponytail es la única variante que recorta cada métrica, y la única que se mantiene totalmente segura al hacerlo. El recorte es mayor donde hay una trampa real de sobre-construcción (selector de fechas de 404 a 23 líneas, selector de color de 287 a 23, porque usa un `<input>` nativo en vez de un componente) y casi cero en código que ya es mínimo. Método completo, tablas por tarea y limitaciones: [benchmarks/results/2026-06-18-agentic.md](benchmarks/results/2026-06-18-agentic.md).
+ponytail recorta cada métrica y es la única variante que se mantiene totalmente segura al hacerlo: el prompt "YAGNI + one-liners" también recorta cada métrica, un poco más en costo y tiempo, pero recorta menos código y se salta una guarda de seguridad. El recorte es mayor donde hay una trampa real de sobre-construcción (selector de fechas de 404 a 23 líneas, selector de color de 287 a 23, porque usa un `<input>` nativo en vez de un componente) y casi cero en código que ya es mínimo. Método completo, tablas por tarea y limitaciones: [benchmarks/results/2026-06-18-agentic.md](benchmarks/results/2026-06-18-agentic.md).
 
 <details>
 <summary><strong>Números anteriores de un solo disparo (generación aislada)</strong></summary>

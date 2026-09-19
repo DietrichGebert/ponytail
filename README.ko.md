@@ -31,7 +31,7 @@
 
 <p align="center">
   <strong>코드 약 54% 감소(최대 94%) &middot; 약 20% 저렴 &middot; 약 27% 빠름 &middot; 100% 안전</strong><br>
-  <sub>실제 오픈소스 저장소(FastAPI + React)를 고치는 실제 Claude Code 세션에서, 스킬을 끈 같은 에이전트와 견줘 측정했다. 약 54%는 기능 작업 12건의 평균이다(Haiku 4.5, n=4). 에이전트가 과하게 짤 여지가 있는 곳(날짜 선택기)에선 94%까지 오르고, 코드가 이미 최소한인 곳에선 0에 가깝다. ponytail은 안전 가드를 하나도 빼놓지 않지만, 그냥 "한 줄로 써"라고만 시킨 프롬프트는 그중 하나를 놓친다. (예전 단발성 벤치마크는 80-94%를 단일 수치로 내세웠는데, 공정한 에이전트 기준선에 견주면 그건 평균이 아니라 작업별 상한이다.) <a href="benchmarks/results/2026-06-18-agentic.md">전체 보고서</a> &middot; <a href="benchmarks/">직접 재현하기</a>.</sub>
+  <sub>실제 오픈소스 저장소(FastAPI + React)를 고치는 실제 Claude Code 세션에서, 스킬을 끈 같은 에이전트와 견줘 측정했다. 약 54%는 기능 작업 12건의 전체 코드 줄 수 기준 감소율이다(Haiku 4.5, n=4; 작업별 감소율의 평균은 약 35%). 에이전트가 과하게 짤 여지가 있는 곳(날짜 선택기)에선 94%까지 오르고, 코드가 이미 최소한인 곳에선 0에 가깝다. ponytail은 안전 가드를 하나도 빼놓지 않지만, 그냥 "한 줄로 써"라고만 시킨 프롬프트는 그중 하나를 놓친다. (예전 단발성 벤치마크는 80-94%를 단일 수치로 내세웠는데, 공정한 에이전트 기준선에 견주면 그건 평균이 아니라 작업별 상한이다.) <a href="benchmarks/results/2026-06-18-agentic.md">전체 보고서</a> &middot; <a href="benchmarks/">직접 재현하기</a>.</sub>
 </p>
 
 <p align="center">
@@ -66,7 +66,7 @@ ponytail이라면:
 공정하게 재려면 실제 에이전트에게 실질적인 작업을 시켜 봐야 한다. 헤드리스 Claude Code 세션에게 [tiangolo의 full-stack-fastapi-template](https://github.com/fastapi/full-stack-fastapi-template)(진짜 FastAPI + React 저장소)을 맡기고, 남긴 `git diff`로 점수를 매겼다. 기능 티켓 12건, 같은 에이전트를 스킬만 켜고 끄며 비교, n=4, Haiku 4.5.
 
 <p align="center">
-  <img src="assets/benchmark-agentic.svg" width="860" alt="Each arm as a percent of the no-skill baseline across LOC, tokens, cost and time (Haiku 4.5). ponytail is lowest on every metric (LOC 46%, tokens 78%, cost 80%, time 73%); caveman rises above 100% on tokens, cost and time; yagni-oneliner LOC 67%. Safety, separate adversarial tier: baseline, caveman and ponytail 100%, yagni-oneliner 95%.">
+  <img src="assets/benchmark-agentic.svg" width="860" alt="Each arm as a percent of the no-skill baseline across LOC, tokens, cost and time (Haiku 4.5). ponytail is lowest on LOC and tokens (LOC 46%, tokens 78%, cost 80%, time 73%); caveman rises above 100% on tokens, cost and time; yagni-oneliner LOC 67%, tokens 86%, cost 78%, time 70%. Safety, separate adversarial tier: baseline, caveman and ponytail 100%, yagni-oneliner 95%.">
 </p>
 
 | 스킬 없는 기준선 대비 | LOC | tokens | cost | time | safe |
@@ -75,7 +75,7 @@ ponytail이라면:
 | caveman (간결한 산문 대조군) | -20% | +7% | +3% | +2% | 100% |
 | "YAGNI + one-liners" 프롬프트 | -33% | -14% | -21% | -30% | 95% |
 
-모든 지표를 깎은 건 ponytail뿐이고, 그러면서 안전까지 온전히 지킨 것도 ponytail뿐이다. 깎이는 폭은 과잉 구현의 함정이 실제로 있는 곳에서 가장 크다. 컴포넌트 대신 네이티브 `<input>`으로 손이 가니 날짜 선택기는 404줄에서 23줄로, 색상 선택기는 287줄에서 23줄로 줄어든다. 반대로 이미 군더더기 없는 코드에선 거의 0이다. 전체 방법론, 작업별 표, 한계는 [benchmarks/results/2026-06-18-agentic.md](benchmarks/results/2026-06-18-agentic.md)에 있다.
+모든 지표를 깎으면서 안전까지 온전히 지킨 건 ponytail뿐이다. "YAGNI + one-liners" 프롬프트도 모든 지표를 깎고 비용과 시간은 조금 더 줄이지만, 코드는 덜 줄이고 안전 가드 하나를 놓친다. 깎이는 폭은 과잉 구현의 함정이 실제로 있는 곳에서 가장 크다. 컴포넌트 대신 네이티브 `<input>`으로 손이 가니 날짜 선택기는 404줄에서 23줄로, 색상 선택기는 287줄에서 23줄로 줄어든다. 반대로 이미 군더더기 없는 코드에선 거의 0이다. 전체 방법론, 작업별 표, 한계는 [benchmarks/results/2026-06-18-agentic.md](benchmarks/results/2026-06-18-agentic.md)에 있다.
 
 <details>
 <summary><strong>예전 단발성 수치 (격리된 생성)</strong></summary>
