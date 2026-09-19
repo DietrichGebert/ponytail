@@ -190,6 +190,28 @@ print(json.dumps({'message': message, 'context': injected['context']}))
   assert.match(data.context, /PONYTAIL MODE ACTIVE — level: ultra/);
 });
 
+test('Hermes standalone "stop ponytail" turns injection off until /ponytail re-enables it', () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'ponytail-config-'));
+  const output = python(String.raw`
+import importlib.util, json
+spec = importlib.util.spec_from_file_location('ponytail_hermes_plugin', '__init__.py')
+mod = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(mod)
+turn = lambda text: mod._pre_llm_call(session_id='s1', user_message=text, conversation_history=[], is_first_turn=False, model='m', platform='cli')
+mention = turn('add a normal mode toggle next to dark mode')
+stop = turn('Stop Ponytail!')
+after = turn('build it')
+mod._handle_mode_command('lite')
+back = turn('build it')
+print(json.dumps({'mention': mention, 'stop': stop, 'after': after, 'back': back}))
+`, { XDG_CONFIG_HOME: tmp, PONYTAIL_DEFAULT_MODE: '' });
+  const data = JSON.parse(output);
+  assert.match(data.mention.context, /PONYTAIL MODE ACTIVE — level: full/, 'a mere mention must not deactivate');
+  assert.equal(data.stop, null);
+  assert.equal(data.after, null, 'off must persist to the next turn');
+  assert.match(data.back.context, /PONYTAIL MODE ACTIVE — level: lite/);
+});
+
 test('Hermes gateway rewrite respects slash access denial', () => {
   const output = python(String.raw`
 import importlib.util, json

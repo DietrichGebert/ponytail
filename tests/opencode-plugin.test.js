@@ -75,6 +75,28 @@ test('unsupported /ponytail arguments do not reset the current mode', async () =
   fs.writeFileSync(statePath, 'ultra');
   await hooks['command.execute.before']({ command: 'ponytail', arguments: 'status', sessionID: 's' });
   assert.equal(fs.readFileSync(statePath, 'utf8'), 'ultra');
+  // review is session-only (#377); this flag outlives the session, so it must not persist.
+  await hooks['command.execute.before']({ command: 'ponytail', arguments: 'review', sessionID: 's' });
+  assert.equal(fs.readFileSync(statePath, 'utf8'), 'ultra');
+});
+
+test('a stale review flag falls back to the default ruleset', async () => {
+  fs.writeFileSync(statePath, 'review');
+  const hooks = await loadPlugin({});
+  const system = await transform(hooks);
+  assert.match(system[0], /PONYTAIL MODE ACTIVE — level: full/);
+});
+
+test('chat.message: standalone "stop ponytail" turns it off, a mere mention does not', async () => {
+  const hooks = await loadPlugin({});
+  const say = (text, ...extra) => hooks['chat.message']({ sessionID: 's' }, { message: {}, parts: [{ type: 'text', text }, ...extra] });
+  fs.writeFileSync(statePath, 'ultra');
+  await say('add a normal mode toggle next to dark mode');
+  assert.equal(fs.readFileSync(statePath, 'utf8'), 'ultra');
+  // An attached file adds synthetic text parts; only the user's own text counts.
+  await say('Stop ponytail!', { type: 'text', text: 'Called the Read tool with the following input', synthetic: true });
+  assert.equal(fs.readFileSync(statePath, 'utf8'), 'off');
+  assert.deepEqual(await transform(hooks), []);
 });
 
 test('unrelated commands do not touch the flag', async () => {

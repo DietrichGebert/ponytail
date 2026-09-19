@@ -20,7 +20,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 // The shared instruction builder is CommonJS; bridge to it from this ES module.
 const require = createRequire(import.meta.url);
 const { getPonytailInstructions } = require('../../hooks/ponytail-instructions');
-const { getDefaultMode, normalizePersistedMode } = require('../../hooks/ponytail-config');
+const { getDefaultMode, normalizeMode, isDeactivationCommand } = require('../../hooks/ponytail-config');
 const { parseCommandFile } = require('./ponytail-frontmatter.cjs');
 
 // OpenCode has no flag-file convention of its own; keep mode beside its config.
@@ -32,7 +32,7 @@ const statePath = path.join(
 
 function readMode() {
   try {
-    return normalizePersistedMode(fs.readFileSync(statePath, 'utf8').trim()) || getDefaultMode();
+    return normalizeMode(fs.readFileSync(statePath, 'utf8').trim()) || getDefaultMode();
   } catch (e) {
     return getDefaultMode();
   }
@@ -89,11 +89,18 @@ export default async ({ client } = {}) => {
     'command.execute.before': async (input) => {
       if (!input || input.command !== 'ponytail') return;
       // `off` is persisted like any mode; the transform reads it and stays silent.
+      // Only runtime levels: this flag outlives the session and review is session-only (#377).
       const args = String(input.arguments || '').trim();
-      const mode = args ? normalizePersistedMode(args) : getDefaultMode();
+      const mode = args ? normalizeMode(args) : getDefaultMode();
       if (!mode) return;
       writeMode(mode);
       log('info', 'ponytail ' + mode);
+    },
+
+    // A standalone "stop ponytail" / "normal mode" message turns it off, as the ruleset promises.
+    'chat.message': async (_input, output) => {
+      const parts = ((output && output.parts) || []).filter((p) => p.type === 'text' && !p.synthetic);
+      if (isDeactivationCommand(parts.map((p) => p.text).join('\n'))) writeMode('off');
     },
   };
 };

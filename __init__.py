@@ -122,7 +122,19 @@ def build_injected_context(mode: str | None = None) -> str:
         return _fallback_instructions(effective)
 
 
-def _pre_llm_call(session_id: str = "", **_: Any) -> dict[str, str] | None:
+def _is_deactivation_command(text: Any) -> bool:
+    # Mirrors isDeactivationCommand (hooks/ponytail-config.js): only a standalone
+    # message counts, ignoring case and trailing punctuation.
+    t = re.sub(r"[.!?\s]+$", "", str(text or "").strip().lower())
+    return t in ("stop ponytail", "normal mode")
+
+
+def _pre_llm_call(session_id: str = "", user_message: Any = "", **_: Any) -> dict[str, str] | None:
+    global _current_mode
+    # ponytail: process-wide like `/ponytail off`, so a gateway serving several chats
+    # switches them all; key _current_mode by session_id if chats need separate modes.
+    if _is_deactivation_command(user_message):
+        _current_mode = "off"
     mode = _current_mode or _default_mode()
     context = build_injected_context(mode)
     return {"context": context} if context else None
