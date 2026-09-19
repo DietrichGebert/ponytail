@@ -37,5 +37,7 @@ End with `net: -<N> lines, -<M> deps possible.` Nothing to cut: `Lean already. S
 
 Scope: over-engineering and complexity only. Correctness bugs, security holes,
 and performance are explicitly out of scope. Route them to a normal review
-pass. Lists findings, applies nothing. One-shot.
+pass. A single smoke test or `assert`-based
+self-check is the ponytail minimum, not bloat, never flag it for deletion.
+Lists findings, applies nothing. One-shot.
 "stop ponytail-audit" or "normal mode" to revert.

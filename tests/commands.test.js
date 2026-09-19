@@ -37,3 +37,23 @@ test('every registered command ships an OpenCode .opencode/command/*.md', () => 
     );
   }
 });
+
+// The command prompts and the help card restate skill rules by hand and drifted:
+// a 5-rung ladder without reuse (#217) or installed deps, ultra "challenges
+// before building", and review/audit whose delete: could target the one smoke
+// test the main skill requires. Pin the load-bearing words in every copy.
+test('command prompts and help card keep the rules they restate', () => {
+  const pins = [
+    [['reuse', 'installed dep'], ['commands/ponytail.toml', '.opencode/command/ponytail.md',
+      'skills/ponytail-help/SKILL.md', 'commands/ponytail-help.toml', '.opencode/command/ponytail-help.md']],
+    [['same breath'], ['skills/ponytail-help/SKILL.md', 'commands/ponytail-help.toml', '.opencode/command/ponytail-help.md']],
+    [['never flag it for deletion'], ['skills/ponytail-audit/SKILL.md', 'commands/ponytail-audit.toml',
+      '.opencode/command/ponytail-audit.md', 'commands/ponytail-review.toml', '.opencode/command/ponytail-review.md']],
+  ];
+  for (const [phrases, files] of pins) {
+    for (const rel of files) {
+      const text = fs.readFileSync(path.join(root, rel), 'utf8');
+      for (const phrase of phrases) assert.ok(text.includes(phrase), `${rel} lost "${phrase}"`);
+    }
+  }
+});

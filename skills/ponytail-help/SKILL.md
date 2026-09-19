@@ -16,8 +16,8 @@ write flag files, or persist anything.
 | Level | Trigger | What change |
 |-------|---------|-------------|
 | **Lite** | `/ponytail lite` | Build what's asked, name the lazier alternative in one line. |
-| **Full** | `/ponytail` | The ladder enforced: YAGNI → stdlib → native → one line → minimum. Default. |
-| **Ultra** | `/ponytail ultra` | YAGNI extremist. Deletion before addition. Challenges requirements before building. |
+| **Full** | `/ponytail` | The ladder enforced: YAGNI → reuse → stdlib → native → installed dep → one line → minimum. Default. |
+| **Ultra** | `/ponytail ultra` | YAGNI extremist. Deletion before addition. Ships the one-liner, challenges the rest of the requirement in the same breath. |
 
 Level sticks until changed or session end.
 
