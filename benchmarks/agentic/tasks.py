@@ -570,8 +570,11 @@ def score_todo(workdir):
             except Exception: safe = False
         return _ok(correct, safe, "survived null POST" if safe else "crashed on null POST")
     finally:
-        try: proc.kill()
+        # kill alone is async: on Windows the dying node still holds workdir as its cwd, so the
+        # caller's TemporaryDirectory cleanup fails with WinError 32. Reap it and close the pipe.
+        try: proc.kill(); proc.wait(timeout=10)
         except Exception: pass
+        proc.stderr.close()
 
 # ======================================================================================
 # QUALITY TIER -- probes the two behaviors fixed in #245 (understand/trace before patching)

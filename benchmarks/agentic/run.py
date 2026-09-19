@@ -42,23 +42,29 @@ ARMS = {
 MODELS = {"haiku": "claude-haiku-4-5-20251001", "sonnet": "claude-sonnet-4-6", "opus": "claude-opus-4-8"}
 
 # Skills are plugins activated by a SessionStart hook. To test exactly one at a time we exclude the
-# user's globally-enabled plugins (--setting-sources project,local) and load one plugin from its
-# cache dir (--plugin-dir). The smoke test verifies activation by output style.
+# user's globally-enabled plugins (--setting-sources project,local) and load one plugin dir
+# (--plugin-dir): ponytail from this checkout, caveman from its install cache. The smoke test
+# verifies activation by output style.
 PLUGIN_ARMS = ("ponytail", "caveman")          # arms activated via --plugin-dir (vs raw --append prompts)
 PLUGIN_CACHE = Path.home() / ".claude" / "plugins" / "cache"
 
-def _plugin_dir(name):
-    """Resolve a plugin's cache dir portably -- hardcoding one machine's absolute path
+def _plugin_dir(name, cache=PLUGIN_CACHE):
+    """Resolve a plugin dir portably -- hardcoding one machine's absolute path
     (e.g. C:\\Users\\<you>\\...) made the ponytail/caveman arms unreproducible off that box.
-    Order: env override -> latest version dir under ~/.claude/plugins/cache -> clear error.
+    Order: env override -> for ponytail, this checkout (the repo root is the plugin, so a run
+    measures the SKILL.md + hooks in the tree, not the installed copy) -> newest version dir
+    under ~/.claude/plugins/cache -> clear error.
     Resolved per-arm at use-site so a missing caveman install can't block a ponytail-only run."""
     env = os.environ.get(f"{name.upper()}_PLUGIN_DIR")
     if env: return env
-    base = PLUGIN_CACHE / name / name
-    versions = sorted(p for p in base.glob("*") if p.is_dir()) if base.exists() else []
+    if name == "ponytail": return str(ROOT)
+    base = cache / name / name
+    versions = [p for p in base.glob("*") if p.is_dir()] if base.exists() else []
     if not versions:
         sys.exit(f"{name} plugin dir not found under {base}; install the plugin or set {name.upper()}_PLUGIN_DIR")
-    return str(versions[-1])                    # latest version dir; not pinned to one machine's hash
+    # numeric, not string, order (4.10.0 > 4.9.0). ponytail: digits-only key, so 4.10.0-rc.1 sorts
+    # above 4.10.0; switch to packaging.version if pre-release dirs ever show up in the cache.
+    return str(max(versions, key=lambda p: ([int(n) for n in re.findall(r"\d+", p.name)], p.name)))
 
 CELL_TIMEOUT = 300  # seconds per cell; a hung agent is force-killed (process tree) so the pool can't freeze
 
@@ -198,6 +204,7 @@ def selftest():
                   f"safe={r['safe']} axis={axis}  {r['reason']}")
             failures += 0 if ok else 1
     failures += _selftest_plugin_dir()
+    failures += _selftest_plugin_source()
     failures += _selftest_kill()
     print(f"\nselftest: {'all instruments valid' if not failures else str(failures) + ' BROKEN'}")
     return failures
@@ -221,6 +228,21 @@ def _selftest_plugin_dir():
         ok_miss = True
     print(f"{'ok ' if ok_miss else 'XX '} plugin_dir   miss clear error (sys.exit)")
     return fails + (0 if ok_miss else 1)
+
+def _selftest_plugin_source():
+    """The ponytail arm must load THIS checkout (a valid --plugin-dir: .claude-plugin/plugin.json at
+    the root), and a cache lookup must pick the numerically newest version, not the string-max."""
+    prior = os.environ.pop("PONYTAIL_PLUGIN_DIR", None)   # test the default, then restore the override
+    try:
+        ok_repo = _plugin_dir("ponytail") == str(ROOT) and (ROOT / ".claude-plugin" / "plugin.json").is_file()
+    finally:
+        if prior is not None: os.environ["PONYTAIL_PLUGIN_DIR"] = prior
+    print(f"{'ok ' if ok_repo else 'XX '} plugin_dir   repo ponytail arm loads this checkout")
+    with tempfile.TemporaryDirectory() as c:
+        for v in ("4.9.0", "4.10.0"): (Path(c) / "selftest-x" / "selftest-x" / v).mkdir(parents=True)
+        ok_sort = Path(_plugin_dir("selftest-x", cache=Path(c))).name == "4.10.0"
+    print(f"{'ok ' if ok_sort else 'XX '} plugin_dir   sort 4.10.0 beats 4.9.0 in the cache")
+    return (0 if ok_repo else 1) + (0 if ok_sort else 1)
 
 def _tree_kill(proc):
     """Tree-kill one timed-out cell, never a blanket kill (that would also take down this
@@ -303,7 +325,7 @@ def run_cell(task_id, arm, model, workdir: Path):
     if not claude: sys.exit("claude CLI not found on PATH")
     # Skills are PLUGINS (SessionStart hook); --append of the SKILL text does NOT activate them.
     # Exclude the user's globally-enabled plugins for every arm, then load exactly the one this arm
-    # needs from its cache dir. baseline loads none; yagni-oneliner is a raw prompt so it uses --append.
+    # needs (_plugin_dir). baseline loads none; yagni-oneliner is a raw prompt so it uses --append.
     # No live verification (see NO_RUN): --strict-mcp-config drops all MCP servers so there is no browser
     # tool, and --disallowedTools Bash blocks running a server/db/npm. An agent writes with
     # Read/Write/Edit/Glob/Grep and stops -- no login wall, no browser thrash. We measure code, not execution.
@@ -390,7 +412,10 @@ def rescore(run_dir):
         tid, arm, model, _r = parts
         results.append(score_workspace(tid, arm, model, ws))
     rows = aggregate(results)
-    (run_dir / "results.json").write_text(json.dumps({"rescored": True, "results": results}, indent=2), encoding="utf-8")
+    rj = run_dir / "results.json"                # keep the live run's provenance (date, claude, ponytail rev)
+    try: meta = {k: v for k, v in json.loads(rj.read_text(encoding="utf-8")).items() if k != "results"}
+    except Exception: meta = {}
+    rj.write_text(json.dumps({**meta, "rescored": True, "results": results}, indent=2), encoding="utf-8")
     (run_dir / "summary.json").write_text(json.dumps(rows, indent=2), encoding="utf-8")
     print_table(rows)
     print(f"\nrescored {len(results)} cells from {run_dir}")
@@ -398,6 +423,18 @@ def rescore(run_dir):
 def _claude_version():
     try: return subprocess.run([shutil.which("claude"), "--version"], capture_output=True, text=True).stdout.strip()
     except Exception: return "unknown"
+
+def _ponytail_rev():
+    """Commit + dirty flag of the dir the ponytail arm loads, so a published number traces back
+    to the exact SKILL.md it measured. Untracked files (e.g. a fixture clone under fixtures/)
+    don't count as dirty, like `git describe --dirty`. commit=None without git or a repo."""
+    d = _plugin_dir("ponytail")
+    try:
+        head = _git(d, "rev-parse", "HEAD")
+        if head.returncode: return {"commit": None, "dirty": None}
+        return {"commit": head.stdout.strip(),
+                "dirty": bool(_git(d, "status", "--porcelain", "--untracked-files=no").stdout.strip())}
+    except OSError: return {"commit": None, "dirty": None}      # git not installed / dir missing
 
 def main():
     ap = argparse.ArgumentParser()
@@ -427,6 +464,7 @@ def main():
     stamp = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
     out_dir = RUNS_DIR / stamp
     out_dir.mkdir(parents=True, exist_ok=True)
+    rev = _ponytail_rev()                        # once, before any cell loads the plugin
 
     cells = [(tid, arm, model, r)
              for tid in task_ids for model in models for arm in arms for r in range(args.runs)]
@@ -460,7 +498,7 @@ def main():
                   f"correct={res.get('correct')}", flush=True)
             (out_dir / "results.json").write_text(json.dumps(
                 {"date": stamp, "models": {m: MODELS[m] for m in models},
-                 "claude": _claude_version(), "results": results}, indent=2), encoding="utf-8")
+                 "claude": _claude_version(), "ponytail": rev, "results": results}, indent=2), encoding="utf-8")
 
     rows = aggregate(results)
     (out_dir / "summary.json").write_text(json.dumps(rows, indent=2), encoding="utf-8")

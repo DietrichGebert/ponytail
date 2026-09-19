@@ -31,6 +31,12 @@ the job properly, so any difference is the skill's effect, not the model being c
 The last two are the seven-word prompts from the #126 writeup, included on purpose: if a one-line
 instruction matches ponytail, the benchmark should show it.
 
+`ponytail` and `caveman` run as real plugins, one per cell via `--plugin-dir`. `ponytail` loads
+**this checkout** (the repo root is the plugin), so a run measures the `SKILL.md` and hooks in your
+tree, not whatever version is installed, and `results.json` records its commit and whether the
+tree was dirty. `caveman` loads the newest installed version from `~/.claude/plugins/cache`.
+`PONYTAIL_PLUGIN_DIR` / `CAVEMAN_PLUGIN_DIR` override either.
+
 ## Tasks
 
 Two tiers. **LOC tier**: 12 one-line tickets against the real template repo (6 frontend
