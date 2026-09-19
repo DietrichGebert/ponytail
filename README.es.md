@@ -189,6 +189,16 @@ gemini extensions install https://github.com/DietrichGebert/ponytail
 
 Carga el ruleset como contexto permanente en cada sesión y registra los comandos `/ponytail`; los `skills/` también se incluyen, activados cuando una tarea los necesita.
 
+### Qwen Code
+
+```bash
+qwen extensions install DietrichGebert/ponytail
+```
+
+Qwen Code instala Ponytail mediante su compatibilidad con extensiones de Gemini CLI: `AGENTS.md` se convierte en contexto permanente, los comandos TOML se migran y los seis skills se registran bajo el espacio de nombres `ponytail:`. No se usan los hooks de ciclo de vida de Claude/Codex, así que el seguimiento persistente de los modos `lite/full/ultra/off` no está disponible.
+
+Desinstalar: `qwen extensions uninstall ponytail`.
+
 ### Antigravity CLI
 
 Google está renombrando Gemini CLI a Antigravity CLI (el binario `agy`); la misma extensión se instala ahí:
@@ -271,7 +281,7 @@ Qué archivos corresponden a qué agente: [Portabilidad de agentes](docs/agent-p
 | `/ponytail-debt` | Recolecta los atajos marcados con `ponytail:` que dejaste pendientes en un registro, para que "después" no se convierta en "nunca". |
 | `/ponytail-help` | Referencia rápida de los comandos anteriores. |
 
-Los comandos requieren un host compatible con skills (Claude Code, Codex, Devin CLI, OpenCode, Gemini, pi, Swival). En Codex son skills; se invocan con `@` (`@ponytail-review`). Cursor con los [hooks](#cursor) solo tiene el cambio de nivel con `/ponytail`, escrito como mensaje normal. Los adaptadores de solo instrucciones (la regla de Cursor, Windsurf, Cline, Copilot, Kiro, Antigravity) cargan el ruleset permanente sin los comandos.
+Los comandos requieren un host compatible con skills (Claude Code, Codex, Devin CLI, OpenCode, Gemini, Qwen Code, pi, Swival). En Codex son skills y se invocan con `@` (`@ponytail-review`); Qwen agrega el namespace de la extensión, por ejemplo `/ponytail:ponytail-review`. Cursor con los [hooks](#cursor) solo tiene el cambio de nivel con `/ponytail`, escrito como mensaje normal. Los adaptadores de solo instrucciones (la regla de Cursor, Windsurf, Cline, Copilot, Kiro, Antigravity) cargan el ruleset permanente sin los comandos.
 
 ## Desarrollo
 

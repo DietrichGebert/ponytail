@@ -194,6 +194,16 @@ gemini extensions install https://github.com/DietrichGebert/ponytail
 매 세션 룰셋을 늘 켜진 컨텍스트로 불러오고 `/ponytail` 명령들을 등록한다. `skills/`도 함께 실리며, 작업에 필요할 때 켜진다.
 Gemini 어댑터는 일부러 루트 `hooks/hooks.json`을 두지 않는다. Gemini는 그 경로를 자동으로 불러오는데, ponytail의 라이프사이클 훅은 Claude/Codex 이벤트 이름을 쓰기 때문이다.
 
+### Qwen Code
+
+```bash
+qwen extensions install DietrichGebert/ponytail
+```
+
+Qwen Code는 Gemini CLI 확장 호환 기능으로 Ponytail을 설치한다. `AGENTS.md`는 늘 켜진 컨텍스트가 되고, TOML 명령은 변환되며, 여섯 스킬은 `ponytail:` 네임스페이스로 등록된다. Ponytail의 Claude/Codex 라이프사이클 훅은 쓰지 않으므로 `lite/full/ultra/off` 모드를 지속적으로 추적하는 기능은 없다.
+
+제거: `qwen extensions uninstall ponytail`.
+
 ### Antigravity CLI
 
 Google이 Gemini CLI를 Antigravity CLI(`agy` 바이너리)로 이름을 바꾸는 중인데, 같은 확장이 거기에도 설치된다:
@@ -291,7 +301,7 @@ Codex 확장을 쓰는 VS Code는 이 저장소가 함께 싣는 `AGENTS.md`를 
 | `/ponytail-gain` | 벤치마크로 잰 효과 스코어보드(코드 절감, 비용 절감, 속도 향상)를 보여 준다. |
 | `/ponytail-help` | 위 명령들의 빠른 참조. |
 
-명령들은 스킬을 지원하는 호스트가 있어야 돈다(Claude Code, Codex, Devin CLI, OpenCode, Gemini, pi, Swival). Codex에선 스킬이라 `@`로 부른다(`@ponytail-review`). [훅](#cursor)을 쓰는 Cursor는 `/ponytail` 레벨 전환만 되고, 일반 메시지로 입력한다. 지시문 전용 어댑터(Cursor 규칙 파일, Windsurf, Cline, Copilot, Kiro, Antigravity)는 명령 없이 늘 켜진 룰셋만 불러온다.
+명령들은 스킬을 지원하는 호스트가 있어야 돈다(Claude Code, Codex, Devin CLI, OpenCode, Gemini, Qwen Code, pi, Swival). Codex에선 스킬이라 `@`로 부른다(`@ponytail-review`). Qwen은 확장 스킬에 네임스페이스를 붙이므로 `/ponytail:ponytail-review`처럼 부른다. [훅](#cursor)을 쓰는 Cursor는 `/ponytail` 레벨 전환만 되고, 일반 메시지로 입력한다. 지시문 전용 어댑터(Cursor 규칙 파일, Windsurf, Cline, Copilot, Kiro, Antigravity)는 명령 없이 늘 켜진 룰셋만 불러온다.
 
 ## Development
 
