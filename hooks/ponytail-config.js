@@ -45,10 +45,13 @@ function isDeactivationCommand(text) {
 // ponytail: only embed the plugin install path in a statusline shell command when
 // it's made of ordinary path characters. An allowlist beats escaping every shell's
 // metacharacters; a hostile clone path (quotes, &, $, backtick, ;, etc.) falls back
-// to manual setup instead. Allows : \ / for normal Windows and POSIX paths. Full
-// per-shell escaper only if a real need appears.
+// to manual setup instead. Allows : \ / for normal Windows and POSIX paths, and
+// letters, marks and digits of any script (José, müller, 김철수; macOS spells é as
+// e + a combining mark): no shell treats those as syntax. Typographic quotes stay
+// out, PowerShell reads them as real quotes. Full per-shell escaper only if a real
+// need appears.
 function isShellSafe(p) {
-  return typeof p === 'string' && /^[A-Za-z0-9 _.\-:/\\~]+$/.test(p);
+  return typeof p === 'string' && /^[\p{L}\p{M}\p{N} _.\-:/\\~]+$/u.test(p);
 }
 
 function getConfigDir() {

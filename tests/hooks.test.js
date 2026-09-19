@@ -17,6 +17,14 @@ assert.equal(isShellSafe('/home/u/.claude/plugins/ponytail/hooks/ponytail-status
 assert.equal(isShellSafe('/tmp/a"&calc.exe&"/x.sh'), false);
 assert.equal(isShellSafe('/tmp/$(calc)/x.sh'), false);
 assert.equal(isShellSafe('/tmp/a;rm -rf/x.sh'), false);
+// Non-ASCII usernames are ordinary paths, not metacharacters: accented (NFC and
+// macOS's NFD), Korean, Cyrillic. Typographic quotes still fail, since
+// PowerShell treats them as quotes.
+assert.equal(isShellSafe('/home/müller/.claude/plugins/ponytail/hooks/ponytail-statusline.sh'), true);
+assert.equal(isShellSafe('/Users/José/.claude/hooks/x.sh'.normalize('NFD')), true);
+assert.equal(isShellSafe('C:\\Users\\김철수\\.claude\\hooks\\ponytail-statusline.ps1'), true);
+assert.equal(isShellSafe('/home/иван/x.sh'), true);
+assert.equal(isShellSafe('C:\\Users\\a\u201D;calc;\u201C\\x.ps1'), false);
 
 function run(script, env, input = '') {
   return spawnSync(process.execPath, [path.join(root, 'hooks', script)], {
