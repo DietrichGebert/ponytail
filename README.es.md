@@ -197,7 +197,7 @@ Google está renombrando Gemini CLI a Antigravity CLI (el binario `agy`); la mis
 agy plugin install https://github.com/DietrichGebert/ponytail
 ```
 
-Reutiliza el `gemini-extension.json` de este repo. Una diferencia: Antigravity convierte los comandos `/ponytail` en skills, así que los escribes en el chat (por ejemplo `/ponytail-review` como mensaje) en vez de seleccionarlos de un menú slash. Hasta que la migración se complete (alrededor del 18 de junio de 2026), `gemini extensions install` también funciona. Para usarlo como regla permanente, coloca el ruleset en `.agents/rules/`.
+Reutiliza el `gemini-extension.json` de este repo. Una diferencia: Antigravity convierte los comandos `/ponytail` en skills, así que los escribes en el chat (por ejemplo `/ponytail-review` como mensaje) en vez de seleccionarlos de un menú slash. Gemini CLI, y con él `gemini extensions install`, sigue funcionando para usuarios con clave de API de pago o empresariales; desde el 18 de junio de 2026, los usuarios gratuitos, de Google AI Pro y de Ultra necesitan Antigravity CLI. Para usarlo como regla permanente, coloca el ruleset en `.agents/rules/`.
 
 ### CodeWhale
 

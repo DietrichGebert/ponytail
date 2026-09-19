@@ -19,7 +19,7 @@
   <img src="https://img.shields.io/github/stars/DietrichGebert/ponytail?style=flat-square&color=111111&label=stars" alt="Stars">
   <img src="https://img.shields.io/github/v/release/DietrichGebert/ponytail?style=flat-square&color=111111&label=release" alt="Release">
   <img src="https://img.shields.io/npm/v/@dietrichgebert/ponytail?style=flat-square&color=111111&label=npm" alt="npm">
-  <img src="https://img.shields.io/badge/works%20with-15%20agents-111111?style=flat-square" alt="Works with 15 agents">
+  <img src="https://img.shields.io/badge/works%20with-20%20agents-111111?style=flat-square" alt="Works with 20 agents">
   <img src="https://img.shields.io/badge/license-MIT-111111?style=flat-square" alt="MIT license">
 </p>
 
@@ -126,17 +126,16 @@ Claude Code와 Codex 플러그인은 자그마한 Node.js 라이프사이클 훅
 ```
 (설치가 되려면 두 프롬프트를 따로 보내야 한다)
 
-데스크톱 앱에는 `/plugin` 명령이 없다. 대신 UI에서 설치한다: Customize, 개인 플러그인 옆의 +, Create plugin and add marketplace, Add from repository, 그다음 저장소 URL 입력(감사합니다 @NiklasDHahn, #98).
+Claude Code 데스크톱 앱의 Code 탭에서도 똑같다. 위의 `/plugin` 명령 두 개를 프롬프트 입력창에 치거나, 그 옆의 **+** 버튼을 눌러 **Plugins** → **Add plugin**을 고르면 설정해 둔 마켓플레이스를 둘러볼 수 있다. 마켓플레이스 관리는 사이드바의 **Customize**에서 한다.
 
 ### Codex
 
 ```bash
 codex plugin marketplace add DietrichGebert/ponytail
-codex
+codex plugin add ponytail@ponytail
 ```
 
-`/plugins`를 열어 Ponytail 마켓플레이스를 고르고 Ponytail을 설치한다. 그런 다음
-`/hooks`를 열어 라이프사이클 훅 두 개를 검토하고 신뢰한 뒤, 새 스레드를 시작한다.
+`codex`를 실행해 `/hooks`를 열고, 라이프사이클 훅 두 개를 검토하고 신뢰한 뒤, 새 스레드를 시작한다.
 
 이 설치 한 번이면 Codex 데스크톱 앱도 같이 잡힌다. 설치 후 앱을 다시 켜면 플러그인을 알아챈다.
 
@@ -194,6 +193,12 @@ gemini extensions install https://github.com/DietrichGebert/ponytail
 매 세션 룰셋을 늘 켜진 컨텍스트로 불러오고 `/ponytail` 명령들을 등록한다. `skills/`도 함께 실리며, 작업에 필요할 때 켜진다.
 Gemini 어댑터는 일부러 루트 `hooks/hooks.json`을 두지 않는다. Gemini는 그 경로를 자동으로 불러오는데, ponytail의 라이프사이클 훅은 Claude/Codex 이벤트 이름을 쓰기 때문이다.
 
+### Qoder
+
+Qoder는 저장소 루트의 `AGENTS.md`를 늘 켜진 컨텍스트로 알아서 불러오니, 체크아웃에서 ponytail을 돌리면 설정이 전혀 필요 없다. 프로젝트별 규칙을 두려면 [`.qoder/rules/ponytail.md`](.qoder/rules/ponytail.md)를 프로젝트의 `.qoder/rules/`에 복사한다. ponytail 스킬 여섯 개(`/ponytail`, `/ponytail-review`, `/ponytail-audit`, `/ponytail-debt`, `/ponytail-gain`, `/ponytail-help`)는 Qoder의 스킬 시스템으로 쓸 수 있다. [`.qoder-plugin/plugin.json`](.qoder-plugin/plugin.json)의 플러그인 매니페스트가 `skills/` 디렉터리를 가리킨다.
+
+플러그인 수준으로 온전히 쓰려면(모드 자동 활성화 + 매 프롬프트 룰셋 주입), [`hooks/qoder-hooks.json`](hooks/qoder-hooks.json)의 훅을 `.qoder/settings.json`에 더한다. `PONYTAIL_DIR`은 ponytail 체크아웃 경로로 바꾼다. Qoder의 `UserPromptSubmit` 훅은 첫 프롬프트에서 기본 모드를 켜고 매 턴 룰셋을 주입하며, `task|Task` 매처를 단 `PreToolUse`는 서브에이전트에 룰셋을 주입한다. 레벨 전환(`/ponytail lite|full|ultra|off`)은 알아서 된다.
+
 ### Antigravity CLI
 
 Google이 Gemini CLI를 Antigravity CLI(`agy` 바이너리)로 이름을 바꾸는 중인데, 같은 확장이 거기에도 설치된다:
@@ -202,7 +207,15 @@ Google이 Gemini CLI를 Antigravity CLI(`agy` 바이너리)로 이름을 바꾸�
 agy plugin install https://github.com/DietrichGebert/ponytail
 ```
 
-이 저장소의 `gemini-extension.json`을 그대로 재사용한다. 차이는 하나다. Antigravity는 `/ponytail` 명령들을 스킬로 바꿔 버려서, 슬래시 메뉴에서 고르는 대신 채팅에 직접 친다(예: `/ponytail-review`를 메시지로). 전환이 마무리될 때까지(2026년 6월 18일경)는 `gemini extensions install`도 여전히 먹힌다. 늘 켜진 규칙으로 돌리고 싶으면, 룰셋을 `.agents/rules/`에 넣으면 된다.
+이 저장소의 `gemini-extension.json`을 그대로 재사용한다. 차이는 하나다. Antigravity는 `/ponytail` 명령들을 스킬로 바꿔 버려서, 슬래시 메뉴에서 고르는 대신 채팅에 직접 친다(예: `/ponytail-review`를 메시지로). 유료 API 키나 엔터프라이즈 사용자라면 Gemini CLI와 `gemini extensions install`이 여전히 먹히지만, 2026년 6월 18일부터 무료·Google AI Pro·Ultra 사용자는 Antigravity CLI를 써야 한다. 늘 켜진 규칙으로 돌리고 싶으면, 룰셋을 `.agents/rules/`에 넣으면 된다.
+
+### Hermes Agent
+
+```bash
+hermes plugins install DietrichGebert/ponytail --enable
+```
+
+설치한 뒤 Hermes를 다시 시작한다. 플러그인은 매 LLM 턴 전에 지금 Ponytail 모드를 주입하고, 함께 딸린 스킬들을 `ponytail:<skill>`로 등록하며, `/ponytail`, `/ponytail-review`, `/ponytail-audit`, `/ponytail-debt`, `/ponytail-gain`, `/ponytail-help`를 붙여 준다. 여럿이 같이 쓰는 게이트웨이에서는 Hermes의 슬래시 명령 접근 제어로 `/ponytail`을 믿을 수 있는 사용자에게만 열어 둔다. 런타임 모드는 프로세스 단위로 잡힌다.
 
 ### CodeWhale
 
@@ -280,6 +293,20 @@ Codex 확장을 쓰는 VS Code는 이 저장소가 함께 싣는 `AGENTS.md`를 
 
 어떤 파일이 어느 에이전트에 매핑되는지: [Agent portability](docs/agent-portability.md).
 
+### Uninstall
+
+| 호스트 | 명령 |
+|------|---------|
+| Claude Code | `/plugin remove ponytail` |
+| Codex | `codex plugin remove ponytail` |
+| Devin CLI | `devin plugins remove ponytail` |
+| Grok Build | `grok plugin uninstall ponytail` |
+| Pi agent | `pi uninstall ponytail` |
+| Cursor 훅 | `node scripts/cursor-hooks.js uninstall`(프로젝트 수준으로 설치했다면 `--project`를 붙인다). `hooks.json`에서 ponytail 항목만 지운다 |
+| Cursor 규칙 / Windsurf / Cline / Qoder 등 | 복사해 둔 규칙 파일을 지운다 |
+
+이 명령들은 플러그인 자체의 파일을 지운다. 다만 ponytail이 플러그인 폴더 바깥에 써 둔 상태가 조금 남는다: 모드 플래그(`~/.claude/.ponytail-active`, Cursor라면 `~/.cursor/.ponytail-active`), `~/.config/ponytail/config.json`, `~/.cursor/hooks.json` 안의 ponytail 항목, 그리고 (설정 안내를 받아들였다면) `~/.claude/settings.json`의 `statusLine` 항목. 이것까지 치우려면 `node scripts/uninstall.js`를 돌린다. **위의 호스트 제거 명령보다 먼저 돌려야 한다.** 이 스크립트도 플러그인 파일이라, 플러그인을 먼저 지우면 스크립트까지 함께 사라진다(아니면 이 저장소를 따로 클론해서 거기서 돌린다). statusLine 항목은 ponytail 자체 스크립트를 가리킬 때만 지우니, 직접 설정해 둔 상태 표시줄은 그대로 남는다.
+
 ## Commands
 
 | 명령 | 하는 일 |
@@ -291,7 +318,7 @@ Codex 확장을 쓰는 VS Code는 이 저장소가 함께 싣는 `AGENTS.md`를 
 | `/ponytail-gain` | 벤치마크로 잰 효과 스코어보드(코드 절감, 비용 절감, 속도 향상)를 보여 준다. |
 | `/ponytail-help` | 위 명령들의 빠른 참조. |
 
-명령들은 스킬을 지원하는 호스트가 있어야 돈다(Claude Code, Codex, Devin CLI, OpenCode, Gemini, pi, Swival). Codex에선 스킬이라 `@`로 부른다(`@ponytail-review`). [훅](#cursor)을 쓰는 Cursor는 `/ponytail` 레벨 전환만 되고, 일반 메시지로 입력한다. 지시문 전용 어댑터(Cursor 규칙 파일, Windsurf, Cline, Copilot, Kiro, Antigravity)는 명령 없이 늘 켜진 룰셋만 불러온다.
+명령들은 스킬을 지원하는 호스트가 있어야 돈다(Claude Code, Codex, Devin CLI, OpenCode, Gemini, pi, Swival, Hermes Agent, Qoder, Grok Build). Codex에선 스킬이라 `@`로 부른다(`@ponytail-review`). [훅](#cursor)을 쓰는 Cursor는 `/ponytail` 레벨 전환만 되고, 일반 메시지로 입력한다. 지시문 전용 어댑터(Cursor 규칙 파일, Windsurf, Cline, Copilot, Kiro, Antigravity)는 명령 없이 늘 켜진 룰셋만 불러온다.
 
 ## Development
 
