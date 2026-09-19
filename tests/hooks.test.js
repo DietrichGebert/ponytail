@@ -349,6 +349,17 @@ assert.equal(result.status, 0, result.stderr);
 output = JSON.parse(result.stdout);
 assert.equal(output.hookSpecificOutput.hookEventName, 'SubagentStart');
 
+// Catastrophic-backtracking matcher → must not hang the hook (#658); the
+// match is time-boxed and a timeout fails open and injects.
+result = run(
+  'ponytail-subagent.js',
+  { ...scopeEnv, PONYTAIL_SUBAGENT_MATCHER: '(a+)+$' },
+  JSON.stringify({ agent_type: 'a'.repeat(40) + '!' }),
+);
+assert.equal(result.status, 0, result.stderr);
+output = JSON.parse(result.stdout);
+assert.match(output.hookSpecificOutput.additionalContext, /PONYTAIL MODE ACTIVE — level: full/);
+
 // The default (no matcher) path must not depend on stdin: even with stdin
 // closed empty it injects synchronously, preserving the #252 behavior on
 // Windows where the piped JSON can be swallowed (#443).
