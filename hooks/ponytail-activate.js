@@ -20,6 +20,7 @@ const {
   isCopilot,
   isCursor,
   readHookInput,
+  readMode,
   sessionIdFrom,
   setMode,
   writeHookOutput,
@@ -30,10 +31,16 @@ const settingsPath = path.join(claudeDir, 'settings.json');
 
 // The flag is keyed by the session id in the SessionStart payload on stdin,
 // so everything waits for it (with the #443 never-hang fallback).
-readHookInput((data) => activate(sessionIdFrom(data)));
+readHookInput((data) => activate(sessionIdFrom(data), data && data.source));
 
-function activate(sessionId) {
-  const mode = getDefaultMode();
+function activate(sessionId, source) {
+  // resume, compact and clear continue a session, so it keeps the level it
+  // already has (an explicit off included) instead of resetting to the default
+  // (#113). Only a fresh start, or a host that sends no source, resets.
+  const kept = sessionId && source && source !== 'startup'
+    ? readMode(sessionId, { fallback: false })
+    : null;
+  const mode = kept || getDefaultMode();
 
   // "off" mode — skip activation entirely: record off for this session, emit no rules
   if (mode === 'off') {

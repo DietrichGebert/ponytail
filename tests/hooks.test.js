@@ -481,6 +481,17 @@ hook('ponytail-mode-tracker.js', { session_id: 'session-b', prompt: 'stop ponyta
 assert.equal(subagentLevel('session-b'), null, 'a stopped session injects nothing into its subagents');
 assert.equal(subagentLevel('session-a'), 'ultra', "another session's stop must not turn this one off");
 
+// resume/compact/clear continue a session: it keeps its level, an explicit off
+// included, instead of snapping back to the default (#113). startup resets.
+hook('ponytail-mode-tracker.js', { session_id: 'session-a', prompt: '/ponytail lite' });
+assert.match(hook('ponytail-activate.js', { session_id: 'session-a', source: 'compact' }), /level: lite/);
+assert.equal(subagentLevel('session-a'), 'lite', 'compaction must not reset the level');
+assert.equal(hook('ponytail-activate.js', { session_id: 'session-b', source: 'resume' }), 'OK', 'a stopped session stays off on resume');
+assert.equal(subagentLevel('session-b'), null);
+hook('ponytail-activate.js', { session_id: 'session-a', source: 'startup' });
+assert.equal(subagentLevel('session-a'), 'full', 'startup resets to the default');
+hook('ponytail-mode-tracker.js', { session_id: 'session-a', prompt: '/ponytail ultra' });
+
 // The session id becomes a file name: path characters are dropped, so a
 // payload can't write outside the sessions dir.
 hook('ponytail-mode-tracker.js', { session_id: '../../escape', prompt: '/ponytail lite' });
