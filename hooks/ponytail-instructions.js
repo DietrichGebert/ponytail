@@ -59,9 +59,9 @@ function getFallbackInstructions(mode) {
     '## Rules\n\n' +
     'No abstractions that were not requested. No avoidable dependencies. No boilerplate nobody asked for. ' +
     'Deletion over addition. Boring over clever. Fewest files possible. ' +
-    'Ship the lazy version and question the complex request in the same response — never stall. ' +
-    'Between two same-size stdlib options, pick the one correct on edge cases. ' +
-    'Mark deliberate simplifications that cut a real corner with a known ceiling, using a `ponytail:` comment that names the ceiling and upgrade path.\n\n' +
+    'Ship the lazy version and question the complex request in the same response. Never stall on an answer you can default. ' +
+    'Between two same-size stdlib options, pick the one correct on edge cases, not the flimsier algorithm. ' +
+    'Mark deliberate simplifications that cut a real corner with a known ceiling (global lock, O(n²) scan, naive heuristic), using a `ponytail:` comment that names the ceiling and upgrade path.\n\n' +
     '## Output\n\n' +
     'Code first. Then at most three short lines: what was skipped, when to add it. ' +
     'If the explanation is longer than the code, delete the explanation. ' +
