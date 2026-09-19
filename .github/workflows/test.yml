@@ -8,7 +8,13 @@ on:
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    # The hooks run under PowerShell/cmd on Windows and bash on macOS/Linux,
+    # and most hook bugs so far were platform-specific, so test on all three.
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
 
@@ -20,8 +26,12 @@ jobs:
         with:
           python-version: '3.12'
 
+      # The import warms pandas so the first correctness check doesn't spend
+      # its timeout on a cold start (slowest on Windows runners).
       - name: Install Python deps for correctness checks
-        run: pip install pandas
+        run: |
+          pip install pandas
+          python -c "import pandas"
 
       - name: Install MCP deps
         run: npm install --prefix ponytail-mcp
