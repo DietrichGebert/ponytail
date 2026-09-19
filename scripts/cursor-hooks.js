@@ -15,7 +15,9 @@ const { isShellSafe } = require('../hooks/ponytail-config');
 
 const ROOT = path.join(__dirname, '..');
 const TEMPLATE = path.join(ROOT, 'hooks', 'cursor-hooks.json');
-const PONYTAIL_HOOK = /ponytail-[\w-]+\.js/;
+// A script directly inside a hooks/ dir, so a user's own my-ponytail-logger.js
+// or hooks/extra-ponytail-thing.js is never mistaken for one of ours.
+const PONYTAIL_HOOK = /[\\/]hooks[\\/]ponytail-[\w-]+\.js/;
 
 function isPonytailHook(entry) {
   return Boolean(entry && typeof entry.command === 'string' && PONYTAIL_HOOK.test(entry.command));
