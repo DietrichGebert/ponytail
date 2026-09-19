@@ -413,10 +413,9 @@ assert.equal(fs.existsSync(qoderState), false, 'flag must be cleared after stop 
 output = JSON.parse(result.stdout);
 assert.equal(output.hookSpecificOutput.additionalContext, 'PONYTAIL MODE OFF');
 
-// Subagent injection via PreToolUse (task|Task matcher): when ponytail is
-// active, the subagent hook injects the ruleset. Qoder shares the same
-// ponytail-subagent.js script; the isQoder branch outputs hookSpecificOutput
-// JSON instead of raw stdout.
+// Subagent injection via SubagentStart: when ponytail is active, the subagent
+// hook injects the ruleset. Qoder shares the same ponytail-subagent.js script;
+// the isQoder branch outputs hookSpecificOutput JSON instead of raw stdout.
 fs.writeFileSync(qoderState, 'full');
 result = run('ponytail-subagent.js', qoderEnv);
 assert.equal(result.status, 0, result.stderr);

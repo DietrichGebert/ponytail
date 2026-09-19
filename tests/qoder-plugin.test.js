@@ -42,6 +42,16 @@ test('qoder hooks config exists and registers UserPromptSubmit', () => {
   assert.ok(cmd.includes('ponytail-mode-tracker.js'), 'must point at ponytail-mode-tracker.js');
 });
 
+test('qoder hooks config injects subagents on SubagentStart, not PreToolUse', () => {
+  // ponytail-subagent.js emits hookEventName "SubagentStart", and Qoder's
+  // subagent tool is named Agent, so a PreToolUse task|Task entry never fired.
+  const { hooks } = readJSON('hooks/qoder-hooks.json');
+  assert.equal(hooks.PreToolUse, undefined, 'subagent hook must not be on PreToolUse');
+  assert.ok(Array.isArray(hooks.SubagentStart), 'must register SubagentStart hook');
+  const cmd = hooks.SubagentStart[0].hooks[0].command;
+  assert.ok(cmd.includes('ponytail-subagent.js'), 'must point at ponytail-subagent.js');
+});
+
 test('qoder rules file exists and is non-empty', () => {
   const rulesPath = path.join(root, '.qoder', 'rules', 'ponytail.md');
   assert.ok(fs.existsSync(rulesPath), '.qoder/rules/ponytail.md must exist');
