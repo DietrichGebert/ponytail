@@ -203,6 +203,15 @@ Reutiliza el `gemini-extension.json` de este repo. Una diferencia: Antigravity c
 
 Lee `AGENTS.md` desde la raíz del proyecto, sin configuración. Copia [`AGENTS.md`](AGENTS.md) a tu proyecto, o ejecuta `codewhale` desde un checkout de este repo. Eso es todo.
 
+### CodeBuddy
+
+```
+/plugin marketplace add DietrichGebert/ponytail
+/plugin install ponytail@ponytail
+```
+
+CodeBuddy Code instala el plugin de Claude Code tal cual: la activación de sesión, el ruleset y el cambio de nivel con `/ponytail:ponytail lite|full|ultra|off` funcionan, y el flag de modo vive en `~/.codebuddy/` (o `$CODEBUDDY_CONFIG_DIR`), así que nunca toca el nivel de una sesión de Claude Code. Las skills llevan prefijo (`/ponytail:ponytail-review`, etc.). Todavía no: la inyección en subagentes (CodeBuddy ejecuta los hooks `SubagentStart` pero descarta su salida) ni el badge de statusline.
+
 ### Devin CLI
 
 ```bash
@@ -271,7 +280,7 @@ Qué archivos corresponden a qué agente: [Portabilidad de agentes](docs/agent-p
 | `/ponytail-debt` | Recolecta los atajos marcados con `ponytail:` que dejaste pendientes en un registro, para que "después" no se convierta en "nunca". |
 | `/ponytail-help` | Referencia rápida de los comandos anteriores. |
 
-Los comandos requieren un host compatible con skills (Claude Code, Codex, Devin CLI, OpenCode, Gemini, pi, Swival). En Codex son skills; se invocan con `@` (`@ponytail-review`). Cursor con los [hooks](#cursor) solo tiene el cambio de nivel con `/ponytail`, escrito como mensaje normal. Los adaptadores de solo instrucciones (la regla de Cursor, Windsurf, Cline, Copilot, Kiro, Antigravity) cargan el ruleset permanente sin los comandos.
+Los comandos requieren un host compatible con skills (Claude Code, CodeBuddy, Codex, Devin CLI, OpenCode, Gemini, pi, Swival). En Codex son skills; se invocan con `@` (`@ponytail-review`). Cursor con los [hooks](#cursor) solo tiene el cambio de nivel con `/ponytail`, escrito como mensaje normal. Los adaptadores de solo instrucciones (la regla de Cursor, Windsurf, Cline, Copilot, Kiro, Antigravity) cargan el ruleset permanente sin los comandos.
 
 ## Desarrollo
 

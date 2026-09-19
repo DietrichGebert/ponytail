@@ -246,6 +246,15 @@ Swival also reads `AGENTS.md` from the project root and `~/.config/swival/AGENTS
 
 On the command line, use a `$` prefix to explicitly activate a skill. For example: `$ponytail-review`.
 
+### CodeBuddy
+
+```
+/plugin marketplace add DietrichGebert/ponytail
+/plugin install ponytail@ponytail
+```
+
+CodeBuddy Code installs the Claude Code plugin as-is: session activation, the ruleset, and `/ponytail:ponytail lite|full|ultra|off` level switching all work, with the mode flag kept in `~/.codebuddy/` (or `$CODEBUDDY_CONFIG_DIR`) so it never touches a Claude Code session's level. Skills are namespaced (`/ponytail:ponytail-review`, and so on). Not yet: subagent injection (CodeBuddy runs `SubagentStart` hooks but discards their output) and the statusline badge.
+
 ### Devin CLI
 
 ```bash
@@ -318,13 +327,14 @@ Which files map to which agent: [Agent portability](docs/agent-portability.md).
 |------|---------|
 | Claude Code | `/plugin remove ponytail` |
 | Codex | `codex plugin remove ponytail` |
+| CodeBuddy | `/plugin uninstall ponytail@ponytail` |
 | Devin CLI | `devin plugins remove ponytail` |
 | Grok Build | `grok plugin uninstall ponytail` |
 | Pi agent | `pi uninstall ponytail` |
 | Cursor hooks | `node scripts/cursor-hooks.js uninstall` (add `--project` for a project-level install); removes only ponytail's entries from `hooks.json` |
 | Cursor rule / Windsurf / Cline / Qoder / etc. | Delete the copied rule file |
 
-These remove the plugin's own files. They leave behind a small amount of state ponytail writes outside the plugin folder: the mode flag (`~/.claude/.ponytail-active`, or `~/.cursor/.ponytail-active` for Cursor), `~/.config/ponytail/config.json`, ponytail's entries in `~/.cursor/hooks.json`, and (if you accepted the setup nudge) a `statusLine` entry in `~/.claude/settings.json`. Run `node scripts/uninstall.js` to clean those up too. **Run it before the host remove command above** — the script is itself a plugin file, so removing the plugin first deletes it (or run it from a separate clone of this repo). It only removes the statusLine entry if it points at ponytail's own script, so a statusline you set up yourself is left untouched.
+These remove the plugin's own files. They leave behind a small amount of state ponytail writes outside the plugin folder: the mode flag (`~/.claude/.ponytail-active`, or `~/.cursor/.ponytail-active` for Cursor and `~/.codebuddy/.ponytail-active` for CodeBuddy), `~/.config/ponytail/config.json`, ponytail's entries in `~/.cursor/hooks.json`, and (if you accepted the setup nudge) a `statusLine` entry in `~/.claude/settings.json`. Run `node scripts/uninstall.js` to clean those up too. **Run it before the host remove command above** — the script is itself a plugin file, so removing the plugin first deletes it (or run it from a separate clone of this repo). It only removes the statusLine entry if it points at ponytail's own script, so a statusline you set up yourself is left untouched.
 
 ## Commands
 
@@ -337,7 +347,7 @@ These remove the plugin's own files. They leave behind a small amount of state p
 | `/ponytail-gain` | Show the measured impact scoreboard (less code, less cost, more speed) from the benchmark. |
 | `/ponytail-help` | Quick reference for the commands above. |
 
-Commands need a skill-capable host (Claude Code, Codex, Devin CLI, OpenCode, Gemini, pi, Swival, Hermes Agent, Qoder, Grok Build). In Codex they're skills, invoke with `@` (`@ponytail-review`). Cursor with the [hooks](#cursor) gets `/ponytail` level switching only, typed as a plain message. The instruction-only adapters (Cursor's rule file, Windsurf, Cline, Copilot, Kiro, Antigravity) load the always-on ruleset without the commands.
+Commands need a skill-capable host (Claude Code, CodeBuddy, Codex, Devin CLI, OpenCode, Gemini, pi, Swival, Hermes Agent, Qoder, Grok Build). In Codex they're skills, invoke with `@` (`@ponytail-review`). Cursor with the [hooks](#cursor) gets `/ponytail` level switching only, typed as a plain message. The instruction-only adapters (Cursor's rule file, Windsurf, Cline, Copilot, Kiro, Antigravity) load the always-on ruleset without the commands.
 
 ## Development
 
