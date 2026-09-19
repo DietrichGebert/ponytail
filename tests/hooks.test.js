@@ -463,6 +463,17 @@ assert.equal(result.status, 0, result.stderr);
 assert.equal(fs.readFileSync(defFlag, 'utf8'), 'ultra', 'plain switch must set the session mode');
 assert.equal(JSON.parse(fs.readFileSync(defConfig, 'utf8')).defaultMode, 'lite', 'plain switch must not persist the default');
 
+// A config.json that isn't valid JSON (a hand edit left a trailing comma) is
+// left alone instead of being replaced by {"defaultMode": ...}, which silently
+// dropped every other setting in it; the command says why nothing changed.
+const brokenConfig = '{"defaultMode": "lite", "hideStatus": true, "quietStartup": true,}';
+fs.writeFileSync(defConfig, brokenConfig);
+result = run('ponytail-mode-tracker.js', defEnv, JSON.stringify({ prompt: '/ponytail default ultra' }));
+assert.equal(result.status, 0, result.stderr);
+assert.equal(fs.readFileSync(defConfig, 'utf8'), brokenConfig, 'an unparseable config must not be overwritten');
+assert.match(result.stdout, /PONYTAIL DEFAULT NOT SET — .*not valid JSON/);
+fs.writeFileSync(defConfig, JSON.stringify({ defaultMode: 'lite' }));
+
 // review is not a valid default (#377) — the command is ignored, config unchanged.
 result = run('ponytail-mode-tracker.js', defEnv, JSON.stringify({ prompt: '/ponytail default review' }));
 assert.equal(result.status, 0, result.stderr);

@@ -59,8 +59,12 @@ function finish() {
         if (arg === 'default') {
           const dmode = parts[2];
           if (dmode === 'off' || dmode === 'lite' || dmode === 'full' || dmode === 'ultra') {
-            writeDefaultMode(dmode);
-            writeHookOutput('UserPromptSubmit', dmode, 'PONYTAIL DEFAULT SET — new sessions start in ' + dmode + '.');
+            try {
+              writeDefaultMode(dmode);
+              writeHookOutput('UserPromptSubmit', dmode, 'PONYTAIL DEFAULT SET — new sessions start in ' + dmode + '.');
+            } catch (e) {
+              writeHookOutput('UserPromptSubmit', dmode, 'PONYTAIL DEFAULT NOT SET — ' + e.message);
+            }
           }
           return; // don't fall through to the session-mode switch
         }

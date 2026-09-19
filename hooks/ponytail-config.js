@@ -143,8 +143,13 @@ function writeDefaultMode(mode) {
   let config = {};
   try {
     config = JSON.parse(fs.readFileSync(configPath, 'utf8').replace(/^\uFEFF/, ''));
-    if (!config || typeof config !== 'object' || Array.isArray(config)) config = {};
-  } catch (_) {}
+  } catch (e) {
+    // Missing file → start empty. Unparseable → refuse: rewriting it would drop
+    // every other setting kept there, as scripts/cursor-hooks.js already does.
+    if (e instanceof SyntaxError) throw new Error(`${configPath} is not valid JSON, left unchanged (${e.message})`);
+    if (e.code !== 'ENOENT') throw e;
+  }
+  if (!config || typeof config !== 'object' || Array.isArray(config)) config = {};
   config.defaultMode = normalized;
   fs.writeFileSync(configPath, JSON.stringify(config, null, 2), 'utf8');
   return normalized;
