@@ -183,6 +183,70 @@ assert.ok(
   'nudge must not repeat once the flag file exists (#483)',
 );
 
+// A statusline already in the slot is chained after ponytail's badge rather
+// than silencing the nudge for good: Claude Code has one statusLine, so the
+// two have to share it (the uninstaller already unpicks such a chain, #374).
+const composeHome = path.join(temp, 'home3');
+const composeDir = path.join(temp, 'compose-claude');
+fs.mkdirSync(composeHome, { recursive: true });
+fs.mkdirSync(composeDir, { recursive: true });
+fs.writeFileSync(
+  path.join(composeDir, 'settings.json'),
+  JSON.stringify({ statusLine: { type: 'command', command: 'bash ~/my-statusline.sh', padding: 2 } }),
+);
+const compose = run('ponytail-activate.js', {
+  HOME: composeHome,
+  USERPROFILE: composeHome,
+  CLAUDE_CONFIG_DIR: composeDir,
+  PONYTAIL_DEFAULT_MODE: 'full',
+});
+assert.equal(compose.status, 0, compose.stderr);
+assert.ok(
+  compose.stdout.includes('STATUSLINE SETUP NEEDED'),
+  'an existing statusline must still get the setup nudge, not be skipped',
+);
+// The snippet is meant to be pasted into settings.json, so it has to parse,
+// and the user's own command has to survive byte-for-byte after the ';'.
+const snippetStart = compose.stdout.indexOf('"statusLine": ');
+const snippetEnd = compose.stdout.indexOf('}', snippetStart) + 1;
+assert.ok(snippetStart >= 0 && snippetEnd > snippetStart, 'nudge must carry a statusLine snippet');
+const composed = JSON.parse('{ ' + compose.stdout.slice(snippetStart, snippetEnd) + ' }').statusLine;
+assert.equal(composed.type, 'command');
+assert.ok(
+  composed.command.includes('ponytail-statusline'),
+  'composed command must still run the ponytail badge',
+);
+assert.ok(
+  composed.command.endsWith(' ; bash ~/my-statusline.sh'),
+  "composed command must end with the user's existing command, unmodified",
+);
+assert.equal(
+  composed.padding,
+  2,
+  'sibling statusLine keys must survive the rewrite, not be dropped',
+);
+
+// Ponytail already in the chain — nothing left to offer, so stay quiet.
+const alreadyHome = path.join(temp, 'home4');
+const alreadyDir = path.join(temp, 'already-claude');
+fs.mkdirSync(alreadyHome, { recursive: true });
+fs.mkdirSync(alreadyDir, { recursive: true });
+fs.writeFileSync(
+  path.join(alreadyDir, 'settings.json'),
+  JSON.stringify({ statusLine: { type: 'command', command: 'bash /p/ponytail-statusline.sh ; bash ~/mine.sh' } }),
+);
+const already = run('ponytail-activate.js', {
+  HOME: alreadyHome,
+  USERPROFILE: alreadyHome,
+  CLAUDE_CONFIG_DIR: alreadyDir,
+  PONYTAIL_DEFAULT_MODE: 'full',
+});
+assert.equal(already.status, 0, already.stderr);
+assert.ok(
+  !already.stdout.includes('STATUSLINE SETUP NEEDED'),
+  'a statusline already carrying ponytail must not be offered again',
+);
+
 const copilotData = path.join(temp, 'copilot-data');
 const codexData = path.join(temp, 'codex-data-shadow');
 result = run('ponytail-activate.js', {

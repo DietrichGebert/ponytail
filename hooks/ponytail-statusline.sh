@@ -11,8 +11,10 @@ mode=$(head -n1 "$flag" | tr -d '[:space:]')
 color=108
 [ "$mode" = "ultra" ] && color=173
 
+# Trailing space (outside the reset, so it stays uncolored) separates the badge
+# from a statusline chained after it. See the setup nudge in ponytail-activate.js.
 if [ -z "$mode" ] || [ "$mode" = "full" ]; then
-    printf '\033[38;5;%sm[PONYTAIL]\033[0m' "$color"
+    printf '\033[38;5;%sm[PONYTAIL]\033[0m ' "$color"
 else
-    printf '\033[38;5;%sm[PONYTAIL:%s]\033[0m' "$color" "$(printf '%s' "$mode" | tr '[:lower:]' '[:upper:]')"
+    printf '\033[38;5;%sm[PONYTAIL:%s]\033[0m ' "$color" "$(printf '%s' "$mode" | tr '[:lower:]' '[:upper:]')"
 fi
