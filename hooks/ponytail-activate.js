@@ -3,7 +3,7 @@
 // Grok and Cursor sessionStart)
 //
 // Runs on every session start:
-//   1. Writes flag file at $CLAUDE_CONFIG_DIR/.ponytail-active (defaults to ~/.claude; statusline reads this)
+//   1. Writes session mode state under $CLAUDE_CONFIG_DIR/.ponytail-active
 //   2. Emits ponytail ruleset as hidden SessionStart context
 //   3. Detects missing statusline config and emits setup nudge
 
@@ -12,12 +12,14 @@ const path = require('path');
 const { getDefaultMode, getClaudeDir, isShellSafe } = require('./ponytail-config');
 const { getPonytailInstructions } = require('./ponytail-instructions');
 const {
-  clearMode,
   cursorRuleNotice,
   cursorRulePath,
   isCodex,
   isCopilot,
   isCursor,
+  getSessionId,
+  readHookPayload,
+  readMode,
   setMode,
   writeHookOutput,
 } = require('./ponytail-runtime');
@@ -25,11 +27,13 @@ const {
 const claudeDir = getClaudeDir();
 const settingsPath = path.join(claudeDir, 'settings.json');
 
-const mode = getDefaultMode();
+function activate(data) {
+  const sessionId = getSessionId(data);
+  const mode = readMode(sessionId) || getDefaultMode();
 
 // "off" mode — skip activation entirely, don't write flag or emit rules
 if (mode === 'off') {
-  clearMode();
+  try { setMode('off', sessionId); } catch (e) {}
   const hookOutput = (isCodex || isCopilot || isCursor) ? '' : 'OK';
   writeHookOutput('SessionStart', 'off', hookOutput);
   process.exit(0);
@@ -50,9 +54,9 @@ if (isCursor) {
   }
 }
 
-// 1. Write flag file
+// 1. Write this session's mode state.
 try {
-  setMode(mode);
+  setMode(mode, sessionId);
 } catch (e) {
   // Silent fail -- flag is best-effort, don't block the hook
 }
@@ -72,8 +76,7 @@ if (!isCodex && !isCopilot && !isCursor) try {
     }
   }
 
-  // Nudge at most once — the flag file marks that the user has already seen
-  // (and implicitly declined) the statusline setup offer. Repeating it every
+  // Nudge at most once. Repeating the setup offer every
   // session start turns a helpful hint into a nag.
   const nudgeFlagPath = path.join(claudeDir, '.ponytail-statusline-nudged');
   if (!hasStatusline && !fs.existsSync(nudgeFlagPath)) {
@@ -113,3 +116,6 @@ try {
 } catch (e) {
   // Silent fail — stdout closed/EPIPE at hook exit must not surface as a hook failure
 }
+}
+
+readHookPayload(activate);

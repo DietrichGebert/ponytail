@@ -25,7 +25,8 @@ const claudeDir = path.join(home, '.claude');
 fs.mkdirSync(claudeDir, { recursive: true });
 
 const flagPath = path.join(claudeDir, '.ponytail-active');
-fs.writeFileSync(flagPath, 'full');
+fs.mkdirSync(flagPath);
+fs.writeFileSync(path.join(flagPath, 'session-a'), 'full');
 
 const configDir = path.join(temp, 'config-home', 'ponytail');
 fs.mkdirSync(configDir, { recursive: true });
@@ -42,7 +43,8 @@ fs.writeFileSync(settingsPath, JSON.stringify({
 const cursorDir = path.join(home, '.cursor');
 fs.mkdirSync(cursorDir, { recursive: true });
 const cursorFlagPath = path.join(cursorDir, '.ponytail-active');
-fs.writeFileSync(cursorFlagPath, 'lite');
+fs.mkdirSync(cursorFlagPath);
+fs.writeFileSync(path.join(cursorFlagPath, 'session-b'), 'lite');
 const cursorHooksPath = path.join(cursorDir, 'hooks.json');
 fs.writeFileSync(cursorHooksPath, JSON.stringify({
   version: 1,

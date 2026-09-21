@@ -1,9 +1,18 @@
 #!/usr/bin/env bash
 # CLAUDE_CONFIG_DIR overrides ~/.claude, matching where the hooks write the flag (issue #34)
 flag="${CLAUDE_CONFIG_DIR:-$HOME/.claude}/.ponytail-active"
-[ -f "$flag" ] || exit 0
+[ -d "$flag" ] || exit 0
 
-mode=$(head -n1 "$flag" | tr -d '[:space:]')
+mode=$(PONYTAIL_STATE_DIR="$flag" node -e '
+const crypto = require("crypto"), fs = require("fs"), path = require("path");
+let input = ""; process.stdin.on("data", c => input += c); process.stdin.on("end", () => {
+  try {
+    const id = JSON.parse(input).session_id;
+    if (typeof id !== "string" || !id.trim() || id.length > 512) return;
+    const key = crypto.createHash("sha256").update(id.trim()).digest("hex");
+    process.stdout.write(fs.readFileSync(path.join(process.env.PONYTAIL_STATE_DIR, key), "utf8").trim());
+  } catch {}
+});' 2>/dev/null)
 
 # ultra is the high-intensity mode; flag it amber so it stands out from the
 # default green at a glance. The level is still in the text, so color is a
