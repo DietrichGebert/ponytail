@@ -21,6 +21,9 @@
     ".": "./.opencode/plugins/ponytail.mjs",
     "./plugin": "./.opencode/plugins/ponytail.mjs"
   },
+  "dependencies": {
+    "@opencode/plugin": "^2.0.11"
+  },
   "files": [
     "AGENTS.md",
     "hooks/",
