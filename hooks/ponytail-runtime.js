@@ -97,6 +97,7 @@ function readHookPayload(callback) {
   function finish() {
     if (done) return;
     done = true;
+    process.stdin.destroy();
     let data = {};
     try { data = JSON.parse(input.replace(/^\uFEFF/, '')); } catch (e) {}
     callback(data && typeof data === 'object' && !Array.isArray(data) ? data : {});

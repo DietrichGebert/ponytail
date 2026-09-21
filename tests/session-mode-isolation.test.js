@@ -7,6 +7,27 @@ const { test } = require('node:test');
 
 const root = path.join(__dirname, '..');
 
+test('payload timeout exits even when the host leaves stdin open', async () => {
+  const runtime = path.join(root, 'hooks', 'ponytail-runtime.js');
+  const child = spawn(process.execPath, ['-e',
+    `require(${JSON.stringify(runtime)}).readHookPayload(data => process.stdout.write(JSON.stringify(data)))`,
+  ], { stdio: ['pipe', 'pipe', 'pipe'] });
+  let stdout = '';
+  child.stdout.on('data', chunk => { stdout += chunk; });
+  const timeout = setTimeout(() => child.kill('SIGKILL'), 2500);
+  try {
+    const status = await new Promise((resolve, reject) => {
+      child.once('error', reject);
+      child.once('close', resolve);
+    });
+    assert.equal(status, 0, 'open stdin must not keep a timed-out hook alive');
+    assert.equal(stdout, '{}');
+  } finally {
+    clearTimeout(timeout);
+    child.stdin.destroy();
+  }
+});
+
 function run(script, env, payload) {
   return spawnSync(process.execPath, [path.join(root, 'hooks', script)], {
     env: { ...process.env, ...env },
