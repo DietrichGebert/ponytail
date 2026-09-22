@@ -6,7 +6,10 @@ import test from "node:test";
 
 import ponytailExtension from "../index.js";
 
-function createPiHarness() {
+const ALL_ALIAS_SKILLS = ["ponytail", "ponytail-audit", "ponytail-debt", "ponytail-gain", "ponytail-help", "ponytail-review"];
+
+function createPiHarness(options = {}) {
+  const { enabledSkills = ALL_ALIAS_SKILLS } = options;
   const events = new Map();
   const commands = new Map();
   const appendedEntries = [];
@@ -18,6 +21,9 @@ function createPiHarness() {
     },
     registerCommand(name, options) {
       commands.set(name, options);
+    },
+    getCommands() {
+      return enabledSkills.map((name) => ({ name: `skill:${name}`, source: "skill" }));
     },
     appendEntry(customType, data) {
       appendedEntries.push({ customType, data });
@@ -58,11 +64,19 @@ function withTempConfig(fn) {
     });
 }
 
-test("extension registers Ponytail commands", () => {
-  const { commands } = createPiHarness();
+test("extension registers Ponytail commands", async () => withTempConfig(async () => {
+  const { events, commands } = createPiHarness();
+  await events.get("session_start")({ reason: "startup" }, createCommandContext());
 
-  assert.deepEqual([...commands.keys()].sort(), ["ponytail", "ponytail-audit", "ponytail-debt", "ponytail-gain", "ponytail-help", "ponytail-review"]);
-});
+  assert.deepEqual([...commands.keys()].sort(), ALL_ALIAS_SKILLS);
+}));
+
+test("skill alias commands skip skills the user disabled", async () => withTempConfig(async () => {
+  const { events, commands } = createPiHarness({ enabledSkills: ["ponytail", "ponytail-review"] });
+  await events.get("session_start")({ reason: "startup" }, createCommandContext());
+
+  assert.deepEqual([...commands.keys()].sort(), ["ponytail", "ponytail-review"]);
+}));
 
 test("/ponytail updates session mode and injects instructions", async () => withTempConfig(async () => {
   const { commands, events, appendedEntries } = createPiHarness();
@@ -120,9 +134,10 @@ test("session_start restores latest persisted mode", async () => withTempConfig(
   assert.ok(result.systemPrompt.includes("lite"));
 }));
 
-test("skill alias commands delegate to Pi skill commands", async () => {
-  const { commands, sentUserMessages } = createPiHarness();
+test("skill alias commands delegate to Pi skill commands", async () => withTempConfig(async () => {
+  const { events, commands, sentUserMessages } = createPiHarness();
   const ctx = createCommandContext();
+  await events.get("session_start")({ reason: "startup" }, ctx);
 
   await commands.get("ponytail-review").handler("", ctx);
   await commands.get("ponytail-audit").handler("", ctx);
@@ -137,7 +152,7 @@ test("skill alias commands delegate to Pi skill commands", async () => {
     "/skill:ponytail-gain",
     "/skill:ponytail-help",
   ]);
-});
+}));
 
 test("normal mode disables persistent instructions", async () => withTempConfig(async () => {
   const { commands, events } = createPiHarness();

@@ -146,30 +146,15 @@ export default function ponytailExtension(pi) {
     },
   });
 
-  pi.registerCommand("ponytail-review", {
-    description: "Run /skill:ponytail-review",
-    handler: (_args, ctx) => sendAlias("/skill:ponytail-review", "", ctx),
-  });
-
-  pi.registerCommand("ponytail-audit", {
-    description: "Run /skill:ponytail-audit",
-    handler: (_args, ctx) => sendAlias("/skill:ponytail-audit", "", ctx),
-  });
-
-  pi.registerCommand("ponytail-gain", {
-    description: "Run /skill:ponytail-gain",
-    handler: (_args, ctx) => sendAlias("/skill:ponytail-gain", "", ctx),
-  });
-
-  pi.registerCommand("ponytail-debt", {
-    description: "Run /skill:ponytail-debt",
-    handler: (_args, ctx) => sendAlias("/skill:ponytail-debt", "", ctx),
-  });
-
-  pi.registerCommand("ponytail-help", {
-    description: "Run /skill:ponytail-help",
-    handler: (_args, ctx) => sendAlias("/skill:ponytail-help", "", ctx),
-  });
+  // pi.registerCommand has no unregister counterpart, so aliases registered at
+  // load time would keep pointing at skills the user disabled via package
+  // filters (pi only creates /skill:* commands for enabled skills). Register
+  // aliases on session_start instead, where pi.getCommands() already reflects
+  // the filtered skill set, and skip aliases whose target skill is absent.
+  // ponytail: registerCommand only overwrites (no unregister), so a live
+  // process can't drop aliases; the enabled-skill set only changes via
+  // /reload, which re-imports extensions, so the alias set always matches.
+  const ALIAS_SKILLS = ["ponytail-review", "ponytail-audit", "ponytail-gain", "ponytail-debt", "ponytail-help"];
 
   pi.on("input", async (event) => {
     if (event?.source === "extension") return;
@@ -185,6 +170,19 @@ export default function ponytailExtension(pi) {
     configuredDefaultMode = getDefaultMode();
     hideStatus = getHideStatus();
     currentMode = resolveSessionMode(entries, configuredDefaultMode);
+    const enabledSkills = new Set(
+      pi
+        .getCommands()
+        .filter((command) => command.source === "skill")
+        .map((command) => command.name.replace(/^skill:/, "")),
+    );
+    for (const name of ALIAS_SKILLS) {
+      if (!enabledSkills.has(name)) continue;
+      pi.registerCommand(name, {
+        description: `Run /skill:${name}`,
+        handler: (_args, aliasCtx) => sendAlias(`/skill:${name}`, "", aliasCtx),
+      });
+    }
     syncStatus(ctx);
     if (!getQuietStartup()) {
       ctx?.ui?.notify?.(`Ponytail loaded: ${currentMode}`, "info");
