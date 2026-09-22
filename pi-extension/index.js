@@ -201,10 +201,19 @@ export default function ponytailExtension(pi) {
     syncStatus(ctx);
   });
 
+  // pi >= 0.86.0 exposes systemPrompt as a getter and records mutations of
+  // systemPromptOptions.sections in the transcript; older versions ignore them,
+  // so fall back to a forced, unrecorded systemPrompt there.
+  const canMutatePromptSections = (event) =>
+    Boolean(event) && Boolean(Object.getOwnPropertyDescriptor(event, "systemPrompt")?.get);
+
   pi.on("before_agent_start", async (event) => {
     if (!currentMode || currentMode === "off") return;
-    // Guard a null/undefined event or a missing systemPrompt: don't crash, and
-    // don't prepend the literal string "undefined" to the prompt (#439, #440).
+    if (canMutatePromptSections(event)) {
+      event.systemPromptOptions.sections["ponytail"] = getPonytailInstructions(currentMode);
+      return;
+    }
+    // Older pi or malformed event: forced prompt; never prepend "undefined" (#439, #440).
     const base = event?.systemPrompt ? `${event.systemPrompt}\n\n` : "";
     return { systemPrompt: `${base}${getPonytailInstructions(currentMode)}` };
   });

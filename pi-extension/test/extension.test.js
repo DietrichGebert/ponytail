@@ -31,6 +31,17 @@ function createPiHarness() {
   return { events, commands, appendedEntries, sentUserMessages };
 }
 
+function modernEvent(basePrompt = "BASE") {
+  // pi >= 0.86.0 exposes systemPrompt as a getter over the mutable options.
+  return {
+    type: "before_agent_start",
+    get systemPrompt() {
+      return basePrompt;
+    },
+    systemPromptOptions: { sections: {} },
+  };
+}
+
 function createCommandContext(overrides = {}) {
   return {
     isIdle: () => true,
@@ -76,12 +87,29 @@ test("/ponytail updates session mode and injects instructions", async () => with
     data: { mode: "ultra" },
   });
 
-  const result = await events.get("before_agent_start")({ systemPrompt: "BASE" }, ctx);
-  assert.ok(result.systemPrompt.includes("PONYTAIL MODE ACTIVE"));
-  assert.ok(result.systemPrompt.includes("ultra"));
+  // pi >= 0.86.0: the ruleset goes into the mutable, transcript-persisted sections.
+  const event = modernEvent();
+  const result = await events.get("before_agent_start")(event, ctx);
+  assert.strictEqual(result, undefined, "no forced prompt when sections are mutable");
+  assert.ok(event.systemPromptOptions.sections["ponytail"].includes("PONYTAIL MODE ACTIVE"));
+  assert.ok(event.systemPromptOptions.sections["ponytail"].includes("ultra"));
 }));
 
-test("before_agent_start guards missing event and missing systemPrompt (#439, #440)", async () => withTempConfig(async () => {
+test("before_agent_start with mode off adds no section and no forced prompt", async () => withTempConfig(async () => {
+  const { commands, events } = createPiHarness();
+  const ctx = createCommandContext();
+
+  await events.get("session_start")({ reason: "startup" }, ctx);
+  await commands.get("ponytail").handler("off", ctx);
+
+  const event = modernEvent();
+  const result = await events.get("before_agent_start")(event, ctx);
+
+  assert.strictEqual(result, undefined);
+  assert.strictEqual(event.systemPromptOptions.sections["ponytail"], undefined);
+}));
+
+test("before_agent_start on pi < 0.86 (plain event) falls back to forced prompt, guards bad events (#439, #440)", async () => withTempConfig(async () => {
   const { events } = createPiHarness();
   const ctx = createCommandContext();
   await events.get("session_start")({ reason: "startup" }, ctx); // currentMode -> default (full)
@@ -98,7 +126,7 @@ test("before_agent_start guards missing event and missing systemPrompt (#439, #4
   assert.ok(empty.systemPrompt.includes("PONYTAIL MODE ACTIVE"));
   assert.ok(!empty.systemPrompt.startsWith("undefined"), "must not start with 'undefined'");
 
-  // A real base prompt is still preserved and prepended.
+  // An unmutatable event with a base prompt is preserved and prepended.
   const withBase = await events.get("before_agent_start")({ systemPrompt: "BASE" }, ctx);
   assert.ok(withBase.systemPrompt.startsWith("BASE\n\n"));
   assert.ok(withBase.systemPrompt.includes("PONYTAIL MODE ACTIVE"));
@@ -115,9 +143,10 @@ test("session_start restores latest persisted mode", async () => withTempConfig(
   });
 
   await events.get("session_start")({ reason: "resume" }, ctx);
-  const result = await events.get("before_agent_start")({ systemPrompt: "BASE" }, ctx);
+  const event = modernEvent();
+  await events.get("before_agent_start")(event, ctx);
 
-  assert.ok(result.systemPrompt.includes("lite"));
+  assert.ok(event.systemPromptOptions.sections["ponytail"].includes("lite"));
 }));
 
 test("skill alias commands delegate to Pi skill commands", async () => {
