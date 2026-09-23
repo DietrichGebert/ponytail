@@ -7,7 +7,14 @@
 // source of truth.
 //
 // OpenCode loads this as a server plugin — add it to your opencode.json:
-//   { "plugin": ["@dietrichgebert/ponytail"] }
+//   { "plugins": ["@dietrichgebert/ponytail"] }
+//
+// Supports both OpenCode V2 (calls setup()) and V1 1.18.29+ (calls server())
+// from one default export, per the V1→V2 migration guide. V2 setup registers
+// the ruleset injection via ctx.session.hook("context"); the slash-command and
+// skills-dir registration remain on the V1 server() entrypoint until the
+// template-command → V2 PromptInput/command-editor port lands (the V2
+// CommandDefinition is programmatic and has no `template` field).
 
 import { createRequire } from 'module';
 import fs from 'fs';
@@ -43,7 +50,32 @@ function writeMode(mode) {
   fs.writeFileSync(statePath, mode);
 }
 
-export default async ({ client } = {}) => {
+// --- V2 entrypoint -----------------------------------------------------------
+// OpenCode 2.0+ calls setup(ctx). Registers the ruleset injection on the
+// session "context" hook (the V2 successor of "experimental.chat.system.
+// transform"). The event.system array takes SystemPart objects, so we push
+// { type: "text", text } rather than a raw string. Guarded so the plugin loads
+// cleanly even if a runtime variant does not expose ctx.session.
+async function setup(ctx) {
+  if (ctx?.session?.hook) {
+    await ctx.session.hook('context', (event) => {
+      const mode = readMode();
+      if (mode === 'off') return;
+      const instructions = getPonytailInstructions(mode);
+      if (Array.isArray(event?.system)) {
+        event.system.push({ type: 'text', text: instructions });
+      }
+    });
+  }
+}
+
+// --- V1 entrypoint -----------------------------------------------------------
+// OpenCode 1.18.29+ calls server(). Returns the legacy hooks map: slash-command
+// + skills-dir registration (config), ruleset injection
+// (experimental.chat.system.transform), and /ponytail mode persistence
+// (command.execute.before).
+async function server(input = {}) {
+  const { client } = input;
   const log = (level, message) => {
     try { client && client.app && client.app.log({ body: { service: 'ponytail', level, message } }); } catch (e) {}
   };
@@ -96,4 +128,8 @@ export default async ({ client } = {}) => {
       log('info', 'ponytail ' + mode);
     },
   };
-};
+}
+
+// Dual V1/V2 default export. V2 validates `default` as an object with `id` and
+// `setup`; V1 1.18.29+ reads `server()`. Extra keys are ignored by each loader.
+export default { id: 'ponytail', setup, server };
