@@ -28,6 +28,11 @@ Deps the stdlib or platform already ships, single-implementation interfaces,
 factories with one product, wrappers that only delegate, files exporting one
 thing, dead flags and config, hand-rolled stdlib.
 
+AI-shaped test slop: fixture-name/id/timestamp branches in production code
+(encode the real invariant instead); snapshot-only or mock-call-only
+assertions (prefer observable behavior); tests that mirror methods 1:1
+rather than behaviors.
+
 ## Output
 
 One line per finding, ranked: `<tag> <what to cut>. <replacement>. [path]`.
