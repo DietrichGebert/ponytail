@@ -279,6 +279,30 @@ Start a new session (or reload plugins). Skills show as `/ponytail`, `/ponytail-
 
 `AGENTS.md` still works instruction-only from a checkout without the plugin.
 
+### Oh My Pi
+
+```bash
+omp plugin marketplace add DietrichGebert/ponytail
+omp plugin install ponytail@ponytail
+```
+
+Start a new session or reload plugins. Skills are available as:
+```
+/ponytail         Set mode: off|lite|full|ultra. Commands: status, default <mode>
+/ponytail-review  OR /skill:ponytail-review
+/ponytail-audit   OR /skill:ponytail-audit
+/ponytail-gain    OR /skill:ponytail-gain
+/ponytail-debt    OR /skill:ponytail-debt
+/ponytail-help    OR /skill:ponytail-help
+```
+
+Uninstall with:
+
+```bash
+omp plugin uninstall ponytail@ponytail
+omp plugin marketplace remove ponytail
+```
+
 ### Cursor
 
 ```bash
@@ -323,6 +347,7 @@ Which files map to which agent: [Agent portability](docs/agent-portability.md).
 | Pi agent | `pi uninstall ponytail` |
 | Cursor hooks | `node scripts/cursor-hooks.js uninstall` (add `--project` for a project-level install); removes only ponytail's entries from `hooks.json` |
 | Cursor rule / Windsurf / Cline / Qoder / etc. | Delete the copied rule file |
+| Oh My Pi | `omp plugin uninstall ponytail@ponytail`<br>`omp plugin marketplace remove ponytail` |
 
 These remove the plugin's own files. They leave behind a small amount of state ponytail writes outside the plugin folder: the mode flag (`~/.claude/.ponytail-active`, or `~/.cursor/.ponytail-active` for Cursor), `~/.config/ponytail/config.json`, ponytail's entries in `~/.cursor/hooks.json`, and (if you accepted the setup nudge) a `statusLine` entry in `~/.claude/settings.json`. Run `node scripts/uninstall.js` to clean those up too. **Run it before the host remove command above** — the script is itself a plugin file, so removing the plugin first deletes it (or run it from a separate clone of this repo). It only removes the statusLine entry if it points at ponytail's own script, so a statusline you set up yourself is left untouched.
 
