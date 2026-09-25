@@ -226,7 +226,7 @@ It reuses this repo's `gemini-extension.json`. One difference: Antigravity conve
 hermes plugins install DietrichGebert/ponytail --enable
 ```
 
-Restart Hermes after installing. The plugin injects the active Ponytail mode before each LLM turn, registers the bundled skills as `ponytail:<skill>`, and adds `/ponytail`, `/ponytail-review`, `/ponytail-audit`, `/ponytail-debt`, `/ponytail-gain`, and `/ponytail-help`. In shared gateways, restrict `/ponytail` to trusted users with Hermes slash-command access controls; runtime mode is process-local.
+Restart Hermes after installing. The plugin injects the Ponytail ruleset once per session, sends a short note when `/ponytail` changes the level, and injects the ruleset again when context compaction removes it. It also registers the bundled skills as `ponytail:<skill>` and adds `/ponytail`, `/ponytail-review`, `/ponytail-audit`, `/ponytail-debt`, `/ponytail-gain`, and `/ponytail-help`. In shared gateways, restrict `/ponytail` to trusted users with Hermes slash-command access controls; runtime mode is process-local.
 
 ### CodeWhale
 
