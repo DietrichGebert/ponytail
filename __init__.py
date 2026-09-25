@@ -25,6 +25,20 @@ PONYTAIL_SKILL = SKILLS_DIR / "ponytail" / "SKILL.md"
 REVIEW_SKILL = SKILLS_DIR / "ponytail-review" / "SKILL.md"
 
 _current_mode = None
+_last_level = None  # The level actually in effect from the previous hook turn; used when querying status via /ponytail
+
+# The first line of each injection is always a marker formatted like this; Hermes stores the injected content
+# in the user message's api_content and replays it in every subsequent turn, so the conversation history
+# itself tracks what the model has already seen.
+MODE_MARKER_RE = re.compile(r"^PONYTAIL MODE (ACTIVE|CHANGED|OFF)(?: — level: (lite|full|ultra|review))?", re.MULTILINE)
+RULE_MODES = {"lite", "full", "ultra"}  # "review" injects the review skill and excludes the main Ponytail rule body
+# Consistent with isDeactivationCommand in hooks/ponytail-config.js: the entire message must strictly match these phrases to trigger deactivation
+STOP_PHRASES = {"stop ponytail", "normal mode"}
+OFF_NOTICE = (
+    "PONYTAIL MODE OFF\n\n"
+    "Ponytail is off for this session. Ignore the earlier Ponytail rules until a "
+    "later PONYTAIL MODE message turns it back on."
+)
 
 
 def _normalize_runtime_mode(mode: str | None) -> str | None:
@@ -69,22 +83,25 @@ def _strip_frontmatter(text: str) -> str:
 
 def _filter_skill_body_for_mode(body: str, mode: str) -> str:
     effective = _normalize_runtime_mode(mode) or DEFAULT_MODE
-    lines = []
-    for line in _strip_frontmatter(body).splitlines():
-        table_label = re.match(r"^\|\s*\*\*(.+?)\*\*\s*\|", line)
-        if table_label:
-            label_mode = _normalize_runtime_mode(table_label.group(1))
-            if label_mode and label_mode != effective:
-                continue
+    return "\n".join(
+        line for line in _strip_frontmatter(body).splitlines() if _line_mode(line) in (None, effective)
+    )
 
-        example_label = re.match(r"^-\s*([^:]+):\s*", line)
-        if example_label:
-            label_mode = _normalize_runtime_mode(example_label.group(1))
-            if label_mode and label_mode != effective:
-                continue
 
-        lines.append(line)
-    return "\n".join(lines)
+def _line_mode(line: str) -> str | None:
+    label = re.match(r"^\|\s*\*\*(.+?)\*\*\s*\|", line) or re.match(r"^-\s*([^:]+):\s*", line)
+    return _normalize_runtime_mode(label.group(1)) if label else None
+
+
+def _mode_change_note(mode: str) -> str:
+    # The main rule body has already been included in the conversation history; when switching levels,
+    # only resend the table rows and example lines specific to the new level.
+    body = _strip_frontmatter(PONYTAIL_SKILL.read_text(encoding="utf-8"))
+    lines = [line for line in body.splitlines() if _line_mode(line) == mode]
+    return (
+        f"PONYTAIL MODE CHANGED — level: {mode}\n\n"
+        "Keep the Ponytail rules above and apply this level:\n\n" + "\n".join(lines)
+    )
 
 
 def _fallback_instructions(mode: str) -> str:
@@ -103,7 +120,7 @@ def _fallback_instructions(mode: str) -> str:
 
 
 def build_injected_context(mode: str | None = None) -> str:
-    """Return the mode-filtered Ponytail context injected before LLM turns."""
+    """Return the mode-filtered Ponytail ruleset for one injection."""
     configured = _normalize_config_mode(mode) or _default_mode()
     if configured == "off":
         return ""
@@ -122,9 +139,51 @@ def build_injected_context(mode: str | None = None) -> str:
         return _fallback_instructions(effective)
 
 
-def _pre_llm_call(session_id: str = "", **_: Any) -> dict[str, str] | None:
-    mode = _current_mode or _default_mode()
-    context = build_injected_context(mode)
+def _injected_text(message: Any) -> str:
+    # Extract only the text that Hermes injected into the user's message.
+    if not isinstance(message, dict) or message.get("role") != "user":
+        return ""
+    content = message.get("content")
+    sidecar = message.get("api_content")
+    if isinstance(sidecar, str) and sidecar:
+        return sidecar.replace(content, "", 1) if isinstance(content, str) and content else sidecar
+    if isinstance(content, list):  # In a turn with images: Hermes appends the injected content as the last text part
+        texts = [p.get("text", "") for p in content if isinstance(p, dict) and p.get("type") == "text"]
+        return texts[-1] if texts else ""
+    return ""
+
+
+def _history_state(history: list) -> tuple[str | None, bool]:
+    level = None
+    for message in reversed(history):
+        for kind, mode in reversed(MODE_MARKER_RE.findall(_injected_text(message))):
+            if level is None:
+                level = "off" if kind == "OFF" else mode
+            if kind == "ACTIVE" and mode in RULE_MODES:
+                return level, True
+    return level, False
+
+
+def _pre_llm_call(user_message: Any = "", conversation_history: Any = None, **_: Any) -> dict[str, str] | None:
+    global _current_mode, _last_level
+    if isinstance(user_message, str) and re.sub(r"[.!?\s]+$", "", user_message.strip().lower()) in STOP_PHRASES:
+        _current_mode = "off"
+    history = list(conversation_history or [])
+    if history and isinstance(history[-1], dict) and history[-1].get("role") == "user":
+        history.pop()  # Hermes has already placed the current turn's user message at the end
+    level, has_rules = _history_state(history)
+    target = _current_mode or level or _default_mode()
+    _last_level = target
+    if target == "off":
+        context = OFF_NOTICE if level not in (None, "off") else ""
+    elif target == "review":
+        context = build_injected_context("review") if level != "review" else ""
+    elif not has_rules:
+        context = build_injected_context(target)
+    elif level != target:
+        context = _mode_change_note(target)
+    else:
+        context = ""
     return {"context": context} if context else None
 
 
@@ -168,13 +227,13 @@ def _handle_mode_command(raw_args: str) -> str:
     global _current_mode
     arg = (raw_args or "").strip().lower()
     if not arg:
-        mode = _current_mode or _default_mode()
+        mode = _current_mode or _last_level or _default_mode()
         return f"Ponytail mode: {mode}. Use `/ponytail lite|full|ultra|off`."
     mode = _normalize_runtime_mode(arg)
     if not mode:
         return "Usage: /ponytail [lite|full|ultra|off]"
     _current_mode = mode
-    return f"Ponytail mode set to {mode}."
+    return f"Ponytail mode set to {mode}. Applies from your next message."
 
 
 def _make_skill_command_handler(ctx: Any, command: str) -> Callable[[str], str]:
