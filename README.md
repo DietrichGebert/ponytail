@@ -193,6 +193,8 @@ Run from a checkout instead (the plugin reuses `hooks/` and `skills/`):
 
 Injects the ruleset every turn at the active level; adds the `/ponytail` commands (see [Commands](#commands)). OpenCode also auto-loads this repo's `AGENTS.md`, so the rules hold even without the plugin. The plugin adds the `lite/full/ultra/off` levels.
 
+On OpenCode v2 (anomalyco/opencode ≥ 2.x) the same install line resolves `exports["./server"]` (`.opencode/plugins/ponytail.v2.mjs`), which bakes the active level's ruleset into agent prompts at setup and registers `./skills`; v1 loaders keep using the default entry untouched. v2 has no per-turn hook, so switching levels there applies on reload/restart rather than the next message.
+
 The `./` path resolves against your project's `opencode.json`; to share one checkout across projects, point it at the absolute path of the `.mjs` instead (it finds its `hooks/` and `skills/` relative to its own file).
 
 ### Gemini CLI
