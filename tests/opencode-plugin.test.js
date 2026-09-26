@@ -105,10 +105,8 @@ test('parseCommandFile returns null when there is no frontmatter', () => {
 });
 
 // --- v2 entry (opencode 2.x) ---
-// v2 replaces per-turn hooks with transform domains: setup registers a
-// callback that mutates a draft (agents, skill sources) on every domain
-// rebuild. Minimal domain doubles capture the callbacks so a test can replay
-// them and assert the resulting draft.
+// v2 has no per-turn hooks: setup registers a callback per domain that mutates
+// a draft. The doubles capture them so a test can replay and assert the draft.
 function mockCtx(agents) {
   const agentCallbacks = [];
   const sources = [];

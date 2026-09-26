@@ -1,21 +1,12 @@
-// ponytail — OpenCode v2 (anomalyco/opencode >= 2.x) server plugin entry.
+// ponytail — OpenCode v2 plugin entry.
 //
-// v1 (sst/opencode, Kilo, and friends) loads `./ponytail.mjs` via `main`: a
-// default-exported async function returning hooks. v2 only accepts
-// `Plugin.define({ id, setup })` / `{ id, effect }` as the default export,
-// so this parallel entry exposes the same behavior through v2's transform
-// domains. `exports["./server"]` in package.json points v2 here; every other
-// consumer keeps resolving `.` at the v1 file, untouched.
+// v2 loads this instead of ./ponytail.mjs: it wants a default export of
+// { id, setup } and rejects v1's hook factory with PluginModule.LoadError.
+// package.json points exports["./server"] here; "." still serves the v1 file,
+// so v1 loaders see no change.
 //
-// `Plugin.define` is an identity function, so this file hand-rolls the
-// `{ id, setup }` shape instead of importing `@opencode-ai/plugin` — one
-// less runtime dependency for the same bytes on the wire.
-//
-// v2 platform limits (documented, not worked around):
-// - No per-turn hook: the ruleset is baked into agent system prompts at
-//   setup. Changing modes takes effect on reload/restart, not next message.
-// - No code execution on command invoke: `/ponytail` stays a prompt template
-//   (via the registered skills); the model writes the mode file itself.
+// Plugin.define is an identity function, so the shape is hand-rolled rather
+// than importing @opencode-ai/plugin.
 
 import { createRequire } from 'module';
 import fs from 'fs';
@@ -45,8 +36,8 @@ function readMode() {
   }
 }
 
-// Marker all injected blocks start with. Checked before appending so a
-// domain reload (which reruns every transform) never stacks duplicates.
+// A domain reload reruns every transform, so the marker keeps appends from
+// stacking duplicates.
 const MARKER = 'PONYTAIL MODE ACTIVE';
 
 export default {
@@ -54,8 +45,9 @@ export default {
   setup: async (ctx) => {
     const mode = readMode();
 
-    // System-prompt injection, v2 style: bake the active mode's ruleset into
-    // every agent definition. Skipped entirely when off.
+    // Append the ruleset to every agent prompt. ponytail: v2 has no per-turn
+    // hook, so the mode is frozen at setup and a switch needs a reload — same
+    // flag file as v1, one step later.
     await ctx.agent.transform((agents) => {
       if (mode === 'off') return;
       const instructions = getPonytailInstructions(mode);
@@ -67,8 +59,6 @@ export default {
       }
     });
 
-    // What the v1 `config` hook's skills-path push did: make the packaged
-    // skills (and with them, their slash-command forms) visible.
     await ctx.skill.transform((skills) => {
       const dir = path.resolve(__dirname, '../../skills');
       const known = skills.list().some((s) => s.type === 'directory' && s.path === dir);
