@@ -1,6 +1,8 @@
 #!/usr/bin/env node
-// Smoke test for the OpenCode adapter: the plugin's hooks behave against the
-// real (structural) OpenCode hook shapes. No live OpenCode needed.
+// Smoke test for both OpenCode adapters: the v1 plugin's hooks (loaded via
+// `main` by opencode 1.x) and the v2 entry (`exports["./server"]`, loaded by
+// opencode 2.x) behave against the real (structural) OpenCode shapes. No live
+// OpenCode needed.
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -18,11 +20,12 @@ process.env.XDG_CONFIG_HOME = tmp;
 delete process.env.PONYTAIL_DEFAULT_MODE;
 const statePath = path.join(tmp, 'opencode', '.ponytail-active');
 
-let loadPlugin, parseCommandFile;
+let loadPlugin, parseCommandFile, v2Plugin;
 test.before(async () => {
   const url = pathToFileURL(path.join(__dirname, '..', '.opencode', 'plugins', 'ponytail.mjs'));
   const mod = await import(url);
   loadPlugin = mod.default;
+  v2Plugin = (await import(pathToFileURL(path.join(__dirname, '..', '.opencode', 'plugins', 'ponytail.v2.mjs')).href)).default;
   // The frontmatter parser used to be exported from the plugin module itself.
   // OpenCode's legacy loader treats every exported function as a plugin and
   // tried to invoke it with the plugin context object, which crashed. The
@@ -99,6 +102,69 @@ test('parseCommandFile returns null when there is no frontmatter', () => {
   const bare = path.join(tmp, 'cmd-bare.md');
   fs.writeFileSync(bare, 'no frontmatter here\n');
   assert.equal(parseCommandFile(bare), null);
+});
+
+// --- v2 entry (opencode 2.x) ---
+// v2 replaces per-turn hooks with transform domains: setup registers a
+// callback that mutates a draft (agents, skill sources) on every domain
+// rebuild. Minimal domain doubles capture the callbacks so a test can replay
+// them and assert the resulting draft.
+function mockCtx(agents) {
+  const agentCallbacks = [];
+  const sources = [];
+  return {
+    sources,
+    ctx: {
+      agent: { transform: async (cb) => { agentCallbacks.push(cb); } },
+      skill: { transform: async (cb) => cb({ list: () => sources, source: (s) => sources.push(s) }) },
+    },
+    replayAgents: () => {
+      const draft = { list: () => agents, update: (id, fn) => fn(agents.find((a) => a.id === id)) };
+      for (const cb of agentCallbacks) cb(draft);
+    },
+  };
+}
+
+test('v2 default export is a plugin definition ({ id, setup })', () => {
+  assert.equal(typeof v2Plugin, 'object');
+  assert.equal(v2Plugin.id, 'ponytail');
+  assert.equal(typeof v2Plugin.setup, 'function');
+});
+
+test('v2 setup bakes the ruleset into every agent system prompt', async () => {
+  try { fs.unlinkSync(statePath); } catch (e) {}
+  const agents = [{ id: 'a' }, { id: 'b', system: 'You are helpful.' }];
+  const { ctx, replayAgents } = mockCtx(agents);
+  await v2Plugin.setup(ctx);
+  replayAgents();
+  for (const agent of agents) assert.match(agent.system, /PONYTAIL MODE ACTIVE — level: full/);
+  assert.match(agents[1].system, /You are helpful\./, 'must not clobber the agent prompt');
+});
+
+test('v2 setup injects nothing when off', async () => {
+  fs.mkdirSync(path.dirname(statePath), { recursive: true });
+  fs.writeFileSync(statePath, 'off');
+  const agents = [{ id: 'a' }];
+  const { ctx, replayAgents } = mockCtx(agents);
+  await v2Plugin.setup(ctx);
+  replayAgents();
+  assert.equal(agents[0].system, undefined);
+});
+
+test('v2 transform replay (domain reload) does not stack duplicates', async () => {
+  try { fs.unlinkSync(statePath); } catch (e) {}
+  const agents = [{ id: 'a' }];
+  const { ctx, replayAgents } = mockCtx(agents);
+  await v2Plugin.setup(ctx);
+  replayAgents();
+  replayAgents();
+  assert.equal(agents[0].system.match(/PONYTAIL MODE ACTIVE/g).length, 1);
+});
+
+test('v2 setup registers the packaged skills directory once', async () => {
+  const { ctx, sources } = mockCtx([]);
+  await v2Plugin.setup(ctx);
+  assert.deepEqual(sources, [{ type: 'directory', path: path.resolve(__dirname, '..', 'skills') }]);
 });
 
 test.after(() => fs.rmSync(tmp, { recursive: true, force: true }));
