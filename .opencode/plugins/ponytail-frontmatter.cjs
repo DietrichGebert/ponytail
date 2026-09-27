@@ -20,4 +20,22 @@ function parseCommandFile(filePath) {
   return { description, template: match[2].trim() };
 }
 
-module.exports = { parseCommandFile };
+// Skill frontmatter for the v2 adapter. Same split as parseCommandFile, but
+// the folded description (`description: >` plus indented continuation lines)
+// needs joining, which the single-line regex above does not do.
+function parseSkillFile(filePath) {
+  const fs = require('fs');
+  const content = fs.readFileSync(filePath, 'utf8');
+  const match = content.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n([\s\S]*)$/);
+  if (!match) return null;
+  const [, frontmatter, body] = match;
+  const description = frontmatter.match(/^description:[ \t]*(>|[-+]?)([^\r\n]*)(?:\r?\n((?:[ \t]+[^\r\n]*\r?\n?)+))?/m);
+  if (!description) return null;
+  const folded = description[3] ? description[3].split(/\r?\n/).map((line) => line.trim()).join(' ') : '';
+  return {
+    description: (description[2].trim() + ' ' + folded).trim(),
+    body: body.trim(),
+  };
+}
+
+module.exports = { parseCommandFile, parseSkillFile };

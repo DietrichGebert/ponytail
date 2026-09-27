@@ -1,4 +1,3 @@
-#!/usr/bin/env node
 // Smoke test for both OpenCode adapters: the v1 plugin's hooks (loaded via
 // `main` by opencode 1.x) and the v2 entry (`exports["./server"]`, loaded by
 // opencode 2.x) behave against the real (structural) OpenCode shapes. No live
@@ -109,12 +108,21 @@ test('parseCommandFile returns null when there is no frontmatter', () => {
 // a draft. The doubles capture them so a test can replay and assert the draft.
 function mockCtx(agents) {
   const agentCallbacks = [];
-  const sources = [];
+  const added = [];
   return {
-    sources,
+    added,
     ctx: {
       agent: { transform: async (cb) => { agentCallbacks.push(cb); } },
-      skill: { transform: async (cb) => cb({ list: () => sources, source: (s) => sources.push(s) }) },
+      skill: {
+        transform: async (cb) =>
+          cb({
+            add: (s) => added.push(s),
+            list: () => added,
+            get: (id) => added.find((s) => s.id === id),
+            update: (id, fn) => fn(added.find((s) => s.id === id)),
+            remove: (id) => added.splice(added.indexOf(added.find((s) => s.id === id)), 1),
+          }),
+      },
     },
     replayAgents: () => {
       const draft = { list: () => agents, update: (id, fn) => fn(agents.find((a) => a.id === id)) };
@@ -149,20 +157,48 @@ test('v2 setup injects nothing when off', async () => {
   assert.equal(agents[0].system, undefined);
 });
 
-test('v2 transform replay (domain reload) does not stack duplicates', async () => {
+test('v2 registers each packaged skill with the shape the v2 draft requires', async () => {
+  try { fs.unlinkSync(statePath); } catch (e) {}
+  const { ctx, added } = mockCtx([]);
+  await v2Plugin.setup(ctx);
+  const root = path.join(__dirname, '..', 'skills');
+  const expected = fs.readdirSync(root).filter((n) => fs.existsSync(path.join(root, n, 'SKILL.md')));
+  assert.equal(added.length, expected.length, `expected one skill per SKILL.md under ${root}`);
+  for (const skill of added) {
+    // v2's skill schema rejects a missing id/name/path/content, and a throw
+    // here disables the whole plugin, so assert every required key is present.
+    assert.equal(typeof skill.id, 'string');
+    assert.equal(typeof skill.name, 'string');
+    assert.equal(typeof skill.path, 'string');
+    assert.ok(fs.existsSync(skill.path), `${skill.id} points at a missing file`);
+    assert.ok(skill.description.length > 0, `${skill.id} needs a description`);
+    assert.ok(skill.content.length > 0, `${skill.id} needs content`);
+    assert.ok(!skill.content.startsWith('---'), `${skill.id} content must be the body, not the raw file`);
+  }
+  assert.ok(added.some((s) => s.id === 'ponytail-review'), 'the review skill must register');
+});
+
+test('v2 skill descriptions fold multi-line frontmatter into one string', async () => {
+  try { fs.unlinkSync(statePath); } catch (e) {}
+  const { ctx, added } = mockCtx([]);
+  await v2Plugin.setup(ctx);
+  const review = added.find((s) => s.id === 'ponytail-review');
+  // ponytail-review's frontmatter uses `description: >` across 8 indented
+  // lines; an unfolded description would be just ">" and never match a skill.
+  assert.ok(review.description.length > 100, 'folded description must be joined');
+  assert.ok(!review.description.includes('\n'), 'description must be a single line');
+  assert.match(review.description, /over-engineering/);
+});
+
+test('v2 does not stack duplicates when the plugin is registered twice', async () => {
   try { fs.unlinkSync(statePath); } catch (e) {}
   const agents = [{ id: 'a' }];
   const { ctx, replayAgents } = mockCtx(agents);
   await v2Plugin.setup(ctx);
+  await v2Plugin.setup(ctx);
   replayAgents();
   replayAgents();
   assert.equal(agents[0].system.match(/PONYTAIL MODE ACTIVE/g).length, 1);
-});
-
-test('v2 setup registers the packaged skills directory once', async () => {
-  const { ctx, sources } = mockCtx([]);
-  await v2Plugin.setup(ctx);
-  assert.deepEqual(sources, [{ type: 'directory', path: path.resolve(__dirname, '..', 'skills') }]);
 });
 
 test.after(() => fs.rmSync(tmp, { recursive: true, force: true }));
