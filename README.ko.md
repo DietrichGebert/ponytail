@@ -257,14 +257,15 @@ enabled = ["ponytail"]
 
 ### Goose
 
-Goose(AAIF / Linux Foundation)는 ponytail의 형식을 이미 이해하므로 설치는 복사 두 번이면 되고 매니페스트는 필요 없다:
+Goose(AAIF / Linux Foundation)는 ponytail의 형식을 Open Plugins 플러그인으로 그대로 이해한다: 저장소 루트에 이미 goose가 기대하는 `plugin.json`과 `skills/` 트리가 있다.
 
 ```bash
-# 스킬 하나하나가 슬래시 명령이 된다: /ponytail, /ponytail-review, ...
-cp -r skills/* ~/.agents/skills/     # 전역, 또는 프로젝트 안의 .agents/skills/
+goose plugin install https://github.com/DietrichGebert/ponytail.git
 ```
 
-상시 규칙은 [`AGENTS.md`](AGENTS.md)의 컴팩트 규칙을 `~/.agents/AGENTS.md`(전역) 또는 프로젝트의 `AGENTS.md`에 덧붙인다 — goose는 요청마다 `AGENTS.md`와 `.goosehints`를 컨텍스트 파일로 읽으므로 복사 자체가 활성화 전부다. 등록할 라이프사이클 훅도 모드 플래그도 없다; `/ponytail lite|full|ultra|off`는 스킬 자체로 세션 단위 레벨을 정한다. 제거: 복사한 폴더와 덧붙인 규칙을 삭제.
+이 명령은 저장소를 `~/.agents/plugins/ponytail/`로 클론하고 여섯 개의 스킬을 이름공간이 붙은 슬래시 명령(`/ponytail`, `/ponytail-review`, ...)으로 가져온다. `--auto-update`를 붙이면 goose가 이 저장소에서 스킬을 자동으로 갱신한다.
+
+상시 규칙은 [`AGENTS.md`](AGENTS.md)의 컴팩트 규칙을 `~/.agents/AGENTS.md`(전역) 또는 프로젝트의 `AGENTS.md`에 덧붙인다 — goose는 요청마다 `AGENTS.md`와 `.goosehints`를 컨텍스트 파일로 읽으므로 복사 자체가 활성화 전부다. `goose plugin install` 없이 쓰는 수동 방법: 스킬 폴더를 `~/.agents/skills/`(또는 프로젝트 안의 `.agents/skills/`)로 복사하면 같은 방식으로 발견된다. 등록할 라이프사이클 훅도 모드 플래그도 없다; `/ponytail lite|full|ultra|off`는 스킬 자체로 세션 단위 레벨을 정한다. 제거: 복사한 폴더와 덧붙인 규칙을 삭제.
 
 ### Cursor
 

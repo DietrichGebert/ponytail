@@ -281,14 +281,15 @@ Start a new session (or reload plugins). Skills show as `/ponytail`, `/ponytail-
 
 ### Goose
 
-Goose (AAIF / Linux Foundation) already speaks ponytail's formats, so setup is two copies and no manifest:
+Goose (AAIF / Linux Foundation) discovers ponytail as an Open Plugins-format plugin — the repo root already carries the `plugin.json` manifest and the `skills/` tree it expects:
 
 ```bash
-# every skill becomes a slash command: /ponytail, /ponytail-review, ...
-cp -r skills/* ~/.agents/skills/     # global, or .agents/skills/ inside a project
+goose plugin install https://github.com/DietrichGebert/ponytail.git
 ```
 
-For always-on rules, append the compact ruleset from [`AGENTS.md`](AGENTS.md) to `~/.agents/AGENTS.md` (global) or the project's own `AGENTS.md` — goose loads `AGENTS.md` and `.goosehints` as context files on every request, so the copy is the whole activation. There are no lifecycle hooks to register and no mode flag; `/ponytail lite|full|ultra|off` selects the level per session through the skill itself.
+That clones the repo into `~/.agents/plugins/ponytail/` and imports all six skills as namespaced slash commands (`/ponytail`, `/ponytail-review`, ...). Add `--auto-update` to have goose refresh the skills from this repo automatically.
+
+For always-on rules, append the compact ruleset from [`AGENTS.md`](AGENTS.md) to `~/.agents/AGENTS.md` (global) or the project's own `AGENTS.md` — goose loads `AGENTS.md` and `.goosehints` as context files on every request, so the copy is the whole activation. Manual alternative without `goose plugin install`: copy the skill folders into `~/.agents/skills/` (or `.agents/skills/` inside a project) and they are discovered the same way. There are no lifecycle hooks to register and no mode flag; `/ponytail lite|full|ultra|off` selects the level per session through the skill itself.
 
 ### Cursor
 

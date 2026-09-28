@@ -1,10 +1,11 @@
 #!/usr/bin/env node
-// Goose (AAIF / Linux Foundation) loads ponytail through open conventions:
-// skills discovered in ~/.agents/skills/ or .agents/skills/ (each installed
-// skill becomes a slash command) plus AGENTS.md as a default context file.
-// There is no manifest to ship and no host lifecycle hook to register — this
-// guard pins the SKILL.md facts goose's discovery depends on, so the skills
-// can't silently drift out of goose's schema.
+// Goose (AAIF / Linux Foundation) loads ponytail as an Open Plugins-format
+// plugin: `goose plugin install <this repo>` clones the repo, detects the
+// plugin.json manifest plus the skills/ tree, and imports each skill as a
+// namespaced slash command. Verified live against goose v1.52.0. AGENTS.md
+// doubles as the always-on rules carrier (goose default context file), and
+// no host lifecycle hook is registered. This guard pins the facts goose's
+// discovery depends on so the skills and manifest can't silently drift.
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -30,8 +31,20 @@ test('Every skill satisfies goose SKILL.md schema requirements', () => {
   }
 });
 
+test('The root manifest carries the fields goose plugin install reports', () => {
+  const manifest = JSON.parse(fs.readFileSync(path.join(root, 'plugin.json'), 'utf8'));
+  assert.equal(manifest.name, 'ponytail');
+  assert.equal(typeof manifest.description, 'string');
+  assert.ok(manifest.description.length > 0, 'plugin.json description must be non-empty');
+  // Version is deliberately absent: check-versions.js pins exactly eight
+  // files, and goose reports "unknown" without breaking the import.
+  assert.equal(manifest.hooks, undefined);
+  assert.equal(manifest.mcpServers, undefined);
+});
+
 test('Goose install path is documented in the README', () => {
   const readme = fs.readFileSync(path.join(root, 'README.md'), 'utf8');
   assert.match(readme, /### Goose/);
+  assert.match(readme, /goose plugin install/);
   assert.match(readme, /\.agents\/skills/);
 });
