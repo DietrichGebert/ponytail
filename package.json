@@ -16,9 +16,10 @@
   "bugs": {
     "url": "https://github.com/DietrichGebert/ponytail/issues"
   },
-  "main": "./.opencode/plugins/ponytail.mjs",
+  "main": "./.opencode/plugins/ponytail-v2.mjs",
   "exports": {
-    ".": "./.opencode/plugins/ponytail.mjs",
+    ".": "./.opencode/plugins/ponytail-v2.mjs",
+    "./v1": "./.opencode/plugins/ponytail.mjs",
     "./plugin": "./.opencode/plugins/ponytail.mjs"
   },
   "files": [

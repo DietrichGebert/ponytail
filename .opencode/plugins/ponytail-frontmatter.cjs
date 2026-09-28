@@ -20,4 +20,32 @@ function parseCommandFile(filePath) {
   return { description, template: match[2].trim() };
 }
 
-module.exports = { parseCommandFile };
+// SKILL.md -> { name, description, content }. Handles a plain one-line
+// description and the folded `description: >` block every bundled skill uses.
+function parseSkillFile(filePath) {
+  const fs = require('fs');
+  const content = fs.readFileSync(filePath, 'utf8');
+  const match = content.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n([\s\S]*)$/);
+  if (!match) return null;
+  const lines = match[1].split(/\r?\n/);
+  const name = match[1].match(/^name:\s*(.+)$/m)?.[1]?.trim();
+  if (!name) return null;
+  let description;
+  const at = lines.findIndex((line) => /^description:/.test(line));
+  if (at !== -1) {
+    const inline = lines[at].replace(/^description:\s*/, '').trim();
+    if (/^[>|]-?$/.test(inline)) {
+      const block = [];
+      for (const line of lines.slice(at + 1)) {
+        if (!/^\s+\S/.test(line)) break;
+        block.push(line.trim());
+      }
+      description = block.join(' ');
+    } else {
+      description = inline;
+    }
+  }
+  return { name, description, content: match[2].trim() };
+}
+
+module.exports = { parseCommandFile, parseSkillFile };

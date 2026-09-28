@@ -179,19 +179,21 @@ pi install git:github.com/DietrichGebert/ponytail
 
 ### OpenCode
 
-Add to `opencode.json`:
+OpenCode 2.x — add to `opencode.json`:
 
 ```json
-{ "plugin": ["@dietrichgebert/ponytail"] }
+{ "plugins": ["@dietrichgebert/ponytail"] }
 ```
 
-Run from a checkout instead (the plugin reuses `hooks/` and `skills/`):
+OpenCode 1.x:
 
 ```json
-{ "plugin": ["./.opencode/plugins/ponytail.mjs"] }
+{ "plugin": ["@dietrichgebert/ponytail/v1"] }
 ```
 
-Injects the ruleset every turn at the active level, propagates it into non-primary agent prompts, and adds the `/ponytail` commands (see [Commands](#commands)). OpenCode also auto-loads this repo's `AGENTS.md`, so the rules hold even without the plugin. The plugin adds the `lite/full/ultra/off` levels.
+Run from a checkout instead (the plugin reuses `hooks/` and `skills/`): `{ "plugins": ["./.opencode/plugins/ponytail-v2.mjs"] }` on 2.x, `{ "plugin": ["./.opencode/plugins/ponytail.mjs"] }` on 1.x.
+
+Injects the ruleset every turn at the active level, including sub-agent sessions, and adds the `/ponytail` commands (see [Commands](#commands)). OpenCode also auto-loads this repo's `AGENTS.md`, so the rules hold even without the plugin. The plugin adds the `lite/full/ultra/off` levels.
 
 The `./` path resolves against your project's `opencode.json`; to share one checkout across projects, point it at the absolute path of the `.mjs` instead (it finds its `hooks/` and `skills/` relative to its own file).
 
