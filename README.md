@@ -44,6 +44,12 @@
   <a href="https://ponytail.dev/soon"><img src="assets/waitlist-banner.png" alt="Something's coming, join the waitlist" width="760"></a>
 </p>
 
+## Demo
+
+<a href="assets/ponytail-launch.mp4"><img src="assets/ponytail-launch.jpg" width="280" alt="Ponytail launch video"></a>
+
+A 22-second 9:16 launch video with sound ([captions](assets/ponytail-launch.srt)). Click the poster to play.
+
 ## Already built with Ponytail
 
 <a href="https://theretriever.app">
