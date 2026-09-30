@@ -1,0 +1,172 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum PropertyType {
+  APARTMENT
+  HOUSE
+  LAND
+}
+
+enum PropertyCondition {
+  NEW
+  GOOD
+  NEEDS_RENOVATION
+}
+
+enum PropertyState {
+  DRAFT
+  SUBMITTED
+  VALUATION_PENDING
+  VALUATION_RECEIVED
+  REPORT_READY
+  ARCHIVED
+}
+
+enum ReportTier {
+  VALUE_SIGNAL
+  FULL
+}
+
+enum ReportReleaseState {
+  DRAFT_INTERNAL
+  SELLER_VISIBLE
+  UNDER_BROKER_REVIEW
+  RELEASED
+}
+
+enum SubscriptionState {
+  NONE
+  PENDING
+  CONFIRMED
+  WITHDRAWN
+}
+
+enum ConsentType {
+  NEWSLETTER
+  TERMS
+  DATA_PROCESSING
+}
+
+enum ConsentAction {
+  GRANTED
+  WITHDRAWN
+}
+
+enum ScoreBand {
+  HOT
+  WARM
+  COLD
+}
+
+model Property {
+  id            String            @id @default(uuid())
+  address       Json              // { street, postalCode, city, country: "DE" }
+  propertyType  PropertyType
+  sizeSqm       Float
+  condition     PropertyCondition
+  yearBuilt     Int
+  sellerContact Json              // { name, email, phone }
+  locale        String            @default("de-DE")
+  state         PropertyState     @default(SUBMITTED)
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+
+  lead          Lead?
+  reports       Report[]
+  valuations    Valuation[]
+
+  @@index([state])
+}
+
+model Valuation {
+  id              String   @id @default(uuid())
+  propertyId      String
+  provider        String   @default("PriceHubble")
+  rawResponse     Json
+  estimatedValue  Float
+  lowRange        Float
+  highRange       Float
+  currency        String   @default("EUR")
+  isStale         Boolean  @default(false)
+  createdAt       DateTime @default(now())
+
+  property        Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  @@index([propertyId])
+}
+
+model Report {
+  id                String             @id @default(uuid())
+  propertyId        String
+  tier              ReportTier
+  releaseState      ReportReleaseState @default(DRAFT_INTERNAL)
+  payload           Json
+  releasedByUserId  String?
+  releasedAt        DateTime?
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+
+  property          Property           @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
+  // Blueprint §5.5 Composite Index
+  @@index([propertyId, tier, releaseState])
+}
+
+model Lead {
+  id                String     @id @default(uuid())
+  propertyId        String     @unique
+  scoreBand         ScoreBand? @default(HOT)
+  reviewedByUserId  String?
+  reviewedAt        DateTime?
+  stage             String     @default("NEW")
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
+
+  property          Property   @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+}
+
+model NewsletterSubscription {
+  id                    String            @id @default(uuid())
+  email                 String            @unique
+  userId                String?
+  state                 SubscriptionState @default(PENDING)
+  confirmTokenHash      String?
+  confirmTokenExpiresAt DateTime?
+  confirmedAt           DateTime?
+  withdrawnAt           DateTime?
+  createdAt             DateTime          @default(now())
+  updatedAt             DateTime          @updatedAt
+
+  // Blueprint §5.5 Expiry Sweep Index
+  @@index([state, confirmTokenExpiresAt])
+}
+
+model Consent {
+  id          String        @id @default(uuid())
+  userId      String?
+  consentType ConsentType
+  action      ConsentAction
+  source      String
+  ipAddress   String        // SHA-256 Hashed IP
+  occurredAt  DateTime      @default(now())
+
+  // Append-only table: Blueprint §5.1, §5.3 (No updates or deletes permitted)
+  @@index([userId, consentType])
+}
+
+model AuditLog {
+  id         String   @id @default(uuid())
+  actorId    String
+  action     String
+  entityType String
+  entityId   String
+  metadata   Json?
+  timestamp  DateTime @default(now())
+
+  @@index([entityType, entityId])
+}

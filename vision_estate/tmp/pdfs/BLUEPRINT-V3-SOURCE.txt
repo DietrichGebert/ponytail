@@ -1,0 +1,1208 @@
+PAGE 1
+D E T A I L E D  E N G I N E E R I N G  B L U E P R I N T  ·  P R O D U C T I O N - G R A D E  M V P
+Vision Estates
+AI-Powered Seller Acquisition Platform
+A system-design, API, AI-architecture and DevOps deep dive on top of
+the approved v1.0 Technical & Architecture Proposal — incorporating the
+client's final reviewed and approved changes: newsletter double opt-in
+consent, the two-tier Value Signal / Full Report model, and the Germany-
+first market and problem-statement brief. 
+PREPARED BY WOOKhoop, AI-Native Digital Agency
+ENGAGEMENT LEAD Ashutosh — Principal Architect & AI Systems Engineer
+CONTRIBUTING ROLES Software Engineering · AI Engineering · System Design · API Design · DevOps
+CLIENT Vision Estates — Mario & Viktoria
+DATE 27 August 2026
+VERSION 3.0 — Client-Approved Revision, Detailed Engineering Edition
+SUPERSEDES v1.0 (20 July 2026) and v2.0 Phase-Based Edition
+CLASSIFICATION Confidential — Not for distribution
+WOOKHOOP — AI-NATIVE DIGITAL AGENCY
+Vision Estates × WOOKhoop — Confidential Engineering Document — Draft for Review
+
+PAGE 2
+Contents
+This edition extends the approved v1.0 proposal with implementation-level detail across five engineering disciplines, and formally
+incorporates the client's 27 August 2026 review approval.
+PART 0 — CHANGE CONTROL & APPROVAL
+0.1  Purpose of This Revision
+0.2  Client Approval Record
+0.3  Change Log — v1.0 → v2.0 → v3.0
+PART I — BUSINESS CONTEXT (UPDATED)
+1.1  Executive Summary
+1.2  Market Problem Analysis — Eight Structural Problems
+1.3  Go-to-Market Sequencing — Germany First
+1.4  MVP Scope — Updated Boundaries
+1.5  Deferred — Portfolio Intelligence Module (Phase 2+)
+PART II — SYSTEM DESIGN
+2.1  Domain Model — Entities & Relationships
+2.2  State Machines
+2.3  Domain Event Catalog
+2.4  Core Sequence Flows
+2.5  Module & Bounded-Context Map
+PART III — API DESIGN
+3.1  API Design Principles
+3.2  Endpoint Catalog
+3.3  Representative Payloads
+3.4  Error Model & Status Codes
+3.5  Async Notifications & Webhooks
+PART IV — AI ARCHITECTURE (DEEP DIVE)
+4.1  The Two-Tier Report Model — Value Signal & Full Report
+4.2  Prompt Architecture & Template Governance
+4.3  Context Assembly Pipeline
+4.4  Guardrails & Output Validation
+4.5  Model/Provider Strategy, Failover & Cost Governance
+4.6  Human-in-the-Loop Release Gate
+Confidential
+
+PAGE 3
+4.7  Localization of AI Output
+PART V — DATA ARCHITECTURE (UPDATED)
+5.1  Updated Entity Set
+5.2  Consent & Newsletter Data Model
+5.3  GDPR Mapping for Consent
+5.4  Report Tiering & Release State
+5.5  Indexing & Retention Updates
+PART VI — BACKEND & FRONTEND DETAIL
+6.1  Backend Module Layout (NestJS)
+6.2  Frontend Route & Component Map
+6.3  Background Jobs & Queues
+6.4  Testing Strategy — Detailed
+PART VII — DEVOPS BLUEPRINT
+7.1  Environments & Branching Strategy
+7.2  CI/CD Pipeline — Stage by Stage
+7.3  Infrastructure as Code & AWS Resource Map
+7.4  Observability Stack
+7.5  Secrets & Configuration Management
+7.6  Release Process, Migrations & Rollback
+7.7  Disaster Recovery & Backups
+PART VIII — DOCUMENTATION SET
+8.1  Documentation Philosophy
+8.2  Repository Documentation Index (.md files)
+APPENDICES
+A  Updated Risk Register
+B  New & Updated Architecture Decision Records (ADR-007 – ADR-013)
+C  Updated Non-Functional Requirements
+D  Updated Assumptions & Dependencies
+E  Updated Acceptance Criteria
+Confidential
+
+PAGE 4
+PART 0 — CHANGE CONTROL & APPROVAL
+0.1  Purpose of This Revision
+Written from an implementation lens — Software Engineering, AI Engineering, System Design, API Design, and DevOps — on
+top of the business-level v1.0 proposal.
+The original Technical & Architecture Proposal (v1.0, 20 July 2026) established the business case, the layered
+architecture, and the MVP boundary for Vision Estates' seller-acquisition platform. It answered what is being built and 
+why. This revision answers how — at the level of detail a build team actually works from: concrete API contracts, state
+machines, event flows, prompt governance, database migrations, and a CI/CD pipeline.
+Two things triggered this revision. First, the client (Mario and Viktoria) completed a final review of the MVP and returned
+formal approval together with three specific, binding refinements — newsletter consent handling, the two-tier valuation
+report model, and the confirmed Germany-first market strategy with a detailed problem statement. Second, the
+engineering team used the review cycle to expand every architectural layer to production-build depth, so that
+development can start directly from this document without a further design pass.
+CLIENT SIGN-OFF RECEIVED
+This document formally incorporates client approval of the MVP as scoped, together with three final additions requested in
+the same review. Nothing in Parts I–VIII contradicts the approved v1.0 scope; every addition here is either a clarification of
+intent, a level-of-detail increase, or one of the three explicitly approved changes below. 
+0.2  Client Approval Record
+ITEM CLIENT INSTRUCTION
+(SUMMARIZED) HOW IT IS REFLECTED IN THIS DOCUMENT
+1.
+Newsletter
+Consent
+Add a separate,
+voluntary, unticked
+checkbox for newsletter
+consent at lead intake,
+with double opt-in
+confirmation, so leads
+can later receive
+automated newsletters.
+New Consents and NewsletterSubscriptions entities (§5.2), a double opt-
+in sequence flow (§2.4), dedicated API endpoints (§3.2), a GDPR lawful-basis
+mapping (§5.3), and ADR-012 (Appendix B).
+2. Value
+Signal
+Tiering
+The first-shown report
+("Value Signal") stays
+compact — range,
+confidence, drivers, open
+points, market context,
+CTA. The full report
+(positioning, sales route,
+strategy) is generated
+immediately but held back
+and only released to the
+seller after the broker has
+called and reviewed the
+case.
+New two-tier report model (§4.1), Report release state machine (§5.4), broker
+"Release Report" action in the dashboard (§6.2), release-gated API endpoint (§3.2),
+and ADR-011 (Appendix B).
+Vision Estates — AI Seller Acquisition PlatformConfidential — Engineering Blueprint v3.0 Page 4 of 32
+
+PAGE 5
+3.
+Language
+& Market
+MVP ships in German
+and English; Germany is
+the first market before
+any expansion. Eight
+structural market
+problems are provided as
+the product-fit brief.
+Portfolio management
+(hold/improve/buy/sell
+guidance) is confirmed as
+a later, larger-platform
+feature — not part of the
+current MVP.
+Market Problem Analysis (§1.2) mapping each of the eight problems to a platform
+capability, Germany-first go-to-market sequencing (§1.3), localization architecture
+(§4.7), and the Portfolio Intelligence Module formally logged as deferred (§1.5).
+0.3  Change Log — v1.0 → v2.0 → v3.0
+VERSION DATE SUMMARY
+v1.0 20 Jul 2026 Original Technical & Architecture Proposal — business context, layered architecture,
+technology stack, MVP scope, ADR-001–006.
+v2.0 ~Aug 2026 Phase-Based Edition — 12 build phases, ten engineering-hardening improvements
+(idempotency keys, booking state machine, AI cost governance/failover, GDPR-erasure/
+audit-log pseudonymization, token revocation, CORS policy, secrets rotation, cost
+monitoring, push-based report-ready notification, in-process domain-event bus) documented
+as ADR-007–010. Reviewed by the client against 20 enterprise-architecture criteria;
+response validated genuine Tier-1 gaps (DB DDL, real API contract, state machines, event
+catalog, sequence diagrams) while declining premature enterprise-scale scope not required
+for an MVP. Production DDL delivered and validated separately.
+v3.0 27 Aug 2026 This document. Closes the remaining Tier-1 gaps (full endpoint catalog, sequence flows,
+event catalog) in detailed form; adds the three client-approved changes above; adds the full
+production documentation set (§8) as delivered .md files.
+Vision Estates — AI Seller Acquisition PlatformConfidential — Engineering Blueprint v3.0 Page 5 of 32
+
+PAGE 6
+PART I — BUSINESS CONTEXT (UPDATED)
+1.1  Executive Summary
+Vision Estates is replacing a manual, broker-dependent seller-acquisition process with a self-service, AI-explained
+valuation flow that prequalifies sellers before a broker makes first contact. The MVP validates a single hypothesis: will
+property owners complete a self-service valuation flow, and does the resulting lead quality justify broker
+follow-up? Following client review, the MVP is now precisely scoped to answer that question while laying a foundation
+— data model, AI abstraction, integration layer — that the Phase 2+ platform (buyer matching, document intelligence,
+CRM/marketing automation, portfolio intelligence) attaches to without a rebuild.
+Three refinements from the client's final review sharpen this scope rather than expand it: sellers can now opt in to future
+contact on their own terms (newsletter consent), the platform protects broker judgement in the sales process by holding
+back strategic content until a human has reviewed the case (Value Signal / Full Report tiering), and the go-to-market
+sequencing is explicitly Germany-first, tied to eight named structural problems in the German brokerage market that the
+platform is designed against.
+1.2  Market Problem Analysis — Eight Structural Problems
+The client's review supplied a detailed, first-hand problem statement. Each problem is mapped below to the platform
+capability that addresses it in the MVP, in a later phase, or — in one case — deliberately not at all inside this platform.
+PROBLEM (CLIENT'S
+WORDS, CONDENSED)
+ADDRESSED
+IN PLATFORM RESPONSE
+Incomplete, poorly structured
+or poorly presented property
+and marketing data reduces
+buyer interest and can cause a
+property to fail to sell.
+MVP The structured Property Details intake form (§2.1) enforces completeness
+before a valuation is requested; the AI-generated report (§4.1) presents the
+data consistently rather than relying on ad-hoc broker write-ups.
+Unrealistic price expectations
+leave a property on the market
+far too long because it was
+mispriced from the start.
+MVP The valuation number always comes from a licensed provider (ADR-001,
+unchanged from v1.0), and the Value Signal report (§4.1) surfaces confidence
+and drivers directly to the seller before any listing decision.
+Legal, energy-related and
+renovation risks are identified
+too late, or not understood by
+the broker at all, so the wrong
+sales strategy is chosen.
+PARTIAL
+MVP
+Property intake captures condition and energy-relevant fields for the AI layer to
+flag as opportunities/ risks in the Value Signal (§4.1); a dedicated risk-scoring
+module is a Full Report / Phase 2 depth increase, not an MVP deliverable.
+Weak buyer qualification —
+financing is not properly
+checked, proof of funds is
+missing, deals fail late because
+buyers lack sufficient equity.
+OUT OF
+MVP
+Buyer-side qualification is explicitly out of scope (v1.0 §4, unchanged) — this is
+a seller-acquisition MVP. Buyer verification is part of the Phase 2+ Buyer AI /
+Matching module (§1.5, v1.0 §21).
+Ghosting, slow decisions and
+low commitment from buyers
+who verbally agree and later
+withdraw.
+OUT OF
+MVP
+Same as above — a buyer-side behavioral problem, addressed by future
+Buyer AI, not the seller-acquisition MVP.
+Vision Estates — AI Seller Acquisition PlatformConfidential — Engineering Blueprint v3.0 Page 6 of 32
+
+PAGE 7
+Lack of transparency about
+process, responsibilities and
+next steps — few brokers offer
+a clear milestone plan.
+MVP The Report → Consultation Booking → (post-review) Full Report release flow
+(§4.6, §5.4) is itself a visible milestone sequence for the seller: submit →
+receive Value Signal → speak to a broker → receive full strategy. The Broker
+Dashboard's pipeline stages (v1.0 §9) give brokers the same visibility
+internally.
+Lack of clarity on whether to
+hold, improve, buy or sell —
+worsened by high interest/
+financing costs and rising
+construction and energy-
+compliance costs (CO₂ policy
+driven).
+PHASE 2+ Confirmed by the client as a Portfolio Intelligence Module for the larger
+platform, not the current MVP (§1.5). The MVP's schema already isolates
+Property and Valuation as first-class entities so this module can be added
+additively later, matching the "no rebuild" principle in v1.0 §21.
+Finding property sellers —
+many brokers still rely on word-
+of-mouth rather than structured
+digital acquisition (social,
+LinkedIn, etc.).
+PRODUCT
+THESIS
+This is the core reason the platform exists: the public, mobile-responsive Seller
+Portal (v1.0 §3) is the structured digital acquisition channel replacing word-of-
+mouth sourcing. Newsletter consent (§5.2) extends this channel from a one-
+time visit into an ongoing, compliant relationship.
+SCOPE DISCIPLINE, REAFFIRMED
+Five of the eight problems are already addressed by the approved MVP scope. Two (buyer qualification, ghosting) belong
+structurally to the buyer side of the platform and remain out of scope by design (v1.0 §4). One (portfolio guidance) is
+explicitly deferred at the client's own instruction (§1.5). No scope creep is introduced by this analysis — it is used to
+confirm that the MVP is aimed at the right problems, not to expand it. 
+1.3  Go-to-Market Sequencing — Germany First
+Germany is confirmed as the sole launch market. The platform is not being built as a generic, multi-market product
+prematurely localized everywhere at once — it is being built to win one market convincingly before any expansion
+decision is made.
+DIMENSION MVP COMMITMENT
+Primary language German (de-DE) — default locale for the public Seller Portal, AI-generated report copy, email notifications, and
+consent language.
+Secondary language English (en) — available as a toggle for international owners of German property; not a separate market
+strategy.
+Regulatory frame German GDPR interpretation (BDSG) and German consent case law expectations (double opt-in) — see §5.3.
+Data residency EU (Frankfurt) AWS region, as already specified in v1.0 Appendix C.
+Expansion trigger Not scheduled in this document. Per the client's instruction, further markets are a post-validation decision,
+made after the seller-acquisition hypothesis is confirmed in Germany.
+Vision Estates — AI Seller Acquisition PlatformConfidential — Engineering Blueprint v3.0 Page 7 of 32
+
+PAGE 8
+1.4  MVP Scope — Updated Boundaries
+The v1.0 Included/Not Included boundary (v1.0 §4) is unchanged in substance. Two additions bring it in line with the
+client's approval:
+Added to Included: a standalone, unticked newsletter-consent checkbox at intake with double opt-in confirmation
+and consent storage (§5.2); a two-tier report generation and release model, where the Full Report is generated
+automatically but held in a broker-gated release state (§4.1, §5.4).
+Confirmed as Not Included: buyer-side matching/search, Document AI, marketing/CRM automation, native mobile
+apps, localization beyond German/English — all unchanged from v1.0 — plus, newly and explicitly, portfolio
+management / hold-improve-buy-sell guidance, confirmed by the client as a Phase 2+ capability of the larger
+platform (§1.5).
+1.5  Deferred — Portfolio Intelligence Module (Phase 2+)
+The client confirmed that portfolio-level guidance — helping owners decide whether to hold, improve, purchase, or sell
+across a set of properties, in the context of high financing costs and rising, CO₂-policy-linked construction and energy-
+compliance costs — is real, validated demand, but belongs to the larger software platform rather than the current MVP.
+No MVP work is scheduled against this module. It is recorded here, and in Appendix B (ADR reference) and §21 of the
+underlying v1.0 proposal, purely so the schema and integration layer choices made now do not have to be revisited
+when this module is eventually scoped: the Property and Valuation entities (§5.1) are already independent,
+versioned, and owner-linked, which is the minimum precondition for a future portfolio-level rollup.
+• 
+• 
+Vision Estates — AI Seller Acquisition PlatformConfidential — Engineering Blueprint v3.0 Page 8 of 32
+
+PAGE 9
+PART II — SYSTEM DESIGN
+2.1  Domain Model — Entities & Relationships
+System Designer lens. Extends the v1.0 §7 entity list with the entities required by the client's approved changes.
+The v1.0 entity set (Users, Roles, Properties, Valuations, Lead Scores, Reports, Bookings, Notifications, Audit Logs,
+Documents) is retained without modification. Three entities are added or extended:
+ENTITY STATUS PURPOSE & KEY RELATIONSHIPS
+Consents NEW Generic, append-only record of any consent a user grants or withdraws (newsletter,
+terms, data processing). One row per consent event — never overwritten — so the
+full consent history is reconstructable for audit. Belongs to User.
+NewsletterSubscriptionsNEW Current subscription state per email address: PENDING → CONFIRMED → 
+WITHDRAWN. Holds the double opt-in token, its expiry, and confirmation
+timestamp. 1—many Consents (each state transition also writes a Consent row
+for audit).
+Reports EXTENDED Existing entity from v1.0 §7 now carries a tier (VALUE_SIGNAL / FULL) and
+a release_state (DRAFT_INTERNAL, RELEASED) — see §5.4. A Full
+Report row is always created alongside the Value Signal, never generated later on
+demand, per the client's instruction that the full report already exists internally and
+is only gated for release.
+2.2  State Machines
+Property
+Lead (Score)
+DRAFT — seller has started but not submitted the intake form.1
+SUBMITTED — form validated client- and server-side; ready for valuation request.2
+VALUATION_PENDING — awaiting provider response.3
+VALUATION_RECEIVED — provider payload stored verbatim (v1.0 §7 auditability requirement).4
+REPORT_READY — Value Signal and Full Report both generated; only the Value Signal is visible to the seller.5
+ARCHIVED — retention window elapsed with no broker engagement; see §5.5.6
+UNSCORED → SCORED (deterministic rule engine, v1.0 §3) → HOT / WARM / COLD band assigned → ASSIGNED to a
+broker → CONTACTED → CONVERTED or CLOSED_LOST.
+123456
+Vision Estates — AI Seller Acquisition PlatformConfidential — Engineering Blueprint v3.0 Page 9 of 32
+
+PAGE 10
+Report — Release State (New Detail Required by Client Point 2)
+DIRECTLY IMPLEMENTS CLIENT APPROVAL POINT 2
+The Report entity cannot reach RELEASED automatically. It requires an explicit, individually attributable broker action. This
+is the mechanism, not just a policy statement — the release-gate is enforced in the Business Logic layer (v1.0 §5, §8) and
+re-checked server-side on every read of the Full Report, not only at the UI layer. 
+Newsletter Subscription — Double Opt-In (New, Required by Client Point 1)
+2.3  Domain Event Catalog
+Events are published on the in-process domain-event bus introduced in v2.0 (ADR-010). The table below is the
+authoritative event list for v3.0, including the events required by the two client-approved workflows.
+EVENT EMITTED BY CONSUMED BY
+property.submitted Property Service Valuation Service (triggers provider call)
+valuation.received Valuation ServiceLead Scoring Service; AI Report Service
+report.generated AI Report ServiceNotification Service (seller: Value Signal ready); Broker Dashboard read
+model
+lead.scored Lead Scoring
+Service
+Broker Assignment Service
+broker.review_logged Broker DashboardReport Service (unlocks the Release action)
+report.released Report Service Notification Service (seller: full report ready); Audit Log Service
+DRAFT_INTERNAL — both Value Signal and Full Report exist in the database as soon as AI generation completes. The
+Full Report is never visible to the seller in this state.
+1
+SELLER_VISIBLE (Value Signal only) — the seller-facing report page shows only the Value Signal tier; the Full Report
+stays DRAFT_INTERNAL.
+2
+UNDER_BROKER_REVIEW — a broker has called and reviewed the case (a manual action logged against the Lead,
+§2.3).
+3
+RELEASED — the broker explicitly releases the Full Report (§6.2 dashboard action, §3.2 API); only this transition makes
+the Full Report visible to the seller and triggers a notification. This transition is irreversible by design and is written to the
+Audit Logs entity.
+4
+NONE — checkbox left unticked (default state; the client's brief is explicit that it must not be pre-ticked).1
+PENDING — checkbox ticked at submission; a confirmation email with a single-use, time-limited token is queued (§6.3).2
+CONFIRMED — seller clicks the confirmation link; token validated, consumed, and timestamped. This is the only state
+from which newsletters may legally be sent under the double opt-in requirement.
+3
+WITHDRAWN — reachable from CONFIRMED at any time via an unsubscribe link present in every newsletter send, per
+the checkbox's own wording ("I can withdraw my consent at any time").
+4
+Vision Estates — AI Seller Acquisition PlatformConfidential — Engineering Blueprint v3.0 Page 10 of 32
+
+PAGE 11
+consultation.booked Booking Service Notification Service; Broker Dashboard
+newsletter.consent_requestedConsent Service Notification Service (sends double opt-in email, §6.3)
+newsletter.consent_confirmedConsent Service Audit Log Service; Newsletter Subscription read model
+newsletter.consent_withdrawnConsent Service Audit Log Service; Newsletter Subscription read model
+2.4  Core Sequence Flows
+Flow A — Seller Intake with Consent Capture
+Flow B — Valuation → Dual-Tier Report Generation
+Seller completes the Property Details form on the public portal. The newsletter checkbox is rendered unticked by default
+with the exact client-supplied wording.
+1
+Client-side validation passes; POST /v1/properties is called (§3.2) with an optional newsletterOptIn: true|
+false field.
+2
+Backend creates the Property row (state SUBMITTED) and, only if newsletterOptIn=true, creates a 
+NewsletterSubscription row in state PENDING plus a Consents audit row.
+3
+property.submitted fires the valuation request; in parallel (not blocking), newsletter.consent_requested
+queues the double opt-in email.
+4
+Seller receives a separate confirmation email; clicking the link calls GET /v1/newsletter/confirm?token=…,
+transitioning the subscription to CONFIRMED.
+5
+Valuation Service calls the provider adapter (PriceHubble or Sprengnetter, v1.0 §11) with timeout-bounded, retrying
+requests.
+1
+On success, the raw response is stored verbatim (auditability, v1.0 §7) and valuation.received fires.2
+AI Report Service assembles context (§4.3) and generates both report tiers in the same job: the Value Signal and the Full
+Report. Both are schema-validated (§4.4) before persistence.
+3
+Both Report rows are persisted with release_state=DRAFT_INTERNAL. Only the Value Signal's release_state
+is immediately flipped to SELLER_VISIBLE — the Full Report is never auto-released.
+4
+report.generated notifies the seller that their Value Signal is ready, and populates the Broker Dashboard lead card
+with both the score and a flag that a Full Report is waiting for review.
+5
+Vision Estates — AI Seller Acquisition PlatformConfidential — Engineering Blueprint v3.0 Page 11 of 32
+
+PAGE 12
+Flow C — Broker Review & Full Report Release
+Flow D — Consultation Booking
+2.5  Module & Bounded-Context Map
+BOUNDED CONTEXT OWNS
+Identity & Access Users, Roles, JWT issuance/refresh, RBAC guards
+Property Intake Properties, address validation, form state
+Valuation Valuations, provider adapters, caching, resilience
+AI Reporting Reports (both tiers), prompt templates, AI provider abstraction
+Lead Qualification Lead Scores, scoring rule versions
+Broker Workspace Broker Dashboard read models, review logging, release action
+Consent &
+Communications
+Consents, NewsletterSubscriptions, Notifications
+Scheduling Bookings, calendar adapter
+Platform Audit Logs, Documents (reserved), observability
+Each bounded context maps to one NestJS module (§6.1) with its own controllers, services, and repositories —
+consistent with the layered architecture already approved in v1.0 §5, and unchanged in shape by this revision.
+Broker calls the seller (off-platform, per the client's process) and opens the lead in the dashboard.1
+Broker logs the review (POST /v1/leads/{id}/review, §3.2) — this is a required, attributable action, not implicit.2
+broker.review_logged unlocks the "Release Full Report" action in the UI (previously disabled).3
+Broker explicitly clicks Release; POST /v1/reports/{id}/release transitions the Full Report to RELEASED and
+writes an Audit Log entry with the broker's identity and timestamp.
+4
+report.released notifies the seller by email that their full report — including positioning, sales route, and strategy —
+is now available.
+5
+Seller selects a broker-availability slot on the Value Signal report's call-to-action.1
+POST /v1/bookings checks live calendar availability (two-way sync, v1.0 §11) before confirming — booking
+confirmation is issued only after the calendar write succeeds, unchanged from v1.0.
+2
+consultation.booked notifies broker and seller and updates the pipeline stage.3
+Vision Estates — AI Seller Acquisition PlatformConfidential — Engineering Blueprint v3.0 Page 12 of 32
+
+PAGE 13
+PART III — API DESIGN
+3.1  API Design Principles
+API Designer lens.
+PRINCIPLE RULE
+Style REST over HTTPS, resource-oriented, JSON bodies. No RPC-style endpoints (unchanged from v1.0 §8).
+Versioning URI-based, /v1/..., from day one (v1.0 §8), so this v3.0 endpoint catalog ships as v1 without contract
+churn.
+Auth JWT bearer tokens; short-lived access token + rotating refresh token (v1.0 §12). Public endpoints are
+explicitly marked below.
+Idempotency All state-mutating POSTs accept an Idempotency-Key header (ADR-007); a duplicate key within its
+TTL returns the original response instead of creating a duplicate side effect. This matters especially for the
+Full Report release action, which must never double-fire.
+Pagination Cursor-based (?cursor=&limit=) on all list endpoints, response envelope { data: [...],
+nextCursor: string|null }.
+Error shape RFC 7807-style problem object: { type, title, status, detail, instance, errors?:
+[...] }. See §3.4.
+Consent language Any endpoint that returns consent-bearing copy (checkbox text, confirmation email body) is served pre-
+localized to the request's resolved locale (de-DE default, en fallback) — never translated client-side.
+3.2  Endpoint Catalog
+Auth
+METHOD PATH AUTH PURPOSE
+POST /v1/auth/login Public Email/password login for Broker/Admin. Sellers never
+authenticate for the Value Signal flow.
+POST /v1/auth/refresh Refresh
+token
+Rotates access + refresh token pair.
+DELETE /v1/auth/session Bearer Revokes the current refresh token (ADR-009 token
+revocation).
+Properties
+METHOD PATH AUTH PURPOSE
+POST /v1/properties Public Create a property submission. Accepts newsletterOptIn
+(boolean, default false) — see §3.3.
+Vision Estates — AI Seller Acquisition PlatformConfidential — Engineering Blueprint v3.0 Page 13 of 32
+
+PAGE 14
+GET /v1/properties/{id} Owner or
+Broker
+Fetch a submission and its current state.
+PATCH /v1/properties/{id} Owner
+(pre-
+submit
+only)
+Edit a draft before submission.
+GET /v1/properties Broker/
+Admin
+List, filterable by pipeline stage, score band, date range.
+Valuations & Reports
+METHOD PATH AUTH PURPOSE
+GET /v1/properties/{id}/valuationOwner or
+Broker
+Latest stored provider valuation, with staleness flag if a cached/
+last-known response was served (v1.0 §11 resilience strategy).
+GET /v1/properties/{id}/report/
+value-signal
+Owner or
+Broker
+The compact Value Signal — always returned once 
+report.generated has fired. See §4.1 for the exact field
+set.
+GET /v1/properties/{id}/report/
+full
+Owner or
+Broker
+Returns 403 report_not_released unless the Full
+Report's release_state =RELEASED — the gate from
+§2.2 is enforced here, server-side, on every call, not only in the
+seller-facing UI.
+POST /v1/leads/{id}/review Broker Logs that the broker has called and reviewed the case.
+Required before release is possible (§2.4 Flow C).
+POST /v1/reports/{id}/releaseBroker Transitions the Full Report to RELEASED. Requires a prior 
+review call on the same lead; idempotent via 
+Idempotency-Key.
+Leads & Scoring
+METHOD PATH AUTH PURPOSE
+GET /v1/leads Broker/
+Admin
+Pipeline list — score band, stage, assigned broker.
+PATCH /v1/leads/{id}/stage Broker Manual pipeline stage update.
+Bookings
+METHOD PATH AUTH PURPOSE
+GET /v1/brokers/{id}/availabilityPublic Free/busy slots from the synced calendar.
+POST /v1/bookings Owner Creates a booking; only confirmed after the calendar write
+succeeds (v1.0 §11, unchanged).
+Vision Estates — AI Seller Acquisition PlatformConfidential — Engineering Blueprint v3.0 Page 14 of 32
+
+PAGE 15
+DELETE /v1/bookings/{id} Owner or
+Broker
+Cancels; releases the calendar slot.
+Consent & Newsletter NEW — CLIENT POINT 1
+METHOD PATH AUTH PURPOSE
+GET /v1/newsletter/confirm Public
+(token in
+query)
+Double opt-in confirmation link target. Validates the single-use
+token, transitions PENDING → CONFIRMED.
+POST /v1/newsletter/unsubscribePublic
+(token)
+Transitions CONFIRMED → WITHDRAWN. Present as a link in
+every newsletter send.
+GET /v1/consents/{userId} Admin/
+Broker
+Full consent history for a user — the append-only audit trail from
+§2.1.
+Admin
+METHOD PATH AUTH PURPOSE
+GET /v1/admin/users Admin User management.
+PATCH /v1/admin/scoring-rules Admin Edits the versioned, deterministic lead-scoring rule set (v1.0
+§7).
+GET /v1/admin/audit-logs Admin Full audit trail, including every report-release and consent
+event.
+Vision Estates — AI Seller Acquisition PlatformConfidential — Engineering Blueprint v3.0 Page 15 of 32
+
+PAGE 16
+3.3  Representative Payloads
+Create Property (with optional newsletter opt-in)
+POST /v1/properties
+Content-Type: application/json
+Idempotency-Key: 8b0e...
+{
+  "address": { "street": "Musterstrasse 12", "postalCode": "80331", "city": "München" },
+  "propertyType": "APARTMENT",
+  "sizeSqm": 92,
+  "condition": "GOOD",
+  "yearBuilt": 1998,
+  "sellerContact": { "name": "…", "email": "…", "phone": "…" },
+  "locale": "de-DE",
+  "newsletterOptIn": true
+}
+201 Created
+{
+  "id": "prop_7f3a…",
+  "state": "SUBMITTED",
+  "newsletterSubscription": { "state": "PENDING" }
+}
+Fetch Value Signal
+GET /v1/properties/prop_7f3a…/report/value-signal
+200 OK
+{
+  "reportId": "rep_a91c…",
+  "tier": "VALUE_SIGNAL",
+  "valueRange": { "low": 512000, "high": 561000, "currency": "EUR" },
+  "confidence": "HIGH",
+  "keyDrivers": {
+    "opportunities": ["Recently renovated bathroom", "Balcony with southern exposure"],
+    "risks": ["Energy certificate class D — may affect buyer financing terms"]
+  },
+  "openPoints": ["Confirm parking allocation", "Confirm HOA reserve fund balance"],
+  "marketContext": "…short, locale-aware market summary…",
+  "callToAction": { "type": "BOOK_CONSULTATION", "brokerId": "brk_11" },
+  "fullReport": { "releaseState": "DRAFT_INTERNAL", "available": false }
+}
+Vision Estates — AI Seller Acquisition PlatformConfidential — Engineering Blueprint v3.0 Page 16 of 32
+
+PAGE 17
+Release Full Report (Broker Action)
+POST /v1/reports/rep_a91c.../release
+Authorization: Bearer …
+Idempotency-Key: 4e21...
+200 OK
+{
+  "reportId": "rep_a91c…",
+  "tier": "FULL",
+  "releaseState": "RELEASED",
+  "releasedBy": "brk_11",
+  "releasedAt": "2026-08-27T14:02:11Z"
+}
+# If §2.4 Flow C step 2 (review) was skipped:
+409 Conflict
+{
+  "type": "https://docs.vision-estates.internal/errors/review-required",
+  "title": "Broker review required before release",
+  "status": 409
+}
+3.4  Error Model & Status Codes
+STATUS CASE NOTES
+400 Validation failure DTO-level (v1.0 §8); errors[] lists per-field messages, localized.
+401 / 403 Auth / RBAC 403 also used for the Full Report gate (§3.2) — a functioning, authenticated request that is
+structurally not allowed yet.
+404 Unknown resource Never leaks whether a resource exists to an unauthorized caller — returns 404, not 403,
+when appropriate.
+409 State conflict e.g. releasing a report before the review step; double opt-in confirmation of an already-
+confirmed token.
+422 Semantically invalid e.g. booking a slot that just became unavailable between availability read and write.
+429 Rate limited Per-IP/per-account, especially on auth and valuation-request endpoints (v1.0 §12).
+502 / 504 Upstream failure Valuation provider or calendar provider unavailable; response includes whether a cached/
+last-known value was substituted.
+3.5  Async Notifications & Webhooks
+Outbound notifications (email) are queued, not synchronous (v1.0 §9 async jobs). The table below lists the triggers
+relevant to this revision; the full notification catalog is unchanged from v1.0 otherwise.
+TRIGGER EVENT NOTIFICATION
+newsletter.consent_requestedDouble opt-in confirmation email with single-use link (§6.3).
+Vision Estates — AI Seller Acquisition PlatformConfidential — Engineering Blueprint v3.0 Page 17 of 32
+
+PAGE 18
+report.generated "Your Value Signal is ready" email to the seller (Full Report is never mentioned at this stage).
+report.released "Your full property report is ready" email to the seller, sent only after the broker's explicit release
+action.
+consultation.booked Confirmation to seller and broker; calendar invite attached.
+Vision Estates — AI Seller Acquisition PlatformConfidential — Engineering Blueprint v3.0 Page 18 of 32
+
+PAGE 19
+PART IV — AI ARCHITECTURE (DEEP DIVE)
+4.1  The Two-Tier Report Model — Value Signal & Full Report
+AI Engineer lens. This section operationalizes client approval point 2 in full.
+The client's instruction was precise: the first thing a seller sees must stay compact, and the deeper strategic content
+must exist immediately but wait for a human. The AI Layer is designed around exactly two artifacts, generated together,
+released on different schedules.
+VALUE SIGNAL (TIER 1 — SELLER-VISIBLE
+IMMEDIATELY) FULL REPORT (TIER 2 — BROKER-GATED)
+Purpose Enough for the seller to trust the platform and want
+to talk to a broker.
+Enough for a broker to run the sale, only shown once
+a human has added judgement.
+Contents Value range · data confidence · key value drivers
+(opportunities and risks) · open points · market
+context · a clear call to action.
+Everything in the Value Signal, plus buyer positioning,
+recommended sales route, and detailed go-to-market
+strategy.
+Generated Immediately after valuation.received, in the
+same AI job as the Full Report (§2.4 Flow B) — not
+a separate, later request.
+Same job, same timestamp. There is no "generate on
+demand" path — this was explicit in the client's
+instruction ("the full report should already be
+generated internally for us").
+Released Automatically, as soon as generation succeeds and
+passes validation (§4.4).
+Only via the broker's explicit POST /v1/reports/
+{id}/release action, after a logged review (§2.2,
+§2.4 Flow C).
+WHY THIS IS A RELEASE GATE, NOT A SECOND GENERATION STEP
+Generating the Full Report on demand — only after a broker asks for it — was considered and rejected. It would add
+latency to the moment a broker most needs the content (mid- or post-call), and it would make "has this lead's full report
+been produced yet" an ambiguous question during the review call. Generating both tiers up front and gating visibility
+instead keeps broker judgement in the loop exactly where the client wants it — before the seller sees strategy content —
+without making the broker wait on an AI call at the moment of contact. 
+4.2  Prompt Architecture & Template Governance
+CONCERN APPROACH
+Template storage Versioned prompt templates outside application code (v1.0 §10, unchanged) — now split into two
+families, value-signal/* and full-report/*, each versioned independently so a Value
+Signal wording change never risks the Full Report's structure.
+Locale variants Each template family has a de-DE (default) and en variant (§4.7) — never machine-translated at
+request time; both are authored and reviewed as first-class prompt versions.
+Structured output Both tiers are requested as schema-constrained JSON (matching the payload shapes in §3.3), not free
+text later parsed — this is what makes §4.4's validation step possible.
+Vision Estates — AI Seller Acquisition PlatformConfidential — Engineering Blueprint v3.0 Page 19 of 32
+
+PAGE 20
+Prompt inputs Structured valuation payload, structured property data, and — for the Full Report only — market-
+comparable data and any risk flags from intake (§1.2 problem #3). The Value Signal prompt deliberately
+receives a narrower context window than the Full Report prompt, so it cannot accidentally produce Full-
+Report-grade strategic content.
+4.3  Context Assembly Pipeline
+4.4  Guardrails & Output Validation
+GUARDRAIL DETAIL
+Valuation-attribution guardrailUnchanged, foundational rule from v1.0 ADR-001: the AI layer is never the source of the value figure.
+Both tiers' prompts explicitly instruct the model to explain the provider's number, never to state or
+imply a different one — and the UI attributes the number to the provider (Appendix A risk mitigation,
+v1.0).
+Schema validation A malformed or empty AI response never silently reaches a seller or a broker — unchanged principle
+from v1.0 §10, now applied identically to both tiers.
+Tier-leak guardrail New.
+The Value Signal generation call is not permitted to receive or reference sales-route or positioning
+language — enforced by the narrower context window in §4.3, and re-checked by a lightweight post-
+generation classifier that rejects a Value Signal output containing Full-Report-only field types.
+Empty/failed generation If the Full Report generation fails while the Value Signal succeeds, the Property remains in 
+REPORT_READY for the seller (Value Signal only shown) while the Full Report retry is queued —
+the broker dashboard flags "Full Report pending" rather than blocking the seller experience.
+4.5  Model/Provider Strategy, Failover & Cost Governance
+Unchanged in shape from v1.0 §10 and v2.0 (ADR-002, ADR-008): a single internal interface
+( AIProvider.generate(prompt, context)) implemented per vendor (OpenAI, Anthropic, and a future local model),
+selectable per environment, with failover to a secondary provider on outage and per-tier cost/latency budgets tracked
+via the same cost-governance mechanism introduced in v2.0. The two-tier model doubles the number of generation
+calls per property; cost governance now tracks Value Signal and Full Report spend as separate budget lines so a Full
+Report cost spike (longer context, more tokens) is visible independently of Value Signal volume.
+Fetch the stored provider valuation payload (never re-request the provider for report generation — the number is already
+fixed and stored, v1.0 §7).
+1
+Fetch structured property fields (condition, energy data, features) from the Property Intake context.2
+Fetch recent comparable-market data available to the provider integration (Full Report only).3
+Assemble two prompt payloads — the narrow Value Signal context and the fuller Full Report context — and issue both
+generations in the same background job (§6.3).
+4
+Pass each raw model response through schema validation (§4.4) before persistence.5
+Vision Estates — AI Seller Acquisition PlatformConfidential — Engineering Blueprint v3.0 Page 20 of 32
+
+PAGE 21
+4.6  Human-in-the-Loop Release Gate
+This is the operational heart of client approval point 2, and it lives partly in the AI layer's output design (§4.1) and partly
+in the Business Logic and Backend layers (§2.2, §3.2). Restated plainly: the AI layer produces the Full Report; a
+named broker decides when a seller is allowed to read it. That decision is recorded (§2.3 report.released, Audit
+Logs), attributable to one person, and irreversible through the API once made — matching how the client described the
+process ("after we have contacted the seller by phone and reviewed the case, we should be able to release and send it
+to them").
+4.7  Localization of AI Output
+CONCERN APPROACH
+Default locale German (de-DE) — matches §1.3's Germany-first commitment. Every new property submission defaults
+to German unless the seller explicitly selects English.
+Tone and register German prompt variants are authored natively, not translated from English — formal Sie register
+throughout, consistent with professional German real-estate correspondence norms.
+Consent copy The newsletter checkbox wording (§5.2) is treated as legally sensitive copy — stored as a versioned
+template like the report prompts, not hardcoded in the frontend, so a future wording change is auditable.
+Scope boundary No language beyond German/English is in the MVP prompt template set — consistent with v1.0 §4's Not
+Included list and reaffirmed in §1.4 of this document.
+Vision Estates — AI Seller Acquisition PlatformConfidential — Engineering Blueprint v3.0 Page 21 of 32
+
+PAGE 22
+PART V — DATA ARCHITECTURE (UPDATED)
+5.1  Updated Entity Set
+Builds directly on the production DDL already delivered and validated (Postgres 16, live-tested RESTRICT/CHECK/
+unique-email/optimistic-concurrency behavior, per the engagement log). The tables below are additive migrations on top
+of that schema — no existing table is restructured.
+TABLE CHANGE COLUMNS OF NOTE
+reports ALTER + tierENUM('VALUE_SIGNAL','FULL'), + release_state
+ENUM('DRAFT_INTERNAL','SELLER_VISIBLE','RELEASED'), + 
+released_by_user_id (nullable FK → users), + released_at (nullable
+timestamptz).
+leads ALTER + reviewed_by_user_id (nullable FK → users), + reviewed_at (nullable
+timestamptz) — gates the release action per §2.4 Flow C.
+newsletter_subscriptionsCREATE id, email (unique), user_id (nullable FK — a subscription can exist before
+a full user record), state
+ENUM('PENDING','CONFIRMED','WITHDRAWN'), 
+confirm_token_hash, confirm_token_expires_at, confirmed_at, 
+withdrawn_at.
+consents CREATE id, user_id (FK, nullable for pre-account leads), consent_type
+ENUM('NEWSLETTER','TERMS','DATA_PROCESSING'), action
+ENUM('GRANTED','WITHDRAWN'), source (form field / link / API), 
+ip_address (hashed), occurred_at. Append-only — no update or delete
+path in the repository layer (v1.0 §8, repositories are the sole query layer).
+5.2  Consent & Newsletter Data Model
+The design directly encodes the client's exact requirement: a separate, voluntary, unticked checkbox, stored, double-
+opt-in confirmed, and withdrawable at any time.
+Separate:newsletterOptIn is an independent form field from the property submission — it is not bundled with, or
+implied by, any Terms-of-Service acceptance. The consents table's consent_type enum keeps NEWSLETTER
+distinct from TERMS for this reason.
+Voluntary and unticked: enforced at the frontend component level (§6.2) and re-validated server-side — a
+submission is never rejected or degraded for leaving the box unticked.
+Double opt-in: the PENDING state and single-use confirm_token_hash (§2.2 flow) mean no address ever enters
+a sendable state without a positive click from that address's inbox — the standard evidentiary bar for German
+consent case law (see §5.3).
+Withdrawable at any time: the unsubscribe endpoint (§3.2) requires no login — a valid token is sufficient, matching
+the checkbox's own wording.
+• 
+• 
+• 
+• 
+Vision Estates — AI Seller Acquisition PlatformConfidential — Engineering Blueprint v3.0 Page 22 of 32
+
+PAGE 23
+5.3  GDPR Mapping for Consent
+NOT LEGAL ADVICE
+The mapping below is an engineering reference showing which data-model and workflow decisions were made to support
+common GDPR consent obligations. It is not a legal opinion. Vision Estates should have its own legal counsel confirm the
+exact wording and process against current German case law before launch. 
+OBLIGATION (TYPICAL
+READING) HOW THE DATA MODEL SUPPORTS IT
+Consent must be freely given,
+specific, and unambiguous
+(commonly referenced as GDPR
+Art. 6(1)(a) territory)
+Unticked-by-default checkbox, separate from other consents (§5.2).
+Consent must be as easy to
+withdraw as to give
+One-click, no-login unsubscribe endpoint present in every send (§3.2, §3.5).
+Controller should be able to
+demonstrate consent was given
+Append-only consents audit trail with source, timestamp, and hashed IP (§5.1) — reconstructable
+per user via GET /v1/consents/{userId}.
+Double opt-in as an evidentiary
+practice for email marketing
+consent
+Token-based confirmation flow (§2.2, §2.4 Flow A) — consent is only "usable" for sending once
+independently confirmed from the mailbox, not merely ticked on a form.
+5.4  Report Tiering & Release State
+Restates §2.2's state machine at the data level: reports.release_state transitions are one-directional
+( DRAFT_INTERNAL → SELLER_VISIBLE → RELEASED for the seller-facing row semantics described in §4.1) and every
+transition to RELEASED requires a non-null leads.reviewed_by_user_id on the associated lead — enforced by a
+database CHECK/trigger pattern consistent with the optimistic-concurrency approach already validated in the delivered
+DDL, not only in application code, so the release gate holds even against a direct data-layer mutation.
+5.5  Indexing & Retention Updates
+ITEM DETAIL
+New index Composite index on newsletter_subscriptions(state,
+confirm_token_expires_at) to support an expiry-sweep job (unconfirmed tokens
+beyond TTL are purged, not left indefinitely pending).
+New index reports(property_id, tier, release_state) — the exact lookup shape used
+by the seller-facing report page and the broker dashboard's "pending release" filter.
+Retention consents rows are never purged on a standard retention sweep (they are the audit evidence
+itself); newsletter_subscriptions follows the same inactive-lead retention window as 
+properties (v1.0 §7 database architecture, unchanged).
+Vision Estates — AI Seller Acquisition PlatformConfidential — Engineering Blueprint v3.0 Page 23 of 32
+
+PAGE 24
+PART VI — BACKEND & FRONTEND DETAIL
+6.1  Backend Module Layout (NestJS)
+Software Engineer lens. One NestJS module per bounded context from §2.5.
+src/
+  modules/
+    identity/            # users, roles, auth, RBAC guards
+    property-intake/      # properties, address validation
+    valuation/            # provider adapters, caching, resilience
+    ai-reporting/          # value-signal + full-report generation, prompt templates
+    lead-qualification/    # deterministic scoring engine
+    broker-workspace/      # dashboard read models, review + release actions
+    consent/               # consents, newsletter-subscriptions, double opt-in
+    scheduling/            # bookings, calendar adapter
+    platform/              # audit-logs, documents (reserved), health checks
+  common/
+    dto/  guards/  interceptors/  filters/  events/
+  jobs/
+    valuation-request.job.ts
+    report-generation.job.ts       # generates BOTH tiers in one job (§4.1)
+    newsletter-opt-in-email.job.ts
+    token-expiry-sweep.job.ts
+Each module keeps the controller → service → repository separation established in v1.0 §8. The ai-reporting
+module is the only module permitted to call the AI provider abstraction (§4.5); the consent module is the only module
+permitted to write to consents and newsletter_subscriptions.
+6.2  Frontend Route & Component Map
+SURFACE / ROUTE NEW OR CHANGED COMPONENT
+Seller Portal — /valuation/
+start
+<NewsletterConsentCheckbox /> — unticked by default, renders the exact client-approved
+wording per locale, links to a short consent-notice tooltip.
+Seller Portal — /valuation/
+report/[id]
+Report page renders the Value Signal tier only; a "Full report available after your consultation" state
+block replaces the Full Report section until release_state=RELEASED.
+Broker Dashboard — /leads/
+[id]
+<LogReviewButton /> (calls the review endpoint) and <ReleaseFullReportButton />
+— disabled until a review has been logged, matching the server-side gate exactly so the UI never
+promises an action the API will reject.
+Broker Dashboard — /leads
+(list)
+New "Full Report Pending" filter/column.
+Admin Dashboard — /admin/
+consents
+Read-only consent audit viewer per user (GET /v1/consents/{userId}).
+Public — /newsletter/
+confirm, /newsletter/
+unsubscribe
+Minimal confirmation/unsubscribe pages, no login required, locale-aware.
+Vision Estates — AI Seller Acquisition PlatformConfidential — Engineering Blueprint v3.0 Page 24 of 32
+
+PAGE 25
+6.3  Background Jobs & Queues
+JOB BEHAVIOR
+report-generation.job Triggered by valuation.received. Generates Value Signal and Full Report in the same
+job run (§4.1) so they share a timestamp and context snapshot; retried independently per tier if
+one generation fails validation (§4.4).
+newsletter-opt-in-email.jobTriggered by newsletter.consent_requested. Queued with retry, failures surfaced on
+the broker/admin dashboard rather than silently dropped — same pattern as v1.0 §9's existing
+notification jobs.
+token-expiry-sweep.job Scheduled sweep that expires stale PENDING double opt-in tokens past TTL, using the index
+added in §5.5.
+6.4  Testing Strategy — Detailed
+LAYER NEW COVERAGE FOR THIS REVISION
+Unit Report release-gate logic (cannot release without a prior review); newsletter state-machine transitions
+including expired-token and double-confirmation-attempt cases.
+Integration POST /v1/reports/{id}/release against a real test database, asserting the 409 case from §3.4
+and the Audit Log write.
+End-to-End Full seller journey extended to: submit with newsletter opt-in ticked → confirm via emailed link (test inbox)
+→ receive Value Signal → (simulate broker review + release) → receive Full Report notification.
+Security review Newsletter unsubscribe/confirm endpoints checked against token-guessing and replay, consistent with the
+OWASP mapping in v1.0 §12.
+Vision Estates — AI Seller Acquisition PlatformConfidential — Engineering Blueprint v3.0 Page 25 of 32
+
+PAGE 26
+PART VII — DEVOPS BLUEPRINT
+7.1  Environments & Branching Strategy
+DevOps lens.
+ENVIRONMENT PURPOSE & BRANCH MAPPING
+Local Docker Compose stack (Postgres, Redis, backend, frontend) mirroring production images (v1.0 §14). Feature
+branches off main, PR required to merge.
+Staging Deploys automatically on every merge to main (v1.0 §14, "green build on main deploys to staging
+automatically"). Mirrors production configuration exactly (v1.0 §18).
+Production Deployed only from a reviewed, tested build via a deliberate, reviewed promotion — never directly from staging
+on a timer, and never from a developer machine (v1.0 §18, unchanged).
+7.2  CI/CD Pipeline — Stage by Stage
+# STAGE WHAT RUNS
+1 Lint & Typecheck ESLint + TypeScript strict mode across backend and frontend packages; fails fast before any test
+spend.
+2 Unit Tests Business-logic layer, framework-agnostic (v1.0 §8) — includes the new release-gate and consent
+state-machine suites from §6.4.
+3 Integration Tests API endpoints against a real ephemeral test database with mocked external providers (valuation,
+calendar, email, AI) — v1.0 §16, unchanged pattern.
+4 Dependency &
+Static-Analysis Scan
+Automated CVE scanning of the dependency graph (v1.0 §12 OWASP mapping — Vulnerable
+Components); blocks merge on critical/high findings.
+5 Build Multi-stage Docker builds for backend and frontend, tagged with the commit SHA; identical image
+promoted through every later environment (v1.0 §14, "works on my machine" elimination).
+6 Migration Check Prisma migration diff runs against a disposable database to catch a destructive or out-of-order
+migration before it reaches staging — critical for the additive migrations in §5.1.
+7 Deploy to Staging Automatic on main merge (v1.0 §14).
+8 E2E Suite on
+Staging
+Playwright-driven critical journeys (v1.0 §16) including the extended newsletter/release journey
+from §6.4.
+9 Manual Promotion
+Gate
+A human reviews the staging build and explicitly promotes to production (v1.0 §18) — this mirrors,
+at the infrastructure level, the same "human decides when it's ready" principle used for the Full
+Report release gate in §4.6.
+10 Blue-Green
+Production Deploy
+New version deploys alongside the current one, takes traffic only after health checks pass (v1.0
+§18, ADR-006); a failed health check auto-reverts traffic.
+Vision Estates — AI Seller Acquisition PlatformConfidential — Engineering Blueprint v3.0 Page 26 of 32
+
+PAGE 27
+7.3  Infrastructure as Code & AWS Resource Map
+AWS SERVICE ROLE
+RDS (PostgreSQL) System of record (v1.0 §14); EU region per §1.3's data-residency commitment.
+ECS/Fargate Container hosting for backend and frontend services, stateless (JWT auth enables this, v1.0 §13).
+ElastiCache (Redis) Valuation-response cache and session/rate-limit data (v1.0 §6, §13).
+S3 Generated report PDFs and the reserved Documents entity's future artifacts (v1.0 §7, §14).
+Secrets Manager Environment secrets, including AI provider keys, valuation provider credentials, and email-provider
+credentials for the double opt-in flow (§7.5).
+CloudWatch Infrastructure metrics/logs; alerting on error-rate spikes, latency degradation, and integration failures (v1.0
+§14, §11).
+All resources are provisioned via reviewed infrastructure-as-code with no manually configured production resources
+(v1.0 §12, Security Misconfiguration mitigation) — unchanged principle, now also covering the new 
+newsletter_subscriptions/ consents tables' backup and encryption configuration.
+7.4  Observability Stack
+SIGNAL IMPLEMENTATION
+Traces OpenTelemetry, vendor-neutral (v1.0 §6) — each of the two AI generation calls in report-
+generation.job emits its own span so Value Signal and Full Report latency/cost are visible
+independently.
+Metrics Per-integration latency and error-rate (v1.0 §11), plus new counters: double opt-in confirmation rate, time-
+to-release (review → release), Full Report generation failure rate.
+Logs Structured JSON, correlated by request ID, shipped to CloudWatch (v1.0 §8).
+Alerting A degraded valuation provider — or an unusually high newsletter-token-expiry rate, indicating a broken
+confirmation email — is something the team is alerted to, not something a seller or broker discovers first
+(v1.0 §11 principle, extended).
+7.5  Secrets & Configuration Management
+Unchanged from v1.0 §12/§14: environment secrets held in a managed secrets store, never committed to source
+control, strict separation of local/staging/production credentials. The email-sending credentials used for double opt-in
+confirmations are scoped separately from transactional notification credentials, so a compromise of one does not
+implicate the other (defense-in-depth extension of ADR-009's secrets-rotation practice from v2.0).
+7.6  Release Process, Migrations & Rollback
+The new tables and columns in §5.1 are additive (new tables, nullable new columns on existing tables) — they ship as a
+normal forward migration with no backward-incompatible step, so the blue-green rollback path (v1.0 §18, ADR-006)
+Vision Estates — AI Seller Acquisition PlatformConfidential — Engineering Blueprint v3.0 Page 27 of 32
+
+PAGE 28
+remains valid: a rollback to the previous image continues to operate correctly against the post-migration schema, since
+old code simply ignores the new nullable columns and tables it doesn't yet know about.
+7.7  Disaster Recovery & Backups
+Unchanged from v1.0 §7/Appendix C: automated daily snapshots with point-in-time recovery, tested restoration. The 
+consents table's append-only design (§5.1) means a restore can never silently lose consent history without also losing
+the rows that reference it — there is no update-in-place path that could corrupt or overwrite a prior consent record.
+Vision Estates — AI Seller Acquisition PlatformConfidential — Engineering Blueprint v3.0 Page 28 of 32
+
+PAGE 29
+PART VIII — DOCUMENTATION SET
+8.1  Documentation Philosophy
+Consistent with v1.0 §17 ("Vision Estates receives a system it can operate independently of the original build team"),
+the production repository ships with a fixed set of Markdown documents alongside the code — not as an afterthought,
+but as the artifact a new engineer, a broker-ops lead, or an auditor would actually open first. All files below are delivered
+together with this proposal as a companion package (vision-estates-docs.zip) and are intended to live at the
+stated repository path from day one of the Backend phase (v1.0 §15).
+8.2  Repository Documentation Index
+FILE REPO PATH PURPOSE
+README.md / Project overview, stack summary, local quick-start — first file anyone opens.
+ARCHITECTURE.md /docs Layered architecture, bounded contexts, module boundaries — the narrative form
+of Parts II and VI here.
+API.md /docs Human-readable companion to the OpenAPI spec — the endpoint catalog from
+§3.2 kept current as the source of truth alongside generated docs (v1.0 §17).
+DATABASE.md /docs Entity-relationship narrative, migration policy, and the additive-migration record
+from §5.1.
+AI_ARCHITECTURE.md/docs Two-tier report model, prompt governance, guardrails — the narrative form of Part
+IV.
+GDPR_AND_CONSENT.md/docs Consent data model, double opt-in flow, and the not-legal-advice GDPR mapping
+from §5.3 — the document Vision Estates' legal counsel should be handed first.
+SECURITY.md /docs OWASP mapping, RBAC model, secrets handling (v1.0 §12).
+DEPLOYMENT.md /docs Environment setup and deployment procedure (v1.0 §17).
+CI_CD.md /docs Pipeline stage reference — the narrative form of §7.2.
+TESTING.md /docs Test strategy across unit/integration/E2E/ security/performance/UAT (v1.0 §16,
+extended per §6.4).
+RUNBOOKS.md /docs Operational procedures for provider outage, failed deployment, database failover
+(v1.0 §17).
+LOCALIZATION.md /docs German-first locale strategy, translation governance for consent and report copy
+(§4.7).
+CONTRIBUTING.md / Coding conventions, branch/PR workflow, commit style — the developer guide
+referenced in v1.0 §17.
+CHANGELOG.md / Version history — the source this proposal's §0.3 table is generated from.
+docs/adr/ADR-001.md
+… ADR-013.md
+/docs/adr One file per Architecture Decision Record — see Appendix B for the newest three.
+docs/DOCS_INDEX.md/docs This table, kept in the repository itself so it never drifts from what actually exists.
+Vision Estates — AI Seller Acquisition PlatformConfidential — Engineering Blueprint v3.0 Page 29 of 32
+
+PAGE 30
+APPENDIX A
+Updated Risk Register
+Extends v1.0 Appendix A with the risks introduced by the two client-approved workflow changes.
+RISK CATEGORYLIKELIHOODIMPACT MITIGATION
+Full Report released
+prematurely (before
+broker review)
+Product /
+Legal
+Low High Server-side, DB-level release gate (§5.4) — not just a UI
+restriction; requires a non-null review timestamp on the
+lead before the release endpoint will succeed (§3.2).
+Double opt-in
+confirmation email lands
+in spam or is not
+delivered
+Technical /
+Marketing
+Medium Medium Queued delivery with retry (§6.3); confirmation-rate
+metric alerted on (§7.4); token TTL long enough to
+tolerate delivery delay.
+Consent audit trail
+incomplete or tampered
+Legal /
+Compliance
+Low High Append-only consents table with no update/delete
+repository method (§5.1); included in the standard
+backup/PITR strategy (§7.7).
+Newsletter sent to an
+address that later
+withdrew consent
+Legal /
+Compliance
+Low High Send pipeline reads live 
+newsletter_subscriptions.state at send time,
+not a cached list — a withdrawal is respected on the
+very next send cycle.
+Value Signal accidentally
+contains Full-Report-only
+content
+Product Low Medium Narrower prompt context window plus a post-generation
+tier classifier (§4.4).
+All risks from v1.0 Appendix A remain valid and unchanged; this table is additive.
+APPENDIX B
+New & Updated Architecture Decision Records
+ADR-007 — Idempotency Keys on Mutating Endpoints
+Context: Network retries on mobile connections (v1.0 §9 mobile-first seller portal) risk duplicate side effects on POST
+endpoints, most dangerously the report-release action. Decision: All mutating endpoints accept an Idempotency-Key
+header; a repeated key within TTL returns the original response. Consequences: Small storage overhead for key/
+response caching, in exchange for safe client retries.
+ADR-008 — AI Cost Governance & Provider Failover
+Context: Two-tier generation (§4.1) doubles AI spend per property. Decision: Per-tier budget tracking and automatic
+failover to a secondary AI provider on primary-provider outage, built on the provider-independent abstraction from v1.0
+ADR-002. Consequences: Additional monitoring surface, in exchange for predictable cost and resilience to a single
+vendor's outage.
+ADR-009 — Token Revocation & Secrets Rotation
+Context: Stateless JWT auth (v1.0 ADR-004) makes instant revocation harder. Decision: Short access-token lifetimes,
+rotating refresh tokens, and a revocation endpoint (§3.2) backed by a denylist with TTL equal to the access-token
+Vision Estates — AI Seller Acquisition PlatformConfidential — Engineering Blueprint v3.0 Page 30 of 32
+
+PAGE 31
+lifetime; secrets rotated on a defined cadence. Consequences: A small stateful denylist reintroduces limited server-side
+state, accepted as the cost of practical revocation.
+ADR-010 — In-Process Domain Event Bus
+Context: Cross-module reactions (valuation received → generate reports; report released → notify) need a consistent
+pattern without premature message-queue infrastructure for an MVP's traffic volume. Decision: An in-process,
+synchronous-dispatch domain event bus (the catalog in §2.3), with module boundaries designed so a future move to an
+external queue would only change the bus implementation, not the event contracts. Consequences: Not horizontally
+distributed across processes yet — acceptable for MVP scale; revisit if the platform outgrows a single backend
+deployment unit.
+NEW IN V3.0 — DIRECTLY FROM CLIENT APPROVAL
+ADR-011, ADR-012 and ADR-013 below did not exist in v2.0. They are written specifically to record the three approved
+changes as durable architectural commitments, not just narrative description. 
+ADR-011 — Two-Tier Report Generation with Broker-Gated Release
+Context: The client requires sellers to see only a compact Value Signal initially, while the full strategic report must
+already exist internally and be releasable after a broker's phone review. Decision: Generate both report tiers in the
+same background job (§4.1, §6.3); gate the Full Report's visibility, not its generation, behind an explicit, attributable
+broker action enforced server-side and at the database level (§5.4). Consequences: Slightly higher AI spend per
+property (both tiers always generated) and one additional required broker action per lead, in exchange for guaranteed
+human review before any seller sees strategic content, and zero latency at the moment a broker needs the Full Report
+during or after a call.
+ADR-012 — Double Opt-In Newsletter Consent as a Separate, Unticked Field
+Context: The client wants to build a compliant, automated-newsletter-eligible lead list without bundling consent into the
+property submission itself. Decision: A standalone, unticked checkbox with the client-supplied wording, backed by a
+dedicated newsletter_subscriptions state machine and an append-only consents audit table (§5.1–§5.3),
+confirmed via a single-use emailed token before any send is permitted. Consequences: An extra table, job, and pair of
+public endpoints (§3.2, §6.3), in exchange for a newsletter list that is legally usable rather than merely collected.
+ADR-013 — Germany-First Localization Default
+Context: The client confirmed Germany as the sole launch market, with English available only as a secondary toggle
+for international owners of German property, not a separate market push. Decision: German (de-DE) is the default
+locale end-to-end — form copy, AI-generated report prompts (§4.7), consent language, and notification templates —
+with English maintained as a first-class but secondary variant. No additional locale is added to the MVP template set. 
+Consequences: Keeps the localization surface small and native-quality for the one market that matters now, at the cost
+of needing a deliberate follow-up decision (not covered by this document) before any future market's language is added.
+APPENDIX C
+Updated Non-Functional Requirements
+CATEGORY TARGET
+Availability, Scalability, Security,
+Observability, Maintainability,
+Disaster Recovery, Data
+Residency
+Unchanged from v1.0 Appendix C — final numbers confirmed with Vision Estates during discovery.
+Vision Estates — AI Seller Acquisition PlatformConfidential — Engineering Blueprint v3.0 Page 31 of 32
+
+PAGE 32
+Consent delivery latency Double opt-in confirmation email queued within seconds of submission (engineering default; not a
+contractual SLA at this stage).
+Report generation latency Both tiers targeted to complete within the same background-job window so the seller-facing "Value
+Signal ready" notification is not delayed by Full Report generation running in the same job (§4.3) —
+exact target to be confirmed once real provider/AI latency is measured in staging.
+APPENDIX D
+Updated Assumptions & Dependencies
+Vision Estates confirms the exact wording of the newsletter consent checkbox for production use (the wording in the
+client's review is used verbatim as the working draft — §5.2).
+Vision Estates confirms the email-sending provider/domain used for double opt-in confirmations, so SPF/DKIM and
+deliverability are set up before launch.
+Vision Estates confirms the exact fields to appear in the Full Report's "recommended sales route" and "detailed
+strategy" sections, so the Full Report prompt template (§4.2) can be finalized against real examples.
+All assumptions and external dependencies from v1.0 Appendix D remain in force and are not restated here.
+APPENDIX E
+Updated Acceptance Criteria
+Adds to, and does not replace, v1.0 Appendix E.
+A seller can leave the newsletter checkbox unticked and complete the valuation flow with no degraded experience.
+A seller who ticks the checkbox receives a confirmation email and is not subscribed until they click the link.
+A confirmed subscriber can unsubscribe with one click, without logging in, and stops receiving newsletters from the
+next send onward.
+A seller viewing their report sees only the Value Signal fields listed in §4.1 until a broker releases the Full Report.
+The Full Report release endpoint rejects the action with 409 if no broker review has been logged for that lead.
+Every report release is visible in the Admin audit log with the releasing broker's identity and timestamp.
+The public Seller Portal, all AI-generated report copy, and all consent/notification copy render correctly in German by
+default and in English when explicitly selected.
+• 
+• 
+• 
+• 
+• 
+• 
+• 
+• 
+• 
+• 
+• 
+Vision Estates — AI Seller Acquisition PlatformConfidential — Engineering Blueprint v3.0 Page 32 of 32

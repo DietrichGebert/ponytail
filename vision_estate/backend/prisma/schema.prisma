@@ -1,0 +1,272 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum PropertyType {
+  APARTMENT
+  HOUSE
+  LAND
+}
+
+enum PropertyCondition {
+  NEW
+  GOOD
+  NEEDS_RENOVATION
+}
+
+enum PropertyState {
+  DRAFT
+  SUBMITTED
+  VALUATION_PENDING
+  VALUATION_RECEIVED
+  REPORT_READY
+  ARCHIVED
+}
+
+enum ReportTier {
+  VALUE_SIGNAL
+  FULL
+}
+
+enum ReportReleaseState {
+  DRAFT_INTERNAL
+  SELLER_VISIBLE
+  UNDER_BROKER_REVIEW
+  RELEASED
+}
+
+enum SubscriptionState {
+  NONE
+  PENDING
+  CONFIRMED
+  WITHDRAWN
+}
+
+enum ConsentType {
+  NEWSLETTER
+  TERMS
+  DATA_PROCESSING
+}
+
+enum ConsentAction {
+  GRANTED
+  WITHDRAWN
+}
+
+enum ScoreBand {
+  HOT
+  WARM
+  COLD
+}
+
+model Property {
+  id            String            @id @default(uuid())
+  address       Json              // { street, postalCode, city, country: "DE" }
+  propertyType  PropertyType
+  sizeSqm       Float
+  condition     PropertyCondition
+  yearBuilt     Int
+  sellerContact Json              // { name, email, phone }
+  accessTokenHash String?          @unique
+  submissionKey String?            @unique
+  submissionHash String?
+  rooms         Int?
+  features      String[]          @default([])
+  sellingTimeline String          @default("EXPLORING")
+  processingError String?
+  locale        String            @default("de-DE")
+  state         PropertyState     @default(SUBMITTED)
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+
+  lead          Lead?
+  reports       Report[]
+  valuations    Valuation[]
+  bookings      Booking[]
+
+  @@index([state])
+}
+
+model Valuation {
+  id              String   @id @default(uuid())
+  propertyId      String
+  provider        String   @default("PriceHubble")
+  rawResponse     Json
+  estimatedValue  Float
+  lowRange        Float
+  highRange       Float
+  currency        String   @default("EUR")
+  isStale         Boolean  @default(false)
+  createdAt       DateTime @default(now())
+
+  property        Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  reports         Report[]
+  @@index([propertyId])
+}
+
+model Report {
+  id                String             @id @default(uuid())
+  propertyId        String
+  tier              ReportTier
+  releaseState      ReportReleaseState @default(DRAFT_INTERNAL)
+  payload           Json
+  releasedByUserId  String?
+  releasedAt        DateTime?
+  reviewedByUserId  String?
+  reviewedAt        DateTime?
+  valuationId       String?
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+
+  property          Property           @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  reviewer          User? @relation("ReportReviewer", fields: [reviewedByUserId], references: [id], onDelete: Restrict)
+  releaser          User? @relation("ReportReleaser", fields: [releasedByUserId], references: [id], onDelete: Restrict)
+  valuation         Valuation? @relation(fields: [valuationId], references: [id], onDelete: Restrict)
+
+  // Blueprint §5.5 Composite Index
+  @@index([propertyId, tier, releaseState])
+}
+
+model Lead {
+  id                String     @id @default(uuid())
+  propertyId        String     @unique
+  scoreBand         ScoreBand? @default(COLD)
+  score             Int        @default(0)
+  scoreVersion      String     @default("v1")
+  scoreReasons      Json       @default("[]")
+  assignedToId      String?
+  notes             String     @default("")
+  reviewedByUserId  String?
+  reviewedAt        DateTime?
+  stage             String     @default("NEW")
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
+
+  property          Property   @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+}
+
+model NewsletterSubscription {
+  id                    String            @id @default(uuid())
+  email                 String            @unique
+  userId                String?
+  state                 SubscriptionState @default(PENDING)
+  confirmTokenHash      String?
+  confirmTokenExpiresAt DateTime?
+  confirmedAt           DateTime?
+  withdrawnAt           DateTime?
+  createdAt             DateTime          @default(now())
+  updatedAt             DateTime          @updatedAt
+
+  // Blueprint §5.5 Expiry Sweep Index
+  @@index([state, confirmTokenExpiresAt])
+}
+
+model Consent {
+  id          String        @id @default(uuid())
+  userId      String?
+  consentType ConsentType
+  action      ConsentAction
+  source      String
+  ipAddress   String        // SHA-256 Hashed IP
+  occurredAt  DateTime      @default(now())
+
+  // Append-only table: Blueprint §5.1, §5.3 (No updates or deletes permitted)
+  @@index([userId, consentType])
+}
+
+model AuditLog {
+  id         String   @id @default(uuid())
+  actorId    String
+  action     String
+  entityType String
+  entityId   String
+  metadata   Json?
+  timestamp  DateTime @default(now())
+
+  @@index([entityType, entityId])
+}
+
+enum UserRole {
+  BROKER
+  ADMIN
+}
+model User {
+  id String @id @default(uuid())
+  email String @unique
+  name String
+  passwordHash String
+  role UserRole @default(BROKER)
+  active Boolean @default(true)
+  createdAt DateTime @default(now())
+  sessions Session[]
+  slots AvailabilitySlot[]
+  reviewedReports Report[] @relation("ReportReviewer")
+  releasedReports Report[] @relation("ReportReleaser")
+  invitation StaffInvitation? @relation("InvitedUser")
+  sentInvitations StaffInvitation[] @relation("InvitingAdmin")
+}
+model StaffInvitation {
+  id String @id @default(uuid())
+  userId String @unique
+  invitedById String
+  tokenHash String @unique
+  expiresAt DateTime
+  acceptedAt DateTime?
+  revokedAt DateTime?
+  createdAt DateTime @default(now())
+  user User @relation("InvitedUser", fields: [userId], references: [id], onDelete: Restrict)
+  invitedBy User @relation("InvitingAdmin", fields: [invitedById], references: [id], onDelete: Restrict)
+  @@index([expiresAt])
+}
+model Session {
+  id String @id @default(uuid())
+  tokenHash String @unique
+  userId String
+  expiresAt DateTime
+  familyId String?
+  consumedAt DateTime?
+  revokedAt DateTime?
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@index([expiresAt])
+  @@index([familyId])
+}
+model AvailabilitySlot {
+  id String @id @default(uuid())
+  brokerId String
+  startsAt DateTime
+  endsAt DateTime
+  broker User @relation(fields: [brokerId], references: [id])
+  booking Booking?
+  @@unique([brokerId, startsAt])
+  @@index([startsAt])
+}
+model Booking {
+  id String @id @default(uuid())
+  propertyId String
+  slotId String? @unique
+  status String @default("PENDING_CALENDAR")
+  calendarEventId String?
+  cancelledAt DateTime?
+  slotStartsAt DateTime?
+  slotEndsAt DateTime?
+  createdAt DateTime @default(now())
+  property Property @relation(fields: [propertyId], references: [id])
+  slot AvailabilitySlot? @relation(fields: [slotId], references: [id])
+  @@index([propertyId])
+}
+model Notification {
+  id String @id @default(uuid())
+  kind String
+  recipient String
+  payload Json
+  state String @default("PENDING")
+  attempts Int @default(0)
+  lastError String?
+  createdAt DateTime @default(now())
+  @@index([state, createdAt])
+}

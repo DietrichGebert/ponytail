@@ -1,0 +1,113 @@
+name: Application checks
+on:
+  push:
+  pull_request:
+jobs:
+  dependency-security:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        directory: [backend, frontend]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: npm ci --ignore-scripts
+        working-directory: ${{ matrix.directory }}
+      - run: npm audit --audit-level=high
+        working-directory: ${{ matrix.directory }}
+  database-integration:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: vision_test
+          POSTGRES_PASSWORD: disposable_ci_only
+          POSTGRES_DB: vision_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U vision_test -d vision_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://vision_test:disposable_ci_only@localhost:5432/vision_test
+      WORKERS_ENABLED: 'false'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: npm ci --ignore-scripts
+        working-directory: backend
+      - run: npx prisma generate
+        working-directory: backend
+      - run: npm run build
+        working-directory: backend
+      - run: npm run db:migrate
+        working-directory: backend
+      - run: node scripts/verify-service-contracts.cjs
+        working-directory: backend
+      - run: node scripts/verify-blueprint-v3.cjs
+        working-directory: backend
+      - run: node scripts/verify-auth-rotation.cjs
+        working-directory: backend
+      - run: node scripts/verify-broker-workflow.cjs
+        working-directory: backend
+  contracts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: npm ci --ignore-scripts
+        working-directory: backend
+      - run: npx prisma generate
+        working-directory: backend
+      - run: npm ci --ignore-scripts
+        working-directory: frontend
+      - run: npm run build
+        working-directory: backend
+      - run: npm run contract:check
+        working-directory: backend
+  backend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - run: npm ci --ignore-scripts
+        working-directory: backend
+      - run: npx prisma generate
+        working-directory: backend
+      - run: npm run build
+        working-directory: backend
+      - run: npm run lint
+        working-directory: backend
+      - run: npm test
+        working-directory: backend
+      - run: npm run test:e2e
+        working-directory: backend
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+        working-directory: frontend
+      - run: npm run lint
+        working-directory: frontend
+      - run: npm run build
+        working-directory: frontend
+

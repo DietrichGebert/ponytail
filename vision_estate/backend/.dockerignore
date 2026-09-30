@@ -1,0 +1,12 @@
+node_modules
+dist
+.env
+.env.*
+!.env.example
+tmp
+.agents
+.claude
+.cursor
+.devin
+frontend
+
