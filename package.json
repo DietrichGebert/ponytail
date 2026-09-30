@@ -1,6 +1,6 @@
 {
   "name": "@dietrichgebert/ponytail",
-  "version": "4.8.4",
+  "version": "4.10.0",
   "description": "Lazy senior dev mode for AI agents. The best code is the code you never wrote.",
   "keywords": ["opencode-plugin", "opencode", "ponytail", "pi-package", "pi", "skills", "qoder", "chatgpt"],
   "license": "MIT",
@@ -33,6 +33,7 @@
     "scripts/build-chatgpt-skill.js",
     "scripts/package-chatgpt-skill.js",
     "scripts/uninstall.js",
+    "scripts/cursor-hooks.js",
     "assets/",
     "LICENSE"
   ],

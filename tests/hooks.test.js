@@ -37,6 +37,10 @@ delete process.env.COPILOT_PLUGIN_DATA;
 // A leaked subagent matcher would scope the inject-into-every-subagent assertions.
 delete process.env.PONYTAIL_SUBAGENT_MATCHER;
 delete process.env.QODER_SESSION_ID;
+// Cursor sets these only for hook processes, but a suite launched from a Cursor
+// hook would otherwise steer every case into the Cursor JSON branch (#817).
+delete process.env.CURSOR_VERSION;
+delete process.env.CURSOR_PROJECT_DIR;
 
 const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'ponytail-hooks-'));
 // Runs on normal exit and on assertion-throw exit; force makes it idempotent.
@@ -197,6 +201,36 @@ assert.equal(
 );
 output = JSON.parse(result.stdout);
 assert.match(output.additionalContext, /PONYTAIL MODE ACTIVE — level: full/);
+
+// VS Code Copilot never sets COPILOT_PLUGIN_DATA — it only injects
+// CLAUDE_PLUGIN_ROOT pointed at an agent-plugins/.../.vscode install path
+// (#528). Without a fallback, isCopilot was false, so ponytail assumed
+// native Claude Code and emitted the statusline nudge — noise, since VS
+// Code Copilot doesn't read Claude's statusLine setting.
+const vscodeHome = path.join(temp, 'vscode-copilot-home');
+const vscodePluginRoot = path.join(
+  vscodeHome, '.vscode', 'agent-plugins', 'github.com', 'DietrichGebert', 'ponytail', 'hooks',
+);
+fs.mkdirSync(vscodeHome, { recursive: true });
+result = run('ponytail-activate.js', {
+  HOME: vscodeHome,
+  USERPROFILE: vscodeHome,
+  CLAUDE_PLUGIN_ROOT: vscodePluginRoot,
+  PONYTAIL_DEFAULT_MODE: 'full',
+});
+assert.equal(result.status, 0, result.stderr);
+assert.ok(
+  !result.stdout.includes('STATUSLINE SETUP NEEDED'),
+  'VS Code Copilot (detected via CLAUDE_PLUGIN_ROOT) must not get the Claude-only statusline nudge',
+);
+// isCopilot must still resolve a state dir even though COPILOT_PLUGIN_DATA
+// is unset under VS Code — falling back to ~/.claude, not crashing on an
+// undefined path.
+assert.equal(
+  fs.readFileSync(path.join(vscodeHome, '.claude', '.ponytail-active'), 'utf8'),
+  'full',
+  'VS Code Copilot must persist mode state under getClaudeDir(), not a path built from the unset COPILOT_PLUGIN_DATA',
+);
 
 result = run(
   'ponytail-mode-tracker.js',
