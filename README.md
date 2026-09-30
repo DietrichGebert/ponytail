@@ -204,6 +204,16 @@ gemini extensions install https://github.com/DietrichGebert/ponytail
 Loads the ruleset as always-on context every session and registers the `/ponytail` commands; the `skills/` ship too, activated when a task needs them.
 The Gemini adapter intentionally does not ship a root `hooks/hooks.json`: Gemini auto-loads that path, while Ponytail's lifecycle hooks use Claude/Codex event names.
 
+### Muse Code CLI
+
+Muse Code loads the repo's `AGENTS.md` automatically when you run it from a Ponytail checkout. To install a skill for use across projects:
+
+```bash
+muse skills install ./skills/ponytail --scope user
+```
+
+Install other skills the same way by replacing `ponytail` with `ponytail-review`, `ponytail-audit`, `ponytail-debt`, `ponytail-gain`, or `ponytail-help`. Muse Code exposes installed skills as slash commands. See [Muse Code skills](https://ai.developer.meta.com/docs/muse-code/extending#skills) and [project instructions](https://ai.developer.meta.com/docs/muse-code/configuration#agents-md).
+
 ### Qoder
 
 Qoder auto-loads `AGENTS.md` from the repo root as always-on context, so running ponytail from a checkout works with zero setup. For per-project rules, copy [`.qoder/rules/ponytail.md`](.qoder/rules/ponytail.md) into your project's `.qoder/rules/`. The six ponytail skills (`/ponytail`, `/ponytail-review`, `/ponytail-audit`, `/ponytail-debt`, `/ponytail-gain`, `/ponytail-help`) are available via Qoder's Skill system; the plugin manifest at [`.qoder-plugin/plugin.json`](.qoder-plugin/plugin.json) points at the `skills/` directory.
