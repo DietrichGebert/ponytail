@@ -209,6 +209,24 @@ def endpoint():
   assert.equal(result.score, 0);
 });
 
+test('agentic cache selection compares numeric release components', () => {
+  require('node:child_process').execFileSync('python3', ['-c', `
+from pathlib import Path
+import os, sys, tempfile
+sys.path.insert(0, sys.argv[1])
+import run
+with tempfile.TemporaryDirectory() as d:
+    run.PLUGIN_CACHE = Path(d)
+    cache = Path(d) / 'ponytail' / 'ponytail'
+    for version in ('4.9.0', '4.10.0', '4.10.2', '4.10.12'):
+        (cache / version).mkdir(parents=True)
+    os.environ.pop('PONYTAIL_PLUGIN_DIR', None)
+    assert Path(run._plugin_dir('ponytail')).name == '4.10.12'
+    os.environ['PONYTAIL_PLUGIN_DIR'] = str(cache / '4.9.0')
+    assert run._plugin_dir('ponytail') == str(cache / '4.9.0')
+`, require('node:path').resolve(__dirname, '../benchmarks/agentic')], { stdio: 'pipe', timeout: 10_000 });
+});
+
 // --- Edge cases ---
 
 test('unknown task is gracefully skipped', () => {

@@ -55,10 +55,12 @@ def _plugin_dir(name):
     env = os.environ.get(f"{name.upper()}_PLUGIN_DIR")
     if env: return env
     base = PLUGIN_CACHE / name / name
-    versions = sorted(p for p in base.glob("*") if p.is_dir()) if base.exists() else []
+    versions = [p for p in base.glob("*") if p.is_dir()] if base.exists() else []
     if not versions:
         sys.exit(f"{name} plugin dir not found under {base}; install the plugin or set {name.upper()}_PLUGIN_DIR")
-    return str(versions[-1])                    # latest version dir; not pinned to one machine's hash
+    # ponytail: numeric chunks cover release directories; use a version parser
+    # if prerelease ordering is needed (this is not a full SemVer comparison).
+    return str(max(versions, key=lambda p: ([int(n) for n in re.findall(r"\d+", p.name)], p.name)))
 
 CELL_TIMEOUT = 300  # seconds per cell; a hung agent is force-killed (process tree) so the pool can't freeze
 
