@@ -42,6 +42,51 @@ test('email: no code block fails', () => {
   assert.equal(result.pass, false);
 });
 
+test('agentic reuse scoring does not fall back to another workspace', () => {
+  require('node:child_process').execFileSync('python3', ['-c', `
+from pathlib import Path
+import json, subprocess, sys, tempfile
+sys.path.insert(0, sys.argv[1])
+import tasks
+with tempfile.TemporaryDirectory() as d:
+    root = Path(d)
+    for tid, entry, helper, good, seed in (
+        ('reuse-slug', 'articles.py', 'textutils.py', tasks.REUSE_SLUG_GOOD, tasks.REUSE_SLUG_HELPER),
+        ('reuse-money', 'invoice.py', 'money.py', tasks.REUSE_MONEY_GOOD, tasks.REUSE_MONEY_HELPER),
+    ):
+        run_dir = root / tid
+        first = run_dir / (tid + '__baseline__haiku__0')
+        missing = run_dir / (tid + '__ponytail__haiku__0')
+        first.mkdir(parents=True)
+        missing.mkdir()
+        (first / entry).write_text(good)
+        (first / helper).write_text(seed)
+        subprocess.run([sys.executable, str(Path(sys.argv[1]) / 'run.py'), '--rescore', str(run_dir)], check=True, capture_output=True)
+        results = json.loads((run_dir / 'results.json').read_text())['results']
+        assert results[0]['correct'] == 1 and results[0]['safe'] == 1
+        assert results[1]['files'] == 0 and results[1]['correct'] == 0, results
+        before = sys.path[:]
+        previous = {name: sys.modules.get(name) for name in (entry[:-3], helper[:-3])}
+        assert tasks.TASKS[tid]['score'](first)['correct'] == 1
+        assert sys.path == before
+        assert all(sys.modules.get(name) is value for name, value in previous.items())
+        local_import = good.replace('from ' + helper[:-3] + ' import ', '# moved import: ', 1)
+        local_import = local_import.replace('    base = slugify(title)', '    from textutils import slugify\\n    base = slugify(title)') if tid == 'reuse-slug' else local_import.replace('    return f', '    from money import format_money\\n    return f')
+        (first / entry).write_text(local_import)
+        score = tasks.TASKS[tid]['score'](first)
+        assert score['correct'] == 1 and score['safe'] == 1, score
+        from concurrent.futures import ThreadPoolExecutor
+        with ThreadPoolExecutor(max_workers=4) as pool:
+            results = list(pool.map(tasks.TASKS[tid]['score'], [first, missing] * 8))
+        assert [result['correct'] for result in results] == [1, 0] * 8
+        assert sys.path == before
+        (first / entry).write_text('this is not valid Python!')
+        assert tasks.TASKS[tid]['score'](first)['correct'] == 0
+        assert sys.path == before
+
+`, require('node:path').resolve(__dirname, '../benchmarks/agentic')], { stdio: 'pipe', timeout: 10_000 });
+});
+
 // --- Debounce ---
 
 test('debounce: correct implementation passes', () => {

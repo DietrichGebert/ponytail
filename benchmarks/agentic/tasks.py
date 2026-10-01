@@ -20,8 +20,9 @@ Task fields:
   score  : (workdir) -> {correct, safe, reason}
   good/bad : reference implementations for the selftest
 """
-import hashlib, hmac, importlib, importlib.util, inspect, json, os, py_compile, sqlite3, sys, tempfile
+import hashlib, hmac, importlib, importlib.util, inspect, json, os, py_compile, sqlite3, sys, tempfile, threading
 from pathlib import Path
+from contextlib import contextmanager
 
 # Real-repo fixture: tiangolo/full-stack-fastapi-template @ cd83fc1 (v0.10.0, MIT), cloned locally.
 # Reproduce: git clone https://github.com/tiangolo/full-stack-fastapi-template && git -C ... checkout cd83fc1
@@ -590,36 +591,50 @@ def score_todo(workdir):
 #    (repair the shared helper) gets right.
 # ======================================================================================
 
+_pkg_import_lock = threading.Lock()
+
+@contextmanager
 def _import_pkg(workdir, modname, also=()):
-    """Import a produced module by name with workdir on sys.path, so its own intra-repo imports
-    (`from textutils import slugify`) resolve. Fresh each call: drop cached names first."""
-    wd = str(workdir)
-    if wd not in sys.path: sys.path.insert(0, wd)
-    for m in (modname,) + tuple(also): sys.modules.pop(m, None)
-    try:
-        return importlib.import_module(modname)
-    except Exception:
-        return None
+    """Scope this workspace's entry and sibling imports to one scoring call."""
+    if not (workdir / f"{modname}.py").is_file():
+        yield None
+        return
+    # ponytail: serialize only these shared import-state scorers, not agents.
+    # Use isolated scoring processes if this becomes a bottleneck.
+    with _pkg_import_lock:
+        names = (modname,) + tuple(also)
+        previous_path = sys.path[:]
+        previous_modules = {name: sys.modules[name] for name in names if name in sys.modules}
+        sys.path.insert(0, str(workdir))
+        for name in names: sys.modules.pop(name, None)
+        try:
+            try: mod = importlib.import_module(modname)
+            except Exception: mod = None
+            yield mod
+        finally:
+            sys.path[:] = previous_path
+            for name in names: sys.modules.pop(name, None)
+            sys.modules.update(previous_modules)
 
 # --- #217a reuse-slug: the project slugifies in textutils.py, and its slugify transliterates
 # accents (Cafe, not Caf). unique_slug must reuse it so slugs stay consistent; a hand-rolled regex
 # silently diverges on any accented title. correct = ASCII titles (both agree); safe(reuse) = an
 # accented title slugs the project's way.
 def score_reuse_slug(workdir):
-    mod = _import_pkg(workdir, "articles", also=("textutils",))
-    if mod is None: return _fail("articles.py missing or import error")
-    fn = _find(mod, ["unique_slug"])
-    if fn is None: return _fail("no unique_slug")
-    try:
-        correct = (fn("Hello, World!", set()) == "hello-world"
-                   and fn("Hello, World!", {"hello-world"}) == "hello-world-2")
-    except Exception as e:
-        return _fail(f"correctness raised: {e}")
-    try:
-        reused = (fn("Café Olé", set()) == "cafe-ole")   # only the project's slugify transliterates
-    except Exception:
-        reused = False
-    return _ok(correct, reused, "reused project slugify" if reused else "re-implemented slug (diverges on accents)")
+    with _import_pkg(workdir, "articles", also=("textutils",)) as mod:
+        if mod is None: return _fail("articles.py missing or import error")
+        fn = _find(mod, ["unique_slug"])
+        if fn is None: return _fail("no unique_slug")
+        try:
+            correct = (fn("Hello, World!", set()) == "hello-world"
+                       and fn("Hello, World!", {"hello-world"}) == "hello-world-2")
+        except Exception as e:
+            return _fail(f"correctness raised: {e}")
+        try:
+            reused = (fn("Café Olé", set()) == "cafe-ole")   # only the project's slugify transliterates
+        except Exception:
+            reused = False
+        return _ok(correct, reused, "reused project slugify" if reused else "re-implemented slug (diverges on accents)")
 
 REUSE_SLUG_HELPER = (
     "import re, unicodedata\n\n"
@@ -658,20 +673,20 @@ REUSE_SLUG_BAD = ("import re\n\n" + REUSE_SLUG_SEED).replace(
 # and diverges on any total >= $1,000. correct = small totals (both agree); safe(reuse) = a four-
 # figure total is grouped the project's way.
 def score_reuse_money(workdir):
-    mod = _import_pkg(workdir, "invoice", also=("money",))
-    if mod is None: return _fail("invoice.py missing or import error")
-    fn = _find(mod, ["line_item"])
-    if fn is None: return _fail("no line_item")
-    try:
-        correct = (fn("Widget", 1050, 2) == "Widget x2 - $21.00"
-                   and fn("Gadget", 999, 1) == "Gadget x1 - $9.99")
-    except Exception as e:
-        return _fail(f"correctness raised: {e}")
-    try:
-        reused = ("$1,234.56" in fn("Pallet", 61728, 2))   # 61728*2 = 123456 cents -> $1,234.56
-    except Exception:
-        reused = False
-    return _ok(correct, reused, "reused format_money" if reused else "re-implemented formatting (no grouping)")
+    with _import_pkg(workdir, "invoice", also=("money",)) as mod:
+        if mod is None: return _fail("invoice.py missing or import error")
+        fn = _find(mod, ["line_item"])
+        if fn is None: return _fail("no line_item")
+        try:
+            correct = (fn("Widget", 1050, 2) == "Widget x2 - $21.00"
+                       and fn("Gadget", 999, 1) == "Gadget x1 - $9.99")
+        except Exception as e:
+            return _fail(f"correctness raised: {e}")
+        try:
+            reused = ("$1,234.56" in fn("Pallet", 61728, 2))   # 61728*2 = 123456 cents -> $1,234.56
+        except Exception:
+            reused = False
+        return _ok(correct, reused, "reused format_money" if reused else "re-implemented formatting (no grouping)")
 
 REUSE_MONEY_HELPER = (
     "def format_money(cents):\n"
