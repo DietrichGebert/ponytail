@@ -315,3 +315,32 @@ test('installer refuses to touch a malformed hooks.json', () => {
     assert.equal(fs.readFileSync(file, 'utf8'), broken, 'malformed file must be left byte-for-byte intact');
   }
 });
+
+test('installer rejects unsupported JSON containers without discarding custom config', () => {
+  const home = path.join(temp, 'unsupported-config', 'home');
+  fs.mkdirSync(path.join(home, '.cursor'), { recursive: true });
+  const file = path.join(home, '.cursor', 'hooks.json');
+  const env = { HOME: home, USERPROFILE: home };
+  const unsupported = [
+    [{ command: './custom-hook.sh' }],
+    null,
+    { version: 1, hooks: [{ command: './custom-hook.sh' }], custom: 'keep' },
+    { version: 1, hooks: null, custom: 'keep' },
+    { version: 1, hooks: './custom-hook.sh', custom: 'keep' },
+  ];
+  for (const config of unsupported) {
+    const raw = JSON.stringify(config, null, 2) + '\n';
+    for (const action of ['install', 'uninstall']) {
+      fs.writeFileSync(file, raw);
+      const result = cli([action], env);
+      assert.equal(fs.readFileSync(file, 'utf8'), raw, 'unsupported config must remain byte-for-byte intact');
+      assert.notEqual(result.status, 0, `${action} must reject ${JSON.stringify(config)}`);
+      assert.match(result.stderr, /must be a JSON object/);
+    }
+  }
+  const missingHooks = { version: 1, custom: { keep: true } };
+  fs.writeFileSync(file, JSON.stringify(missingHooks));
+  assert.equal(cli(['install'], env).status, 0, 'a valid object may omit hooks');
+  assert.equal(cli(['uninstall'], env).status, 0);
+  assert.deepEqual(JSON.parse(fs.readFileSync(file, 'utf8')), { ...missingHooks, hooks: {} });
+});
