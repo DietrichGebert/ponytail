@@ -167,9 +167,17 @@ setTimeout(() => {
   console.log("PASS");
 }, 120);
 `;
-    const f = tmpFile('.mjs', harness);
-    const result = exec(`node "${f}"`);
-    fs.unlinkSync(f);
+    // Node detects CommonJS or ESM syntax; isolate the parent's package type.
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ponytail-debounce-'));
+    let result;
+    try {
+      fs.writeFileSync(path.join(dir, 'package.json'), '{}');
+      const f = path.join(dir, 'harness.js');
+      fs.writeFileSync(f, harness);
+      result = exec(`node "${f}"`);
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
     if (result.ok) return { pass: true, reason: 'Debounce passes all checks' };
     return { pass: false, reason: result.stderr || 'Debounce failed' };
   },

@@ -5,6 +5,9 @@
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const os = require('node:os');
+const path = require('node:path');
 const correctness = require('../benchmarks/correctness');
 
 // Helper: wrap code in a fenced block and call the assertion with task vars.
@@ -70,6 +73,87 @@ test('debounce: immediate-call implementation fails', () => {
   );
   assert.equal(result.pass, false);
   assert.equal(result.score, 0);
+});
+
+test('debounce: CommonJS export is graded by its behavior', () => {
+  const good = check('Write a debounce function.', 'javascript',
+    `module.exports = function(fn, delay) {
+      let timer;
+      return (...args) => { clearTimeout(timer); timer = setTimeout(() => fn(...args), delay); };
+    };`);
+  assert.equal(good.pass, true, good.reason);
+  assert.equal(good.score, 1);
+  const bad = check('Write a debounce function.', 'javascript',
+    'module.exports = (fn) => (...args) => fn(...args);');
+  assert.equal(bad.pass, false);
+  assert.match(bad.reason, /debounce fired immediately/);
+});
+
+test('debounce: both module formats ignore the temporary parent package type', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ponytail-format-test-'));
+  const previous = process.env.TMPDIR;
+  try {
+    process.env.TMPDIR = dir;
+    for (const type of ['module', 'commonjs']) {
+      fs.writeFileSync(path.join(dir, 'package.json'), JSON.stringify({ type }));
+      for (const prefix of ['module.exports = function', 'export function debounce']) {
+        const result = check('Write a debounce function.', 'javascript',
+          `${prefix}(fn, delay) {
+            // module.exports in a comment must not select the module format.
+            const label = 'module.exports';
+            let timer;
+            return (...args) => { clearTimeout(timer); timer = setTimeout(() => fn(...args), delay); };
+          }`);
+        assert.equal(result.pass, true, `${type}: ${prefix}: ${result.reason}`);
+        assert.deepEqual(fs.readdirSync(dir), ['package.json']);
+      }
+    }
+  } finally {
+    if (previous === undefined) delete process.env.TMPDIR;
+    else process.env.TMPDIR = previous;
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('debounce: runtime failures execute once and clean up the harness', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ponytail-format-test-'));
+  const previous = process.env.TMPDIR;
+  const marker = path.join(dir, 'executions');
+  try {
+    process.env.TMPDIR = dir;
+    const result = check('Write a debounce function.', 'javascript',
+      `require('node:fs').appendFileSync(${JSON.stringify(marker)}, '1');
+       throw new Error('submission failed');`);
+    assert.equal(result.pass, false);
+    assert.match(result.reason, /submission failed/);
+    assert.equal(fs.readFileSync(marker, 'utf8'), '1');
+    assert.deepEqual(fs.readdirSync(dir), ['executions']);
+  } finally {
+    if (previous === undefined) delete process.env.TMPDIR;
+    else process.env.TMPDIR = previous;
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('debounce: timeout still fails and cleans up the harness', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ponytail-format-test-'));
+  const previousDir = process.env.TMPDIR;
+  const previousTimeout = process.env.PONYTAIL_CORRECTNESS_TIMEOUT_MS;
+  try {
+    process.env.TMPDIR = dir;
+    process.env.PONYTAIL_CORRECTNESS_TIMEOUT_MS = '200';
+    const result = check('Write a debounce function.', 'javascript',
+      'const until = Date.now() + 1000; while (Date.now() < until) {}\nmodule.exports = () => () => {};');
+    assert.equal(result.pass, false);
+    assert.match(result.reason, /ETIMEDOUT|timed out/i);
+    assert.deepEqual(fs.readdirSync(dir), []);
+  } finally {
+    if (previousDir === undefined) delete process.env.TMPDIR;
+    else process.env.TMPDIR = previousDir;
+    if (previousTimeout === undefined) delete process.env.PONYTAIL_CORRECTNESS_TIMEOUT_MS;
+    else process.env.PONYTAIL_CORRECTNESS_TIMEOUT_MS = previousTimeout;
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
 });
 
 // --- CSV sum ---
