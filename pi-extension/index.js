@@ -202,10 +202,23 @@ export default function ponytailExtension(pi) {
   });
 
   pi.on("before_agent_start", async (event) => {
-    if (!currentMode || currentMode === "off") return;
+    if (!currentMode || currentMode === "off") {
+      // Clear a stale section when the mode is off so a previous turn does not linger (#953).
+      if (event?.systemPromptOptions?.sections) delete event.systemPromptOptions.sections.ponytail;
+      return;
+    }
+    const instructions = getPonytailInstructions(currentMode);
+    // Prefer structured sections so Pi can keep the cached prefix when other
+    // extensions change their own section (#953). Fall back to replacement
+    // for older Pi versions without systemPromptOptions.sections.
+    const sections = event?.systemPromptOptions?.sections;
+    if (sections && typeof sections === "object") {
+      sections.ponytail = instructions;
+      return;
+    }
     // Guard a null/undefined event or a missing systemPrompt: don't crash, and
     // don't prepend the literal string "undefined" to the prompt (#439, #440).
     const base = event?.systemPrompt ? `${event.systemPrompt}\n\n` : "";
-    return { systemPrompt: `${base}${getPonytailInstructions(currentMode)}` };
+    return { systemPrompt: `${base}${instructions}` };
   });
 }
