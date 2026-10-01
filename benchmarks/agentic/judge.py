@@ -20,6 +20,7 @@ from collections import defaultdict
 from pathlib import Path
 
 from tasks import TASKS
+from run import CODE_EXT, _is_test
 
 ROOT = Path(__file__).resolve().parents[2]
 RUNS_DIR = Path(__file__).resolve().parent / "runs"
@@ -47,16 +48,13 @@ def load_key():
         pass
     return os.environ.get("ANTHROPIC_API_KEY")
 
-def _is_test(name):
-    n = name.lower()
-    return n.startswith("test_") or n.endswith("_test.py") or n == "conftest.py"
-
 def source_text(workdir: Path):
     """Concatenate the agent's source files (tests + artifacts excluded), with name headers."""
     out = []
     for p in sorted(workdir.rglob("*")):
-        if not p.is_file() or "__pycache__" in p.parts or p.suffix == ".pyc": continue
-        if p.name.startswith((".", "_")) or _is_test(p.name): continue
+        if not p.is_file() or p.suffix not in CODE_EXT: continue
+        if any(part in (".git", "node_modules", "__pycache__") for part in p.parts): continue
+        if p.name.startswith((".", "_")) or _is_test(p, workdir): continue
         try: out.append(f"# === {p.relative_to(workdir)} ===\n{p.read_text(encoding='utf-8', errors='ignore')}")
         except Exception: continue
     return "\n\n".join(out)
