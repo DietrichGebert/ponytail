@@ -2,8 +2,8 @@
 // ponytail — install or remove the Cursor hooks (hooks/cursor-hooks.json) in
 // ~/.cursor/hooks.json (default) or <cwd>/.cursor/hooks.json (--project),
 // merging with whatever hooks are already there. Only entries that run one of
-// ponytail's own hooks/ponytail-*.js scripts are added or removed; every other
-// hook stays as it was.
+// the installer's two node commands are added or removed; every other hook
+// stays as it was.
 //
 //   node scripts/cursor-hooks.js install [--project]
 //   node scripts/cursor-hooks.js uninstall [--project]
@@ -15,7 +15,7 @@ const { isShellSafe } = require('../hooks/ponytail-config');
 
 const ROOT = path.join(__dirname, '..');
 const TEMPLATE = path.join(ROOT, 'hooks', 'cursor-hooks.json');
-const PONYTAIL_HOOK = /ponytail-[\w-]+\.js/;
+const PONYTAIL_HOOK = /^node "[^"]*[\\/]hooks[\\/]ponytail-(?:activate|mode-tracker)\.js"$/;
 
 function isPonytailHook(entry) {
   return Boolean(entry && typeof entry.command === 'string' && PONYTAIL_HOOK.test(entry.command));

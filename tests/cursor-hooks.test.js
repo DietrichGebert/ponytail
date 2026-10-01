@@ -230,10 +230,23 @@ test('installer merges into an existing ~/.cursor/hooks.json and leaves unrelate
     version: 1,
     hooks: {
       sessionStart: [{ command: './hooks/their-session.sh' }],
-      afterFileEdit: [{ command: './hooks/format.sh', matcher: 'Write' }],
+      afterFileEdit: [
+        { command: './hooks/format.sh', matcher: 'Write' },
+        { command: 'node "./hooks/my-ponytail-logger.js"', timeout: 10 },
+        { command: 'node "./hooks/ponytail-lint.js"' },
+        { command: 'node "./hooks/logger.js" "/p/hooks/ponytail-activate.js"' },
+      ],
     },
   };
-  fs.writeFileSync(file, JSON.stringify(theirs));
+  fs.writeFileSync(file, JSON.stringify({ ...theirs, hooks: {
+    ...theirs.hooks,
+    sessionStart: [...theirs.hooks.sessionStart, {
+      command: 'node "/previous checkout/hooks/ponytail-activate.js"', timeout: 5,
+    }],
+    beforeSubmitPrompt: [{
+      command: 'node "C:\\previous checkout\\hooks\\ponytail-mode-tracker.js"', timeout: 5,
+    }],
+  } }));
   const env = { HOME: home, USERPROFILE: home };
 
   let result = cli(['install'], env);
