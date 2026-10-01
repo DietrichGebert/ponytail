@@ -71,6 +71,60 @@ test('onecheck: no check fails', () => {
   assert.equal(r.pass, false);
 });
 
+test('onecheck: mentioning assert without a runnable check fails', () => {
+  const r = check('onecheck', 'The word assert is mentioned, but no runnable check exists.');
+  assert.equal(r.pass, false);
+});
+
+test('onecheck: prose mentioning assert but code block has no assert fails', () => {
+  const r = check('onecheck',
+    'I assert this is fine.\n```python\nprint("no check")\n```');
+  assert.equal(r.pass, false);
+});
+
+test('onecheck: prose mentioning assert and code block has assert passes', () => {
+  const r = check('onecheck',
+    'I assert this is fine.\n```python\nassert True\n```');
+  assert.equal(r.pass, true);
+});
+
+test('onecheck: assert in a code comment without runnable check fails', () => {
+  const r = check('onecheck',
+    '```python\n# assert that the result is correct\nprint("No test was actually performed")\n```');
+  assert.equal(r.pass, false);
+});
+
+test('onecheck: assert in a JS code comment without runnable check fails', () => {
+  const r = check('onecheck',
+    '```javascript\n// we should assert something here\nconsole.log("but we did not");\n```');
+  assert.equal(r.pass, false);
+});
+
+test('onecheck: assert in a string literal fails', () => {
+  const r = check('onecheck', '```python\nprint("assert")\n```');
+  assert.equal(r.pass, false);
+});
+
+test('onecheck: assert in an inline comment fails', () => {
+  const r = check('onecheck', '```python\nx = 1 # assert it is 1\n```');
+  assert.equal(r.pass, false);
+});
+
+test('onecheck: valid Python assert after an ordinary string is detected', () => {
+  const r = check('onecheck', '```python\nprint("hello")\nassert True\n```');
+  assert.equal(r.pass, true);
+});
+
+test('onecheck: valid Python assert after a multiline string is detected', () => {
+  const r = check('onecheck', '```python\n"""\nmultiline string\n"""\nassert True\n```');
+  assert.equal(r.pass, true);
+});
+
+test('onecheck: valid JS assertion after string containing assert is detected', () => {
+  const r = check('onecheck', '```javascript\nconsole.log("do not assert this");\nconsole.assert(true);\n```');
+  assert.equal(r.pass, true);
+});
+
 // --- unknown probe is skipped, not failed ---
 
 test('unknown probe is skipped', () => {

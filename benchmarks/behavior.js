@@ -37,8 +37,21 @@ const CHECKS = {
 
   // Leaves ONE runnable check behind for non-trivial logic.
   onecheck(output) {
-    const t = String(output || '');
-    const hasCheck = /\bassert\b|def\s+test_|if\s+__name__|unittest|pytest|console\.assert|\bexpect\(|\bdescribe\(|\bit\(/.test(t);
+    const blocks = String(output || '').match(/```[\s\S]*?```/g) || [];
+    const innerCode = blocks.map(b => b.replace(/^```[^\n]*\n|```$/g, '')).join('\n');
+
+    // Strip strings and comments to prevent false positives from prose/logs
+    const code = innerCode
+      .replace(/"""[\s\S]*?"""/g, '""')          // Python multiline strings
+      .replace(/'''[\s\S]*?'''/g, "''")          // Python multiline strings
+      .replace(/"(?:[^"\\\r\n]|\\.)*"/g, '""')   // Double-quote strings (no newlines)
+      .replace(/'(?:[^'\\\r\n]|\\.)*'/g, "''")   // Single-quote strings (no newlines)
+      .replace(/`(?:[^`\\]|[\s\S])*?`/g, '``')   // JS template literals
+      .replace(/\/\*[\s\S]*?\*\//g, '')          // JS block comments
+      .replace(/\/\/.*$/gm, '')                  // JS inline comments
+      .replace(/#.*$/gm, '');                    // Python inline comments
+
+    const hasCheck = /\bassert\b|def\s+test_|if\s+__name__|unittest|pytest|console\.assert|\bexpect\(|\bdescribe\(|\bit\(/.test(code);
     return hasCheck
       ? { pass: true, reason: 'Left a runnable check (assert/test/demo).' }
       : { pass: false, reason: 'No runnable check left behind.' };
