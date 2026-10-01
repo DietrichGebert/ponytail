@@ -5,7 +5,7 @@
   </picture>
 </p>
 
-<h1 align="center">Ponytail</h1>
+<h1 align="center">PONYTAIL</h1>
 
 <p align="center">
   <em>He says nothing. He writes one line. It works.</em>
