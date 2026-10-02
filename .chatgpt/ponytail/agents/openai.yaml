@@ -1,0 +1,4 @@
+interface:
+  display_name: "Ponytail"
+  short_description: "Minimal coding, review, audit, and debt cleanup"
+  brand_color: "#8FD14F"

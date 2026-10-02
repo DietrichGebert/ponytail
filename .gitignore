@@ -24,3 +24,6 @@ ponytail-*.gif
 
 # agentic benchmark workspaces (agent output, kept locally for inspection)
 benchmarks/agentic/runs/
+
+# Generated ChatGPT upload archive
+dist/ponytail-chatgpt-skill.zip
