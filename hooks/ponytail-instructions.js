@@ -41,6 +41,13 @@ function filterSkillBodyForMode(body, mode) {
 }
 
 function getFallbackInstructions(mode) {
+  if (mode === 'debug') {
+    return 'PONYTAIL MODE ACTIVE — level: debug\n\n' +
+      'Reproduce the reported failure before editing. Trace the root cause and affected callers. ' +
+      'Apply the smallest complete fix within the requested scope, then rerun the reproduction and relevant existing tests. ' +
+      'Preserve security, validation, accessibility, and data-loss protections. Do not refactor unrelated code or add dependencies. ' +
+      'For diagnosis-only requests, report the cause without editing. Report any verification that could not run.';
+  }
   return 'PONYTAIL MODE ACTIVE — level: ' + mode + '\n\n' +
     'You are a lazy senior developer. Lazy means efficient, not careless. The best code is the code never written.\n\n' +
     '## Persistence\n\n' +
@@ -84,6 +91,11 @@ function getPonytailInstructions(mode) {
   const effectiveMode = normalizeMode(configuredMode) || DEFAULT_MODE;
 
   try {
+    if (effectiveMode === 'debug') {
+      const debugPath = path.join(__dirname, '..', 'skills', 'ponytail-debug', 'SKILL.md');
+      return 'PONYTAIL MODE ACTIVE — level: debug\n\n' +
+        fs.readFileSync(debugPath, 'utf8').replace(/^---[\s\S]*?---\s*/, '');
+    }
     return 'PONYTAIL MODE ACTIVE — level: ' + effectiveMode + '\n\n' +
       filterSkillBodyForMode(fs.readFileSync(SKILL_PATH, 'utf8'), effectiveMode);
   } catch (e) {

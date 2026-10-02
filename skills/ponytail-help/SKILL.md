@@ -18,6 +18,7 @@ write flag files, or persist anything.
 | **Lite** | `/ponytail lite` | Build what's asked, name the lazier alternative in one line. |
 | **Full** | `/ponytail` | The ladder enforced: YAGNI → stdlib → native → one line → minimum. Default. |
 | **Ultra** | `/ponytail ultra` | YAGNI extremist. Deletion before addition. Challenges requirements before building. |
+| **Debug** | `/ponytail debug` | Reproduce the failure, trace the root cause, patch within scope, and verify. |
 
 Level sticks until changed or session end.
 
@@ -30,10 +31,11 @@ Level sticks until changed or session end.
 | **ponytail-audit** | `/ponytail-audit` | Whole-repo over-engineering audit: ranked list of what to delete. |
 | **ponytail-debt** | `/ponytail-debt` | Harvest `ponytail:` shortcut comments into a tracked ledger. |
 | **ponytail-gain** | `/ponytail-gain` | Measured-impact scoreboard: less code, less cost, more speed. |
+| **ponytail-debug** | `/ponytail-debug <failure>` | Debug one task without changing the saved mode. |
 | **ponytail-help** | `/ponytail-help` | This card. |
 
 Codex uses `@ponytail`, `@ponytail-review`, and `@ponytail-help`; Claude Code
-and OpenCode use the slash-command forms above (OpenCode ships all six as
+and OpenCode use the slash-command forms above (OpenCode ships these as
 slash commands).
 
 ## Deactivate
@@ -45,7 +47,7 @@ Say "stop ponytail" or "normal mode". Resume anytime with `/ponytail`.
 
 Default mode = `full`, auto-active every session. Change it:
 
-**Environment variable** (highest priority):
+**Environment variable**:
 ```bash
 export PONYTAIL_DEFAULT_MODE=ultra
 ```
@@ -58,7 +60,9 @@ export PONYTAIL_DEFAULT_MODE=ultra
 Set `"off"` to disable auto-activation on session start, activate manually
 with `/ponytail` when wanted.
 
-Resolution: env var > config file > `full`.
+For one launch, `PONYTAIL_MODE=debug` selects the debugging workflow. A valid
+`PONYTAIL_MODE` takes priority over `PONYTAIL_DEFAULT_MODE`, then the config file,
+then `full`. Later explicit mode switches still apply on hosts with mode tracking.
 
 ## Update
 

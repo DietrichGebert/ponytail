@@ -61,8 +61,23 @@ function withTempConfig(fn) {
 test("extension registers Ponytail commands", () => {
   const { commands } = createPiHarness();
 
-  assert.deepEqual([...commands.keys()].sort(), ["ponytail", "ponytail-audit", "ponytail-debt", "ponytail-gain", "ponytail-help", "ponytail-review"]);
+  assert.deepEqual([...commands.keys()].sort(), ["ponytail", "ponytail-audit", "ponytail-debt", "ponytail-debug", "ponytail-gain", "ponytail-help", "ponytail-review"]);
 });
+
+test("task skill aliases preserve targets without changing the session mode", async () => withTempConfig(async () => {
+  const { commands, events, appendedEntries, sentUserMessages } = createPiHarness();
+  const ctx = createCommandContext();
+  await events.get("session_start")({}, ctx);
+  await commands.get("ponytail").handler("debug", ctx);
+  const injected = await events.get("before_agent_start")({ systemPrompt: "BASE" }, ctx);
+  assert.match(injected.systemPrompt, /level: debug/);
+  assert.match(injected.systemPrompt, /Reproduce/);
+  for (const name of ["ponytail-debug"]) {
+    await commands.get(name).handler("src/app.ts", ctx);
+    assert.equal(sentUserMessages.at(-1).text, `/skill:${name} src/app.ts`);
+  }
+  assert.deepEqual(appendedEntries, [{ customType: "ponytail-mode", data: { mode: "debug" } }]);
+}));
 
 test("/ponytail updates session mode and injects instructions", async () => withTempConfig(async () => {
   const { commands, events, appendedEntries } = createPiHarness();
