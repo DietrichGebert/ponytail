@@ -100,7 +100,9 @@ function finish() {
           );
         }
       } else if (mode === 'off') {
-        clearMode();
+        if (isQoder) setMode('off');
+        else clearMode();
+
         deactivated = true;
         writeHookOutput('UserPromptSubmit', 'off', 'PONYTAIL MODE OFF');
       }
@@ -108,7 +110,9 @@ function finish() {
 
     // Detect deactivation
     if (!modeSwitched && !deactivated && isDeactivationCommand(prompt)) {
-      clearMode();
+      if (isQoder) setMode('off');
+      else clearMode();
+
       deactivated = true;
       writeHookOutput('UserPromptSubmit', 'off', 'PONYTAIL MODE OFF');
     }
