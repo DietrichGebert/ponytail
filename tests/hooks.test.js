@@ -12,6 +12,7 @@ const root = path.join(__dirname, '..');
 // paths pass, paths carrying shell metacharacters are rejected so they never get
 // embedded in a shell command.
 const { DEFAULT_MODE, getDefaultMode, isShellSafe, writeDefaultMode } = require('../hooks/ponytail-config');
+const { getPonytailInstructions } = require('../hooks/ponytail-instructions');
 assert.equal(isShellSafe('C:\\Users\\x\\.claude\\plugins\\ponytail\\hooks\\ponytail-statusline.ps1'), true);
 assert.equal(isShellSafe('/home/u/.claude/plugins/ponytail/hooks/ponytail-statusline.sh'), true);
 assert.equal(isShellSafe('/tmp/a"&calc.exe&"/x.sh'), false);
@@ -80,6 +81,21 @@ assert.equal(result.status, 0, result.stderr);
 assert.equal(fs.readFileSync(codexState, 'utf8'), 'lite');
 output = JSON.parse(result.stdout);
 assert.equal(output.systemMessage, 'PONYTAIL:LITE');
+assert.ok(output.hookSpecificOutput.additionalContext.endsWith(getPonytailInstructions('lite')));
+
+for (const [prompt, mode] of [
+  ['$ponytail full', 'full'],
+  ['@ponytail ultra', 'ultra'],
+  ['/ponytail:ponytail lite', 'lite'],
+]) {
+  result = run('ponytail-mode-tracker.js', codexEnv, JSON.stringify({ prompt }));
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(fs.readFileSync(codexState, 'utf8'), mode);
+  output = JSON.parse(result.stdout);
+  assert.equal(output.systemMessage, 'PONYTAIL:' + mode.toUpperCase());
+  assert.equal(output.hookSpecificOutput.hookEventName, 'UserPromptSubmit');
+  assert.ok(output.hookSpecificOutput.additionalContext.endsWith(getPonytailInstructions(mode)));
+}
 
 // Querying bare @ponytail should report the active level ('lite') without resetting it to default ('ultra')
 result = run(

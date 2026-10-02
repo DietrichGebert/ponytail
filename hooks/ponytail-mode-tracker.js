@@ -7,6 +7,7 @@ const {
   clearMode,
   cursorRuleNotice,
   cursorRulePath,
+  isCodex,
   isCursor,
   isQoder,
   readMode,
@@ -89,14 +90,12 @@ function finish() {
         // switch happens we fold the confirmation into the ruleset output
         // below (one JSON on stdout) instead of emitting two separate writes.
         if (!isQoder) {
-          // Cursor has no /ponytail command that would load the skill body
-          // for the new level, so the tracker delivers that level's ruleset
-          // along with the confirmation (#817).
+          // Codex اور Cursor میں موڈ بدلنے پر اسی مشترک ماخذ سے نئی ہدایات بھی دیں۔
           const header = 'PONYTAIL MODE CHANGED — level: ' + mode;
           writeHookOutput(
             'UserPromptSubmit',
             mode,
-            isCursor ? header + '\n\n' + getPonytailInstructions(mode) : header,
+            (isCodex || isCursor) ? header + '\n\n' + getPonytailInstructions(mode) : header,
           );
         }
       } else if (mode === 'off') {
