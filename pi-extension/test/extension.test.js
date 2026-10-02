@@ -61,8 +61,20 @@ function withTempConfig(fn) {
 test("extension registers Ponytail commands", () => {
   const { commands } = createPiHarness();
 
-  assert.deepEqual([...commands.keys()].sort(), ["ponytail", "ponytail-audit", "ponytail-debt", "ponytail-gain", "ponytail-help", "ponytail-review"]);
+  assert.deepEqual([...commands.keys()].sort(), ["ponytail", "ponytail-audit", "ponytail-debt", "ponytail-gain", "ponytail-help", "ponytail-jedi", "ponytail-review"]);
 });
+
+test("jedi alias preserves the requirement without changing the session mode", async () => withTempConfig(async () => {
+  const { commands, events, appendedEntries, sentUserMessages } = createPiHarness();
+  const ctx = createCommandContext();
+  await events.get("session_start")({}, ctx);
+  await commands.get("ponytail").handler("lite", ctx);
+  await commands.get("ponytail-jedi").handler("JSON encoding for Node 24", ctx);
+  assert.equal(sentUserMessages.at(-1).text, "/skill:ponytail-jedi JSON encoding for Node 24");
+  assert.deepEqual(appendedEntries, [{ customType: "ponytail-mode", data: { mode: "lite" } }]);
+  const result = await events.get("before_agent_start")({ systemPrompt: "BASE" }, ctx);
+  assert.match(result.systemPrompt, /level: lite/);
+}));
 
 test("/ponytail updates session mode and injects instructions", async () => withTempConfig(async () => {
   const { commands, events, appendedEntries } = createPiHarness();
