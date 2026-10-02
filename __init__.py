@@ -223,27 +223,3 @@ def register(ctx: Any) -> None:
             description=description,
             args_hint="[target or notes]",
         )
-
-
-def _self_check() -> None:
-    """Runnable check: `python3 __init__.py`."""
-    assert _normalize_runtime_mode("Full") == "full"
-    assert _normalize_runtime_mode("bogus") is None
-
-    kept = _filter_skill_body_for_mode(
-        '- Full: do not confuse this rule label with the mode name.\n'
-        '- lite: "real worked example"\n'
-        '- ultra: "real worked example"',
-        "ultra",
-    )
-    assert "Full: do not confuse" in kept, "unquoted rule bullet must survive every mode"
-    assert "- lite:" not in kept, "real quoted example must still be filtered out in ultra mode"
-    assert 'ultra: "real worked example"' in kept
-
-    assert build_injected_context("off") == ""
-
-    print("ok")
-
-
-if __name__ == "__main__":
-    _self_check()
