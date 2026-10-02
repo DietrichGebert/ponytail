@@ -37,3 +37,20 @@ test('every registered command ships an OpenCode .opencode/command/*.md', () => 
     );
   }
 });
+
+// #307: /ponytail-review must be able to review a whole branch, not only the
+// unstaged changes. The target-resolution contract lives in three files (the
+// skill plus both command adapters); pin the load-bearing words so a reword
+// can't silently drop it from one of them.
+test('review skill and both command files document branch-scoped review (#307)', () => {
+  const files = [
+    path.join('skills', 'ponytail-review', 'SKILL.md'),
+    path.join('commands', 'ponytail-review.toml'),
+    path.join('.opencode', 'command', 'ponytail-review.md'),
+  ];
+  for (const rel of files) {
+    const text = fs.readFileSync(path.join(root, rel), 'utf8');
+    assert.match(text, /merge-base/, `${rel} must resolve a branch review from the merge-base`);
+    assert.match(text, /git diff HEAD/, `${rel} must keep the working diff as the no-argument default`);
+  }
+});
