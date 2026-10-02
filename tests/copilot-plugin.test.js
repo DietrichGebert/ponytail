@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-// Smoke test for the Copilot plugin adapter: keep command wiring minimal and
-// ensure the debt command is part of the shared command surface.
+// Smoke test for the Copilot marketplace adapter: it installs the root
+// Agent Plugins manifest, which discovers skills from the shared directory.
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -8,28 +8,18 @@ const fs = require('fs');
 const path = require('path');
 
 const root = path.join(__dirname, '..');
-const REQUIRED_COMMAND_FILES = [
-  'ponytail.toml',
-  'ponytail-review.toml',
-  'ponytail-audit.toml',
-  'ponytail-debt.toml',
-  'ponytail-gain.toml',
-  'ponytail-help.toml',
-];
+const COPILOT_HOOKS = 'com.github.copilot/hooks/hooks.json';
 
 function readJSON(relPath) {
   return JSON.parse(fs.readFileSync(path.join(root, relPath), 'utf8'));
 }
 
-test('copilot plugin command directory includes ponytail-debt', () => {
-  const manifest = readJSON('.github/plugin/plugin.json');
+test('Copilot marketplace installs the root Agent Plugins manifest', () => {
+  const manifest = readJSON('plugin.json');
+  const marketplace = readJSON('.github/plugin/marketplace.json');
   assert.equal(manifest.name, 'ponytail');
-  assert.equal(manifest.commands, 'commands/');
-
-  for (const file of REQUIRED_COMMAND_FILES) {
-    assert.ok(
-      fs.existsSync(path.join(root, manifest.commands, file)),
-      `missing command file: ${manifest.commands}${file}`,
-    );
-  }
+  assert.equal(manifest.$schema, 'https://agent-plugins.org/schemas/1.0.0/plugin.schema.json');
+  assert.equal(marketplace.plugins[0].source, './');
+  assert.equal(fs.existsSync(path.join(root, '.github', 'plugin', 'plugin.json')), false);
+  assert.equal(readJSON(COPILOT_HOOKS).version, 1);
 });

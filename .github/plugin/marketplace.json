@@ -11,10 +11,7 @@
       "description": "Forces the laziest solution that works. YAGNI, stdlib first, one line over fifty.",
       "source": "./",
       "category": "productivity",
-      "tags": ["yagni", "minimalism", "code-review", "productivity"],
-      "commands": "commands/",
-      "skills": "skills/",
-      "hooks": "hooks/copilot-hooks.json"
+      "tags": ["yagni", "minimalism", "code-review", "productivity"]
     }
   ]
 }

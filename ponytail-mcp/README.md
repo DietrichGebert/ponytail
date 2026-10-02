@@ -29,10 +29,7 @@ npm install
 node index.js        # speaks MCP over stdio
 ```
 
-Point an MCP host at that command. Example client entry:
-
-```json
-{ "mcpServers": { "ponytail": { "command": "node", "args": ["ponytail-mcp/index.js"] } } }
+The plugin root [mcp.json](/mcp.json) exposes the server in its standard `mcp.json` format.
 ```
 
 ## Test
