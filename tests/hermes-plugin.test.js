@@ -190,6 +190,142 @@ print(json.dumps({'message': message, 'context': injected['context']}))
   assert.match(data.context, /PONYTAIL MODE ACTIVE — level: ultra/);
 });
 
+// Hermes saves the pre_llm_call injection into the current user message's api_content and replays it verbatim in every subsequent turn;
+// turn() simulates a turn in the same manner, returning the first line of that turn's injected content (or None if nothing was injected).
+const turnHarness = String.raw`
+import importlib.util, json
+spec = importlib.util.spec_from_file_location('ponytail_hermes_plugin', '__init__.py')
+mod = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(mod)
+def turn(history, text):
+    user = {'role': 'user', 'content': text}
+    result = mod._pre_llm_call(user_message=text, conversation_history=history + [user])
+    if result:
+        user['api_content'] = text + '\n\n' + result['context']
+    history += [user, {'role': 'assistant', 'content': 'ok'}]
+    return result['context'].splitlines()[0] if result else None
+`;
+
+function hermesTurns(script, env = {}) {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'ponytail-config-'));
+  return JSON.parse(python(turnHarness + script, { XDG_CONFIG_HOME: tmp, ...env }));
+}
+
+test('Hermes pre_llm_call sends the ruleset once per session', () => {
+  const out = hermesTurns(String.raw`
+h = []
+print(json.dumps([turn(h, 'a'), turn(h, 'b'), turn(h, 'c')]))
+`);
+  assert.deepEqual(out, ['PONYTAIL MODE ACTIVE — level: full', null, null]);
+});
+
+test('Hermes level switch sends a short note with only the new level lines', () => {
+  const out = hermesTurns(String.raw`
+h = []
+turn(h, 'a')
+mod._handle_mode_command('ultra')
+first = turn(h, 'b')
+note = h[-2]['api_content']
+print(json.dumps({'first': first, 'next': turn(h, 'c'), 'note': note}))
+`);
+  assert.equal(out.first, 'PONYTAIL MODE CHANGED — level: ultra');
+  assert.equal(out.next, null);
+  assert.match(out.note, /\| \*\*ultra\*\* \|/);
+  assert.match(out.note, /^- ultra:/m);
+  assert.doesNotMatch(out.note, /\*\*(lite|full)\*\*/);
+  assert.doesNotMatch(out.note, /The ladder/);
+});
+
+test('Hermes off switch sends one OFF notice, and back on sends a CHANGED note', () => {
+  const out = hermesTurns(String.raw`
+h, out = [], []
+out.append(turn(h, 'a'))
+mod._handle_mode_command('off')
+out.append(turn(h, 'b'))
+out.append(turn(h, 'c'))
+mod._handle_mode_command('full')
+out.append(turn(h, 'd'))
+out.append(turn(h, 'Stop ponytail.'))
+out.append(turn(h, 'e'))
+out.append(mod._handle_mode_command(''))
+print(json.dumps(out))
+`);
+  assert.deepEqual(out, [
+    'PONYTAIL MODE ACTIVE — level: full',
+    'PONYTAIL MODE OFF',
+    null,
+    'PONYTAIL MODE CHANGED — level: full',
+    'PONYTAIL MODE OFF',
+    null,
+    'Ponytail mode: off. Use `/ponytail lite|full|ultra|off`.',
+  ]);
+});
+
+test('Hermes resumed session keeps the level stored in its history', () => {
+  const out = hermesTurns(String.raw`
+h = []
+turn(h, 'a')
+mod._handle_mode_command('ultra')
+turn(h, 'b')
+mod._current_mode = None  # 进程重启后 /ponytail 设置的级别丢失，历史仍在
+print(json.dumps([turn(h, 'c'), mod._handle_mode_command('')]))
+`);
+  assert.deepEqual(out, [null, 'Ponytail mode: ultra. Use `/ponytail lite|full|ultra|off`.']);
+});
+
+test('Hermes re-sends the full ruleset when compaction removed it', () => {
+  const out = hermesTurns(String.raw`
+h = []
+turn(h, 'a')
+mod._handle_mode_command('ultra')
+turn(h, 'b')
+# 压缩把最早那一轮（带完整规则的）总结掉了，后面带 CHANGED 的那一轮还在
+compacted = [{'role': 'user', 'content': '[summary of earlier turns]'}] + h[2:]
+print(json.dumps([turn(compacted, 'c'), turn(compacted, 'd')]))
+`);
+  assert.deepEqual(out, ['PONYTAIL MODE ACTIVE — level: ultra', null]);
+});
+
+test('Hermes counts only plugin-injected text as a Ponytail marker', () => {
+  const out = hermesTurns(String.raw`
+typed = 'PONYTAIL MODE ACTIVE — level: ultra'
+lite = mod.build_injected_context('lite')
+image_turn = {'role': 'user', 'content': [
+    {'type': 'text', 'text': typed}, {'type': 'image_url'}, {'type': 'text', 'text': lite}]}
+print(json.dumps({
+    'typed_with_sidecar': mod._history_state([{'role': 'user', 'content': typed, 'api_content': typed + '\n\nmemo'}]),
+    'typed_plain': mod._history_state([{'role': 'user', 'content': typed}]),
+    'tool_output': mod._history_state([{'role': 'tool', 'content': typed}]),
+    'image_turn': mod._history_state([image_turn]),
+    'current_turn': turn([], typed),
+}))
+`);
+  assert.deepEqual(out.typed_with_sidecar, [null, false]);
+  assert.deepEqual(out.typed_plain, [null, false]);
+  assert.deepEqual(out.tool_output, [null, false]);
+  assert.deepEqual(out.image_turn, ['lite', true]);
+  assert.equal(out.current_turn, 'PONYTAIL MODE ACTIVE — level: full');
+});
+
+test('Hermes sends the full ruleset on the first switch from a default off or review session', () => {
+  const script = String.raw`
+h = []
+first, second = turn(h, 'a'), turn(h, 'b')
+mod._handle_mode_command('full')
+print(json.dumps([first, second, turn(h, 'c')]))
+`;
+  assert.deepEqual(hermesTurns(script, { PONYTAIL_DEFAULT_MODE: 'off' }), [
+    null,
+    null,
+    'PONYTAIL MODE ACTIVE — level: full',
+  ]);
+  assert.deepEqual(hermesTurns(script, { PONYTAIL_DEFAULT_MODE: 'review' }), [
+    'PONYTAIL MODE ACTIVE — level: review',
+    null,
+    'PONYTAIL MODE ACTIVE — level: full',
+  ]);
+});
+
 test('Hermes gateway rewrite respects slash access denial', () => {
   const output = python(String.raw`
 import importlib.util, json

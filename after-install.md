@@ -8,6 +8,8 @@ hermes plugins enable ponytail
 
 Restart Hermes or the gateway after enabling.
 
+Ponytail rules are injected once per session. `/ponytail <level>` takes effect from your next message.
+
 In shared gateways, restrict `/ponytail` to trusted users with Hermes slash-command access controls; runtime mode is process-local.
 
 Commands:
