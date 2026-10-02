@@ -185,7 +185,7 @@ pi install git:github.com/DietrichGebert/ponytail
 
 OpenCode 2 전용이다. `./` 경로는 프로젝트의 `opencode.json`을 기준으로 풀린다. 체크아웃 하나를 여러 프로젝트에서 같이 쓰려면, 대신 그 체크아웃의 `.opencode/plugins` 디렉터리 절대 경로를 가리키면 된다. `plugins` 항목은 **파일**이 아니라 **디렉터리**를 가리켜야 한다. OpenCode 2는 `ponytail.mjs` 파일 경로를 `configured plugin path must be a directory`로 거부한다. 이 저장소를 OpenCode 2로 열면 항목이 아예 필요 없다. `.opencode/plugins/index.js`를 스스로 불러오기 때문이다.
 
-OpenCode 1(1.18.29 이상)은 예전 `plugin` 키를 쓴다: `{ "plugin": ["@dietrichgebert/ponytail"] }`. 체크아웃에서 돌릴 때는 파일 경로를 쓴다: `{ "plugin": ["./.opencode/plugins/ponytail.mjs"] }`.
+OpenCode 1은 예전 `plugin` 키를 쓴다: `{ "plugin": ["@dietrichgebert/ponytail"] }`. 체크아웃에서 돌릴 때는 파일 경로를 쓴다: `{ "plugin": ["./.opencode/plugins/ponytail.mjs"] }`.
 
 ### Gemini CLI
 

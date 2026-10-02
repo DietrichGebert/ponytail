@@ -181,7 +181,7 @@ Inyecta el ruleset en cada turno con el nivel activo; agrega los comandos `/pony
 
 Solo OpenCode 2. El path `./` se resuelve contra el `opencode.json` de tu proyecto; para compartir un único checkout entre proyectos, apunta al path absoluto del directorio `.opencode/plugins` del checkout. Una entrada de `plugins` debe nombrar un **directorio**, no un archivo: OpenCode 2 rechaza un path a `ponytail.mjs` con `configured plugin path must be a directory`. Abrir este repo en OpenCode 2 no necesita ninguna entrada: carga `.opencode/plugins/index.js` por su cuenta.
 
-OpenCode 1 (1.18.29 o más nuevo) usa la clave vieja `plugin`: `{ "plugin": ["@dietrichgebert/ponytail"] }`, o desde un checkout el path al archivo: `{ "plugin": ["./.opencode/plugins/ponytail.mjs"] }`.
+OpenCode 1 usa la clave vieja `plugin`: `{ "plugin": ["@dietrichgebert/ponytail"] }`, o desde un checkout el path al archivo: `{ "plugin": ["./.opencode/plugins/ponytail.mjs"] }`.
 
 ### Gemini CLI
 

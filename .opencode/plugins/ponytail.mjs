@@ -10,7 +10,7 @@
 //   { "plugins": ["@dietrichgebert/ponytail"] }
 //
 // One default export serves both plugin APIs: V2 reads `id` + `setup`, V1 calls
-// `server()`. V1 object entrypoints need OpenCode 1.18.29 or newer.
+// `server()`.
 
 import { createRequire } from 'module';
 import fs from 'fs';
