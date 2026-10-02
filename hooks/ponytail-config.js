@@ -99,38 +99,30 @@ function getDefaultMode() {
   return DEFAULT_MODE;
 }
 
-// Silence the pi "Ponytail loaded" startup toast while keeping ponytail active.
-// PONYTAIL_QUIET_STARTUP=1 (or any truthy value; 0/false/empty mean "show it")
-// takes precedence, else config.quietStartup === true. Mirrors getHideStatus.
-function getQuietStartup() {
-  const env = process.env.PONYTAIL_QUIET_STARTUP;
+// Boolean preference: env var wins when set (truthy unless 0/false/no/empty),
+// else config file key === true, else false.
+function boolPref(envVar, configKey) {
+  const env = process.env[envVar];
   if (env !== undefined) {
     const v = env.trim().toLowerCase();
     return v !== '' && v !== '0' && v !== 'false' && v !== 'no';
   }
   try {
     const config = JSON.parse(fs.readFileSync(getConfigPath(), 'utf8').replace(/^\uFEFF/, ''));
-    return config.quietStartup === true;
+    return config[configKey] === true;
   } catch (_) {
     return false;
   }
 }
 
+// Silence the pi "Ponytail loaded" startup toast while keeping ponytail active.
+function getQuietStartup() {
+  return boolPref('PONYTAIL_QUIET_STARTUP', 'quietStartup');
+}
+
 // Hide the status-bar indicator while keeping ponytail active (#324).
-// PONYTAIL_HIDE_STATUS=1 (or any truthy value; 0/false/empty mean "don't hide")
-// takes precedence, else config.hideStatus === true.
 function getHideStatus() {
-  const env = process.env.PONYTAIL_HIDE_STATUS;
-  if (env !== undefined) {
-    const v = env.trim().toLowerCase();
-    return v !== '' && v !== '0' && v !== 'false' && v !== 'no';
-  }
-  try {
-    const config = JSON.parse(fs.readFileSync(getConfigPath(), 'utf8').replace(/^\uFEFF/, ''));
-    return config.hideStatus === true;
-  } catch (_) {
-    return false;
-  }
+  return boolPref('PONYTAIL_HIDE_STATUS', 'hideStatus');
 }
 
 function writeDefaultMode(mode) {

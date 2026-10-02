@@ -77,7 +77,9 @@ def _filter_skill_body_for_mode(body: str, mode: str) -> str:
             if label_mode and label_mode != effective:
                 continue
 
-        example_label = re.match(r"^-\s*([^:]+):\s*", line)
+        # Require a quoted value, mirroring the JS filter: worked examples are
+        # `- lite: "..."`; a prose bullet starting with a mode word must survive.
+        example_label = re.match(r'^-\s*([^:]+):\s*"', line)
         if example_label:
             label_mode = _normalize_runtime_mode(example_label.group(1))
             if label_mode and label_mode != effective:
