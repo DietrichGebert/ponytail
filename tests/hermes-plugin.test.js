@@ -149,6 +149,27 @@ print(json.dumps({
   assert.match(data.status_after, /Ponytail mode: ultra/);
 });
 
+test('Hermes honors plain and BOM-prefixed default-mode config before LLM calls', (t) => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'ponytail-config-'));
+  t.after(() => fs.rmSync(tmp, { recursive: true, force: true }));
+  fs.mkdirSync(path.join(tmp, 'ponytail'));
+  for (const prefix of ['', '\uFEFF']) {
+    for (const mode of ['lite', 'off']) {
+      fs.writeFileSync(path.join(tmp, 'ponytail', 'config.json'), prefix + JSON.stringify({ defaultMode: mode }));
+      const output = python(String.raw`
+import importlib.util, json
+spec = importlib.util.spec_from_file_location('ponytail_hermes_plugin', '__init__.py')
+mod = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(mod)
+print(json.dumps(mod._pre_llm_call()))
+`, { XDG_CONFIG_HOME: tmp, PONYTAIL_DEFAULT_MODE: '' });
+      const data = JSON.parse(output);
+      if (mode === 'off') assert.equal(data, null);
+      else assert.match(data.context, /PONYTAIL MODE ACTIVE — level: lite/);
+    }
+  }
+});
+
 test('Hermes plugin review mode injects the real review skill body', () => {
   const output = python(String.raw`
 import importlib.util, json
