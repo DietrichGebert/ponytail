@@ -26,6 +26,25 @@ Tags:
 - `yagni:` abstraction with one implementation, config nobody sets, layer with one caller.
 - `shrink:` same logic, fewer lines. Show the shorter form.
 
+## Evidence
+
+A finding is only as good as its trail. `delete:` and `yagni:` claim that
+nothing else needs the code. Back that claim with the search you ran and what
+it returned, so the reader can check it instead of trusting it:
+
+✅ `L52-71: delete: retry wrapper around an idempotent local call. Nothing replaces it. [rg with_retry → 1 hit, this file]`
+
+"Nobody uses this" without the search is an impression, not a finding, and
+cutting code another module calls is a break, not a trim. For `stdlib:`,
+`native:` and `shrink:` the named replacement is the trail.
+
+What a senior would leave alone gets a `keep:` line with one reason, so the
+next reviewer does not cut it either: validation at a trust boundary, error
+handling that saves data, security, accessibility, anything the user asked
+for by name, the one self-check on non-trivial logic.
+
+✅ `keep: L10-14 validation of the webhook payload, trust boundary.`
+
 ## Examples
 
 ❌ "This EmailValidator class might be more complex than necessary, have you
