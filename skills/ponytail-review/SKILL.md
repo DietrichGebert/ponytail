@@ -13,7 +13,7 @@ description: >
 Review diffs for unnecessary complexity. One line per finding: location, what
 to cut, what replaces it. The diff's best outcome is getting shorter.
 
-## Format
+## Section 1 — Tagged findings
 
 `L<line>: <tag> <what>. <replacement>.`, or `<file>:L<line>: ...` for
 multi-file diffs.
@@ -47,11 +47,27 @@ End with the only metric that matters: `net: -<N> lines possible.`
 
 If there is nothing to cut, say `Lean already. Ship.` and stop.
 
+## Section 2 — Structural observations
+
+After the tagged findings and net-lines metric, note any structural concerns
+that don't reduce to a single tagged line. These are patterns the line-level
+format cannot express:
+
+- "This wrapper class exists only to forward calls — the abstraction layer shouldn't exist"
+- "The test suite tests the upstream library's behavior, not this code's behavior"
+- "This is a tutorial scaffold masquerading as production architecture"
+
+Structural observations often represent the highest-value findings. Do not
+suppress them because they don't fit the tag format.
+
+If there are no structural observations beyond the tagged findings, omit this
+section — do not add a placeholder.
+
 ## Boundaries
 
-Scope: over-engineering and complexity only. Correctness bugs, security holes,
-and performance are explicitly out of scope. Route them to a normal review
-pass, not this one. A single smoke test or `assert`-based
+**Scope: over-engineering and complexity only.** Correctness bugs, security
+holes, and performance issues are explicitly out of scope — route them to a
+dedicated review pass, not this one. A single smoke test or `assert`-based
 self-check is the ponytail minimum, not bloat, never flag it for deletion.
 Does not apply the fixes, only lists them.
 "stop ponytail-review" or "normal mode": revert to verbose review style.
