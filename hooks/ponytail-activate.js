@@ -18,14 +18,40 @@ const {
   isCodex,
   isCopilot,
   isCursor,
+  pruneStaleSessionState,
   setMode,
+  useSession,
   writeHookOutput,
 } = require('./ponytail-runtime');
 
 const claudeDir = getClaudeDir();
 const settingsPath = path.join(claudeDir, 'settings.json');
 
+// The payload names the session, so its level is kept apart from every other session's. It is
+// read with the same never-block contract as the other hooks (#443): on POSIX stdin closes at
+// once; if a wrapper swallows it, activation proceeds after a short wait with the shared flag.
+let input = '';
+let started = false;
+function start() {
+  if (started) return;
+  started = true;
+  try { useSession(JSON.parse(input.replace(/^\uFEFF/, ''))); } catch (e) { /* no payload */ }
+  activate();
+}
+// If stdin never closes, finish anyway, then leave once stdout has drained (a pipe on macOS is
+// written asynchronously, so exiting straight after the write could cut the ruleset short).
+function startAndLeave() {
+  start();
+  process.stdout.write('', () => process.exit(0));
+}
+process.stdin.on('data', chunk => { input += chunk; });
+process.stdin.on('end', start);
+process.stdin.on('error', startAndLeave);
+setTimeout(startAndLeave, 300).unref();
+
+function activate() {
 const mode = getDefaultMode();
+pruneStaleSessionState();
 
 // "off" mode — skip activation entirely, don't write flag or emit rules
 if (mode === 'off') {
@@ -112,4 +138,5 @@ try {
   writeHookOutput('SessionStart', mode, output);
 } catch (e) {
   // Silent fail — stdout closed/EPIPE at hook exit must not surface as a hook failure
+}
 }

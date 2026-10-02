@@ -1,7 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
-const { getClaudeDir, getConfigDir } = require('./ponytail-config');
+const { getClaudeDir, getConfigDir, normalizePersistedMode } = require('./ponytail-config');
 
 const STATE_FILE = '.ponytail-active';
 
@@ -36,24 +36,109 @@ if (isCopilot) stateDir = process.env.COPILOT_PLUGIN_DATA || getClaudeDir();
 if (isQoder) stateDir = path.join(os.homedir(), '.qoder');
 if (isCursor) stateDir = path.join(os.homedir(), '.cursor');
 
-const statePath = path.join(stateDir, STATE_FILE);
+// Mode state is kept per session whenever the host names the session, so two sessions never
+// share one flag: before, a new session reset every other session's level to the default, and
+// "stop ponytail" in one switched ponytail off in all of them. Hosts send the name in the hook
+// payload (Claude Code `session_id`, Cursor `conversation_id`); Qoder puts it in the environment.
+// A host that names no session keeps the single shared flag, exactly as before.
+//
+// A keyed session records "off" explicitly instead of deleting its flag, so its absence always
+// means "this session has not started yet" and readers never fall back to another session's state.
+function sessionKey(id) {
+  const safe = String(id == null ? '' : id).replace(/[^A-Za-z0-9_-]/g, '');
+  return safe.slice(0, 64) || null;
+}
+
+let currentKey = isQoder ? (sessionKey(process.env.QODER_SESSION_ID) || 'default') : null;
+
+// Called once per hook invocation with the parsed stdin payload, if there is one.
+function useSession(payload) {
+  if (!payload || typeof payload !== 'object') return;
+  const key = sessionKey(payload.session_id || payload.sessionId || payload.conversation_id || payload.conversationId);
+  if (key) currentKey = key;
+}
+
+const legacyStatePath = path.join(stateDir, STATE_FILE);
+function statePath() {
+  return currentKey ? path.join(stateDir, STATE_FILE + '-' + currentKey) : legacyStatePath;
+}
+
+// Per-session files are tiny, but they should not pile up forever.
+const SESSION_STATE_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
+function pruneStaleSessionState(now = Date.now()) {
+  if (!currentKey) return;
+  const own = statePath();
+  try {
+    for (const name of fs.readdirSync(stateDir)) {
+      if (!name.startsWith(STATE_FILE + '-')) continue;
+      const file = path.join(stateDir, name);
+      if (file === own) continue;
+      try {
+        if (now - fs.statSync(file).mtimeMs > SESSION_STATE_MAX_AGE_MS) fs.unlinkSync(file);
+      } catch (_) {}
+    }
+  } catch (_) {}
+}
 
 function setMode(mode) {
-  fs.mkdirSync(path.dirname(statePath), { recursive: true });
-  fs.writeFileSync(statePath, mode);
+  const file = statePath();
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  fs.writeFileSync(file, mode);
 }
 
+// Turning ponytail off. A keyed session records "off"; the shared flag is deleted, because
+// without a session name its absence is what "off" has always meant.
 function clearMode() {
-  try { fs.unlinkSync(statePath); } catch (e) {}
+  if (currentKey) {
+    try { setMode('off'); } catch (e) {}
+    return;
+  }
+  try { fs.unlinkSync(legacyStatePath); } catch (e) {}
 }
 
-// Live mode written by activate/mode-tracker. Absent flag = ponytail off.
+function parseMode(raw) {
+  const value = String(raw).trim().toLowerCase();
+  if (value === 'off') return 'off';
+  return normalizePersistedMode(value);
+}
+
+// Live mode: a known level, 'off' when recorded, or null when there is no flag. Anything else in
+// the file is treated as no flag rather than echoed back to the user. A session started before
+// state was per session has no file of its own yet and reads the shared flag it was written to.
 function readMode() {
   try {
-    return fs.readFileSync(statePath, 'utf8').trim() || null;
-  } catch (e) {
-    return null;
+    return parseMode(fs.readFileSync(statePath(), 'utf8'));
+  } catch (e) {}
+  if (currentKey && !isQoder) {
+    try { return parseMode(fs.readFileSync(legacyStatePath, 'utf8')); } catch (e) {}
   }
+  return null;
+}
+
+// Marks this session as the one most recently active, for readers that cannot learn which
+// session they belong to without waiting on stdin (the subagent hook, see #443).
+function touchSession() {
+  if (!currentKey) return;
+  const now = new Date();
+  try { fs.utimesSync(statePath(), now, now); } catch (_) {}
+}
+
+// The mode of the most recently active session: a best guess for a reader that has no payload.
+// With one session it is exact; with several it is the one that last received a prompt.
+function mostRecentMode() {
+  let best = null;
+  try {
+    for (const name of fs.readdirSync(stateDir)) {
+      if (name !== STATE_FILE && !name.startsWith(STATE_FILE + '-')) continue;
+      const file = path.join(stateDir, name);
+      try {
+        const mtime = fs.statSync(file).mtimeMs;
+        if (!best || mtime > best.mtime) best = { file, mtime };
+      } catch (_) {}
+    }
+  } catch (_) {}
+  if (!best) return null;
+  try { return parseMode(fs.readFileSync(best.file, 'utf8')); } catch (_) { return null; }
 }
 
 // Cursor's always-on project rule (.cursor/rules/ponytail.mdc) already puts the
@@ -131,7 +216,14 @@ function writeHookOutput(event, mode, context = '') {
 }
 
 module.exports = {
+  STATE_FILE,
   clearMode,
+  mostRecentMode,
+  pruneStaleSessionState,
+  sessionKey,
+  statePath,
+  touchSession,
+  useSession,
   cursorRuleNotice,
   cursorRulePath,
   isCodex,

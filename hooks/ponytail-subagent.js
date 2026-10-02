@@ -11,14 +11,12 @@
 // "^general$" is exact. Unset means inject into every subagent, as before.
 
 const { getPonytailInstructions } = require('./ponytail-instructions');
-const { readMode, writeHookOutput } = require('./ponytail-runtime');
+const { mostRecentMode, readMode, useSession, writeHookOutput } = require('./ponytail-runtime');
 
-const mode = readMode();
-
-// Absent flag or off → ponytail isn't active; inject nothing.
-if (!mode || mode === 'off') {
-  process.exit(0);
-}
+// No session name is known without waiting on stdin, and the default path must not wait (#443),
+// so it takes the most recently active session: the one that just received the prompt that is
+// spawning this subagent. The matcher path reads stdin anyway and uses the exact session below.
+let mode = mostRecentMode() || readMode();
 
 function inject() {
   try {
@@ -43,6 +41,8 @@ try {
 // fires (#443); the default path must not wait on stdin or it would stall every
 // subagent spawn.
 if (!matcherRe) {
+  // Absent flag or off → ponytail isn't active; inject nothing.
+  if (!mode || mode === 'off') process.exit(0);
   inject();
   process.exit(0);
 }
@@ -60,10 +60,16 @@ function finish() {
   let agentType = '';
   try {
     // Strip UTF-8 BOM some shells prepend when piping (breaks JSON.parse)
-    agentType = String(JSON.parse(input.replace(/^\uFEFF/, '')).agent_type || '').trim();
+    const payload = JSON.parse(input.replace(/^\uFEFF/, ''));
+    agentType = String(payload.agent_type || '').trim();
+    // The payload names the parent session: use its level exactly.
+    useSession(payload);
+    const exact = readMode();
+    if (exact) mode = exact;
   } catch (e) {
     // Unparseable payload — fall through and inject to be safe.
   }
+  if (!mode || mode === 'off') process.exit(0);
   if (agentType && !matcherRe.test(agentType)) {
     process.exit(0);
   }

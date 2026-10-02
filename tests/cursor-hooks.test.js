@@ -67,7 +67,10 @@ function cursorEnv(name, extra = {}) {
   return {
     home,
     project,
+    // The shared flag, used when a payload names no conversation (as in the no-input cases).
     flag: path.join(home, '.cursor', '.ponytail-active'),
+    // Real Cursor payloads carry conversation_id; that conversation's level is kept on its own.
+    sessionFlag: path.join(home, '.cursor', '.ponytail-active-conv-1'),
     env: {
       HOME: home,
       USERPROFILE: home,
@@ -80,9 +83,19 @@ function cursorEnv(name, extra = {}) {
   };
 }
 
-function writeFlag(c, mode) {
-  fs.mkdirSync(path.dirname(c.flag), { recursive: true });
-  fs.writeFileSync(c.flag, mode);
+function writeFlag(c, mode, file = c.flag) {
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  fs.writeFileSync(file, mode);
+}
+
+// A prompt as Cursor sends it, from conversation conv-1.
+function promptInput(prompt) {
+  return JSON.stringify({ hook_event_name: 'beforeSubmitPrompt', conversation_id: 'conv-1', prompt, attachments: [] });
+}
+
+// Off is recorded as "off" for a named conversation, or as no flag at all without one.
+function isOff(file) {
+  return !fs.existsSync(file) || fs.readFileSync(file, 'utf8') === 'off';
 }
 
 test('cursor hooks template is a valid hooks.json with the two events that can inject context', () => {
@@ -124,7 +137,8 @@ test('sessionStart injects the default-level ruleset as additional_context and k
   assert.match(output.additional_context, /YAGNI extremist/, 'ultra row must survive the level filter');
   assert.doesNotMatch(output.additional_context, /Build what's asked/, 'lite row must be filtered out');
   assert.doesNotMatch(output.additional_context, /STATUSLINE SETUP NEEDED/, 'Cursor has no Claude statusline to nudge about');
-  assert.equal(fs.readFileSync(c.flag, 'utf8'), 'ultra');
+  assert.equal(fs.readFileSync(c.sessionFlag, 'utf8'), 'ultra');
+  assert.equal(fs.existsSync(c.flag), false, 'a named conversation must not write the shared flag');
   assert.equal(fs.existsSync(path.join(c.home, '.claude')), false, 'Cursor state must not land in ~/.claude');
 });
 
@@ -148,47 +162,44 @@ test('Cursor running a Claude-format plugin (CLAUDE_PLUGIN_ROOT set) still gets 
 
 test('beforeSubmitPrompt tracks /ponytail commands and delivers the new level ruleset', () => {
   const c = cursorEnv('switch', { PONYTAIL_DEFAULT_MODE: 'full' });
-  writeFlag(c, 'full');
+  writeFlag(c, 'full', c.sessionFlag);
 
-  const sw = parse(run('ponytail-mode-tracker.js', c.env, JSON.stringify({
-    hook_event_name: 'beforeSubmitPrompt', conversation_id: 'conv-1',
-    prompt: '/ponytail lite', attachments: [],
-  })));
+  const sw = parse(run('ponytail-mode-tracker.js', c.env, promptInput('/ponytail lite')));
   assert.equal(sw.continue, true, 'must never block the prompt');
   assert.equal(sw.user_message, undefined, 'Cursor shows user_message only for blocked prompts');
   assert.match(sw.additional_context, /^PONYTAIL MODE CHANGED — level: lite/);
   assert.match(sw.additional_context, /Build what's asked/, 'Cursor has no /ponytail command, so the level ruleset rides along');
   assert.doesNotMatch(sw.additional_context, /YAGNI extremist/);
-  assert.equal(fs.readFileSync(c.flag, 'utf8'), 'lite');
+  assert.equal(fs.readFileSync(c.sessionFlag, 'utf8'), 'lite');
 
   // Bare /ponytail reports the live level without resetting it.
-  const report = parse(run('ponytail-mode-tracker.js', c.env, JSON.stringify({ prompt: '/ponytail' })));
+  const report = parse(run('ponytail-mode-tracker.js', c.env, promptInput('/ponytail')));
   assert.deepEqual(report, { continue: true, additional_context: 'PONYTAIL MODE ACTIVE — level: lite' });
-  assert.equal(fs.readFileSync(c.flag, 'utf8'), 'lite');
+  assert.equal(fs.readFileSync(c.sessionFlag, 'utf8'), 'lite');
 
   // /ponytail default persists the default without touching the session level.
-  const def = parse(run('ponytail-mode-tracker.js', c.env, JSON.stringify({ prompt: '/ponytail default ultra' })));
+  const def = parse(run('ponytail-mode-tracker.js', c.env, promptInput('/ponytail default ultra')));
   assert.equal(def.continue, true);
   assert.match(def.additional_context, /PONYTAIL DEFAULT SET — new sessions start in ultra/);
   assert.equal(JSON.parse(fs.readFileSync(path.join(c.home, '.config', 'ponytail', 'config.json'), 'utf8')).defaultMode, 'ultra');
-  assert.equal(fs.readFileSync(c.flag, 'utf8'), 'lite');
+  assert.equal(fs.readFileSync(c.sessionFlag, 'utf8'), 'lite');
 
-  // /ponytail off and the plain-language deactivations clear the flag and tell the model.
-  const off = parse(run('ponytail-mode-tracker.js', c.env, JSON.stringify({ prompt: '/ponytail off' })));
+  // /ponytail off and the plain-language deactivations record off and tell the model.
+  const off = parse(run('ponytail-mode-tracker.js', c.env, promptInput('/ponytail off')));
   assert.deepEqual(off, { continue: true, additional_context: 'PONYTAIL MODE OFF' });
-  assert.equal(fs.existsSync(c.flag), false);
+  assert.ok(isOff(c.sessionFlag));
 
-  writeFlag(c, 'full');
-  const stop = parse(run('ponytail-mode-tracker.js', c.env, JSON.stringify({ prompt: 'Stop ponytail.' })));
+  writeFlag(c, 'full', c.sessionFlag);
+  const stop = parse(run('ponytail-mode-tracker.js', c.env, promptInput('Stop ponytail.')));
   assert.equal(stop.additional_context, 'PONYTAIL MODE OFF');
-  assert.equal(fs.existsSync(c.flag), false);
+  assert.ok(isOff(c.sessionFlag));
 
   // Ordinary prompts produce no output at all: Cursor treats empty stdout as "carry on".
-  writeFlag(c, 'full');
-  const plain = run('ponytail-mode-tracker.js', c.env, JSON.stringify({ prompt: 'add a normal mode toggle next to dark mode' }));
+  writeFlag(c, 'full', c.sessionFlag);
+  const plain = run('ponytail-mode-tracker.js', c.env, promptInput('add a normal mode toggle next to dark mode'));
   assert.equal(plain.status, 0, plain.stderr);
   assert.equal(plain.stdout, '');
-  assert.equal(fs.readFileSync(c.flag, 'utf8'), 'full', 'incidental "normal mode" must not turn ponytail off');
+  assert.equal(fs.readFileSync(c.sessionFlag, 'utf8'), 'full', 'incidental "normal mode" must not turn ponytail off');
 });
 
 test('with the always-on rule in the workspace the hooks step back instead of duplicating the ruleset', () => {

@@ -362,7 +362,9 @@ assert.match(output.hookSpecificOutput.additionalContext, /PONYTAIL MODE ACTIVE 
 // the ruleset via additionalContext on every prompt. Output is
 // hookSpecificOutput JSON (same shape as Codex minus systemMessage).
 const qoderHome = path.join(temp, 'qoder-home');
-const qoderState = path.join(qoderHome, '.qoder', '.ponytail-active');
+// State is per Qoder session, so turning ponytail off cannot be mistaken for the
+// first prompt of a new session.
+const qoderState = path.join(qoderHome, '.qoder', '.ponytail-active-test-session-123');
 fs.mkdirSync(qoderHome, { recursive: true });
 
 const qoderEnv = {
@@ -402,16 +404,37 @@ assert.match(
   /PONYTAIL MODE CHANGED — level: ultra/,
 );
 
-// "stop ponytail": deactivates, clears flag, no ruleset output.
+// "stop ponytail": deactivates and records "off" for this session, no ruleset output.
 result = run(
   'ponytail-mode-tracker.js',
   qoderEnv,
   JSON.stringify({ prompt: 'stop ponytail' }),
 );
 assert.equal(result.status, 0, result.stderr);
-assert.equal(fs.existsSync(qoderState), false, 'flag must be cleared after stop ponytail');
+assert.equal(fs.readFileSync(qoderState, 'utf8'), 'off', 'stop ponytail must record off for this session');
 output = JSON.parse(result.stdout);
 assert.equal(output.hookSpecificOutput.additionalContext, 'PONYTAIL MODE OFF');
+
+// The next prompt in the same session stays off. Before per-session state, the
+// deleted flag looked like a new session and the default level came straight back.
+result = run(
+  'ponytail-mode-tracker.js',
+  qoderEnv,
+  JSON.stringify({ prompt: 'now write the tests' }),
+);
+assert.equal(result.status, 0, result.stderr);
+assert.equal(fs.readFileSync(qoderState, 'utf8'), 'off', 'off must survive the next prompt');
+assert.equal(result.stdout, '', 'no ruleset may be injected while ponytail is off');
+
+// A different Qoder session is unaffected and starts at the default.
+result = run(
+  'ponytail-mode-tracker.js',
+  { ...qoderEnv, QODER_SESSION_ID: 'other-session-456' },
+  JSON.stringify({ prompt: 'hello' }),
+);
+assert.equal(result.status, 0, result.stderr);
+assert.match(JSON.parse(result.stdout).hookSpecificOutput.additionalContext, /PONYTAIL MODE ACTIVE — level: full/);
+assert.equal(fs.readFileSync(qoderState, 'utf8'), 'off', 'another session must not change this one');
 
 // Subagent injection via PreToolUse (task|Task matcher): when ponytail is
 // active, the subagent hook injects the ruleset. Qoder shares the same

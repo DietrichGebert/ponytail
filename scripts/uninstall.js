@@ -26,6 +26,19 @@ removeIfExists(path.join(getClaudeDir(), '.ponytail-active'), 'mode flag');
 removeIfExists(path.join(os.homedir(), '.cursor', '.ponytail-active'), 'Cursor mode flag');
 removeIfExists(getConfigPath(), 'config file');
 
+// Per-session mode flags (.ponytail-active-<session>), one per session a host named.
+for (const [dir, label] of [
+  [getClaudeDir(), 'session mode flag'],
+  [path.join(os.homedir(), '.cursor'), 'Cursor session mode flag'],
+  [path.join(os.homedir(), '.qoder'), 'Qoder session mode flag'],
+]) {
+  let names = [];
+  try { names = fs.readdirSync(dir); } catch (e) { if (e.code !== 'ENOENT') throw e; }
+  for (const name of names) {
+    if (name.startsWith('.ponytail-active-')) removeIfExists(path.join(dir, name), label);
+  }
+}
+
 // Cursor hooks (#817): drop only ponytail's entries from ~/.cursor/hooks.json,
 // keep every other hook the user configured there.
 try {

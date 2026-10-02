@@ -10,7 +10,7 @@ install script and a small output branch in `hooks/ponytail-runtime.js`.
 | `scripts/cursor-hooks.js` | `install` / `uninstall`, merges into `~/.cursor/hooks.json` (or `.cursor/hooks.json` with `--project`). |
 | `hooks/ponytail-activate.js` | `sessionStart`: injects the default-level ruleset. |
 | `hooks/ponytail-mode-tracker.js` | `beforeSubmitPrompt`: tracks `/ponytail` commands, injects the new level's ruleset. |
-| `hooks/ponytail-runtime.js` | Detects Cursor (`CURSOR_VERSION`), keeps state in `~/.cursor/.ponytail-active`, emits Cursor-shaped JSON. |
+| `hooks/ponytail-runtime.js` | Detects Cursor (`CURSOR_VERSION`), keeps each conversation's state in `~/.cursor/.ponytail-active-<conversation_id>`, emits Cursor-shaped JSON. |
 
 ## Install and uninstall
 
@@ -32,7 +32,7 @@ What the install script does:
 - Refuses to touch a `hooks.json` that is not valid JSON, and says so.
 - `uninstall` removes only ponytail's entries and deletes the file when nothing
   else was in it. `node scripts/uninstall.js` runs the same removal for the user
-  file and also deletes `~/.cursor/.ponytail-active`.
+  file and also deletes the `~/.cursor/.ponytail-active*` flags.
 
 Cursor watches `hooks.json` and reloads it on save; open a new chat afterwards.
 `node` has to be on the PATH Cursor sees. The Hooks tab under Customize and the
@@ -79,10 +79,12 @@ Execution environment (client, 3.20.17):
 
 ## Behavior
 
-- New conversation: `sessionStart` writes `~/.cursor/.ponytail-active` with the
-  default level (`PONYTAIL_DEFAULT_MODE`, then `config.json`, then `full`) and
+- New conversation: `sessionStart` writes `~/.cursor/.ponytail-active-<conversation_id>`
+  with the default level (`PONYTAIL_DEFAULT_MODE`, then `config.json`, then `full`) and
   injects `PONYTAIL MODE ACTIVE — level: <level>` followed by the ruleset filtered
-  to that level. Default `off`: no flag, no output.
+  to that level. Default `off`: the flag records `off`, no output. Each
+  conversation keeps its own level, so switching or stopping ponytail in one
+  conversation leaves the others alone. Flags older than a week are pruned.
 - `/ponytail lite|full|ultra` sent as a plain message: the flag changes and the
   turn receives `PONYTAIL MODE CHANGED — level: <level>` plus that level's ruleset
   (about 5,300 characters, under the inline cap). Cursor has no `/ponytail`
