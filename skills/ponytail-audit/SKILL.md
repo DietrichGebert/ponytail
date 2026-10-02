@@ -19,6 +19,7 @@ Same as ponytail-review:
 - `delete:` dead code, unused flexibility, speculative feature. Replacement: nothing.
 - `stdlib:` hand-rolled thing the standard library ships. Name the function.
 - `native:` dependency or code doing what the platform already does. Name the feature.
+- `reuse:` equivalent helper, util, or pattern already in this repo. Name the path.
 - `yagni:` abstraction with one implementation, config nobody sets, layer with one caller.
 - `shrink:` same logic, fewer lines. Show the shorter form.
 
@@ -26,7 +27,8 @@ Same as ponytail-review:
 
 Deps the stdlib or platform already ships, single-implementation interfaces,
 factories with one product, wrappers that only delegate, files exporting one
-thing, dead flags and config, hand-rolled stdlib.
+thing, dead flags and config, hand-rolled stdlib, helpers duplicating an
+equivalent that already lives in this repo.
 
 ## Output
 

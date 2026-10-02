@@ -238,6 +238,18 @@ Abre una sesión nueva (o recarga los plugins). Los skills aparecen como `/ponyt
 
 `AGENTS.md` sigue funcionando solo como instrucciones desde un checkout sin el plugin. Desinstalar: `grok plugin uninstall ponytail`.
 
+### Goose
+
+Goose (AAIF / Linux Foundation) ya entiende los formatos de ponytail como plugin de Open Plugins: la raíz del repositorio ya trae el `plugin.json` y el árbol de `skills/` que espera:
+
+```bash
+goose plugin install https://github.com/DietrichGebert/ponytail.git
+```
+
+Esto clona el repositorio en `~/.agents/plugins/ponytail/` e importa los seis skills como comandos con espacio de nombres (`/ponytail`, `/ponytail-review`, ...). Añade `--auto-update` para que goose los refresque automáticamente desde este repositorio.
+
+Para las reglas siempre activas, añade el conjunto compacto de [`AGENTS.md`](AGENTS.md) a `~/.agents/AGENTS.md` (global) o al `AGENTS.md` del proyecto — goose carga `AGENTS.md` y `.goosehints` como archivos de contexto en cada petición, así que la copia es toda la activación. Alternativa manual sin `goose plugin install`: copia las carpetas de skills en `~/.agents/skills/` (o `.agents/skills/` dentro de un proyecto) y se descubren igual. No hay hooks de ciclo de vida que registrar ni bandera de modo; `/ponytail lite|full|ultra|off` elige el nivel por sesión a través del propio skill. Desinstalar: borra las carpetas copiadas y las reglas añadidas.
+
 ### Cursor
 
 ```bash

@@ -19,7 +19,7 @@
   <img src="https://img.shields.io/github/stars/DietrichGebert/ponytail?style=flat-square&color=111111&label=stars" alt="Stars">
   <img src="https://img.shields.io/github/v/release/DietrichGebert/ponytail?style=flat-square&color=111111&label=release" alt="Release">
   <img src="https://img.shields.io/npm/v/@dietrichgebert/ponytail?style=flat-square&color=111111&label=npm" alt="npm">
-  <img src="https://img.shields.io/badge/works%20with-20%20agents-111111?style=flat-square" alt="Works with 20 agents">
+  <img src="https://img.shields.io/badge/works%20with-21%20agents-111111?style=flat-square" alt="Works with 21 agents">
   <img src="https://img.shields.io/badge/license-MIT-111111?style=flat-square" alt="MIT license">
 </p>
 
@@ -281,6 +281,18 @@ Start a new session (or reload plugins). Skills show as `/ponytail`, `/ponytail-
 
 `AGENTS.md` still works instruction-only from a checkout without the plugin.
 
+### Goose
+
+Goose (AAIF / Linux Foundation) discovers ponytail as an Open Plugins-format plugin — the repo root already carries the `plugin.json` manifest and the `skills/` tree it expects:
+
+```bash
+goose plugin install https://github.com/DietrichGebert/ponytail.git
+```
+
+That clones the repo into `~/.agents/plugins/ponytail/` and imports all six skills as namespaced slash commands (`/ponytail`, `/ponytail-review`, ...). Add `--auto-update` to have goose refresh the skills from this repo automatically.
+
+For always-on rules, append the compact ruleset from [`AGENTS.md`](AGENTS.md) to `~/.agents/AGENTS.md` (global) or the project's own `AGENTS.md` — goose loads `AGENTS.md` and `.goosehints` as context files on every request, so the copy is the whole activation. Manual alternative without `goose plugin install`: copy the skill folders into `~/.agents/skills/` (or `.agents/skills/` inside a project) and they are discovered the same way. There are no lifecycle hooks to register and no mode flag; `/ponytail lite|full|ultra|off` selects the level per session through the skill itself.
+
 ### Cursor
 
 ```bash
@@ -322,6 +334,7 @@ Which files map to which agent: [Agent portability](docs/agent-portability.md).
 | Codex | `codex plugin remove ponytail` |
 | Devin CLI | `devin plugins remove ponytail` |
 | Grok Build | `grok plugin uninstall ponytail` |
+| Goose | Delete the copied skill folders from `~/.agents/skills/` (or `.agents/skills/`) and remove the rules appended to `AGENTS.md` |
 | Pi agent | `pi uninstall ponytail` |
 | Cursor hooks | `node scripts/cursor-hooks.js uninstall` (add `--project` for a project-level install); removes only ponytail's entries from `hooks.json` |
 | Cursor rule / Windsurf / Cline / Qoder / etc. | Delete the copied rule file |
