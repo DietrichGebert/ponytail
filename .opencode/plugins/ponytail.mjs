@@ -65,13 +65,12 @@ function persistMode(args) {
 function readCommands() {
   const dir = path.join(__dirname, '..', 'command');
   try {
-    return fs.readdirSync(dir)
-      .filter((file) => file.endsWith('.md'))
-      .map((file) => {
-        const parsed = parseCommandFile(path.join(dir, file));
-        return parsed && { name: path.basename(file, '.md'), ...parsed };
-      })
-      .filter(Boolean);
+    return fs.readdirSync(dir).flatMap((file) => {
+      if (!file.endsWith('.md')) return [];
+      const parsed = parseCommandFile(path.join(dir, file));
+      if (!parsed) return [];
+      return { name: path.basename(file, '.md'), ...parsed };
+    });
   } catch (e) {
     return [];
   }
@@ -80,20 +79,19 @@ function readCommands() {
 function readSkills() {
   const dir = path.resolve(__dirname, '../../skills');
   try {
-    return fs.readdirSync(dir, { withFileTypes: true })
-      .filter((entry) => entry.isDirectory())
-      .map((entry) => {
-        const file = path.join(dir, entry.name, 'SKILL.md');
-        const parsed = parseSkillFile(file);
-        return parsed && {
-          id: entry.name,
-          name: parsed.name || entry.name,
-          description: parsed.description,
-          path: file,
-          content: parsed.body,
-        };
-      })
-      .filter(Boolean);
+    return fs.readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
+      if (!entry.isDirectory()) return [];
+      const file = path.join(dir, entry.name, 'SKILL.md');
+      const parsed = parseSkillFile(file);
+      if (!parsed) return [];
+      return {
+        id: entry.name,
+        name: parsed.name || entry.name,
+        description: parsed.description,
+        path: file,
+        content: parsed.body,
+      };
+    });
   } catch (e) {
     return [];
   }
