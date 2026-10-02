@@ -14,6 +14,7 @@ const assert = require('node:assert/strict');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
+const crypto = require('crypto');
 const { spawnSync } = require('child_process');
 
 const root = path.join(__dirname, '..');
@@ -34,9 +35,11 @@ const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'ponytail-cursor-'));
 process.on('exit', () => fs.rmSync(temp, { recursive: true, force: true }));
 
 function run(script, env, input = '', cwd = undefined) {
+  let payload = input ? JSON.parse(input) : {};
+  if (!payload.session_id && !payload.conversation_id) payload.conversation_id = 'conv-1';
   return spawnSync(process.execPath, [path.join(root, 'hooks', script)], {
     env: { ...process.env, ...env },
-    input,
+    input: JSON.stringify(payload),
     cwd,
     encoding: 'utf8',
   });
@@ -81,8 +84,16 @@ function cursorEnv(name, extra = {}) {
 }
 
 function writeFlag(c, mode) {
-  fs.mkdirSync(path.dirname(c.flag), { recursive: true });
-  fs.writeFileSync(c.flag, mode);
+  fs.mkdirSync(c.flag, { recursive: true });
+  fs.writeFileSync(stateFile(c), mode);
+}
+
+function stateFile(c) {
+  return path.join(c.flag, crypto.createHash('sha256').update('conv-1').digest('hex'));
+}
+
+function readFlag(c) {
+  return fs.readFileSync(stateFile(c), 'utf8');
 }
 
 test('cursor hooks template is a valid hooks.json with the two events that can inject context', () => {
@@ -124,16 +135,16 @@ test('sessionStart injects the default-level ruleset as additional_context and k
   assert.match(output.additional_context, /YAGNI extremist/, 'ultra row must survive the level filter');
   assert.doesNotMatch(output.additional_context, /Build what's asked/, 'lite row must be filtered out');
   assert.doesNotMatch(output.additional_context, /STATUSLINE SETUP NEEDED/, 'Cursor has no Claude statusline to nudge about');
-  assert.equal(fs.readFileSync(c.flag, 'utf8'), 'ultra');
+  assert.equal(readFlag(c), 'ultra');
   assert.equal(fs.existsSync(path.join(c.home, '.claude')), false, 'Cursor state must not land in ~/.claude');
 });
 
-test('sessionStart in off mode emits nothing and writes no flag', () => {
+test('sessionStart in off mode emits nothing and persists off for the session', () => {
   const c = cursorEnv('off', { PONYTAIL_DEFAULT_MODE: 'off' });
   const result = run('ponytail-activate.js', c.env);
   assert.equal(result.status, 0, result.stderr);
   assert.equal(result.stdout, '', 'empty stdout is a no-op for Cursor; "OK" would be a JSON parse error');
-  assert.equal(fs.existsSync(c.flag), false);
+  assert.equal(readFlag(c), 'off');
 });
 
 test('Cursor running a Claude-format plugin (CLAUDE_PLUGIN_ROOT set) still gets Cursor JSON', () => {
@@ -143,7 +154,7 @@ test('Cursor running a Claude-format plugin (CLAUDE_PLUGIN_ROOT set) still gets 
   c.env.CURSOR_PLUGIN_ROOT = pluginRoot;
   const output = parse(run('ponytail-activate.js', c.env));
   assert.match(output.additional_context, /^PONYTAIL MODE ACTIVE — level: full/);
-  assert.equal(fs.readFileSync(c.flag, 'utf8'), 'full');
+  assert.equal(readFlag(c), 'full');
 });
 
 test('beforeSubmitPrompt tracks /ponytail commands and delivers the new level ruleset', () => {
@@ -159,36 +170,36 @@ test('beforeSubmitPrompt tracks /ponytail commands and delivers the new level ru
   assert.match(sw.additional_context, /^PONYTAIL MODE CHANGED — level: lite/);
   assert.match(sw.additional_context, /Build what's asked/, 'Cursor has no /ponytail command, so the level ruleset rides along');
   assert.doesNotMatch(sw.additional_context, /YAGNI extremist/);
-  assert.equal(fs.readFileSync(c.flag, 'utf8'), 'lite');
+  assert.equal(readFlag(c), 'lite');
 
   // Bare /ponytail reports the live level without resetting it.
   const report = parse(run('ponytail-mode-tracker.js', c.env, JSON.stringify({ prompt: '/ponytail' })));
   assert.deepEqual(report, { continue: true, additional_context: 'PONYTAIL MODE ACTIVE — level: lite' });
-  assert.equal(fs.readFileSync(c.flag, 'utf8'), 'lite');
+  assert.equal(readFlag(c), 'lite');
 
   // /ponytail default persists the default without touching the session level.
   const def = parse(run('ponytail-mode-tracker.js', c.env, JSON.stringify({ prompt: '/ponytail default ultra' })));
   assert.equal(def.continue, true);
   assert.match(def.additional_context, /PONYTAIL DEFAULT SET — new sessions start in ultra/);
   assert.equal(JSON.parse(fs.readFileSync(path.join(c.home, '.config', 'ponytail', 'config.json'), 'utf8')).defaultMode, 'ultra');
-  assert.equal(fs.readFileSync(c.flag, 'utf8'), 'lite');
+  assert.equal(readFlag(c), 'lite');
 
   // /ponytail off and the plain-language deactivations clear the flag and tell the model.
   const off = parse(run('ponytail-mode-tracker.js', c.env, JSON.stringify({ prompt: '/ponytail off' })));
   assert.deepEqual(off, { continue: true, additional_context: 'PONYTAIL MODE OFF' });
-  assert.equal(fs.existsSync(c.flag), false);
+  assert.equal(readFlag(c), 'off');
 
   writeFlag(c, 'full');
   const stop = parse(run('ponytail-mode-tracker.js', c.env, JSON.stringify({ prompt: 'Stop ponytail.' })));
   assert.equal(stop.additional_context, 'PONYTAIL MODE OFF');
-  assert.equal(fs.existsSync(c.flag), false);
+  assert.equal(readFlag(c), 'off');
 
   // Ordinary prompts produce no output at all: Cursor treats empty stdout as "carry on".
   writeFlag(c, 'full');
   const plain = run('ponytail-mode-tracker.js', c.env, JSON.stringify({ prompt: 'add a normal mode toggle next to dark mode' }));
   assert.equal(plain.status, 0, plain.stderr);
   assert.equal(plain.stdout, '');
-  assert.equal(fs.readFileSync(c.flag, 'utf8'), 'full', 'incidental "normal mode" must not turn ponytail off');
+  assert.equal(readFlag(c), 'full', 'incidental "normal mode" must not turn ponytail off');
 });
 
 test('with the always-on rule in the workspace the hooks step back instead of duplicating the ruleset', () => {

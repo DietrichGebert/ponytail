@@ -4,6 +4,7 @@ const assert = require('assert');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
+const crypto = require('crypto');
 const { spawnSync } = require('child_process');
 
 const root = path.join(__dirname, '..');
@@ -19,11 +20,31 @@ assert.equal(isShellSafe('/tmp/$(calc)/x.sh'), false);
 assert.equal(isShellSafe('/tmp/a;rm -rf/x.sh'), false);
 
 function run(script, env, input = '') {
+  let payload = {};
+  if (input) {
+    try { payload = JSON.parse(input); } catch (e) { payload = input; }
+  }
+  if (typeof payload !== 'string' && !payload.session_id && !payload.conversation_id && !env.QODER_SESSION_ID) {
+    payload.session_id = 'test-session';
+  }
   return spawnSync(process.execPath, [path.join(root, 'hooks', script)], {
     env: { ...process.env, ...env },
-    input,
+    input: typeof payload === 'string' ? payload : JSON.stringify(payload),
     encoding: 'utf8',
   });
+}
+
+function sessionStateFile(stateDir, sessionId = 'test-session') {
+  return path.join(stateDir, crypto.createHash('sha256').update(sessionId).digest('hex'));
+}
+
+function readSessionMode(stateDir, sessionId) {
+  return fs.readFileSync(sessionStateFile(stateDir, sessionId), 'utf8');
+}
+
+function writeSessionMode(stateDir, mode, sessionId) {
+  fs.mkdirSync(stateDir, { recursive: true });
+  fs.writeFileSync(sessionStateFile(stateDir, sessionId), mode);
 }
 
 // Keep the base env clean so the default-dir / native-Claude checks are
@@ -61,7 +82,7 @@ const codexState = path.join(pluginData, '.ponytail-active');
 
 let result = run('ponytail-activate.js', codexEnv);
 assert.equal(result.status, 0, result.stderr);
-assert.equal(fs.readFileSync(codexState, 'utf8'), 'ultra');
+assert.equal(readSessionMode(codexState), 'ultra');
 let output = JSON.parse(result.stdout);
 assert.equal(output.systemMessage, 'PONYTAIL:ULTRA');
 assert.equal(output.additionalContext, undefined, 'Codex must not emit additionalContext at top level (#573)');
@@ -77,7 +98,7 @@ result = run(
   JSON.stringify({ prompt: '@ponytail lite' }),
 );
 assert.equal(result.status, 0, result.stderr);
-assert.equal(fs.readFileSync(codexState, 'utf8'), 'lite');
+assert.equal(readSessionMode(codexState), 'lite');
 output = JSON.parse(result.stdout);
 assert.equal(output.systemMessage, 'PONYTAIL:LITE');
 
@@ -88,7 +109,7 @@ result = run(
   JSON.stringify({ prompt: '@ponytail' }),
 );
 assert.equal(result.status, 0, result.stderr);
-assert.equal(fs.readFileSync(codexState, 'utf8'), 'lite');
+assert.equal(readSessionMode(codexState), 'lite');
 output = JSON.parse(result.stdout);
 assert.equal(output.additionalContext, undefined, 'Codex must not emit additionalContext at top level (#573)');
 assert.equal(output.hookSpecificOutput.hookEventName, 'UserPromptSubmit');
@@ -103,14 +124,14 @@ result = run(
   JSON.stringify({ prompt: 'normal mode' }),
 );
 assert.equal(result.status, 0, result.stderr);
-assert.equal(fs.existsSync(codexState), false);
+assert.equal(readSessionMode(codexState), 'off');
 output = JSON.parse(result.stdout);
 assert.equal(output.systemMessage, 'PONYTAIL:OFF');
 
 // A request that merely mentions "normal mode" must not deactivate ponytail.
 result = run('ponytail-mode-tracker.js', codexEnv, JSON.stringify({ prompt: '@ponytail lite' }));
 assert.equal(result.status, 0, result.stderr);
-assert.equal(fs.readFileSync(codexState, 'utf8'), 'lite');
+assert.equal(readSessionMode(codexState), 'lite');
 
 result = run(
   'ponytail-mode-tracker.js',
@@ -119,7 +140,7 @@ result = run(
 );
 assert.equal(result.status, 0, result.stderr);
 assert.equal(
-  fs.readFileSync(codexState, 'utf8'),
+  readSessionMode(codexState),
   'lite',
   'incidental "normal mode" in a request must not turn ponytail off',
 );
@@ -134,7 +155,7 @@ delete claudeEnv.PLUGIN_DATA;
 result = run('ponytail-activate.js', claudeEnv);
 assert.equal(result.status, 0, result.stderr);
 assert.equal(
-  fs.readFileSync(path.join(home, '.claude', '.ponytail-active'), 'utf8'),
+  readSessionMode(path.join(home, '.claude', '.ponytail-active')),
   'full',
 );
 
@@ -150,7 +171,7 @@ result = run('ponytail-activate.js', {
 });
 assert.equal(result.status, 0, result.stderr);
 assert.equal(
-  fs.readFileSync(path.join(customConfigDir, '.ponytail-active'), 'utf8'),
+  readSessionMode(path.join(customConfigDir, '.ponytail-active')),
   'lite',
 );
 assert.equal(
@@ -193,7 +214,7 @@ result = run('ponytail-activate.js', {
   PONYTAIL_DEFAULT_MODE: 'full',
 });
 assert.equal(result.status, 0, result.stderr);
-assert.equal(fs.readFileSync(path.join(copilotData, '.ponytail-active'), 'utf8'), 'full');
+assert.equal(readSessionMode(path.join(copilotData, '.ponytail-active')), 'full');
 assert.equal(
   fs.existsSync(path.join(codexData, '.ponytail-active')),
   false,
@@ -227,7 +248,7 @@ assert.ok(
 // is unset under VS Code — falling back to ~/.claude, not crashing on an
 // undefined path.
 assert.equal(
-  fs.readFileSync(path.join(vscodeHome, '.claude', '.ponytail-active'), 'utf8'),
+  readSessionMode(path.join(vscodeHome, '.claude', '.ponytail-active')),
   'full',
   'VS Code Copilot must persist mode state under getClaudeDir(), not a path built from the unset COPILOT_PLUGIN_DATA',
 );
@@ -243,7 +264,7 @@ result = run(
   JSON.stringify({ prompt: '/ponytail ultra' }),
 );
 assert.equal(result.status, 0, result.stderr);
-assert.equal(fs.readFileSync(path.join(copilotData, '.ponytail-active'), 'utf8'), 'ultra');
+assert.equal(readSessionMode(path.join(copilotData, '.ponytail-active')), 'ultra');
 assert.equal(
   fs.existsSync(path.join(codexData, '.ponytail-active')),
   false,
@@ -257,10 +278,9 @@ assert.deepEqual(output, {});
 // form, not raw stdout, or the context is dropped.
 const subHome = path.join(temp, 'sub-home');
 const subFlag = path.join(subHome, '.claude', '.ponytail-active');
-fs.mkdirSync(path.dirname(subFlag), { recursive: true });
 const subEnv = { HOME: subHome, USERPROFILE: subHome };
 
-fs.writeFileSync(subFlag, 'full');
+writeSessionMode(subFlag, 'full');
 result = run('ponytail-subagent.js', subEnv);
 assert.equal(result.status, 0, result.stderr);
 output = JSON.parse(result.stdout);
@@ -271,7 +291,7 @@ assert.match(
 );
 
 // No flag → ponytail off → inject nothing (empty stdout, no failure).
-fs.unlinkSync(subFlag);
+fs.rmSync(subFlag, { recursive: true });
 result = run('ponytail-subagent.js', subEnv);
 assert.equal(result.status, 0, result.stderr);
 assert.equal(result.stdout, '', 'SubagentStart must stay silent when ponytail is off');
@@ -280,7 +300,7 @@ assert.equal(result.stdout, '', 'SubagentStart must stay silent when ponytail is
 // too — assert the codex branch emits the badge plus hookSpecificOutput.
 const subCodex = path.join(temp, 'sub-codex');
 fs.mkdirSync(subCodex, { recursive: true });
-fs.writeFileSync(path.join(subCodex, '.ponytail-active'), 'full');
+writeSessionMode(path.join(subCodex, '.ponytail-active'), 'full');
 result = run('ponytail-subagent.js', { HOME: subHome, USERPROFILE: subHome, PLUGIN_DATA: subCodex });
 assert.equal(result.status, 0, result.stderr);
 output = JSON.parse(result.stdout);
@@ -295,8 +315,7 @@ assert.match(output.hookSpecificOutput.additionalContext, /PONYTAIL MODE ACTIVE 
 // case-insensitive and unanchored, and every uncertain case fails open.
 const scopeHome = path.join(temp, 'scope-home');
 const scopeFlag = path.join(scopeHome, '.claude', '.ponytail-active');
-fs.mkdirSync(path.dirname(scopeFlag), { recursive: true });
-fs.writeFileSync(scopeFlag, 'full');
+writeSessionMode(scopeFlag, 'full');
 const scopeEnv = { HOME: scopeHome, USERPROFILE: scopeHome };
 
 // Matching agent_type → inject; the match is case-insensitive.
@@ -380,7 +399,7 @@ result = run(
   JSON.stringify({ prompt: 'write a function' }),
 );
 assert.equal(result.status, 0, result.stderr);
-assert.equal(fs.readFileSync(qoderState, 'utf8'), 'full');
+assert.equal(readSessionMode(qoderState, 'test-session-123'), 'full');
 output = JSON.parse(result.stdout);
 assert.equal(output.hookSpecificOutput.hookEventName, 'UserPromptSubmit');
 assert.match(
@@ -395,7 +414,7 @@ result = run(
   JSON.stringify({ prompt: '/ponytail ultra' }),
 );
 assert.equal(result.status, 0, result.stderr);
-assert.equal(fs.readFileSync(qoderState, 'utf8'), 'ultra');
+assert.equal(readSessionMode(qoderState, 'test-session-123'), 'ultra');
 output = JSON.parse(result.stdout);
 assert.match(
   output.hookSpecificOutput.additionalContext,
@@ -409,7 +428,7 @@ result = run(
   JSON.stringify({ prompt: 'stop ponytail' }),
 );
 assert.equal(result.status, 0, result.stderr);
-assert.equal(fs.existsSync(qoderState), false, 'flag must be cleared after stop ponytail');
+assert.equal(readSessionMode(qoderState, 'test-session-123'), 'off', 'off must be persisted for this session');
 output = JSON.parse(result.stdout);
 assert.equal(output.hookSpecificOutput.additionalContext, 'PONYTAIL MODE OFF');
 
@@ -417,7 +436,7 @@ assert.equal(output.hookSpecificOutput.additionalContext, 'PONYTAIL MODE OFF');
 // active, the subagent hook injects the ruleset. Qoder shares the same
 // ponytail-subagent.js script; the isQoder branch outputs hookSpecificOutput
 // JSON instead of raw stdout.
-fs.writeFileSync(qoderState, 'full');
+writeSessionMode(qoderState, 'full', 'test-session-123');
 result = run('ponytail-subagent.js', qoderEnv);
 assert.equal(result.status, 0, result.stderr);
 output = JSON.parse(result.stdout);
@@ -460,7 +479,7 @@ assert.equal(fs.existsSync(defFlag), false, '/ponytail default must not change t
 // A plain switch is transient: sets the session flag, leaves the default alone.
 result = run('ponytail-mode-tracker.js', defEnv, JSON.stringify({ prompt: '/ponytail ultra' }));
 assert.equal(result.status, 0, result.stderr);
-assert.equal(fs.readFileSync(defFlag, 'utf8'), 'ultra', 'plain switch must set the session mode');
+assert.equal(readSessionMode(defFlag), 'ultra', 'plain switch must set the session mode');
 assert.equal(JSON.parse(fs.readFileSync(defConfig, 'utf8')).defaultMode, 'lite', 'plain switch must not persist the default');
 
 // review is not a valid default (#377) — the command is ignored, config unchanged.

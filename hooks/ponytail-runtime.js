@@ -1,7 +1,8 @@
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
-const { getClaudeDir, getConfigDir } = require('./ponytail-config');
+const crypto = require('crypto');
+const { getClaudeDir } = require('./ponytail-config');
 
 const STATE_FILE = '.ponytail-active';
 
@@ -38,22 +39,73 @@ if (isCursor) stateDir = path.join(os.homedir(), '.cursor');
 
 const statePath = path.join(stateDir, STATE_FILE);
 
-function setMode(mode) {
-  fs.mkdirSync(path.dirname(statePath), { recursive: true });
-  fs.writeFileSync(statePath, mode);
+function getSessionId(data) {
+  const value = data?.session_id ?? data?.conversation_id ??
+    (isQoder ? process.env.QODER_SESSION_ID : null);
+  return typeof value === 'string' && value.trim() && value.length <= 512
+    ? value.trim()
+    : null;
 }
 
-function clearMode() {
-  try { fs.unlinkSync(statePath); } catch (e) {}
+function sessionStatePath(sessionId) {
+  if (!sessionId) return null;
+  return path.join(statePath, crypto.createHash('sha256').update(sessionId).digest('hex'));
 }
 
-// Live mode written by activate/mode-tracker. Absent flag = ponytail off.
-function readMode() {
+function ensureStateDir() {
   try {
-    return fs.readFileSync(statePath, 'utf8').trim() || null;
+    if (fs.statSync(statePath).isFile()) fs.unlinkSync(statePath);
+  } catch (e) {}
+  fs.mkdirSync(statePath, { recursive: true });
+}
+
+function setMode(mode, sessionId) {
+  const file = sessionStatePath(sessionId);
+  if (!file || !['off', 'lite', 'full', 'ultra', 'review'].includes(mode)) return false;
+  ensureStateDir();
+  const temp = `${file}.${process.pid}.${crypto.randomBytes(6).toString('hex')}.tmp`;
+  try {
+    fs.writeFileSync(temp, mode, 'utf8');
+    fs.renameSync(temp, file);
+    return true;
+  } catch (e) {
+    try { fs.unlinkSync(temp); } catch (cleanupError) {}
+    throw e;
+  }
+}
+
+function clearMode(sessionId) {
+  const file = sessionStatePath(sessionId);
+  if (!file) return;
+  try { fs.unlinkSync(file); } catch (e) {}
+}
+
+function readMode(sessionId) {
+  const file = sessionStatePath(sessionId);
+  if (!file) return null;
+  try {
+    const mode = fs.readFileSync(file, 'utf8').trim();
+    return ['off', 'lite', 'full', 'ultra', 'review'].includes(mode) ? mode : null;
   } catch (e) {
     return null;
   }
+}
+
+function readHookPayload(callback) {
+  let input = '';
+  let done = false;
+  function finish() {
+    if (done) return;
+    done = true;
+    process.stdin.destroy();
+    let data = {};
+    try { data = JSON.parse(input.replace(/^\uFEFF/, '')); } catch (e) {}
+    callback(data && typeof data === 'object' && !Array.isArray(data) ? data : {});
+  }
+  process.stdin.on('data', chunk => { input += chunk; });
+  process.stdin.on('end', finish);
+  process.stdin.on('error', finish);
+  setTimeout(finish, 1000).unref();
 }
 
 // Cursor's always-on project rule (.cursor/rules/ponytail.mdc) already puts the
@@ -138,6 +190,8 @@ module.exports = {
   isCopilot,
   isCursor,
   isQoder,
+  getSessionId,
+  readHookPayload,
   readMode,
   setMode,
   writeHookOutput,

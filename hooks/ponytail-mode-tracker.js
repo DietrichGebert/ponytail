@@ -1,14 +1,14 @@
 #!/usr/bin/env node
 // ponytail — UserPromptSubmit hook to track which ponytail mode is active
-// Inspects user input for /ponytail commands and writes mode to flag file
+// Inspects user input for /ponytail commands and writes per-session mode state.
 
 const { getDefaultMode, isDeactivationCommand, writeDefaultMode } = require('./ponytail-config');
 const {
-  clearMode,
   cursorRuleNotice,
   cursorRulePath,
   isCursor,
   isQoder,
+  getSessionId,
   readMode,
   setMode,
   writeHookOutput,
@@ -24,6 +24,7 @@ function finish() {
   try {
     // Strip UTF-8 BOM some shells prepend when piping (breaks JSON.parse)
     const data = JSON.parse(input.replace(/^\uFEFF/, ''));
+    const sessionId = getSessionId(data);
     const prompt = (data.prompt || '').trim().toLowerCase();
 
     // Cursor with the always-on rule in the workspace: no hook can change or
@@ -33,7 +34,7 @@ function finish() {
     if (isCursor && (/^[/@$]ponytail/.test(prompt) || isDeactivationCommand(prompt))) {
       const rule = cursorRulePath();
       if (rule) {
-        writeHookOutput('UserPromptSubmit', readMode() || 'off', cursorRuleNotice(rule));
+        writeHookOutput('UserPromptSubmit', readMode(sessionId) || 'off', cursorRuleNotice(rule));
         return;
       }
     }
@@ -70,7 +71,7 @@ function finish() {
         else if (arg === 'off') mode = 'off';
         else if (arg === '') {
           isReportOnly = true;
-          mode = readMode() || getDefaultMode();
+          mode = readMode(sessionId) || getDefaultMode();
         } else {
           mode = getDefaultMode();
         }
@@ -83,7 +84,7 @@ function finish() {
           'PONYTAIL MODE ACTIVE — level: ' + mode,
         );
       } else if (mode && mode !== 'off') {
-        setMode(mode);
+        setMode(mode, sessionId);
         modeSwitched = true;
         // ponytail: Qoder needs the full ruleset every turn, so when a mode
         // switch happens we fold the confirmation into the ruleset output
@@ -100,7 +101,7 @@ function finish() {
           );
         }
       } else if (mode === 'off') {
-        clearMode();
+        setMode('off', sessionId);
         deactivated = true;
         writeHookOutput('UserPromptSubmit', 'off', 'PONYTAIL MODE OFF');
       }
@@ -108,7 +109,7 @@ function finish() {
 
     // Detect deactivation
     if (!modeSwitched && !deactivated && isDeactivationCommand(prompt)) {
-      clearMode();
+      setMode('off', sessionId);
       deactivated = true;
       writeHookOutput('UserPromptSubmit', 'off', 'PONYTAIL MODE OFF');
     }
@@ -119,12 +120,12 @@ function finish() {
     // SessionStart via ponytail-activate.js; Qoder can't, so we do it here.
     // Skip when deactivated — user just turned ponytail off.
     if (isQoder && !deactivated) {
-      let currentMode = readMode();
+      let currentMode = readMode(sessionId);
       if (!currentMode) {
         // First prompt in session — initialize from config/env default
         currentMode = getDefaultMode();
         if (currentMode !== 'off') {
-          try { setMode(currentMode); } catch (e) {}
+          try { setMode(currentMode, sessionId); } catch (e) {}
         }
       }
       if (currentMode && currentMode !== 'off') {

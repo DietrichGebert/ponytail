@@ -22,8 +22,18 @@ function removeIfExists(filePath, label) {
   }
 }
 
-removeIfExists(path.join(getClaudeDir(), '.ponytail-active'), 'mode flag');
-removeIfExists(path.join(os.homedir(), '.cursor', '.ponytail-active'), 'Cursor mode flag');
+function removeStateIfExists(statePath, label) {
+  try {
+    if (!fs.existsSync(statePath)) return;
+    fs.rmSync(statePath, { recursive: true, force: true });
+    console.log(`Removed ${label}: ${statePath}`);
+  } catch (e) {
+    if (e.code !== 'ENOENT') throw e;
+  }
+}
+
+removeStateIfExists(path.join(getClaudeDir(), '.ponytail-active'), 'mode state');
+removeStateIfExists(path.join(os.homedir(), '.cursor', '.ponytail-active'), 'Cursor mode state');
 removeIfExists(getConfigPath(), 'config file');
 
 // Cursor hooks (#817): drop only ponytail's entries from ~/.cursor/hooks.json,
