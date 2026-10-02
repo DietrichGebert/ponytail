@@ -168,18 +168,20 @@ pi install git:github.com/DietrichGebert/ponytail
 Agrega esto a `opencode.json`:
 
 ```json
-{ "plugin": ["@dietrichgebert/ponytail"] }
+{ "plugins": ["@dietrichgebert/ponytail"] }
 ```
 
 O ejecútalo desde un checkout (el plugin reutiliza sus `hooks/` y `skills/`):
 
 ```json
-{ "plugin": ["./.opencode/plugins/ponytail.mjs"] }
+{ "plugins": ["./.opencode/plugins"] }
 ```
 
 Inyecta el ruleset en cada turno con el nivel activo; agrega los comandos `/ponytail` (ver [Comandos](#comandos)). OpenCode también carga automáticamente el `AGENTS.md` de este repo, así que las reglas aplican incluso sin el plugin. El plugin agrega los niveles `lite/full/ultra/off`.
 
-El path `./` se resuelve contra el `opencode.json` de tu proyecto; para compartir un único checkout entre proyectos, apunta al path absoluto del `.mjs` (encuentra sus `hooks/` y `skills/` relativo a su propio archivo).
+Solo OpenCode 2. El path `./` se resuelve contra el `opencode.json` de tu proyecto; para compartir un único checkout entre proyectos, apunta al path absoluto del directorio `.opencode/plugins` del checkout. Una entrada de `plugins` debe nombrar un **directorio**, no un archivo: OpenCode 2 rechaza un path a `ponytail.mjs` con `configured plugin path must be a directory`. Abrir este repo en OpenCode 2 no necesita ninguna entrada: carga `.opencode/plugins/index.js` por su cuenta.
+
+OpenCode 1 usa la clave vieja `plugin`: `{ "plugin": ["@dietrichgebert/ponytail"] }`, o desde un checkout el path al archivo: `{ "plugin": ["./.opencode/plugins/ponytail.mjs"] }`.
 
 ### Gemini CLI
 
