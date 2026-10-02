@@ -52,7 +52,7 @@ let pythonCmd;
 function python() {
   if (pythonCmd) return pythonCmd;
   for (const cmd of ['python3', 'python']) {
-    if (exec(`${cmd} -c "import sys"`).ok) {
+    if (exec(`${cmd} -c "import sys"`, { timeout: 5000 }).ok) {
       pythonCmd = cmd;
       return pythonCmd;
     }
