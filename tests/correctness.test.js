@@ -106,6 +106,43 @@ test('csv: value containing 351 as substring fails (e.g. 13510)', () => {
   assert.equal(result.score, 0);
 });
 
+// Regression: the CSV harness used to restore sys.stdout inside its except
+// branch, so any exception the generated code raised (wrong column name,
+// missing module, …) surfaced as a misleading
+// "_io.TextIOWrapper' object has no attribute 'getvalue'" instead of the
+// real failure — a broken gate can't say why an answer failed.
+test('csv: generated code that raises reports the real exception, not the harness crash', () => {
+  const result = check(
+    "Write Python code that reads sales.csv and sums the 'amount' column.",
+    'python',
+    `import pandas as pd
+df = pd.read_csv('sales.csv')
+print(df['missing'].sum())`,
+  );
+  assert.equal(result.pass, false);
+  assert.equal(result.score, 0);
+  // Whatever the environment lacks (pandas here, a bad column in CI), the
+  // reason must name the generated code's actual exception — not the harness
+  // crashing on its own stdout capture.
+  assert.match(result.reason, /generated code raised/);
+  assert.ok(
+    !result.reason.includes("'getvalue'"),
+    'reason must not be the harness AttributeError masking the real failure',
+  );
+});
+
+// Regression: harness FAIL verdicts are printed to stdout; exec() must
+// surface them in the reason instead of a bare "Command failed".
+test('csv: FAIL verdict text is preserved in the failure reason', () => {
+  const result = check(
+    "Write Python code that reads sales.csv and sums the 'amount' column.",
+    'python',
+    `print(999)`,
+  );
+  assert.equal(result.pass, false);
+  assert.match(result.reason, /output was/);
+});
+
 test('csv: timeout can be raised for slow pandas startup', () => {
   const previous = process.env.PONYTAIL_CORRECTNESS_TIMEOUT_MS;
   try {
