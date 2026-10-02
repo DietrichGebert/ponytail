@@ -7,6 +7,7 @@ const {
   getDefaultMode,
   getQuietStartup,
   getHideStatus,
+  getStatusFormat,
   normalizeMode,
   normalizePersistedMode,
   isDeactivationCommand,
@@ -17,6 +18,14 @@ const { getPonytailInstructions, filterSkillBodyForMode } = require("../hooks/po
 export { filterSkillBodyForMode };
 export const readDefaultMode = getDefaultMode;
 export const readQuietStartup = getQuietStartup;
+export const readStatusFormat = getStatusFormat;
+
+// ponytail: default status-line format — kept here so tests can assert the exact
+// baseline string and so a user clearing statusFormat still gets a real indicator.
+// Placeholders: {indicator} (themed ○/●), {emoji} (🐴), {label} (themed "ponytail:"),
+// {modeIcon} (🌿/⚡/🔥), {mode} (themed uppercased level). PONYTAIL: short on
+// purpose; the footer already joins extension statuses with a space.
+const DEFAULT_STATUS_FORMAT = '{indicator} {emoji} {label} {modeIcon} {mode}';
 
 const RUNTIME_MODE_LIST = RUNTIME_MODES.join("|");
 const PONYTAIL_COMMAND_DESCRIPTION = `Set mode: ${RUNTIME_MODE_LIST}. Commands: status, default <mode>`;
@@ -64,6 +73,7 @@ export default function ponytailExtension(pi) {
   let currentMode = DEFAULT_MODE;
   let configuredDefaultMode = getDefaultMode();
   let hideStatus = getHideStatus();
+  let statusFormat = getStatusFormat() || DEFAULT_STATUS_FORMAT;
   let isActive = false;
   let lastCtx = null;
 
@@ -83,9 +93,20 @@ export default function ponytailExtension(pi) {
     }
     const levelIcons = { lite: "🌿", full: "⚡", ultra: "🔥" };
     const icon = levelIcons[currentMode] || "";
-    const label = currentMode.toUpperCase();
+    const modeLabel = currentMode.toUpperCase();
     const indicator = isActive ? theme.fg("accent", "●") : theme.fg("dim", "○");
-    c.ui.setStatus("ponytail", indicator + " 🐴 " + theme.fg("muted", "ponytail: ") + theme.fg("text", icon + " " + label));
+    const emoji = theme.fg("text", "🐴");
+    const label = theme.fg("muted", "ponytail:");
+    const modeIcon = theme.fg("text", icon);
+    const mode = theme.fg("text", modeLabel);
+    // ponytail: single replace pass; unknown placeholders pass through literally.
+    const text = statusFormat
+      .replaceAll('{indicator}', indicator)
+      .replaceAll('{emoji}', emoji)
+      .replaceAll('{label}', label)
+      .replaceAll('{modeIcon}', modeIcon)
+      .replaceAll('{mode}', mode);
+    c.ui.setStatus("ponytail", text);
   }
 
   const setMode = (mode, ctx) => {
@@ -184,6 +205,7 @@ export default function ponytailExtension(pi) {
     const entries = ctx?.sessionManager?.getBranch?.() || ctx?.sessionManager?.getEntries?.() || [];
     configuredDefaultMode = getDefaultMode();
     hideStatus = getHideStatus();
+    statusFormat = getStatusFormat() || DEFAULT_STATUS_FORMAT;
     currentMode = resolveSessionMode(entries, configuredDefaultMode);
     syncStatus(ctx);
     if (!getQuietStartup()) {
