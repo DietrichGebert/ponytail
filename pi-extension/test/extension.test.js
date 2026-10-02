@@ -61,7 +61,7 @@ function withTempConfig(fn) {
 test("extension registers Ponytail commands", () => {
   const { commands } = createPiHarness();
 
-  assert.deepEqual([...commands.keys()].sort(), ["ponytail", "ponytail-audit", "ponytail-debt", "ponytail-gain", "ponytail-help", "ponytail-review"]);
+  assert.deepEqual([...commands.keys()].sort(), ["ponytail", "ponytail-ask", "ponytail-audit", "ponytail-debt", "ponytail-gain", "ponytail-help", "ponytail-plan", "ponytail-review"]);
 });
 
 test("/ponytail updates session mode and injects instructions", async () => withTempConfig(async () => {
@@ -138,6 +138,22 @@ test("skill alias commands delegate to Pi skill commands", async () => {
     "/skill:ponytail-help",
   ]);
 });
+
+test("planning aliases preserve targets and do not persist a mode", async () => withTempConfig(async () => {
+  const { commands, events, appendedEntries, sentUserMessages } = createPiHarness();
+  const ctx = createCommandContext({ isIdle: () => false });
+  await commands.get("ponytail").handler("off", ctx);
+  const before = appendedEntries.length;
+  for (const name of ["ponytail-plan", "ponytail-ask"]) {
+    await commands.get(name).handler("  src/login.js acceptance criteria  ", ctx);
+    assert.deepEqual(sentUserMessages.at(-1), {
+      text: `/skill:${name} src/login.js acceptance criteria`,
+      options: { deliverAs: "followUp" },
+    });
+  }
+  assert.equal(appendedEntries.length, before);
+  assert.equal(await events.get("before_agent_start")({ systemPrompt: "BASE" }, ctx), undefined);
+}));
 
 test("normal mode disables persistent instructions", async () => withTempConfig(async () => {
   const { commands, events } = createPiHarness();

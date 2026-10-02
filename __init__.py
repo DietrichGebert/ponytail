@@ -12,6 +12,8 @@ DEFAULT_MODE = "full"
 RUNTIME_MODES = {"off", "lite", "full", "ultra"}
 CONFIG_MODES = RUNTIME_MODES | {"review"}
 SKILL_COMMANDS = {
+    "ponytail-plan": "Create or simplify a minimal plan without implementing.",
+    "ponytail-ask": "Clarify consequential requirements without implementing.",
     "ponytail-review": "Review the current diff or provided target for over-engineering.",
     "ponytail-audit": "Audit the repo for over-engineering and deletion opportunities.",
     "ponytail-debt": "List every deliberate `ponytail:` shortcut and its upgrade path.",

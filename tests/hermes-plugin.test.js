@@ -10,7 +10,7 @@ const os = require('os');
 const path = require('path');
 const { spawnSync } = require('child_process');
 
-const commands = ['ponytail', 'ponytail-review', 'ponytail-audit', 'ponytail-debt', 'ponytail-gain', 'ponytail-help'];
+const commands = ['ponytail', 'ponytail-plan', 'ponytail-ask', 'ponytail-review', 'ponytail-audit', 'ponytail-debt', 'ponytail-gain', 'ponytail-help'];
 const skillCommands = commands.filter((name) => name !== 'ponytail');
 
 const root = path.join(__dirname, '..');
@@ -82,10 +82,12 @@ print(json.dumps({'skills': ctx.skills, 'hooks': ctx.hooks, 'commands': ctx.comm
   const data = JSON.parse(output);
   assert.deepEqual(data.skills.map(([name]) => name).sort(), [
     'ponytail',
+    'ponytail-ask',
     'ponytail-audit',
     'ponytail-debt',
     'ponytail-gain',
     'ponytail-help',
+    'ponytail-plan',
     'ponytail-review',
   ]);
   assert.ok(data.skills.every(([, skillPath]) => skillPath.endsWith('/SKILL.md')));
@@ -233,4 +235,25 @@ print(json.dumps(cases, sort_keys=True))
   assert.match(data['/ponytail-help'].text, /ponytail-help/);
   assert.equal(data['/status'], null);
   assert.equal(data.hello, null);
+});
+
+test('Hermes planning commands preserve targets without changing mode', () => {
+  const output = python(String.raw`
+import importlib.util, json
+spec = importlib.util.spec_from_file_location('ponytail_hermes_plugin', '__init__.py')
+mod = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(mod)
+mod._current_mode = 'off'
+class Ctx:
+    def inject_message(self, prompt): return False
+results = [mod._make_skill_command_handler(Ctx(), name)('src/login.js acceptance criteria')
+           for name in ['ponytail-plan', 'ponytail-ask']]
+print(json.dumps({'results': results, 'mode': mod._current_mode}))
+`);
+  const data = JSON.parse(output);
+  assert.equal(data.mode, 'off');
+  for (const [index, name] of ['ponytail-plan', 'ponytail-ask'].entries()) {
+    assert.ok(data.results[index].includes(`ponytail:${name}`));
+    assert.ok(data.results[index].includes('User arguments: src/login.js acceptance criteria'));
+  }
 });
