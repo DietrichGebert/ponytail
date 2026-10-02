@@ -11,7 +11,7 @@
 // "^general$" is exact. Unset means inject into every subagent, as before.
 
 const { getPonytailInstructions } = require('./ponytail-instructions');
-const { readMode, writeHookOutput } = require('./ponytail-runtime');
+const { isKimi, readMode, writeHookOutput } = require('./ponytail-runtime');
 
 const mode = readMode();
 
@@ -22,7 +22,11 @@ if (!mode || mode === 'off') {
 
 function inject() {
   try {
-    writeHookOutput('SubagentStart', mode, getPonytailInstructions(mode));
+    // Kimi Code has no blockable SubagentStart event — subagent context goes
+    // through PreToolUse with an Agent matcher (see hooks/kimi-code-hooks.toml),
+    // so name that event. Its output is plain stdout either way; for native
+    // Claude the event name selects the hookSpecificOutput JSON form.
+    writeHookOutput(isKimi ? 'PreToolUse' : 'SubagentStart', mode, getPonytailInstructions(mode));
   } catch (e) {
     // Silent fail — a stdout error at hook exit must not surface as a hook failure.
   }
