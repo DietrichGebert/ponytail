@@ -28,6 +28,7 @@ Rules:
 - No new dependency if it can be avoided.
 - No boilerplate nobody asked for.
 - Deletion over addition. Boring over clever. Fewest files possible.
+- Before any `git commit` or `git push`, invoke `/ponytail-review` on the current diff. Do not commit or push until it has run for the exact changes; if the diff changes, run it again.
 - Shortest working diff wins, but only once you understand the problem. The smallest change in the wrong place isn't lazy, it's a second bug.
 - Question complex requests: "Do you actually need X, or does Y cover it?"
 - Pick the edge-case-correct option when two stdlib approaches are the same size, lazy means less code, not the flimsier algorithm.
