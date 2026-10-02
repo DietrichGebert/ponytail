@@ -15,8 +15,10 @@ to cut, what replaces it. The diff's best outcome is getting shorter.
 
 ## Format
 
-`L<line>: <tag> <what>. <replacement>.`, or `<file>:L<line>: ...` for
-multi-file diffs.
+`<N>. L<line>: <tag> <what>. <replacement>.`, or `<N>. <file>:L<line>: ...` for
+multi-file diffs. Number findings sequentially across the whole report (`1.`,
+`2.`, ...) so the user can reference one later ("elaborate on 12", "fix 12,
+15, 18").
 
 Tags:
 
@@ -31,15 +33,15 @@ Tags:
 ❌ "This EmailValidator class might be more complex than necessary, have you
 considered whether all these validation rules are needed at this stage?"
 
-✅ `L12-38: stdlib: 27-line validator class. "@" in email, 1 line, real validation is the confirmation mail.`
+✅ `1. L12-38: stdlib: 27-line validator class. "@" in email, 1 line, real validation is the confirmation mail.`
 
-✅ `L4: native: moment.js imported for one format call. Intl.DateTimeFormat, 0 deps.`
+✅ `2. L4: native: moment.js imported for one format call. Intl.DateTimeFormat, 0 deps.`
 
-✅ `repo.py:L88: yagni: AbstractRepository with one implementation. Inline it until a second one exists.`
+✅ `3. repo.py:L88: yagni: AbstractRepository with one implementation. Inline it until a second one exists.`
 
-✅ `L52-71: delete: retry wrapper around an idempotent local call. Nothing replaces it.`
+✅ `4. L52-71: delete: retry wrapper around an idempotent local call. Nothing replaces it.`
 
-✅ `L30-44: shrink: manual loop builds dict. dict(zip(keys, values)), 1 line.`
+✅ `5. L30-44: shrink: manual loop builds dict. dict(zip(keys, values)), 1 line.`
 
 ## Scoring
 
