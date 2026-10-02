@@ -16,9 +16,11 @@ $Esc = [char]27
 # ultra is the high-intensity mode; flag it amber so it stands out from the
 # default green. The level is still in the text, so color is a redundant cue.
 $Color = if ($Mode -eq "ultra") { "173" } else { "108" }
+# Trailing space (outside the reset, so it stays uncolored) separates the badge
+# from a statusline chained after it. See the setup nudge in ponytail-activate.js.
 if ([string]::IsNullOrEmpty($Mode) -or $Mode -eq "full") {
-    [Console]::Write("${Esc}[38;5;${Color}m[PONYTAIL]${Esc}[0m")
+    [Console]::Write("${Esc}[38;5;${Color}m[PONYTAIL]${Esc}[0m ")
 } else {
     $Suffix = $Mode.ToUpperInvariant()
-    [Console]::Write("${Esc}[38;5;${Color}m[PONYTAIL:$Suffix]${Esc}[0m")
+    [Console]::Write("${Esc}[38;5;${Color}m[PONYTAIL:$Suffix]${Esc}[0m ")
 }

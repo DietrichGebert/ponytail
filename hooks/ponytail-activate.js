@@ -62,13 +62,24 @@ let output = getPonytailInstructions(mode);
 
 // 3. Detect missing statusline config — nudge Claude to help set it up
 if (!isCodex && !isCopilot && !isCursor) try {
-  let hasStatusline = false;
+  // Claude Code has one statusLine slot, so chain into it rather than take it:
+  // the badge prints with no trailing newline, so going first keeps both on one
+  // row, and an inactive ponytail leaves the rest of the line untouched. Uses
+  // ';' not '&&' — Claude Code falls back to PowerShell, and 5.1 cannot parse it.
+  let existing = '';      // command already in the slot, to run after the badge
+  let options = null;     // its sibling keys (padding, refreshInterval, ...)
+  let configured = false; // ponytail is already there, or it isn't ours to chain
   if (fs.existsSync(settingsPath)) {
     // Strip UTF-8 BOM some editors prepend on Windows (breaks JSON.parse)
     const raw = fs.readFileSync(settingsPath, 'utf8').replace(/^\uFEFF/, '');
-    const settings = JSON.parse(raw);
-    if (settings.statusLine) {
-      hasStatusline = true;
+    const statusLine = JSON.parse(raw).statusLine;
+    const cmd = statusLine && statusLine.command;
+    if (typeof cmd === 'string') {
+      if (cmd.includes('ponytail-statusline')) configured = true;
+      else { existing = cmd; options = statusLine; }
+    } else if (statusLine) {
+      // A statusLine that isn't a string command — nothing safe to chain onto.
+      configured = true;
     }
   }
 
@@ -76,7 +87,7 @@ if (!isCodex && !isCopilot && !isCursor) try {
   // (and implicitly declined) the statusline setup offer. Repeating it every
   // session start turns a helpful hint into a nag.
   const nudgeFlagPath = path.join(claudeDir, '.ponytail-statusline-nudged');
-  if (!hasStatusline && !fs.existsSync(nudgeFlagPath)) {
+  if (!configured && !fs.existsSync(nudgeFlagPath)) {
     try { fs.writeFileSync(nudgeFlagPath, ''); } catch (e) { /* best-effort */ }
     const isWindows = process.platform === 'win32';
     const scriptName = isWindows ? 'ponytail-statusline.ps1' : 'ponytail-statusline.sh';
@@ -85,13 +96,15 @@ if (!isCodex && !isCopilot && !isCursor) try {
       const command = isWindows
         ? `powershell -ExecutionPolicy Bypass -File "${scriptPath}"`
         : `bash "${scriptPath}"`;
-      const statusLineSnippet =
-        '"statusLine": { "type": "command", "command": ' + JSON.stringify(command) + ' }';
+      const composed = existing ? `${command} ; ${existing}` : command;
+      const statusLineSnippet = '"statusLine": ' +
+        JSON.stringify(Object.assign({}, options, { type: 'command', command: composed }));
       output += "\n\n" +
         "STATUSLINE SETUP NEEDED: The ponytail plugin includes a statusline badge showing active mode " +
         "(e.g. [PONYTAIL], [PONYTAIL:ULTRA]). It is not configured yet. " +
-        "To enable, add this to " + settingsPath + ": " +
+        "To enable, set this in " + settingsPath + ": " +
         statusLineSnippet + " " +
+        (existing ? "The badge chains in front of the status line already configured there, which keeps working unchanged. " : "") +
         "Proactively offer to set this up for the user on first interaction.";
     } else {
       // ponytail: install path has shell metacharacters — don't embed it in a
@@ -101,6 +114,7 @@ if (!isCodex && !isCopilot && !isCursor) try {
         "Its install path contains characters unsafe to embed in a shell command, so configure it manually: " +
         "add a statusLine command of type \"command\" that runs " + scriptName +
         " from the plugin's hooks directory to " + settingsPath + ", quoting/escaping the path for your shell. " +
+        (existing ? "Chain it before the command already there with ';' so both render on one row. " : "") +
         "Proactively offer to set this up for the user on first interaction.";
     }
   }
