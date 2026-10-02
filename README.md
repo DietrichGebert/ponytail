@@ -197,6 +197,17 @@ OpenCode 2 only. The `./` path resolves against your project's `opencode.json`; 
 
 OpenCode 1 uses the older `plugin` key: `{ "plugin": ["@dietrichgebert/ponytail"] }`, or from a checkout the file path: `{ "plugin": ["./.opencode/plugins/ponytail.mjs"] }`.
 
+### Cline CLI
+
+Install the skills with Cline CLI's native skill command (verified with CLI 3.0.61):
+
+```bash
+cline skill add DietrichGebert/ponytail
+cline skill list --agent cline
+```
+
+Select the skills you need during installation, then ask Cline to use `ponytail` for a coding task or `ponytail-review` for a review. From a checkout, `cline skill add ./skills --skill '*' --yes` installs the bundled skills into the current project. Cline CLI discovers project skills in `.agents/skills/`, `.cline/skills/`, and `.clinerules/skills/`. The existing `.clinerules/ponytail.md` remains an instruction-only option. Skill installation does not install Ponytail's Claude/Codex lifecycle hooks or provide their automatic mode tracking. See the [Cline CLI skill command](https://github.com/cline/cline/blob/245a7d0ccb0ed57091faaf8cc337c7a1cc2d070b/apps/cli/src/commands/skill.ts).
+
 ### Gemini CLI
 
 ```bash
@@ -323,6 +334,7 @@ Which files map to which agent: [Agent portability](docs/agent-portability.md).
 | Devin CLI | `devin plugins remove ponytail` |
 | Grok Build | `grok plugin uninstall ponytail` |
 | Pi agent | `pi uninstall ponytail` |
+| Cline CLI skills | `cline skill remove` (select the Ponytail skills to remove) |
 | Cursor hooks | `node scripts/cursor-hooks.js uninstall` (add `--project` for a project-level install); removes only ponytail's entries from `hooks.json` |
 | Cursor rule / Windsurf / Cline / Qoder / etc. | Delete the copied rule file |
 
@@ -339,7 +351,7 @@ These remove the plugin's own files. They leave behind a small amount of state p
 | `/ponytail-gain` | Show the measured impact scoreboard (less code, less cost, more speed) from the benchmark. |
 | `/ponytail-help` | Quick reference for the commands above. |
 
-Commands need a skill-capable host (Claude Code, Codex, Devin CLI, OpenCode, Gemini, pi, Swival, Hermes Agent, Qoder, Grok Build). In Codex they're skills, invoke with `@` (`@ponytail-review`). Cursor with the [hooks](#cursor) gets `/ponytail` level switching only, typed as a plain message. The instruction-only adapters (Cursor's rule file, Windsurf, Cline, Copilot, Kiro, Antigravity) load the always-on ruleset without the commands.
+Commands need a skill-capable host (Claude Code, Codex, Devin CLI, OpenCode, Gemini, pi, Swival, Hermes Agent, Qoder, Grok Build). Cline CLI can install the same skills; request them by name. In Codex they're skills, invoke with `@` (`@ponytail-review`). Cursor with the [hooks](#cursor) gets `/ponytail` level switching only, typed as a plain message. The instruction-only adapters (Cursor's rule file, Windsurf, Cline's copied rules, Copilot, Kiro, Antigravity) load the always-on ruleset without the commands.
 
 ## Development
 
