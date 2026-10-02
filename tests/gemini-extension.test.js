@@ -1,10 +1,8 @@
 #!/usr/bin/env node
-// Smoke test for the Gemini CLI adapter. The adapter is a single thin manifest
-// (gemini-extension.json) that reuses the repo's existing files: AGENTS.md for
-// always-on context, commands/*.toml for /ponytail + /ponytail-review, and
-// skills/ for the agent skills. This test fails if the manifest is removed,
-// loses its pinned version, or points contextFileName at a file that no longer
-// carries the load-bearing rules — i.e. if the adapter stops wiring ponytail.
+// Smoke test for the Gemini CLI adapter, which Qwen Code also consumes through
+// its Gemini-extension compatibility. The adapter is a single thin manifest
+// (gemini-extension.json) that reuses the repo's existing AGENTS.md, commands,
+// and skills. This test fails if that shared surface stops wiring ponytail.
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -22,9 +20,17 @@ const VERSIONED_MANIFESTS = [
   '.codex-plugin/plugin.json',
   '.github/plugin/plugin.json',
 ];
-// Gemini auto-discovers these by directory; the manifest is only useful if they exist.
-const REUSED_COMMANDS = ['commands/ponytail.toml', 'commands/ponytail-review.toml'];
-const REUSED_SKILLS = ['skills/ponytail/SKILL.md'];
+// Gemini and Qwen auto-discover these by directory; the manifest is only useful if they exist.
+const ENTRY_POINTS = [
+  'ponytail',
+  'ponytail-review',
+  'ponytail-audit',
+  'ponytail-debt',
+  'ponytail-gain',
+  'ponytail-help',
+];
+const REUSED_COMMANDS = ENTRY_POINTS.map((name) => `commands/${name}.toml`);
+const REUSED_SKILLS = ENTRY_POINTS.map((name) => `skills/${name}/SKILL.md`);
 // Gemini CLI auto-loads this exact path for extension hooks. Ponytail's
 // Claude/Codex hook map uses events Gemini does not support, so it must stay
 // behind the host-specific plugin manifests instead.
@@ -76,9 +82,16 @@ test('contextFileName resolves to a file carrying the ponytail rules', () => {
   }
 });
 
-test('the commands and skills the adapter reuses are present', () => {
-  for (const rel of [...REUSED_COMMANDS, ...REUSED_SKILLS]) {
+test('the commands and Qwen-compatible skill metadata are present', () => {
+  for (const rel of REUSED_COMMANDS) {
     assert.ok(fs.existsSync(path.join(root, rel)), `reused file missing: ${rel}`);
+  }
+  for (const [index, rel] of REUSED_SKILLS.entries()) {
+    assert.ok(fs.existsSync(path.join(root, rel)), `reused file missing: ${rel}`);
+    const frontmatter = read(rel).match(/^---\r?\n([\s\S]*?)\r?\n---/);
+    assert.ok(frontmatter, `skill frontmatter missing: ${rel}`);
+    assert.match(frontmatter[1], new RegExp(`^name: ${ENTRY_POINTS[index]}$`, 'm'));
+    assert.match(frontmatter[1], /^description:\s*(?:>|.+)$/m);
   }
 });
 
