@@ -69,15 +69,21 @@ class Ctx:
         self.skills = []
         self.hooks = []
         self.commands = []
-    def register_skill(self, name, path):
-        self.skills.append((name, pathlib.Path(path).as_posix()))
+    def register_skill(self, name, path, **kwargs):
+        self.skills.append((name, pathlib.Path(path).as_posix(), kwargs))
     def register_hook(self, name, handler):
         self.hooks.append(name)
     def register_command(self, name, handler, description='', args_hint=''):
         self.commands.append(name)
+class LegacyCtx(Ctx):
+    def register_skill(self, name, path):
+        self.skills.append((name, pathlib.Path(path).as_posix()))
 ctx = Ctx()
 mod.register(ctx)
-print(json.dumps({'skills': ctx.skills, 'hooks': ctx.hooks, 'commands': ctx.commands}, sort_keys=True))
+legacy = LegacyCtx()
+mod.register(legacy)
+print(json.dumps({'skills': ctx.skills, 'hooks': ctx.hooks, 'commands': ctx.commands,
+                  'legacy_skill_count': len(legacy.skills)}, sort_keys=True))
 `);
   const data = JSON.parse(output);
   assert.deepEqual(data.skills.map(([name]) => name).sort(), [
@@ -89,6 +95,8 @@ print(json.dumps({'skills': ctx.skills, 'hooks': ctx.hooks, 'commands': ctx.comm
     'ponytail-review',
   ]);
   assert.ok(data.skills.every(([, skillPath]) => skillPath.endsWith('/SKILL.md')));
+  assert.ok(data.skills.every(([, , options]) => options.list_in_awareness === true));
+  assert.equal(data.legacy_skill_count, 6);
   assert.ok(data.hooks.includes('pre_llm_call'));
   assert.ok(data.commands.includes('ponytail'));
   assert.ok(data.commands.includes('ponytail-review'));
@@ -124,7 +132,7 @@ mod = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(mod)
 class Ctx:
     def __init__(self): self.commands = {}
-    def register_skill(self, name, path): pass
+    def register_skill(self, name, path, **kwargs): pass
     def register_hook(self, name, handler): pass
     def register_command(self, name, handler, description='', args_hint=''):
         self.commands[name] = handler
@@ -175,7 +183,7 @@ class Ctx:
     def __init__(self):
         self.hooks = {}
         self.commands = {}
-    def register_skill(self, name, path): pass
+    def register_skill(self, name, path, **kwargs): pass
     def register_hook(self, name, handler): self.hooks[name] = handler
     def register_command(self, name, handler, description='', args_hint=''):
         self.commands[name] = handler
