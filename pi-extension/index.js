@@ -180,15 +180,23 @@ export default function ponytailExtension(pi) {
     }
   });
 
-  pi.on("session_start", async (_event, ctx) => {
+  const restoreSessionMode = (ctx) => {
     const entries = ctx?.sessionManager?.getBranch?.() || ctx?.sessionManager?.getEntries?.() || [];
-    configuredDefaultMode = getDefaultMode();
-    hideStatus = getHideStatus();
     currentMode = resolveSessionMode(entries, configuredDefaultMode);
     syncStatus(ctx);
+  };
+
+  pi.on("session_start", async (_event, ctx) => {
+    configuredDefaultMode = getDefaultMode();
+    hideStatus = getHideStatus();
+    restoreSessionMode(ctx);
     if (!getQuietStartup()) {
       ctx?.ui?.notify?.(`Ponytail loaded: ${currentMode}`, "info");
     }
+  });
+
+  pi.on("session_tree", async (_event, ctx) => {
+    restoreSessionMode(ctx);
   });
 
   pi.on("agent_start", async (_event, ctx) => {

@@ -44,8 +44,10 @@ function withTempConfig(fn) {
   const tempConfigHome = mkdtempSync(join(tmpdir(), "ponytail-test-"));
   const previousXdg = process.env.XDG_CONFIG_HOME;
   const previousHide = process.env.PONYTAIL_HIDE_STATUS;
+  const previousDefault = process.env.PONYTAIL_DEFAULT_MODE;
   process.env.XDG_CONFIG_HOME = tempConfigHome;
   delete process.env.PONYTAIL_HIDE_STATUS;
+  delete process.env.PONYTAIL_DEFAULT_MODE;
 
   return Promise.resolve()
     .then(fn)
@@ -54,6 +56,8 @@ function withTempConfig(fn) {
       else process.env.XDG_CONFIG_HOME = previousXdg;
       if (previousHide === undefined) delete process.env.PONYTAIL_HIDE_STATUS;
       else process.env.PONYTAIL_HIDE_STATUS = previousHide;
+      if (previousDefault === undefined) delete process.env.PONYTAIL_DEFAULT_MODE;
+      else process.env.PONYTAIL_DEFAULT_MODE = previousDefault;
       rmSync(tempConfigHome, { recursive: true, force: true });
     });
 }
@@ -118,6 +122,44 @@ test("session_start restores latest persisted mode", async () => withTempConfig(
   const result = await events.get("before_agent_start")({ systemPrompt: "BASE" }, ctx);
 
   assert.ok(result.systemPrompt.includes("lite"));
+}));
+
+test("session_tree restores the selected branch's mode without persisting it", async () => withTempConfig(async () => {
+  const { events, commands, appendedEntries } = createPiHarness();
+  const lite = { type: "custom", customType: "ponytail-mode", data: { mode: "lite" } };
+  const off = { type: "custom", customType: "ponytail-mode", data: { mode: "off" } };
+  let branch = [lite, off];
+  const statusWrites = [];
+  const notifications = [];
+  const ctx = createCommandContext({
+    sessionManager: { getBranch: () => branch, getEntries: () => [lite, off] },
+    ui: {
+      notify: (text) => notifications.push(text),
+      setStatus: (_key, text) => statusWrites.push(text),
+      theme: { fg: (_color, text) => text },
+    },
+  });
+
+  await events.get("session_start")({ reason: "resume" }, ctx);
+  await commands.get("ponytail").handler("default ultra", ctx);
+  assert.equal(await events.get("before_agent_start")({ systemPrompt: "BASE" }, ctx), undefined);
+  const notificationCount = notifications.length;
+
+  for (const [entries, mode] of [[[lite], "lite"], [[lite, off], "off"], [[], "ultra"]]) {
+    branch = entries;
+    await events.get("session_tree")?.({ type: "session_tree" }, ctx);
+    const result = await events.get("before_agent_start")({ systemPrompt: "BASE" }, ctx);
+    if (mode === "off") {
+      assert.equal(result, undefined);
+      assert.equal(statusWrites.at(-1), "");
+    } else {
+      assert.ok(result?.systemPrompt.startsWith(`BASE\n\nPONYTAIL MODE ACTIVE — level: ${mode}\n`), `expected ${mode} instructions`);
+      assert.ok(statusWrites.at(-1).includes(mode.toUpperCase()));
+    }
+  }
+
+  assert.deepEqual(appendedEntries, [], "navigation must not append a new mode entry");
+  assert.equal(notifications.length, notificationCount, "navigation must not repeat the startup toast");
 }));
 
 test("skill alias commands delegate to Pi skill commands", async () => {
