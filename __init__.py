@@ -68,16 +68,21 @@ def _strip_frontmatter(text: str) -> str:
 
 
 def _filter_skill_body_for_mode(body: str, mode: str) -> str:
+    # Port of hooks/ponytail-instructions.js filterSkillBodyForMode (#571):
+    # only intensity table rows and quoted worked examples (`- lite: "..."`)
+    # are mode-specific. Unquoted bullets like `- Full: real rule` are prose
+    # and must survive. Split like the JS `/\r?\n/` so a trailing newline is
+    # preserved on rejoin (str.splitlines() would drop it).
     effective = _normalize_runtime_mode(mode) or DEFAULT_MODE
     lines = []
-    for line in _strip_frontmatter(body).splitlines():
+    for line in re.split(r"\r?\n", _strip_frontmatter(body)):
         table_label = re.match(r"^\|\s*\*\*(.+?)\*\*\s*\|", line)
         if table_label:
             label_mode = _normalize_runtime_mode(table_label.group(1))
             if label_mode and label_mode != effective:
                 continue
 
-        example_label = re.match(r"^-\s*([^:]+):\s*", line)
+        example_label = re.match(r'^-\s*([^:]+):\s*"', line)
         if example_label:
             label_mode = _normalize_runtime_mode(example_label.group(1))
             if label_mode and label_mode != effective:
