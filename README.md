@@ -197,14 +197,14 @@ OpenCode 2 only. The `./` path resolves against your project's `opencode.json`; 
 
 OpenCode 1 uses the older `plugin` key: `{ "plugin": ["@dietrichgebert/ponytail"] }`, or from a checkout the file path: `{ "plugin": ["./.opencode/plugins/ponytail.mjs"] }`.
 
-### Gemini CLI
+### Antigravity CLI
 
 ```bash
-gemini extensions install https://github.com/DietrichGebert/ponytail
+agy extensions install https://github.com/DietrichGebert/ponytail
 ```
 
 Loads the ruleset as always-on context every session and registers the `/ponytail` commands; the `skills/` ship too, activated when a task needs them.
-The Gemini adapter intentionally does not ship a root `hooks/hooks.json`: Gemini auto-loads that path, while Ponytail's lifecycle hooks use Claude/Codex event names.
+The Gemini adapter intentionally does not ship a root `hooks/hooks.json`: Antigravity auto-loads that path, while Ponytail's lifecycle hooks use Claude/Codex event names.
 
 ### Qoder
 
