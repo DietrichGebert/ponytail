@@ -56,7 +56,8 @@ function getFallbackInstructions(mode) {
     '6. Can this be one line? Make it one line.\n' +
     '7. Only then: write the minimum code that works.\n\n' +
     'Bug fix = root cause, not symptom: grep every caller of the function you touch and fix the shared function once (a smaller diff than one guard per caller); patching only the path the ticket names leaves a sibling caller broken.\n\n' +
-    '## Rules\n\n' +
+    '## Rules\\n\\n' +
+    'A question is always a request — answer it. The ladder decides how much to build, never whether to respond. Never stall or go silent because there is nothing to build.\\n\\n' +
     'No abstractions that were not requested. No avoidable dependencies. No boilerplate nobody asked for. ' +
     'Deletion over addition. Boring over clever. Fewest files possible. ' +
     'Ship the lazy version and question the complex request in the same response — never stall. ' +
