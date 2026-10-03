@@ -12,6 +12,10 @@
 </p>
 
 <p align="center">
+  <a href="https://trendshift.io/repositories/50668?utm_source=repository-badge&amp;utm_medium=badge&amp;utm_campaign=badge-repository-50668" target="_blank" rel="noopener noreferrer"><img src="https://trendshift.io/api/badge/repositories/50668" alt="DietrichGebert%2Fponytail | Trendshift" width="250" height="55"/></a>
+</p>
+
+<p align="center">
   <img src="https://img.shields.io/github/stars/DietrichGebert/ponytail?style=flat-square&color=111111&label=stars" alt="Stars">
   <img src="https://img.shields.io/github/v/release/DietrichGebert/ponytail?style=flat-square&color=111111&label=release" alt="Release">
   <img src="https://img.shields.io/npm/v/@dietrichgebert/ponytail?style=flat-square&color=111111&label=npm" alt="npm">
@@ -22,6 +26,7 @@
 <p align="center">
   <a href="https://trendshift.io/repositories/50668" target="_blank" rel="noopener noreferrer"><img src="https://trendshift.io/api/badge/trendshift/repositories/50668/daily" alt="DietrichGebert/ponytail | Trendshift" width="250" height="55"/></a>
   <a href="https://trendshift.io/repositories/50668" target="_blank" rel="noopener noreferrer"><img src="https://trendshift.io/api/badge/trendshift/repositories/50668/weekly" alt="DietrichGebert/ponytail | Trendshift" width="250" height="55"/></a>
+  <a href="https://trendshift.io/repositories/50668?utm_source=trendshift-badge&amp;utm_medium=badge&amp;utm_campaign=badge-trendshift-50668" target="_blank" rel="noopener noreferrer"><img src="https://trendshift.io/api/badge/trendshift/repositories/50668/monthly?language=JavaScript" alt="DietrichGebert%2Fponytail | Trendshift monthly ranking" width="250" height="55"/></a>
 </p>
 
 <p align="center">
@@ -109,7 +114,7 @@ ponytail이라면:
 
 ponytail이 당신에게 요구할 수고의 최대치:
 
-Claude Code와 Codex 플러그인은 자그마한 Node.js 라이프사이클 훅 두 개를 돌리니, `node`가 PATH에 잡혀 있어야 한다(Nix/nvm 사용자라면 비대화형 셸의 PATH에 있어야 한다). 없어도 스킬은 멀쩡히 돌아간다. 다만 늘 켜져 있던 자동 활성화가 매 프롬프트마다 에러를 뱉는 대신 조용히 비활성으로 남을 뿐이다.
+Claude Code와 Codex 플러그인은 자그마한 Node.js 라이프사이클 훅 두 개를 돌리니, `node`가 PATH에 잡혀 있어야 한다(Nix/nvm 사용자라면 비대화형 셸의 PATH에 있어야 한다). 없어도 스킬은 멀쩡히 돌아가지만, 훅이 실행될 때마다 무해한 `node: command not found` 에러가 뜬다. Node를 설치하거나 그 PATH에 넣으면 사라진다.
 
 ### Claude Code
 
@@ -167,18 +172,20 @@ pi install git:github.com/DietrichGebert/ponytail
 `opencode.json`에 다음을 더한다:
 
 ```json
-{ "plugin": ["@dietrichgebert/ponytail"] }
+{ "plugins": ["@dietrichgebert/ponytail"] }
 ```
 
 체크아웃에서 직접 돌려도 된다(플러그인이 `hooks/`와 `skills/`를 그대로 쓴다):
 
 ```json
-{ "plugin": ["./.opencode/plugins/ponytail.mjs"] }
+{ "plugins": ["./.opencode/plugins"] }
 ```
 
 매 턴마다 지금 레벨의 룰셋을 주입하고, `/ponytail` 명령들을 붙여 준다([Commands](#commands) 참고). OpenCode는 이 저장소의 `AGENTS.md`도 알아서 불러오니, 플러그인이 없어도 규칙은 살아 있다. 플러그인은 `lite/full/ultra/off` 레벨을 얹어 준다.
 
-`./` 경로는 프로젝트의 `opencode.json`을 기준으로 풀린다. 체크아웃 하나를 여러 프로젝트에서 같이 쓰려면, 대신 `.mjs`의 절대 경로를 가리키면 된다(그 파일은 제 위치를 기준으로 `hooks/`와 `skills/`를 찾는다).
+OpenCode 2 전용이다. `./` 경로는 프로젝트의 `opencode.json`을 기준으로 풀린다. 체크아웃 하나를 여러 프로젝트에서 같이 쓰려면, 대신 그 체크아웃의 `.opencode/plugins` 디렉터리 절대 경로를 가리키면 된다. `plugins` 항목은 **파일**이 아니라 **디렉터리**를 가리켜야 한다. OpenCode 2는 `ponytail.mjs` 파일 경로를 `configured plugin path must be a directory`로 거부한다. 이 저장소를 OpenCode 2로 열면 항목이 아예 필요 없다. `.opencode/plugins/index.js`를 스스로 불러오기 때문이다.
+
+OpenCode 1은 예전 `plugin` 키를 쓴다: `{ "plugin": ["@dietrichgebert/ponytail"] }`. 체크아웃에서 돌릴 때는 파일 경로를 쓴다: `{ "plugin": ["./.opencode/plugins/ponytail.mjs"] }`.
 
 ### Gemini CLI
 
@@ -250,13 +257,22 @@ enabled = ["ponytail"]
 
 체크아웃의 `AGENTS.md`만으로도 지시문 전용 모드는 된다. 제거: `grok plugin uninstall ponytail`.
 
+### Cursor
+
+```bash
+git clone https://github.com/DietrichGebert/ponytail
+node ponytail/scripts/cursor-hooks.js install
+```
+
+네이티브 훅 두 개를 `~/.cursor/hooks.json`에 합쳐 넣고(`--project`를 붙이면 `<프로젝트>/.cursor/hooks.json`에 쓴다), 이미 있던 다른 훅은 그대로 둔다. 항목들은 그 체크아웃에서 `node`를 실행하니, 체크아웃을 옮기지 말거나 옮긴 뒤 설치를 다시 돌린다. Cursor는 저장하면 파일을 다시 읽는다. 새 채팅을 열면 기본 레벨의 룰셋이 `sessionStart`로 들어온다. `/ponytail lite`, `/ponytail full`, `/ponytail ultra`, `/ponytail off`를 일반 메시지로 보내면 그 대화의 남은 구간 동안 레벨이 바뀌고, `/ponytail`은 현재 레벨을 알려 준다. Cursor의 `subagentStart`는 컨텍스트를 주입할 수 없어서 서브에이전트는 룰셋 없이 돌고, 클라우드 에이전트는 `sessionStart`를 아예 실행하지 않는다. 늘 켜진 규칙(`.cursor/rules/ponytail.mdc`)과 훅은 둘 중 하나만 쓴다. 규칙이 워크스페이스에 있으면 훅은 아무것도 주입하지 않고 모드 명령은 안내문으로 답하니, 훅이 레벨을 관리하게 하려면 규칙을 지운다. 계약, 검증 기록, 한계: [docs/cursor-hooks.md](docs/cursor-hooks.md). 제거: `node ponytail/scripts/cursor-hooks.js uninstall`.
+
 이게 끝이었다. 그 사람이라면 흐뭇해할 거다. 입 밖으로 내진 않겠지만.
 
 매 세션 켜져 있고, 명령 몇 개가 딸려 온다([Commands](#commands) 참고). `/ponytail ultra`는 코드베이스가 당신에게 단단히 밉보인 날을 위해 있다. 시작할 때와 모드를 바꿀 때 지금 모드를 보여 준다.
 
 새 세션마다 적용할 레벨은 `PONYTAIL_DEFAULT_MODE` 환경 변수(`lite`/`full`/`ultra`/`off`)로, 또는 `~/.config/ponytail/config.json`의 `defaultMode` 필드(Windows에선 `%APPDATA%\ponytail\config.json`)로 정한다. 기본값은 `full`이다.
 
-Cursor, Windsurf, Cline, GitHub Copilot(에디터), Aider, Kiro, Zed, CodeWhale: 이 저장소에서 맞는 규칙 파일을 복사하면 된다([`.cursor/rules/`](.cursor/rules/), [`.windsurf/rules/`](.windsurf/rules/), [`.clinerules/`](.clinerules/), [`.github/copilot-instructions.md`](.github/copilot-instructions.md), [`AGENTS.md`](AGENTS.md), [`.kiro/steering/`](.kiro/steering/)).
+Cursor(규칙 파일만, [훅 설치](#cursor)의 대안), Windsurf, Cline, GitHub Copilot(에디터), Aider, Kiro, Zed, CodeWhale: 이 저장소에서 맞는 규칙 파일을 복사하면 된다([`.cursor/rules/`](.cursor/rules/), [`.windsurf/rules/`](.windsurf/rules/), [`.clinerules/`](.clinerules/), [`.github/copilot-instructions.md`](.github/copilot-instructions.md), [`AGENTS.md`](AGENTS.md), [`.kiro/steering/`](.kiro/steering/)).
 
 Kiro: `.kiro/steering/ponytail.md`를 `~/.kiro/steering/`(전역)이나 프로젝트의 `.kiro/steering/`에 복사한다.
 
@@ -270,14 +286,14 @@ Codex 확장을 쓰는 VS Code는 이 저장소가 함께 싣는 `AGENTS.md`를 
 
 | 명령 | 하는 일 |
 |---------|--------------|
-| `/ponytail [lite \| full \| ultra \| off]` | 강도를 정하거나, 끈다. 인수가 없으면 지금 레벨을 알려 준다. |
+| `/ponytail [lite \| full \| ultra \| off]` | 강도를 정하거나, 끈다. 인수가 없으면, 꺼져 있을 때는 기본 레벨로 켜고, 켜져 있으면 지금 레벨을 알려 준다. |
 | `/ponytail-review` | 지금 diff를 과잉 구현 관점에서 훑고, 삭제 목록을 돌려준다. |
 | `/ponytail-audit` | diff만이 아니라 저장소 전체를 과잉 구현 관점에서 감사한다. |
 | `/ponytail-debt` | 미뤄 둔 `ponytail:` 간소화들을 장부로 모아, "나중에"가 "영영"이 되지 않게 한다. |
 | `/ponytail-gain` | 벤치마크로 잰 효과 스코어보드(코드 절감, 비용 절감, 속도 향상)를 보여 준다. |
 | `/ponytail-help` | 위 명령들의 빠른 참조. |
 
-명령들은 스킬을 지원하는 호스트가 있어야 돈다(Claude Code, Codex, Devin CLI, OpenCode, Gemini, pi, Swival). Codex에선 스킬이라 `@`로 부른다(`@ponytail-review`). 지시문 전용 어댑터(Cursor, Windsurf, Cline, Copilot, Kiro, Antigravity)는 명령 없이 늘 켜진 룰셋만 불러온다.
+명령들은 스킬을 지원하는 호스트가 있어야 돈다(Claude Code, Codex, Devin CLI, OpenCode, Gemini, pi, Swival). Codex CLI와 IDE 확장에서는 스킬 이름 앞에 `$`를 붙여 부른다(예: `$ponytail-review`). [훅](#cursor)을 쓰는 Cursor는 `/ponytail` 레벨 전환만 되고, 일반 메시지로 입력한다. 지시문 전용 어댑터(Cursor 규칙 파일, Windsurf, Cline, Copilot, Kiro, Antigravity)는 명령 없이 늘 켜진 룰셋만 불러온다.
 
 ## Development
 
