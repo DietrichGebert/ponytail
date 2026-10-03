@@ -73,8 +73,9 @@ NO_RUN = ("Write the implementation (include tests if you normally would for a c
 def _is_test(p: Path, workdir: Path):
     rel = p.relative_to(workdir)
     name = p.name.lower()
-    return (name.startswith("test_") or name.endswith("_test.py") or name == "conftest.py"
-            or any(part.lower() in ("test", "tests") for part in rel.parts[:-1]))
+    return (name.startswith("test_") or name.endswith(("_test.py", "_test.go"))
+            or p.stem.lower().endswith((".test", ".spec")) or name == "conftest.py"
+            or any(part.lower() in ("test", "tests", "__tests__") for part in rel.parts[:-1]))
 
 CODE_EXT = {".py", ".js", ".ts", ".jsx", ".tsx", ".html", ".css", ".go", ".rs", ".java", ".rb", ".sh"}
 
