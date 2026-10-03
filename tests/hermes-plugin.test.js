@@ -9,6 +9,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { spawnSync } = require('child_process');
+const { filterSkillBodyForMode } = require('../hooks/ponytail-instructions');
 
 const commands = ['ponytail', 'ponytail-review', 'ponytail-audit', 'ponytail-debt', 'ponytail-gain', 'ponytail-help'];
 const skillCommands = commands.filter((name) => name !== 'ponytail');
@@ -233,4 +234,50 @@ print(json.dumps(cases, sort_keys=True))
   assert.match(data['/ponytail-help'].text, /ponytail-help/);
   assert.equal(data['/status'], null);
   assert.equal(data.hello, null);
+});
+
+test('Hermes mode filter does not drop a rule bullet whose label matches a mode name', () => {
+  // Regression for the Hermes side of #571: a rule bullet shaped "- Full: ..."
+  // has the same "label: text" shape as a worked example, but isn't one — it
+  // must survive in every mode. Only the quoted `- lite: "..."`-style bullets
+  // are real per-mode examples. hooks/ponytail-instructions.js already guards
+  // against this; the Hermes plugin filter had drifted and lost the same guard.
+  const output = python(String.raw`
+import importlib.util, json
+spec = importlib.util.spec_from_file_location('ponytail_hermes_plugin', '__init__.py')
+mod = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(mod)
+body = (
+    "- Full: do not confuse this rule label with the mode name.\n"
+    "- Lite: same risk, this is a real rule bullet.\n"
+    '- lite: "real worked example"\n'
+    '- ultra: "real worked example"'
+)
+print(json.dumps({'filtered': mod._filter_skill_body_for_mode(body, 'ultra')}))
+`);
+  const { filtered } = JSON.parse(output);
+  assert.ok(filtered.includes('Full: do not confuse'), 'an unquoted rule bullet must not be treated as a mode example');
+  assert.ok(filtered.includes('Lite: same risk'), 'an unquoted rule bullet must not be treated as a mode example');
+  assert.ok(!filtered.includes('- lite:'), 'the real quoted lite example must still be filtered out in ultra mode');
+  assert.ok(filtered.includes('ultra: "real worked example"'));
+});
+
+test('Hermes mode filter stays in lockstep with the JS filter on the real skill body', () => {
+  // The two filters are independent ports of the same contract (one shared
+  // skill file, every host adapter trims it the same way). Diff them directly
+  // on skills/ponytail/SKILL.md instead of trusting the two implementations to
+  // stay in sync by hand.
+  const body = fs.readFileSync(path.join(root, 'skills', 'ponytail', 'SKILL.md'), 'utf8');
+  for (const mode of ['lite', 'full', 'ultra']) {
+    const jsFiltered = filterSkillBodyForMode(body, mode);
+    const pyFiltered = python(String.raw`
+import importlib.util, json
+spec = importlib.util.spec_from_file_location('ponytail_hermes_plugin', '__init__.py')
+mod = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(mod)
+body = open('skills/ponytail/SKILL.md', encoding='utf-8').read()
+print(json.dumps(mod._filter_skill_body_for_mode(body, '${mode}')))
+`);
+    assert.equal(JSON.parse(pyFiltered), jsFiltered, `filters diverge for mode "${mode}"`);
+  }
 });

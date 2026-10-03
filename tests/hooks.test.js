@@ -37,6 +37,10 @@ delete process.env.COPILOT_PLUGIN_DATA;
 // A leaked subagent matcher would scope the inject-into-every-subagent assertions.
 delete process.env.PONYTAIL_SUBAGENT_MATCHER;
 delete process.env.QODER_SESSION_ID;
+// Cursor sets these only for hook processes, but a suite launched from a Cursor
+// hook would otherwise steer every case into the Cursor JSON branch (#817).
+delete process.env.CURSOR_VERSION;
+delete process.env.CURSOR_PROJECT_DIR;
 
 const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'ponytail-hooks-'));
 // Runs on normal exit and on assertion-throw exit; force makes it idempotent.
@@ -71,44 +75,26 @@ function runShell(command, env, input = '') {
   });
 }
 
-const backslashedRoot = root.split(path.sep).join('\\');
 let result;
 
+// The shared Claude/Codex command must stay guard-free: VS Code runs it in
+// Windows PowerShell, which cannot parse `||` (see hooks-windows.test.js), so
+// it only has to run clean with node.
 for (const command of collectManifestCommands('hooks/claude-codex-hooks.json', 'command')) {
-  result = runShell(command, {
-    ...process.env,
-    HOME: home,
-    USERPROFILE: home,
-    CLAUDE_PLUGIN_ROOT: backslashedRoot,
-  });
+  result = runShell(command, { ...process.env, HOME: home, USERPROFILE: home, CLAUDE_PLUGIN_ROOT: root });
   assert.equal(result.status, 0, result.stderr);
-
-  result = runShell(command, {
-    HOME: home,
-    USERPROFILE: home,
-    CLAUDE_PLUGIN_ROOT: backslashedRoot,
-    PATH: '',
-  });
-  assert.equal(result.status, 0, result.stderr);
+  assert.equal(result.stderr, '', command);
 }
 
+// Copilot CLI has a separate bash field, so it can exit 0 without node (#645).
+// `|| exit 0` also hides a broken hook, so the with-node run must leave stderr empty.
 for (const command of collectManifestCommands('hooks/copilot-hooks.json', 'bash')) {
-  result = runShell(command, {
-    ...process.env,
-    HOME: home,
-    USERPROFILE: home,
-    PLUGIN_ROOT: backslashedRoot,
-    COPILOT_PLUGIN_DATA: path.join(temp, 'copilot-manifest-data'),
-  });
+  const env = { HOME: home, USERPROFILE: home, PLUGIN_ROOT: root, COPILOT_PLUGIN_DATA: path.join(temp, 'copilot-manifest-data') };
+  result = runShell(command, { ...process.env, ...env });
   assert.equal(result.status, 0, result.stderr);
+  assert.equal(result.stderr, '', command);
 
-  result = runShell(command, {
-    HOME: home,
-    USERPROFILE: home,
-    PLUGIN_ROOT: backslashedRoot,
-    COPILOT_PLUGIN_DATA: path.join(temp, 'copilot-manifest-data-no-node'),
-    PATH: '',
-  });
+  result = runShell(command, { ...env, PATH: '' });
   assert.equal(result.status, 0, result.stderr);
 }
 
@@ -410,6 +396,17 @@ result = run(
 assert.equal(result.status, 0, result.stderr);
 output = JSON.parse(result.stdout);
 assert.equal(output.hookSpecificOutput.hookEventName, 'SubagentStart');
+
+// Catastrophic-backtracking matcher → must not hang the hook (#658); the
+// match is time-boxed and a timeout fails open and injects.
+result = run(
+  'ponytail-subagent.js',
+  { ...scopeEnv, PONYTAIL_SUBAGENT_MATCHER: '(a+)+$' },
+  JSON.stringify({ agent_type: 'a'.repeat(40) + '!' }),
+);
+assert.equal(result.status, 0, result.stderr);
+output = JSON.parse(result.stdout);
+assert.match(output.hookSpecificOutput.additionalContext, /PONYTAIL MODE ACTIVE — level: full/);
 
 // The default (no matcher) path must not depend on stdin: even with stdin
 // closed empty it injects synchronously, preserving the #252 behavior on
