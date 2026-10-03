@@ -55,6 +55,8 @@ const INVARIANTS = [
   'security',
   'accessibility',
   'Lazy code without its check is unfinished', // one-check promoted to headline
+  'ponytail-keep:',                        // keep-marker rule: the counterweight to the tidy-up reflex
+  'more than one attempt is unfinished',   // keep-marker trigger: write it when the fight ends, not later
 ];
 
 const skill = read('skills/ponytail/SKILL.md');
