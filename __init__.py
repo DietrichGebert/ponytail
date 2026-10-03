@@ -176,8 +176,12 @@ def _handle_mode_command(raw_args: str) -> str:
     global _current_mode
     arg = (raw_args or "").strip().lower()
     if not arg:
+        # Bare /ponytail switches ponytail on, or reports the level when it already is (#639).
         mode = _current_mode or _default_mode()
-        return f"Ponytail mode: {mode}. Use `/ponytail lite|full|ultra|off`."
+        if mode != "off":
+            return f"Ponytail mode: {mode}. Use `/ponytail lite|full|ultra|off`."
+        _current_mode = "full" if _default_mode() == "off" else _default_mode()
+        return f"Ponytail mode set to {_current_mode}."
     mode = _normalize_runtime_mode(arg)
     if not mode:
         return "Usage: /ponytail [lite|full|ultra|off]"

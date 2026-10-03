@@ -70,8 +70,15 @@ function finish() {
         else if (arg === 'ultra') mode = 'ultra';
         else if (arg === 'off') mode = 'off';
         else if (arg === '') {
-          isReportOnly = true;
-          mode = readMode() || getDefaultMode();
+          // Bare /ponytail switches ponytail on: off → the default level (full if
+          // the default is off too); already on → keep the level, report it (#639).
+          const live = readMode();
+          if (live && live !== 'off') {
+            isReportOnly = true;
+            mode = live;
+          } else {
+            mode = getDefaultMode() === 'off' ? 'full' : getDefaultMode();
+          }
         } else {
           mode = getDefaultMode();
         }

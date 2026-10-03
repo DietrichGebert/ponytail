@@ -735,4 +735,26 @@ assert.equal(
   assert.equal(subagentLevel(repoA), 'ultra', '/ponytail off in repo B leaves repo A alone');
 }
 
+// #639: bare /ponytail switches ponytail on when it is off, and only reports
+// (never resets) the level when it is already on.
+{
+  const bareHome = path.join(temp, 'bare-home');
+  const bareFlag = path.join(bareHome, '.claude', '.ponytail-active');
+  fs.mkdirSync(path.dirname(bareFlag), { recursive: true });
+  const bareEnv = { HOME: bareHome, USERPROFILE: bareHome };
+  const bare = (env) => run('ponytail-mode-tracker.js', env, JSON.stringify({ prompt: '/ponytail' }));
+
+  fs.writeFileSync(bareFlag, 'ultra');
+  assert.match(bare(bareEnv).stdout, /PONYTAIL MODE ACTIVE — level: ultra/);
+  assert.equal(fs.readFileSync(bareFlag, 'utf8'), 'ultra', 'checking the level must not reset ultra');
+
+  fs.unlinkSync(bareFlag);
+  assert.match(bare(bareEnv).stdout, /PONYTAIL MODE CHANGED — level: full/);
+  assert.equal(fs.readFileSync(bareFlag, 'utf8'), 'full', 'bare /ponytail switches an off session on');
+
+  fs.unlinkSync(bareFlag);
+  bare({ ...bareEnv, PONYTAIL_DEFAULT_MODE: 'off' });
+  assert.equal(fs.readFileSync(bareFlag, 'utf8'), 'full', 'an off default still switches on at full');
+}
+
 console.log('hook compatibility checks passed');

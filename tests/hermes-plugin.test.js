@@ -213,6 +213,26 @@ print(json.dumps(result))
   assert.equal(output, 'null');
 });
 
+test('Hermes bare /ponytail switches an off session on and only reports a running level (#639)', () => {
+  const output = python(String.raw`
+import importlib.util, json
+spec = importlib.util.spec_from_file_location('ponytail_hermes_plugin', '__init__.py')
+mod = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(mod)
+mod._current_mode = 'ultra'
+running = mod._handle_mode_command('')
+kept = mod._current_mode
+mod._current_mode = 'off'
+switched = mod._handle_mode_command('')
+print(json.dumps([running, kept, switched, mod._current_mode]))
+`);
+  const [running, kept, switched, after] = JSON.parse(output);
+  assert.match(running, /Ponytail mode: ultra/);
+  assert.equal(kept, 'ultra');
+  assert.match(switched, /set to full/);
+  assert.equal(after, 'full');
+});
+
 test('Hermes gateway rewrite preserves every skill command and ignores unrelated text', () => {
   const output = python(String.raw`
 import importlib.util, json
