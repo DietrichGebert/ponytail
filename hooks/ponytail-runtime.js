@@ -3,6 +3,10 @@ const path = require('path');
 const os = require('os');
 const { getClaudeDir, getConfigDir } = require('./ponytail-config');
 
+// A host can close its output pipe before a hook finishes; async stream errors
+// bypass the callers' try/catch. Keep EPIPE quiet, but surface other failures.
+process.stdout.on('error', e => { if (e.code !== 'EPIPE') throw e; });
+
 const STATE_FILE = '.ponytail-active';
 
 // ponytail: VS Code Copilot never sets COPILOT_PLUGIN_DATA — it only injects
