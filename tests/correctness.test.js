@@ -136,6 +136,32 @@ print(351)`,
   }
 });
 
+test('agentic scoring contains submission exits but preserves operator interrupts', () => {
+  const { spawnSync } = require('node:child_process');
+  const script = String.raw`import sys, tempfile
+from pathlib import Path
+sys.path.insert(0,str(Path.cwd()/"benchmarks"/"agentic"))
+from run import score_workspace
+from tasks import CACHE_GOOD,CACHE_BAD
+with tempfile.TemporaryDirectory() as root:
+    p=Path(root)
+    for source in ["import sys\ndef compute(n):\n    sys.exit(7)\n", "raise SystemExit(9)\n"]:
+        (p/"compute.py").write_text(source)
+        result=score_workspace("cache","baseline","haiku",p)
+        assert (result["correct"],result["safe"]) == (0,0), result
+    for source,expected in [(CACHE_GOOD,(1,1)),(CACHE_BAD,(0,0))]:
+        (p/"compute.py").write_text(source)
+        result=score_workspace("cache","baseline","haiku",p)
+        assert (result["correct"],result["safe"]) == expected,result
+    (p/"compute.py").write_text("def compute(n):\n    raise KeyboardInterrupt\n")
+    try:score_workspace("cache","baseline","haiku",p)
+    except KeyboardInterrupt:pass
+    else:raise AssertionError("Operator interrupt was hidden")
+`;
+  const result = spawnSync('python3', ['-c', script], { cwd: require('node:path').join(__dirname, '..'), encoding: 'utf8' });
+  assert.equal(result.status, 0, result.stdout + result.stderr);
+});
+
 // --- React countdown ---
 
 test('countdown: valid React component passes', () => {
