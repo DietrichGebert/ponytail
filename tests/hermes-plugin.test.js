@@ -331,3 +331,52 @@ print(json.dumps(mod._filter_skill_body_for_mode(body, '${mode}')))
     assert.equal(JSON.parse(pyFiltered), jsFiltered, `filters diverge for mode "${mode}"`);
   }
 });
+
+test('Hermes gateway rewrite follows the host command parser and control guard', () => {
+  const output = python(String.raw`
+import importlib.util, json
+spec = importlib.util.spec_from_file_location('ponytail_hermes_plugin', '__init__.py')
+mod = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(mod)
+class Event:
+    def __init__(self, text, allowed=True):
+        self.text = text
+        self.allow_gateway_control = allowed
+    def get_command(self):
+        if not self.allow_gateway_control:
+            return None
+        return self.text.lstrip().split(maxsplit=1)[0][1:].lower().split('@', 1)[0]
+    def get_command_args(self):
+        parts = self.text.lstrip().split(maxsplit=1)
+        return parts[1] if len(parts) > 1 else ''
+cases = {}
+for text in ['/ponytail_review@Bot src/app.py', '/ponytail-audit\trepo', '/ponytail-debt\nrepo']:
+    cases[text] = mod.rewrite_gateway_command(event=Event(text))
+cases['disabled'] = mod.rewrite_gateway_command(event=Event('/ponytail-review repo', False))
+class TextOnlyEvent:
+    text = '/ponytail_review@Bot\tsrc/app.py'
+cases['legacy'] = mod.rewrite_gateway_command(event=TextOnlyEvent())
+event = TextOnlyEvent()
+event.allow_gateway_control = False
+cases['legacy_disabled'] = mod.rewrite_gateway_command(event=event)
+for text in ['/', '/\t']:
+    event = TextOnlyEvent()
+    event.text = text
+    cases[text] = mod.rewrite_gateway_command(event=event)
+cases['no_args'] = mod.rewrite_gateway_command(event=Event('/ponytail-help'))
+print(json.dumps(cases))
+`);
+  const data = JSON.parse(output);
+  for (const key of ['/ponytail_review@Bot src/app.py', 'legacy']) {
+    assert.match(data[key]?.text || '', /ponytail:ponytail-review/);
+    assert.match(data[key]?.text || '', /User arguments: src\/app\.py/);
+  }
+  assert.match(data['/ponytail-audit\trepo']?.text || '', /ponytail:ponytail-audit/);
+  assert.match(data['/ponytail-debt\nrepo']?.text || '', /ponytail:ponytail-debt/);
+  assert.equal(data.disabled, null);
+  assert.equal(data.legacy_disabled, null);
+  assert.equal(data['/'], null);
+  assert.equal(data['/\t'], null);
+  assert.match(data.no_args.text, /ponytail:ponytail-help/);
+  assert.doesNotMatch(data.no_args.text, /User arguments:/);
+});

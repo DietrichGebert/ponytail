@@ -178,15 +178,25 @@ def _slash_access_denied(event: Any, gateway: Any, command: str) -> bool:
 
 def rewrite_gateway_command(event: Any = None, gateway: Any = None, **_: Any) -> dict[str, str] | None:
     """Rewrite authorized gateway /ponytail-* commands into normal agent prompts."""
+    if getattr(event, "allow_gateway_control", True) is False:
+        return None
     text = str(getattr(event, "text", "") or "").strip()
     if not text.startswith("/"):
         return None
-    head, _, rest = text[1:].partition(" ")
+    parts = text[1:].split(maxsplit=1)
+    if not parts:
+        return None
+    get_command = getattr(event, "get_command", None)
+    head = get_command() if callable(get_command) else parts[0].split("@", 1)[0]
+    if not head:
+        return None
     command = head.replace("_", "-").lower()
     if command not in SKILL_COMMANDS:
         return None
     if _slash_access_denied(event, gateway, command):
         return None
+    get_args = getattr(event, "get_command_args", None)
+    rest = get_args() if callable(get_args) else (parts[1] if len(parts) > 1 else "")
     return {"action": "rewrite", "text": _skill_prompt(command, rest)}
 
 
