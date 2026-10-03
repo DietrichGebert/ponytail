@@ -158,6 +158,18 @@ test("skill alias commands delegate to Pi skill commands", async () => {
   ]);
 });
 
+test("skill alias commands expand the skill and forward their arguments", async () => {
+  const { commands, sentUserMessages } = createPiHarness();
+
+  await commands.get("ponytail-review").handler("staged", createCommandContext());
+  await commands.get("ponytail-audit").handler("src/api", createCommandContext({ isIdle: () => false }));
+
+  assert.deepEqual(sentUserMessages, [
+    { text: "/skill:ponytail-review staged", options: { expandPromptTemplates: true } },
+    { text: "/skill:ponytail-audit src/api", options: { expandPromptTemplates: true, deliverAs: "followUp" } },
+  ]);
+});
+
 test("normal mode disables persistent instructions", async () => withTempConfig(async () => {
   const { commands, events } = createPiHarness();
   const ctx = createCommandContext();

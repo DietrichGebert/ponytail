@@ -104,13 +104,16 @@ export default function ponytailExtension(pi) {
     const normalized = String(args || "").trim();
     const message = normalized ? `${skillName} ${normalized}` : skillName;
 
+    // pi.sendUserMessage does not expand skill commands on its own, so without
+    // expandPromptTemplates the alias lands as the literal text
+    // "/skill:ponytail-review" and the skill body never reaches the agent.
     if (ctx?.isIdle?.() === false) {
-      pi.sendUserMessage(message, { deliverAs: "followUp" });
+      pi.sendUserMessage(message, { expandPromptTemplates: true, deliverAs: "followUp" });
       ctx?.ui?.notify?.(`${skillName} queued as follow-up.`, "info");
       return;
     }
 
-    pi.sendUserMessage(message);
+    pi.sendUserMessage(message, { expandPromptTemplates: true });
   };
 
   pi.registerCommand("ponytail", {
@@ -150,27 +153,27 @@ export default function ponytailExtension(pi) {
 
   pi.registerCommand("ponytail-review", {
     description: "Run /skill:ponytail-review",
-    handler: (_args, ctx) => sendAlias("/skill:ponytail-review", "", ctx),
+    handler: (args, ctx) => sendAlias("/skill:ponytail-review", args, ctx),
   });
 
   pi.registerCommand("ponytail-audit", {
     description: "Run /skill:ponytail-audit",
-    handler: (_args, ctx) => sendAlias("/skill:ponytail-audit", "", ctx),
+    handler: (args, ctx) => sendAlias("/skill:ponytail-audit", args, ctx),
   });
 
   pi.registerCommand("ponytail-gain", {
     description: "Run /skill:ponytail-gain",
-    handler: (_args, ctx) => sendAlias("/skill:ponytail-gain", "", ctx),
+    handler: (args, ctx) => sendAlias("/skill:ponytail-gain", args, ctx),
   });
 
   pi.registerCommand("ponytail-debt", {
     description: "Run /skill:ponytail-debt",
-    handler: (_args, ctx) => sendAlias("/skill:ponytail-debt", "", ctx),
+    handler: (args, ctx) => sendAlias("/skill:ponytail-debt", args, ctx),
   });
 
   pi.registerCommand("ponytail-help", {
     description: "Run /skill:ponytail-help",
-    handler: (_args, ctx) => sendAlias("/skill:ponytail-help", "", ctx),
+    handler: (args, ctx) => sendAlias("/skill:ponytail-help", args, ctx),
   });
 
   pi.on("input", async (event) => {
