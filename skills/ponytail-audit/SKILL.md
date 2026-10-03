@@ -22,6 +22,7 @@ Same as ponytail-review:
 - `reuse:` equivalent helper, util, or pattern already in this repo. Name the path.
 - `yagni:` abstraction with one implementation, config nobody sets, layer with one caller.
 - `shrink:` same logic, fewer lines. Show the shorter form.
+- `reuse:` duplicates a helper that already lives in this repo. Name the existing one.
 
 ## Hunt
 
@@ -29,6 +30,8 @@ Deps the stdlib or platform already ships, single-implementation interfaces,
 factories with one product, wrappers that only delegate, files exporting one
 thing, dead flags and config, hand-rolled stdlib, helpers duplicating an
 equivalent that already lives in this repo.
+Before emitting `delete:`, grep the whole tree for the symbol, including tests,
+fixtures and string or dynamic references.
 
 ## Output
 

@@ -26,9 +26,8 @@ Tags:
 - `reuse:` equivalent helper, util, or pattern already in this repo. Name the path.
 - `yagni:` abstraction with one implementation, config nobody sets, layer with one caller.
 - `shrink:` same logic, fewer lines. Show the shorter form.
+- `reuse:` duplicates a helper that already lives in this repo. Name the existing one.
 
-Search the same repo for an existing equivalent before flagging or accepting
-a new helper — rung 2 of the ladder, checked after the fact.
 
 ## Examples
 
