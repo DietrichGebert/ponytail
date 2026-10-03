@@ -72,6 +72,28 @@ test('debounce: immediate-call implementation fails', () => {
   assert.equal(result.score, 0);
 });
 
+test('agentic fixture commits ignore unavailable user signing settings', () => {
+  const { spawnSync } = require('node:child_process');
+  const script = String.raw`import os, sys, tempfile, subprocess
+from pathlib import Path
+sys.path.insert(0,str(Path.cwd()/"benchmarks"/"agentic"))
+from run import _git_snapshot,git_diff_stats
+with tempfile.TemporaryDirectory() as root:
+    p=Path(root);work=p/"workspace";work.mkdir()
+    cfg=p/"global.gitconfig"
+    cfg.write_text("[commit]\n gpgSign = true\n[gpg]\n format = ssh\n[user]\n signingKey = "+str(p/"missing.pub")+"\n")
+    os.environ.update(GIT_CONFIG_GLOBAL=str(cfg),GIT_CONFIG_NOSYSTEM='1')
+    (work/"main.py").write_text("x=1\n")
+    _git_snapshot(work)
+    assert subprocess.run(['git','rev-parse','--verify','HEAD'],cwd=work,capture_output=True).returncode == 0
+    (work/"main.py").write_text("x=1\ny=2\n")
+    assert git_diff_stats(work)['total_loc'] == 1
+    assert subprocess.run(['git','config','--global','--get','commit.gpgSign'],capture_output=True,text=True).stdout.strip() == 'true'
+`;
+  const result = spawnSync('python3', ['-c', script], { cwd: require('node:path').join(__dirname, '..'), encoding: 'utf8' });
+  assert.equal(result.status, 0, result.stdout + result.stderr);
+});
+
 // --- CSV sum ---
 
 test('csv: correct pandas one-liner passes', () => {
