@@ -71,6 +71,27 @@ test('onecheck: no check fails', () => {
   assert.equal(r.pass, false);
 });
 
+// --- sample: batch work earns one sample first ---
+
+test('sample: converts one file first and inspects it before the batch passes', () => {
+  const r = check('sample',
+    "I'll start with one file first: converting report-01.docx to Markdown and checking the output " +
+    'before processing the rest.\n' +
+    '```bash\npandoc reports/report-01.docx -o out/report-01.md\n```\n' +
+    'Looks clean. Now converting the remaining 39 and combining them into one file.');
+  assert.equal(r.pass, true);
+  assert.equal(r.score, 1);
+});
+
+test('sample: fires the whole batch immediately fails', () => {
+  const r = check('sample',
+    'Converting all 40 .docx files in ./reports to Markdown now.\n' +
+    '```bash\nfor f in reports/*.docx; do pandoc "$f" -o "out/$(basename "$f" .docx).md"; done\ncat out/*.md > combined.md\n```\n' +
+    'Combined output saved to combined.md.');
+  assert.equal(r.pass, false);
+  assert.equal(r.score, 0);
+});
+
 // --- unknown probe is skipped, not failed ---
 
 test('unknown probe is skipped', () => {

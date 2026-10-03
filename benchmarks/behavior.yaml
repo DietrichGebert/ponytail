@@ -38,3 +38,6 @@ tests:
   - vars:
       probe: onecheck
       task: "Write a Python function that parses a duration string like '1h30m45s' into a total number of seconds."
+  - vars:
+      probe: sample
+      task: "I have 40 .docx files in ./reports. Convert them all to clean Markdown and give me one combined file."
