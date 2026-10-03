@@ -108,6 +108,28 @@ assert.equal(
   'a combined statusLine must keep the non-ponytail command',
 );
 
+// Preserve the user's separators: replacing ; with && makes a failed optional
+// command suppress the statusline that follows it.
+for (const [command, expected] of [
+  ["false; printf 'CUSTOM-STATUS'; bash /p/ponytail-statusline.sh", "false; printf 'CUSTOM-STATUS'"],
+  ['bash /p/ponytail-statusline.sh; first && second', 'first && second'],
+  ['first && bash /p/ponytail-statusline.sh; second', 'first ; second'],
+  ["printf 'a;b && c'; bash /p/ponytail-statusline.sh", "printf 'a;b && c'"],
+]) {
+  fs.writeFileSync(settingsPath, JSON.stringify({
+    statusLine: { type: 'command', command },
+  }));
+  result = runUninstall(env);
+  assert.equal(result.status, 0, result.stderr);
+  const remaining = JSON.parse(fs.readFileSync(settingsPath, 'utf8')).statusLine.command;
+  assert.equal(remaining, expected, 'unrelated command text and separators must survive');
+  if (expected.startsWith('false;')) {
+    const rendered = spawnSync('bash', ['-c', remaining], { env: { ...process.env, ...env }, encoding: 'utf8' });
+    assert.equal(rendered.status, 0, rendered.stderr);
+    assert.equal(rendered.stdout, 'CUSTOM-STATUS', 'fallback statusline still renders after a failed command');
+  }
+}
+
 // #434: a malformed settings.json must not crash the script mid-cleanup. It
 // can't be safely edited, so uninstall warns and leaves the file byte-for-byte
 // intact instead of throwing a SyntaxError after other state was already removed.

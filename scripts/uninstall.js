@@ -56,17 +56,19 @@ try {
   // ponytail: splits on && / ; to detect other segments — good enough; a user
   // piping statuslines together is on their own.
   if (typeof cmd === 'string' && cmd.includes(STATUSLINE_SCRIPT)) {
-    const parts = cmd
-      .split(/&&|;/)
-      .map((s) => s.trim())
-      .filter(Boolean);
-    const others = parts.filter((s) => !s.includes(STATUSLINE_SCRIPT));
-    if (others.length === 0) {
+    const parts = cmd.split(/(&&|;)/);
+    // Keep the separators between surviving commands, including ; after a
+    // failed optional command. Remove our segment and its adjacent separator.
+    for (let i = parts.length - 1; i >= 0; i -= 2) {
+      if (parts[i].includes(STATUSLINE_SCRIPT)) parts.splice(i ? i - 1 : 0, 2);
+    }
+    const remaining = parts.join('').trim();
+    if (!remaining) {
       delete settings.statusLine;
       fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2), 'utf8');
       console.log(`Removed ponytail statusLine entry from ${settingsPath}`);
     } else {
-      settings.statusLine.command = others.join(' && ');
+      settings.statusLine.command = remaining;
       fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2), 'utf8');
       console.log(`Removed ponytail statusLine segment from ${settingsPath}`);
     }
