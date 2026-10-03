@@ -30,6 +30,12 @@ for (const dir of [path.join(getClaudeDir(), 'ponytail-modes'), path.join(os.hom
     console.log(`Removed per-project mode flags: ${dir}`);
   }
 }
+for (const dir of [path.join(getClaudeDir(), 'ponytail-sessions'), path.join(os.homedir(), '.cursor', 'ponytail-sessions')]) {
+  if (fs.existsSync(dir)) {
+    fs.rmSync(dir, { recursive: true });
+    console.log(`Removed per-session mode flags: ${dir}`);
+  }
+}
 removeIfExists(getConfigPath(), 'config file');
 
 // Cursor hooks (#817): drop only ponytail's entries from ~/.cursor/hooks.json,

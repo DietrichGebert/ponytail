@@ -51,68 +51,100 @@ if (isCursor) {
   }
 }
 
-// 1. Write flag file
-try {
-  setMode(mode);
-} catch (e) {
-  // Silent fail -- flag is best-effort, don't block the hook
-}
+// Claude Code (and hosts following its hook contract) hand every hook a JSON
+// payload on stdin carrying session_id; read it so the flag can also be keyed
+// per session (#992) — otherwise two sessions in the same repo share the
+// project file and whichever one wrote last wins for both. Best-effort: empty
+// or unparsable stdin just skips session-scoping, same as a host with no
+// concept of one.
+let input = '';
+let done = false;
 
-// 2. Emit the ponytail ruleset, filtered to the active intensity level.
-let output = getPonytailInstructions(mode);
+function finish() {
+  if (done) return;
+  done = true;
 
-// 3. Detect missing statusline config — nudge Claude to help set it up
-// Skipped on ZCode: its statusline configuration story is unverified, and a
-// wrong pointer at Claude's settings.json would just mislead the agent.
-if (!isCodex && !isCopilot && !isCursor && !isZcode) try {
-  let hasStatusline = false;
-  if (fs.existsSync(settingsPath)) {
-    // Strip UTF-8 BOM some editors prepend on Windows (breaks JSON.parse)
-    const raw = fs.readFileSync(settingsPath, 'utf8').replace(/^\uFEFF/, '');
-    const settings = JSON.parse(raw);
-    if (settings.statusLine) {
-      hasStatusline = true;
-    }
+  let sessionId;
+  try {
+    sessionId = JSON.parse(input.replace(/^﻿/, '')).session_id;
+  } catch (e) {
+    // No stdin, or an unparsable payload — fall back to project/shared scoping.
   }
 
-  // Nudge at most once — the flag file marks that the user has already seen
-  // (and implicitly declined) the statusline setup offer. Repeating it every
-  // session start turns a helpful hint into a nag.
-  const nudgeFlagPath = path.join(claudeDir, '.ponytail-statusline-nudged');
-  if (!hasStatusline && !fs.existsSync(nudgeFlagPath)) {
-    try { fs.writeFileSync(nudgeFlagPath, ''); } catch (e) { /* best-effort */ }
-    const isWindows = process.platform === 'win32';
-    const scriptName = isWindows ? 'ponytail-statusline.ps1' : 'ponytail-statusline.sh';
-    const scriptPath = path.join(__dirname, scriptName);
-    if (isShellSafe(scriptPath)) {
-      const command = isWindows
-        ? `powershell -ExecutionPolicy Bypass -File "${scriptPath}"`
-        : `bash "${scriptPath}"`;
-      const statusLineSnippet =
-        '"statusLine": { "type": "command", "command": ' + JSON.stringify(command) + ' }';
-      output += "\n\n" +
-        "STATUSLINE SETUP NEEDED: The ponytail plugin includes a statusline badge showing active mode " +
-        "(e.g. [PONYTAIL], [PONYTAIL:ULTRA]). It is not configured yet. " +
-        "To enable, add this to " + settingsPath + ": " +
-        statusLineSnippet + " " +
-        "Proactively offer to set this up for the user on first interaction.";
-    } else {
-      // ponytail: install path has shell metacharacters — don't embed it in a
-      // command snippet; have the agent wire it up by hand instead.
-      output += "\n\n" +
-        "STATUSLINE SETUP NEEDED: The ponytail plugin includes a statusline badge showing active mode. " +
-        "Its install path contains characters unsafe to embed in a shell command, so configure it manually: " +
-        "add a statusLine command of type \"command\" that runs " + scriptName +
-        " from the plugin's hooks directory to " + settingsPath + ", quoting/escaping the path for your shell. " +
-        "Proactively offer to set this up for the user on first interaction.";
-    }
+  // 1. Write flag file(s)
+  try {
+    setMode(mode, sessionId);
+  } catch (e) {
+    // Silent fail -- flag is best-effort, don't block the hook
   }
-} catch (e) {
-  // Silent fail — don't block session start over statusline detection
+
+  // 2. Emit the ponytail ruleset, filtered to the active intensity level.
+  let output = getPonytailInstructions(mode);
+
+  // 3. Detect missing statusline config — nudge Claude to help set it up
+  // Skipped on ZCode: its statusline configuration story is unverified, and a
+  // wrong pointer at Claude's settings.json would just mislead the agent.
+  if (!isCodex && !isCopilot && !isCursor && !isZcode) try {
+    let hasStatusline = false;
+    if (fs.existsSync(settingsPath)) {
+      // Strip UTF-8 BOM some editors prepend on Windows (breaks JSON.parse)
+      const raw = fs.readFileSync(settingsPath, 'utf8').replace(/^﻿/, '');
+      const settings = JSON.parse(raw);
+      if (settings.statusLine) {
+        hasStatusline = true;
+      }
+    }
+
+    // Nudge at most once — the flag file marks that the user has already seen
+    // (and implicitly declined) the statusline setup offer. Repeating it every
+    // session start turns a helpful hint into a nag.
+    const nudgeFlagPath = path.join(claudeDir, '.ponytail-statusline-nudged');
+    if (!hasStatusline && !fs.existsSync(nudgeFlagPath)) {
+      try { fs.writeFileSync(nudgeFlagPath, ''); } catch (e) { /* best-effort */ }
+      const isWindows = process.platform === 'win32';
+      const scriptName = isWindows ? 'ponytail-statusline.ps1' : 'ponytail-statusline.sh';
+      const scriptPath = path.join(__dirname, scriptName);
+      if (isShellSafe(scriptPath)) {
+        const command = isWindows
+          ? `powershell -ExecutionPolicy Bypass -File "${scriptPath}"`
+          : `bash "${scriptPath}"`;
+        const statusLineSnippet =
+          '"statusLine": { "type": "command", "command": ' + JSON.stringify(command) + ' }';
+        output += "\n\n" +
+          "STATUSLINE SETUP NEEDED: The ponytail plugin includes a statusline badge showing active mode " +
+          "(e.g. [PONYTAIL], [PONYTAIL:ULTRA]). It is not configured yet. " +
+          "To enable, add this to " + settingsPath + ": " +
+          statusLineSnippet + " " +
+          "Proactively offer to set this up for the user on first interaction.";
+      } else {
+        // ponytail: install path has shell metacharacters — don't embed it in a
+        // command snippet; have the agent wire it up by hand instead.
+        output += "\n\n" +
+          "STATUSLINE SETUP NEEDED: The ponytail plugin includes a statusline badge showing active mode. " +
+          "Its install path contains characters unsafe to embed in a shell command, so configure it manually: " +
+          "add a statusLine command of type \"command\" that runs " + scriptName +
+          " from the plugin's hooks directory to " + settingsPath + ", quoting/escaping the path for your shell. " +
+          "Proactively offer to set this up for the user on first interaction.";
+      }
+    }
+  } catch (e) {
+    // Silent fail — don't block session start over statusline detection
+  }
+
+  try {
+    writeHookOutput('SessionStart', mode, output);
+  } catch (e) {
+    // Silent fail — stdout closed/EPIPE at hook exit must not surface as a hook failure
+  }
 }
 
-try {
-  writeHookOutput('SessionStart', mode, output);
-} catch (e) {
-  // Silent fail — stdout closed/EPIPE at hook exit must not surface as a hook failure
-}
+process.stdin.on('data', chunk => { input += chunk; });
+// Exit on 'end', not just finish(): the fallback timer below must stay ref'd
+// (see #790) so it can actually fire when stdin is stuck, and a ref'd timer
+// would otherwise keep the process alive for its full 1000ms on this normal
+// fast path.
+process.stdin.on('end', () => { finish(); process.exit(0); });
+// Never hang the session (#443/#790): on error, or after a short fallback,
+// process whatever arrived (recovering without session scoping) and exit.
+process.stdin.on('error', () => { finish(); process.exit(0); });
+setTimeout(() => { finish(); process.exit(0); }, 1000);
