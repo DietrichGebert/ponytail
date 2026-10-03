@@ -1,0 +1,58 @@
+{
+  "name": "dsh-plugin-ponytail",
+  "version": "4.9.0",
+  "description": "Ponytail — lazy senior dev mode for DeepSeek Harness (DSH). The best code is the code you never wrote.",
+  "keywords": [
+    "dsh-plugin",
+    "deepseek",
+    "deepseek-harness",
+    "dsh",
+    "ponytail",
+    "skills",
+    "yagni",
+    "over-engineering"
+  ],
+  "license": "MIT",
+  "author": {
+    "name": "Dietrich Gebert",
+    "url": "https://github.com/DietrichGebert"
+  },
+  "homepage": "https://github.com/DietrichGebert/ponytail",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/DietrichGebert/ponytail.git",
+    "directory": ".dsh-plugin"
+  },
+  "bugs": {
+    "url": "https://github.com/DietrichGebert/ponytail/issues"
+  },
+  "type": "module",
+  "main": "./lib/index.mjs",
+  "exports": {
+    ".": "./lib/index.mjs",
+    "./package.json": "./package.json",
+    "./cordis.patch.yml": "./cordis.patch.yml"
+  },
+  "files": [
+    "lib",
+    "skills",
+    "cordis.patch.yml",
+    "README.md",
+    "LICENSE"
+  ],
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  },
+  "peerDependencies": {
+    "@deepseek-ai/dsh-llm": "*"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "sync-skills": "node scripts/sync-skills.mjs",
+    "prepack": "node scripts/sync-skills.mjs"
+  }
+}

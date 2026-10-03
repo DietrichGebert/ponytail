@@ -22,5 +22,14 @@ ponytail-*.gif
 # Claude Code local settings (machine-specific permission grants)
 .claude/settings.local.json
 
+# DSH runtime artifacts (git-rollback journals etc.); the native plugin
+# package lives in .dsh-plugin/, which this does not match.
+.dsh/
+
+# DSH plugin packaged skills/ are a build artifact: in a checkout the plugin
+# reads the repo-root skills/ directly; scripts/sync-skills.mjs regenerates
+# this copy for the npm tarball (prepack).
+.dsh-plugin/skills/
+
 # agentic benchmark workspaces (agent output, kept locally for inspection)
 benchmarks/agentic/runs/

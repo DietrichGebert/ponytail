@@ -26,6 +26,7 @@ const VERSION_FILES = [
   '.qoder-plugin/plugin.json',   // Qoder plugin
   'gemini-extension.json',       // Gemini CLI extension
   'package.json',                // pi-package / repo root
+  '.dsh-plugin/package.json',    // DeepSeek Harness (DSH) plugin
   'ponytail-mcp/package.json',   // MCP server (private, internal-only)
 ];
 
