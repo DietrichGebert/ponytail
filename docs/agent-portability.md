@@ -9,7 +9,7 @@ to load in a given agent.
 | Host | Files | Notes |
 |------|-------|-------|
 | Claude Code | `.claude-plugin/plugin.json`, `commands/`, `hooks/claude-codex-hooks.json`, `hooks/` | Full plugin install with session activation, mode tracking, commands, and statusline support. |
-| Codex | `.codex-plugin/plugin.json`, `hooks/claude-codex-hooks.json`, `hooks/`, `skills/` | Plugin install with the same skills plus lifecycle hooks for activation and mode tracking. |
+| Codex | npm package: `.codex-plugin/plugin.json`, `hooks/claude-codex-hooks.json`, `hooks/`, `skills/`, `assets/` | The Codex marketplace installs the published npm adapter with lifecycle hooks for activation, mode tracking, and subagent context. |
 | Grok Build | root `plugin.json`, `.grok-plugin/marketplace.json`, `skills/`, `commands/` | `grok plugin install DietrichGebert/ponytail --trust`, then enable. Grok can auto-invoke ponytail from its coding-task skill description; `/ponytail` makes activation explicit. Grok lifecycle hooks are not used because passive hook output cannot inject instructions. |
 | OpenCode | `.opencode/plugins/ponytail.mjs`, `.opencode/command/`, `hooks/`, `skills/` | Server plugin injects the ruleset each turn via `experimental.chat.system.transform` and persists `/ponytail` switches; reuses the shared instruction builder. |
 | pi | `pi-extension/`, `skills/`, `hooks/` | Package extension: injects the ruleset each turn through the shared instruction builder and registers the `/ponytail` commands. |
@@ -35,6 +35,33 @@ to load in a given agent.
 | Generic agents | `AGENTS.md` or `skills/*/SKILL.md` | Copy the compact rule file or load the skill files directly. |
 
 ## Adapter Rule
+
+### Codex distribution
+
+The repository keeps its Agent Plugins 1.0.0 root `plugin.json` for portable
+clients. Codex 0.160.0 recognizes that format but explicitly skips its lifecycle
+hooks, including hooks declared in `extensions.com.openai` or the compatibility
+overlay. Installing the Git root therefore exposes skills without any hooks.
+
+The Codex marketplace in `.agents/plugins/marketplace.json` instead installs
+`@dietrichgebert/ponytail` from npm. The package's `files` allowlist includes
+the existing Codex compatibility manifest and its runtime files, but not the
+portable root manifest. Codex consequently loads the compatibility adapter;
+the portable Git distribution and other host adapters stay intact.
+
+Publish an npm release containing `.codex-plugin/` before rolling out this
+marketplace source: older published packages do not contain the adapter.
+The source requires `>=4.10.4`, so Codex reports an unavailable release instead
+of silently installing the hookless 4.10.3 package before that publication.
+Existing Git installs need the updated marketplace and a reinstall, followed
+by `/hooks` trust review if the installed hook definitions changed. Never
+edit the plugin cache or pre-populate trust hashes as part of installation.
+
+`tests/package.test.js` checks the actual `npm pack` inventory, the marketplace
+source, hook dependencies, skills, and interface assets. It also guards against
+accidentally packaging a portable root manifest over the Codex adapter.
+
+### Shared behavior
 
 Keep adapters thin. When a host supports skills or hooks, point it at the
 existing `skills/` and `hooks/` files. When a host only supports project

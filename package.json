@@ -25,6 +25,7 @@
     "AGENTS.md",
     "hooks/",
     "skills/",
+    ".codex-plugin/",
     ".opencode/",
     ".qoder/",
     ".qoder-plugin/",
