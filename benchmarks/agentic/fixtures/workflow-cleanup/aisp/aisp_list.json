@@ -1,0 +1,15 @@
+{
+  "aisp_list_version": "1.0",
+  "skills": [
+    {
+      "id": "report_cleanup_aisp",
+      "name": "Report Cleanup Fixture",
+      "summary": "Run the local integer-report CLI for the fixed workflow example.",
+      "path": "aisp/report_cleanup_aisp/aisp.aisop.json",
+      "category": "development",
+      "tags": ["benchmark", "cleanup", "python", "workflow"],
+      "when_to_use": ["Explicitly run the synthetic report workflow in its prepared fixture environment."],
+      "risk_level": "medium"
+    }
+  ]
+}

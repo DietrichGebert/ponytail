@@ -1,0 +1,70 @@
+[
+  {
+    "role": "system",
+    "content": {
+      "protocol": "AISP V1.0.0",
+      "axiom_0": "Human_Sovereignty_and_Wellbeing",
+      "id": "report_cleanup_aisp",
+      "name": "Report Cleanup Fixture",
+      "version": "1.0.0",
+      "license": "Apache-2.0",
+      "summary": "Run the local integer-report CLI for the fixed workflow example.",
+      "description": "Synthetic native AISP fixture with a workflow-referenced Python entrypoint.",
+      "flow_format": "mermaid",
+      "loading_mode": "node",
+      "tools": ["shell"],
+      "params": {},
+      "system_prompt": ""
+    }
+  },
+  {
+    "role": "user",
+    "content": {
+      "instruction": "STRICTLY OBEY aisp_contract; its non_negotiable rules are inviolable; then RUN aisop.main",
+      "aisp_contract": {
+        "profile": "aisp.skill.v1",
+        "invocation": {
+          "mode": "manual_only",
+          "when_to_use": ["Explicitly run the synthetic report workflow in its prepared fixture environment."],
+          "when_not_to_use": [
+            "The request is to inspect or edit the fixture rather than execute it.",
+            "The prepared Python environment or package working directory is unavailable."
+          ]
+        },
+        "non_negotiable": [
+          {"rule": "Execute run_report before completing the workflow.", "enforced_by": "aisop.main"},
+          {"rule": "Do not complete successfully when the report command has a nonzero exit code.", "enforced_by": "run_report.step2:sys.assert"}
+        ],
+        "discovery": {
+          "category": "development",
+          "tags": ["benchmark", "cleanup", "python", "workflow"]
+        },
+        "risk_level": "medium",
+        "resources": [
+          {
+            "id": "report_script",
+            "path": "report.py",
+            "kind": "script",
+            "mode": "read_and_execute",
+            "scope": "skill",
+            "requires_tools": ["shell"]
+          }
+        ]
+      },
+      "aisop": {"main": "graph TD\n    run_report[Run report CLI] --> end_node((End))"},
+      "functions": {
+        "run_report": {
+          "step1": "sys.run('python report.py 2 5 7') -> command_result",
+          "step2": "sys.assert('command_result.exit_code == 0', 'Report command failed')",
+          "step3": "Return command_result unchanged as this node output.",
+          "output_mapping": "report_result",
+          "execute_mode": "inline"
+        },
+        "end_node": {
+          "step1": "Return report_result unchanged.",
+          "execute_mode": "inline"
+        }
+      }
+    }
+  }
+]
