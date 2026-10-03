@@ -136,6 +136,35 @@ print(351)`,
   }
 });
 
+
+test('agentic metrics count conventional JS TS and Go test names separately', () => {
+  require('node:child_process').execFileSync('python3', ['-c', `
+from pathlib import Path
+import subprocess, sys, tempfile
+sys.path.insert(0, str(Path(sys.argv[1]) / 'benchmarks/agentic'))
+import run
+with tempfile.TemporaryDirectory() as d:
+    ws = Path(d)
+    def git(*args):
+        subprocess.run(['git', *args], cwd=ws, check=True, capture_output=True)
+    git('init', '-q')
+    git('-c', 'commit.gpgsign=false', '-c', 'user.email=test@local', '-c', 'user.name=test', 'commit', '--allow-empty', '-qm', 'base', '--no-verify')
+    tests = ('cache.test.js', 'view.spec.ts', 'widget.test.tsx', 'server_test.go', '__tests__/helper.js', 'test_helper.py', 'cache_test.py', 'tests/check.py')
+    sources = ('cache.js', 'contest/view.ts', 'server.go', 'specification.ts')
+    for name in tests + sources:
+        p = ws / name
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_text('one line\\nsecond line\\n')
+    expected = dict(files=12, src_files=4, total_loc=8, src_loc=8, test_files=8, test_loc=16)
+    assert run.code_stats(ws) == expected, run.code_stats(ws)
+    diff_expected = {**expected, 'files': 4}
+    assert run.git_diff_stats(ws) == diff_expected, run.git_diff_stats(ws)
+    assert all(run._is_test(ws / name, ws) for name in tests)
+    assert not any(run._is_test(ws / name, ws) for name in sources)
+    print('normal and git-diff metrics classify JS/TS/Go tests without excluding similarly named source')
+`, require('node:path').resolve(__dirname, '..')], { stdio: 'pipe', timeout: 10_000 });
+});
+
 // --- React countdown ---
 
 test('countdown: valid React component passes', () => {
