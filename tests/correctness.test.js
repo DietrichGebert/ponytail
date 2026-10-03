@@ -13,6 +13,31 @@ function check(task, lang, code) {
   return correctness(output, { vars: { task } });
 }
 
+test('agentic judges keep invalid scores out of calibration and summaries', () => {
+  const { spawnSync } = require('node:child_process');
+  const script = `
+import json, sys
+from pathlib import Path
+sys.path.insert(0, str(Path.cwd() / "benchmarks" / "agentic"))
+from judge import parse_score
+from complete import parse_complete, _rank_ok
+for key, parser in [("over_engineering", parse_score), ("completeness", parse_complete)]:
+    for value in range(4):
+        assert parser(json.dumps({key: value, "why": "control"})) == {key: value, "why": "control"}
+    for value in [-1, 4, 999, False, True, 1.5, 2.0, "2", None, float("nan"), float("inf")]:
+        parsed = parser(json.dumps({key: value}))
+        assert parsed is None or parsed.get(key) is None, (key, value, parsed)
+    for text in ["not JSON", '[1, 2]', '{"nested":{"score":3}}']:
+        parsed = parser(text)
+        assert parsed is None or key not in parsed
+assert not _rank_ok({("cache", "complete"): parse_complete('{"completeness":999}'), ("cache", "stub"): parse_complete('{"completeness":-1}')})
+assert _rank_ok({("cache", "complete"): {"completeness":3}, ("cache", "stub"): {"completeness":0}})
+assert not _rank_ok({("cache", "complete"): {"completeness":0}, ("cache", "stub"): {"completeness":3}})
+`;
+  const result = spawnSync('python3', ['-c', script], { cwd: require('node:path').join(__dirname, '..'), encoding: 'utf8' });
+  assert.equal(result.status, 0, result.stdout + result.stderr);
+});
+
 // --- Email validator ---
 
 test('email: correct one-liner passes', () => {
