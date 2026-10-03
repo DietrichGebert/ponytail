@@ -8,6 +8,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { pathToFileURL } = require('url');
+const { spawnSync } = require('child_process');
 
 // Point the plugin's mode-flag at a temp config home BEFORE it loads — the
 // plugin resolves its state path once at load (as it does under a real OpenCode
@@ -273,3 +274,31 @@ test('parseSkillFile folds >, keeps | lines, and stops at the next key', () => {
 });
 
 test.after(() => fs.rmSync(tmp, { recursive: true, force: true }));
+
+// A rejected background log must not escape the hook as an unhandled rejection.
+// Run in a child so Node's default rejection handling is the check.
+test('mode commands survive log failures without waiting for logging', () => {
+  const url = pathToFileURL(path.join(__dirname, '..', '.opencode', 'plugins', 'ponytail.mjs')).href;
+  const result = spawnSync(process.execPath, ['--input-type=module', '-e', `
+    import assert from 'node:assert/strict';
+    import fs from 'node:fs';
+    import plugin from ${JSON.stringify(url)};
+    const loggers = [
+      () => Promise.resolve(),
+      () => { throw new Error('sync log failure'); },
+      () => Promise.reject(new Error('async log failure')),
+      () => new Promise(() => {}),
+    ];
+    for (const log of loggers) {
+      const hooks = await plugin.server({ client: { app: { log } } });
+      await hooks['command.execute.before']({ command: 'ponytail', arguments: 'ultra' });
+      assert.equal(fs.readFileSync(${JSON.stringify(statePath)}, 'utf8'), 'ultra');
+      const output = { system: [] };
+      await hooks['experimental.chat.system.transform']({}, output);
+      assert.match(output.system[0], /PONYTAIL MODE ACTIVE — level: ultra/);
+    }
+    console.log('all logging controls completed');
+  `], { encoding: 'utf8', timeout: 5000 });
+  assert.equal(result.status, 0, result.stderr || result.error?.message);
+  assert.match(result.stdout, /all logging controls completed/);
+});
