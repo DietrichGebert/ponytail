@@ -8,7 +8,8 @@
       "name": "ponytail",
       "source": {
         "source": "npm",
-        "package": "@dietrichgebert/ponytail"
+        "package": "@dietrichgebert/ponytail",
+        "version": ">=4.10.4"
       },
       "policy": {
         "installation": "AVAILABLE",

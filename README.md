@@ -146,8 +146,9 @@ codex plugin marketplace add DietrichGebert/ponytail
 codex plugin add ponytail@ponytail
 ```
 
-Requires `npm` on PATH. The Codex marketplace installs the published npm adapter,
-which includes `.codex-plugin/plugin.json`, the shared hooks, skills, and assets.
+Requires `npm` on PATH. The Codex marketplace installs the published npm adapter
+(4.10.4 or later), which includes `.codex-plugin/plugin.json`, the shared hooks,
+skills, and assets.
 The portable root `plugin.json` stays in the Git distribution: Codex 0.160.0
 skips lifecycle hooks for that manifest format, even with an OpenAI extension.
 

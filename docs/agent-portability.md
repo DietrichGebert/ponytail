@@ -51,6 +51,8 @@ the portable Git distribution and other host adapters stay intact.
 
 Publish an npm release containing `.codex-plugin/` before rolling out this
 marketplace source: older published packages do not contain the adapter.
+The source requires `>=4.10.4`, so Codex reports an unavailable release instead
+of silently installing the hookless 4.10.3 package before that publication.
 Existing Git installs need the updated marketplace and a reinstall, followed
 by `/hooks` trust review if the installed hook definitions changed. Never
 edit the plugin cache or pre-populate trust hashes as part of installation.

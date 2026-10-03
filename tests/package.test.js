@@ -27,7 +27,7 @@ test('Codex marketplace installs the npm adapter rather than the portable Git ro
   const pkg = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
   const marketplace = JSON.parse(fs.readFileSync(path.join(root, '.agents/plugins/marketplace.json'), 'utf8'));
   const plugin = marketplace.plugins.find((entry) => entry.name === 'ponytail');
-  assert.deepEqual(plugin.source, { source: 'npm', package: pkg.name });
+  assert.deepEqual(plugin.source, { source: 'npm', package: pkg.name, version: '>=4.10.4' });
 });
 
 test('packed Codex adapter contains its complete runtime without shadowing its manifest', () => {
