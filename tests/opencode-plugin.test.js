@@ -177,6 +177,25 @@ function transform(hooks) {
   return hooks['experimental.chat.system.transform']({ model: {} }, output).then(() => output.system);
 }
 
+test('server() returns config, system.transform, and command.execute.before hooks', async () => {
+  const hooks = await loadPlugin.server({});
+  assert.equal(typeof hooks.config, 'function');
+  assert.equal(typeof hooks['experimental.chat.system.transform'], 'function');
+  assert.equal(typeof hooks['command.execute.before'], 'function');
+});
+
+test('config hook registers commands and skills directory', async () => {
+  const hooks = await loadPlugin.server({});
+  const config = {};
+  await hooks.config(config);
+  assert.ok(config.command);
+  assert.ok(config.command.ponytail);
+  assert.ok(config.command['ponytail-review']);
+  assert.ok(config.skills);
+  assert.ok(config.skills.paths);
+  assert.ok(config.skills.paths.some((p) => p.includes('skills')));
+});
+
 test('system.transform injects the ruleset at the default mode (full)', async () => {
   try { fs.unlinkSync(statePath); } catch (e) {}
   const hooks = await loadPlugin.server({});
