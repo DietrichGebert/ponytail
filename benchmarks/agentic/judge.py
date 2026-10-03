@@ -81,7 +81,10 @@ def parse_score(text):
     if not m: return None
     try:
         d = json.loads(m.group(0))
-        if "over_engineering" in d: d["over_engineering"] = int(d["over_engineering"])
+        if not isinstance(d, dict): return None
+        for name in ("over_engineering", "completeness"):
+            if name in d and (type(d[name]) is not int or not 0 <= d[name] <= 3):
+                d[name] = None
         return d
     except Exception:
         return None

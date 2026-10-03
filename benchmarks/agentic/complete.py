@@ -47,11 +47,7 @@ RUBRIC = (
 )
 
 def parse_complete(text):
-    d = parse_score(text)
-    if d and SCORE_KEY in d:
-        try: d[SCORE_KEY] = int(d[SCORE_KEY])
-        except Exception: d[SCORE_KEY] = None
-    return d
+    return parse_score(text)
 
 # --- the gate: a complete impl must out-score a stub for the same task ---
 def _rank_ok(scores):
