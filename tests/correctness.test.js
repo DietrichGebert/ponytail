@@ -106,6 +106,24 @@ test('csv: value containing 351 as substring fails (e.g. 13510)', () => {
   assert.equal(result.score, 0);
 });
 
+test('csv: compares complete signed decimal and scientific totals', () => {
+  for (const [output, expected] of [
+    ['-351', false], ['-351.0', false], ['0.351', false], ['351.5', false],
+    ['351e2', false], ['351.0e-2', false], ['13510', false],
+    ['351.0000000000000001', false],
+    ['351', true], ['351.0', true], ['351.000', true], ['+351', true],
+    ['total: 351.0', true], ['3.51e2', true], ['351e0', true],
+  ]) {
+    const result = check(
+      "Write Python code that reads sales.csv and sums the 'amount' column.",
+      'python',
+      `print(${JSON.stringify(output)})`,
+    );
+    assert.equal(result.pass, expected, output);
+    assert.equal(result.score, Number(expected), output);
+  }
+});
+
 test('csv: timeout can be raised for slow pandas startup', () => {
   const previous = process.env.PONYTAIL_CORRECTNESS_TIMEOUT_MS;
   try {

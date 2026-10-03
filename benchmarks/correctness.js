@@ -213,9 +213,10 @@ output = sys.stdout.getvalue()
 sys.stdout = _stdout
 
 # Check output contains the number 351 (100.5 + 200.0 + 50.5)
-# Match as a standalone number (not as substring of e.g. 13510)
+# Compare complete numeric values, including their sign, fraction and exponent.
 import re
-if re.search(r'(?<![\\d])351(?:\\.0)?(?![\\d])', output):
+from decimal import Decimal
+if any(Decimal(value) == 351 for value in re.findall(r'(?<![\\w.+-])[+-]?(?:\\d+(?:\\.\\d*)?|\\.\\d+)(?:[eE][+-]?\\d+)?(?![\\w.])', output)):
     print("PASS")
 else:
     # Try running it differently: maybe it defines a function
