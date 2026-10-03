@@ -165,12 +165,16 @@ def git_diff_stats(workdir):
     base. This is the delivered-code metric and matches the '+N' a PR/diff shows. Tests counted
     separately; lockfiles/generated files skipped."""
     _git(workdir, "add", "-A")
-    out = _git(workdir, "diff", "--cached", "--numstat", "HEAD").stdout
+    out = _git(workdir, "diff", "--cached", "--numstat", "-z", "HEAD").stdout
     loc = files = test_loc = test_files = 0
-    for line in out.splitlines():
-        parts = line.split("\t")
+    records = iter(out.split("\0"))
+    for line in records:
+        parts = line.split("\t", 2)
         if len(parts) != 3: continue
         added, _deleted, path = parts
+        if not path:                    # -z renames carry old and new paths separately
+            next(records, None)
+            path = next(records, "")
         if added == "-": continue                              # binary
         if Path(path).suffix not in CODE_EXT: continue
         if any(k in path for k in _SKIP_DIFF) or "node_modules" in path: continue
