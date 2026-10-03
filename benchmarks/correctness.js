@@ -54,16 +54,23 @@ function exec(cmd, opts = {}) {
 }
 
 // ponytail: probe once at load; macOS and many Linux images ship python3 only.
+// A pandas-less interpreter (e.g. depot_tools' python3 on Windows) passes an
+// `import sys` probe, so the csv task probes for pandas separately and caches
+// that result on its own.
 let pythonCmd;
-function python() {
-  if (pythonCmd) return pythonCmd;
+let pythonPandasCmd;
+function probePython(probe) {
   for (const cmd of ['python3', 'python']) {
-    if (exec(`${cmd} -c "import sys"`).ok) {
-      pythonCmd = cmd;
-      return pythonCmd;
-    }
+    if (exec(`${cmd} -c "${probe}"`).ok) return cmd;
   }
-  pythonCmd = 'python3';
+  return null;
+}
+function python(needsPandas = false) {
+  if (needsPandas) {
+    if (pythonPandasCmd === undefined) pythonPandasCmd = probePython('import pandas');
+    return pythonPandasCmd;
+  }
+  if (!pythonCmd) pythonCmd = probePython('import sys') || 'python3';
   return pythonCmd;
 }
 
@@ -223,7 +230,13 @@ else:
     sys.exit(1)
 `;
     const f = tmpFile('.py', harness);
-    const result = exec(`${python()} "${f}"`);
+    // The csv task's reference answer uses pandas; probe for it only when the
+    // generated code does too, so a stdlib-csv answer still grades on a
+    // pandas-less interpreter.
+    const needsPandas = /(^|\n)\s*(import pandas|from pandas\s+import)/.test(patched);
+    const py = python(needsPandas);
+    if (!py) return { pass: false, reason: 'No Python interpreter with pandas installed' };
+    const result = exec(`${py} "${f}"`);
     try { fs.unlinkSync(f); } catch (e) {}
     try { fs.unlinkSync(csvPath); } catch (e) {}
     if (result.ok) return { pass: true, reason: 'CSV sum produces correct result (351)' };

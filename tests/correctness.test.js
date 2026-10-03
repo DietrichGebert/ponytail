@@ -5,6 +5,10 @@
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const { execSync } = require('node:child_process');
+const fs = require('node:fs');
+const os = require('node:os');
+const path = require('node:path');
 const correctness = require('../benchmarks/correctness');
 
 // Helper: wrap code in a fenced block and call the assertion with task vars.
@@ -133,6 +137,43 @@ print(351)`,
   } finally {
     if (previous === undefined) delete process.env.PONYTAIL_CORRECTNESS_TIMEOUT_MS;
     else process.env.PONYTAIL_CORRECTNESS_TIMEOUT_MS = previous;
+  }
+});
+
+test('csv: pandas answer runs on an interpreter that has pandas', (t) => {
+  if (process.platform === 'win32') {
+    t.skip('simulates two interpreters with POSIX shims');
+    return;
+  }
+  // Layout from #919: `python3` exists but has no pandas (e.g. depot_tools'
+  // python on Windows) while `python` has pandas. The probe must pick the
+  // interpreter that has pandas for the csv task instead of reusing the
+  // first `import sys` hit it cached.
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ponytail-pyprobe-'));
+  const blockDir = path.join(dir, 'block');
+  fs.mkdirSync(blockDir);
+  // `import sys` still works under the shim; only pandas is missing.
+  fs.writeFileSync(path.join(blockDir, 'pandas.py'), 'raise ImportError("no pandas in test shim")\n');
+
+  const realPython3 = execSync('command -v python3', { encoding: 'utf8' }).trim();
+  for (const [name, env] of [['python3', `PYTHONPATH="${blockDir}" `], ['python', '']]) {
+    fs.writeFileSync(path.join(dir, name), `#!/bin/sh\n${env}exec "${realPython3}" "$@"\n`, { mode: 0o755 });
+  }
+
+  const prevPath = process.env.PATH;
+  process.env.PATH = dir + path.delimiter + prevPath;
+  try {
+    delete require.cache[require.resolve('../benchmarks/correctness')];
+    const fresh = require('../benchmarks/correctness');
+    const result = fresh(
+      '```python\nimport pandas as pd\ndf = pd.read_csv(\'sales.csv\')\nprint(df[\'amount\'].sum())\n```',
+      { vars: { task: "Write Python code that reads sales.csv and sums the 'amount' column." } },
+    );
+    assert.equal(result.pass, true);
+  } finally {
+    process.env.PATH = prevPath;
+    delete require.cache[require.resolve('../benchmarks/correctness')];
+    fs.rmSync(dir, { recursive: true, force: true });
   }
 });
 
