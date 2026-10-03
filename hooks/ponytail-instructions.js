@@ -56,6 +56,7 @@ function getFallbackInstructions(mode) {
     '6. Can this be one line? Make it one line.\n' +
     '7. Only then: write the minimum code that works.\n\n' +
     'Bug fix = root cause, not symptom: grep every caller of the function you touch and fix the shared function once (a smaller diff than one guard per caller); patching only the path the ticket names leaves a sibling caller broken.\n\n' +
+    'Empirical diagnosis over theoretical guesswork: measure the failing state (telemetry, console logs, or a failing test) before editing code; unverified deductions are hypotheses until confirmed by data.\n\n' +
     '## Rules\n\n' +
     'No abstractions that were not requested. No avoidable dependencies. No boilerplate nobody asked for. ' +
     'Deletion over addition. Boring over clever. Fewest files possible. ' +

@@ -55,6 +55,7 @@ const INVARIANTS = [
   'security',
   'accessibility',
   'Lazy code without its check is unfinished', // one-check promoted to headline
+  'Empirical diagnosis over theoretical guesswork', // empirical root-cause invariant
 ];
 
 const skill = read('skills/ponytail/SKILL.md');
