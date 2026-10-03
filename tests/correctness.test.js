@@ -167,6 +167,26 @@ test('countdown: static div without state fails', () => {
   assert.equal(result.score, 0);
 });
 
+
+test('runtime correctness requires the appended assertions to complete', () => {
+  for (const [task, lang, code] of [
+    ['Write a Python email validator.', 'python', 'import sys\nsys.exit(0)'],
+    ['Write a Python email validator.', 'python', 'import sys\nprint("PASS")\nsys.exit(0)'],
+    ['Write a Python email validator.', 'python', 'import sys\ndef validate_email(value): sys.exit(0)'],
+    ['Add debounce in JavaScript.', 'javascript', 'process.exit(0);'],
+    ['Add debounce in JavaScript.', 'javascript', 'console.log("PASS"); process.exit(0);'],
+    ['Add debounce in JavaScript.', 'javascript', 'function debounce(fn, delay) { process.exit(0); }'],
+    ["Read sales.csv and sum the amount column.", 'python', 'import sys\nsys.exit(0)'],
+    ["Read sales.csv and sum the amount column.", 'python', 'import sys\nprint("PASS")\nsys.exit(0)'],
+  ]) {
+    const result = check(task, lang, code);
+    assert.equal(result.pass, false, `${task}: ${code}`);
+    assert.equal(result.score, 0);
+  }
+  assert.equal(check('Write a Python email validator.', 'python',
+    'print("extra diagnostics")\ndef validate_email(email): return bool(email.split("@")[0]) and "@" in email and "." in email.split("@")[-1]').pass, true);
+});
+
 // --- Rate limiter ---
 
 test('ratelimit: FastAPI with limit logic passes', () => {

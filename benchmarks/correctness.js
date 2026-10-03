@@ -16,6 +16,8 @@ const { execSync } = require('child_process');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
+// Distinguish harness completion from a submission's ordinary PASS diagnostics.
+const PASS_MARKER = `ponytail-bench-${require('node:crypto').randomUUID()}`;
 
 function correctnessTimeoutMs() {
   const value = Number.parseInt(process.env.PONYTAIL_CORRECTNESS_TIMEOUT_MS || '', 10);
@@ -43,11 +45,11 @@ function identifyTask(task) {
   return null;
 }
 
-// Run a command, return { ok, stderr }.
+// Run a command, return { ok, stdout, stderr }.
 function exec(cmd, opts = {}) {
   try {
-    execSync(cmd, { timeout: correctnessTimeoutMs(), encoding: 'utf8', stdio: 'pipe', ...opts });
-    return { ok: true, stderr: '' };
+    const stdout = execSync(cmd, { timeout: correctnessTimeoutMs(), encoding: 'utf8', stdio: 'pipe', ...opts });
+    return { ok: true, stdout, stderr: '' };
   } catch (e) {
     return { ok: false, stderr: (e.stderr || e.message || '').slice(0, 500) };
   }
@@ -126,12 +128,12 @@ if fn("@missing-local.com"):
 if failures:
     print("FAIL: " + "; ".join(failures))
     sys.exit(1)
-print("PASS")
+print("${PASS_MARKER}")
 `;
     const f = tmpFile('.py', harness);
     const result = exec(`${python()} "${f}"`);
     fs.unlinkSync(f);
-    if (result.ok) return { pass: true, reason: 'Email validator passes all checks' };
+    if (result.ok && result.stdout.trimEnd().split(/\r?\n/).pop() === PASS_MARKER) return { pass: true, reason: 'Email validator passes all checks' };
     return { pass: false, reason: result.stderr || 'Email validator failed' };
   },
 
@@ -170,13 +172,13 @@ setTimeout(() => {
     console.error("FAIL: expected 1 call after delay, got " + callCount);
     process.exit(1);
   }
-  console.log("PASS");
+  console.log("${PASS_MARKER}");
 }, 120);
 `;
     const f = tmpFile('.mjs', harness);
     const result = exec(`node "${f}"`);
     fs.unlinkSync(f);
-    if (result.ok) return { pass: true, reason: 'Debounce passes all checks' };
+    if (result.ok && result.stdout.trimEnd().split(/\r?\n/).pop() === PASS_MARKER) return { pass: true, reason: 'Debounce passes all checks' };
     return { pass: false, reason: result.stderr || 'Debounce failed' };
   },
 
@@ -216,7 +218,7 @@ sys.stdout = _stdout
 # Match as a standalone number (not as substring of e.g. 13510)
 import re
 if re.search(r'(?<![\\d])351(?:\\.0)?(?![\\d])', output):
-    print("PASS")
+    print("${PASS_MARKER}")
 else:
     # Try running it differently: maybe it defines a function
     print("FAIL: output was: " + repr(output[:200]))
@@ -226,7 +228,7 @@ else:
     const result = exec(`${python()} "${f}"`);
     try { fs.unlinkSync(f); } catch (e) {}
     try { fs.unlinkSync(csvPath); } catch (e) {}
-    if (result.ok) return { pass: true, reason: 'CSV sum produces correct result (351)' };
+    if (result.ok && result.stdout.trimEnd().split(/\r?\n/).pop() === PASS_MARKER) return { pass: true, reason: 'CSV sum produces correct result (351)' };
     return { pass: false, reason: result.stderr || 'CSV sum failed' };
   },
 
