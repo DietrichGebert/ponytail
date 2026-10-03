@@ -1,0 +1,13 @@
+# ponytail — DeepSeek Harness (dsh) adapter patch layer.
+# Insert the plugin row into a dsh profile. This repo's hooks/ and skills/
+# are resolved relative to the plugin file (two levels up from dsh/src/).
+#
+# Usage: dsh web --patch ./dsh/cordis.patch.yml
+# or in a profile's bundles list: - insert: { id: ponytail, name: './dsh/src/index.js' }
+
+- insert:
+    - id: ponytail
+      name: './dsh/src/index.js'
+      # config:
+      #   mode: full            # lite | full (default) | ultra | review | off
+      #   order: 120            # system-prompt section order
