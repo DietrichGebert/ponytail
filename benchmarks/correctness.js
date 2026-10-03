@@ -5,6 +5,12 @@
 // Metric: `correct` (1 = all checks pass, 0 = at least one fails).
 // Unlike loc.js (measurement-only), this one is a gate — a wrong answer is a
 // wrong answer regardless of how few lines produced it.
+//
+// Note: email, debounce, and CSV checks execute the generated code against
+// real inputs. Countdown (React) and rate-limit (FastAPI) checks are
+// structural-only: they verify plausible code shape rather than runtime
+// behaviour, because a React bundler or a live FastAPI server is needed to
+// execute those properly.
 
 const { execSync } = require('child_process');
 const fs = require('fs');
