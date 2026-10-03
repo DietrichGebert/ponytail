@@ -64,7 +64,7 @@ const shared = distinct.length === 1 ? distinct[0] : null;
 if (shared && process.env.GITHUB_REF_TYPE === 'tag') {
   const tag = process.env.GITHUB_REF_NAME || '';
   const tagVersion = tag.replace(/^v/, '');
-  if (PINNED_SEMVER.test(tagVersion) && tagVersion !== shared) {
+  if (!PINNED_SEMVER.test(tagVersion) || tagVersion !== shared) {
     console.error(`release tag ${tag} does not match version ${shared}; bump the version files before tagging`);
     failed = true;
   }
