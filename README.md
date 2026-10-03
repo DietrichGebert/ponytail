@@ -150,6 +150,14 @@ Run `codex` and open `/hooks`, review and trust its two lifecycle hooks, and sta
 
 This same install also covers the Codex desktop app: restart the app after installing and it picks up the plugin.
 
+### ChatGPT
+
+Build the skills-only upload ZIP with Python 3:
+
+```bash
+python3 scripts/build-chatgpt-plugin.py ../ponytail-chatgpt.zip
+```
+
 ### GitHub Copilot CLI
 
 ```bash
