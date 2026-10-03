@@ -65,7 +65,7 @@ test('every ponytail-debt copy greps #, // and /* markers but not prose', (t) =>
   const expected = debtSamples.flatMap(([line, hit], i) => (hit ? [`${i + 1}:${line}`] : []));
 
   for (const rel of debtCopies) {
-    const documented = fs.readFileSync(path.join(root, rel), 'utf8').match(/grep -rnE '([^']+)'/);
+    const documented = fs.readFileSync(path.join(root, rel), 'utf8').match(/grep -rnE[^']*'([^']+)'/);
     assert.ok(documented, `${rel} no longer documents a grep -rnE '<pattern>'`);
 
     const result = spawnSync('grep', ['-nE', documented[1]], { input, encoding: 'utf8', timeout: 5000 });
@@ -76,4 +76,18 @@ test('every ponytail-debt copy greps #, // and /* markers but not prose', (t) =>
     assert.equal(result.status, 0, `grep failed for ${rel}: ${result.stderr}`);
     assert.deepEqual(result.stdout.split('\n').filter(Boolean), expected, `${rel} misses or over-matches markers`);
   }
+});
+
+// The full documented command must skip dependency and build dirs (#948).
+test('the ponytail-debt scan skips .git, node_modules, dist and build', (t) => {
+  const cmd = fs.readFileSync(path.join(root, 'skills/ponytail-debt/SKILL.md'), 'utf8').match(/`(grep -rnE [^`]+)`/)[1];
+  const dir = fs.mkdtempSync(path.join(require('os').tmpdir(), 'ponytail-debt-'));
+  for (const sub of ['src', '.git', 'node_modules/pkg', 'dist', 'build']) {
+    fs.mkdirSync(path.join(dir, sub), { recursive: true });
+    fs.writeFileSync(path.join(dir, sub, 'a.js'), '// ponytail: marker\n');
+  }
+  const result = spawnSync('sh', ['-c', cmd], { cwd: dir, encoding: 'utf8', timeout: 5000 });
+  fs.rmSync(dir, { recursive: true, force: true });
+  if (result.error) return t.skip(`sh/grep not available: ${result.error.code}`);
+  assert.deepEqual(result.stdout.split('\n').filter(Boolean), ['./src/a.js:1:// ponytail: marker']);
 });
