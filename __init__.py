@@ -50,12 +50,12 @@ def _config_dir() -> Path:
 
 
 def _default_mode() -> str:
-    env_mode = _normalize_config_mode(os.environ.get("PONYTAIL_DEFAULT_MODE"))
+    env_mode = _normalize_runtime_mode(os.environ.get("PONYTAIL_DEFAULT_MODE"))
     if env_mode:
         return env_mode
     try:
         data = json.loads((_config_dir() / "config.json").read_text(encoding="utf-8"))
-        file_mode = _normalize_config_mode(data.get("defaultMode"))
+        file_mode = _normalize_runtime_mode(data.get("defaultMode"))
         if file_mode:
             return file_mode
     except Exception:
