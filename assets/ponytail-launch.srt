@@ -1,0 +1,31 @@
+1
+00:00:00,150 --> 00:00:02,800
+~54% less code, same features
+
+2
+00:00:03,000 --> 00:00:05,500
+Ponytail Minimal code via agent rules
+
+3
+00:00:05,700 --> 00:00:09,400
+The browser has one
+
+4
+00:00:09,500 --> 00:00:13,000
+Wrapper component in. Native input out.
+
+5
+00:00:13,200 --> 00:00:14,900
+~54% less code on average
+
+6
+00:00:14,950 --> 00:00:17,000
+Up to 94% less code
+
+7
+00:00:17,100 --> 00:00:19,000
+Start with Ponytail today
+
+8
+00:00:19,000 --> 00:00:22,000
+/plugin install ponytail@ponytail
