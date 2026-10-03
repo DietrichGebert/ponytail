@@ -36,8 +36,13 @@ function readConfig(file) {
   } catch (e) {
     if (e.code !== 'ENOENT') throw e;
   }
-  if (!config || typeof config !== 'object' || Array.isArray(config)) config = {};
-  if (!config.hooks || typeof config.hooks !== 'object' || Array.isArray(config.hooks)) config.hooks = {};
+  if (!config || typeof config !== 'object' || Array.isArray(config)) {
+    throw new TypeError(file + ' must be a JSON object; nothing was changed');
+  }
+  if (config.hooks === undefined) config.hooks = {};
+  else if (!config.hooks || typeof config.hooks !== 'object' || Array.isArray(config.hooks)) {
+    throw new TypeError(file + ': hooks must be a JSON object; nothing was changed');
+  }
   return config;
 }
 
