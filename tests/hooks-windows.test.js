@@ -1,9 +1,11 @@
 #!/usr/bin/env node
-// Regression test for issue #19: on Windows the lifecycle hooks run via
-// PowerShell, which does NOT expand cmd.exe-style %VAR% — it needs $env:VAR.
+// Regression test for issues #19 and #593: on Windows the lifecycle hooks run
+// via PowerShell, so the shared `command` field must be cross-platform (plain
+// `node`, no bash-only syntax). commandWindows is not part of the supported
+// hooks schema on the Claude.ai plugin marketplace validator, so it is omitted
+// — ${CLAUDE_PLUGIN_ROOT} expansion and `node` work everywhere.
+//
 // The hook also has to point at a script that actually ships in hooks/.
-// This guards both failure modes: the original %CLAUDE_PLUGIN_ROOT% bug, and
-// the "switch to a .ps1 that doesn't exist" mistake.
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -17,8 +19,6 @@ const HOST_PLUGIN_MANIFESTS = [
   '.claude-plugin/plugin.json',
   '.codex-plugin/plugin.json',
 ];
-// cmd.exe variable syntax (%FOO%); PowerShell leaves it literal, breaking the path.
-const CMD_VAR_SYNTAX = /%[A-Za-z_][A-Za-z0-9_]*%/;
 // PowerShell 5.1 rejects these POSIX shell guards when a host runs `command`.
 const POSIX_GUARD_SYNTAX = /\bcommand\s+-v\b|&&|\|\||>\/dev\/null|2>&1/;
 // Pull the hooks/<script> a command launches, so we can check it exists.
@@ -33,13 +33,14 @@ function commandHooks() {
     .flatMap((entry) => entry.hooks);
 }
 
-test('every commandWindows uses PowerShell $env: syntax, not cmd.exe %VAR%', () => {
-  const windowsCommands = commandHooks()
-    .map((h) => h.commandWindows)
-    .filter(Boolean);
-  assert.ok(windowsCommands.length > 0, 'expected at least one commandWindows entry');
-  for (const cmd of windowsCommands) {
-    assert.doesNotMatch(cmd, CMD_VAR_SYNTAX, `commandWindows uses cmd.exe %VAR% (breaks under PowerShell): ${cmd}`);
+// commandWindows is not part of the supported hooks schema on the Claude.ai
+// plugin marketplace validator (#593). Since the shared `command` field
+// already runs cross-platform (Claude Code expands ${CLAUDE_PLUGIN_ROOT}
+// before the shell sees it, and VS Code Copilot ignores commandWindows and
+// runs `command` through PowerShell on Windows anyway), it is omitted.
+test('hooks.json omits commandWindows for marketplace validation (#593)', () => {
+  for (const hook of commandHooks()) {
+    assert.equal(hook.commandWindows, undefined, `hook must not use commandWindows (not supported by marketplace validator): ${hook.command}`);
   }
 });
 
@@ -76,12 +77,11 @@ test('shared hook commands are shell-agnostic (no bash-only exec prefix)', () =>
 
 test('every hook command points at a script that ships in hooks/', () => {
   for (const hook of commandHooks()) {
-    for (const cmd of [hook.command, hook.commandWindows].filter(Boolean)) {
-      const match = cmd.match(HOOK_SCRIPT);
-      assert.ok(match, `cannot find a hooks/ script in command: ${cmd}`);
-      const script = path.join(root, 'hooks', match[1]);
-      assert.ok(fs.existsSync(script), `command references a missing hook script: ${match[1]}`);
-    }
+    const cmd = hook.command;
+    const match = cmd.match(HOOK_SCRIPT);
+    assert.ok(match, `cannot find a hooks/ script in command: ${cmd}`);
+    const script = path.join(root, 'hooks', match[1]);
+    assert.ok(fs.existsSync(script), `command references a missing hook script: ${match[1]}`);
   }
 });
 
