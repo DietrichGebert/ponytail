@@ -29,9 +29,9 @@
     ".qoder/",
     ".qoder-plugin/",
     "pi-extension/",
+    "!pi-extension/test/",
     "scripts/uninstall.js",
     "scripts/cursor-hooks.js",
-    "assets/",
     "LICENSE"
   ],
   "scripts": {
