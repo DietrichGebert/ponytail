@@ -146,7 +146,13 @@ codex plugin marketplace add DietrichGebert/ponytail
 codex plugin add ponytail@ponytail
 ```
 
-Run `codex` and open `/hooks`, review and trust its two lifecycle hooks, and start a new thread.
+Requires `npm` on PATH. The Codex marketplace installs the published npm adapter,
+which includes `.codex-plugin/plugin.json`, the shared hooks, skills, and assets.
+The portable root `plugin.json` stays in the Git distribution: Codex 0.160.0
+skips lifecycle hooks for that manifest format, even with an OpenAI extension.
+
+Run `codex` and open `/hooks`, review and trust its three lifecycle hooks
+(`SessionStart`, `UserPromptSubmit`, `SubagentStart`), and start a new thread.
 
 This same install also covers the Codex desktop app: restart the app after installing and it picks up the plugin.
 
