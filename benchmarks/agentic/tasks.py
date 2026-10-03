@@ -36,13 +36,17 @@ def _import(pyfile: Path):
     global _imp_n
     if not Path(pyfile).exists(): return None
     _imp_n += 1
+    name = f"produced_{_imp_n}"
     try:
-        spec = importlib.util.spec_from_file_location(f"produced_{_imp_n}", str(pyfile))
+        spec = importlib.util.spec_from_file_location(name, str(pyfile))
         mod = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(mod)
+        sys.modules[name] = mod
+        exec(compile(Path(pyfile).read_bytes(), str(pyfile), "exec"), mod.__dict__)
         return mod
-    except Exception:
-        return None
+    except BaseException as e:
+        sys.modules.pop(name, None)
+        if isinstance(e, Exception): return None
+        raise
 
 def _find(mod, names):
     for nm in names:

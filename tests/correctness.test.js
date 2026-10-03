@@ -167,6 +167,67 @@ test('countdown: static div without state fails', () => {
   assert.equal(result.score, 0);
 });
 
+test('agentic benchmark imports valid dataclasses before scoring them', () => {
+  const { spawnSync } = require('node:child_process');
+  const script = String.raw`import sys, tempfile, os, py_compile
+from pathlib import Path
+sys.path.insert(0, str(Path.cwd() / "benchmarks" / "agentic"))
+from tasks import _import, score_ratelimit, RATELIMIT_GOOD, RATELIMIT_BAD
+SOURCE = """from __future__ import annotations
+from dataclasses import dataclass, field
+import time
+@dataclass
+class RateLimiter:
+    max_calls: int
+    period: float
+    calls: dict = field(default_factory=dict)
+    def allow(self, key):
+        now=time.time()
+        q=[t for t in self.calls.get(key,[]) if t > now-self.period]
+        if len(q)>=self.max_calls: return False
+        q.append(now)
+        self.calls[key]=q
+        return True
+"""
+with tempfile.TemporaryDirectory() as root:
+    p = Path(root)
+    (p / "limiter.py").write_text(SOURCE)
+    result = score_ratelimit(p)
+    assert (result["correct"], result["safe"]) == (1, 1), result
+    module = _import(p / "limiter.py")
+    assert sys.modules[module.__name__] is module
+    (p / "limiter.py").write_text("def invalid(\n")
+    before = set(sys.modules)
+    assert _import(p / "limiter.py") is None
+    assert set(sys.modules) == before
+    current = p / "current.py"
+    current.write_text("value=1\n")
+    py_compile.compile(str(current), doraise=True)
+    stamp = current.stat()
+    current.write_text("value=2\n")
+    os.utime(current, ns=(stamp.st_atime_ns, stamp.st_mtime_ns))
+    assert _import(current).value == 2
+    encoded = p / "encoded.py"
+    encoded.write_bytes("# coding: latin-1\nvalue='café'\n".encode('latin-1'))
+    module = _import(encoded)
+    assert module.value == 'café'
+    assert module.__file__ == str(encoded) and module.__spec__.name == module.__name__
+    for exc in [SystemExit, KeyboardInterrupt]:
+        (p / "limiter.py").write_text("raise " + exc.__name__ + "\n")
+        before = set(sys.modules)
+        try: _import(p / "limiter.py")
+        except exc: pass
+        else: raise AssertionError("Submission interrupt was swallowed")
+        assert set(sys.modules) == before
+    for source, expected in [(RATELIMIT_GOOD, (1,1)), (RATELIMIT_BAD, (1,0))]:
+        (p / "limiter.py").write_text(source)
+        result = score_ratelimit(p)
+        assert (result["correct"], result["safe"]) == expected, result
+`;
+  const result = spawnSync('python3', ['-c', script], { cwd: require('node:path').join(__dirname, '..'), encoding: 'utf8' });
+  assert.equal(result.status, 0, result.stdout + result.stderr);
+});
+
 // --- Rate limiter ---
 
 test('ratelimit: FastAPI with limit logic passes', () => {
