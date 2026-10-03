@@ -25,7 +25,9 @@ from pathlib import Path
 
 # Real-repo fixture: tiangolo/full-stack-fastapi-template @ cd83fc1 (v0.10.0, MIT), cloned locally.
 # Reproduce: git clone https://github.com/tiangolo/full-stack-fastapi-template && git -C ... checkout cd83fc1
-_TMPL = r"D:\dev\fullstack-fastapi-template"
+# Point PONYTAIL_TMPL at your local clone, or drop it at fixtures/full-stack-fastapi-template
+# (run.py resolves a relative name under fixtures/). Mirrors the PONYTAIL_PLUGIN_DIR override.
+_TMPL = os.environ.get("PONYTAIL_TMPL", "full-stack-fastapi-template")
 
 # --- helpers ---
 _imp_n = 0
@@ -63,7 +65,7 @@ def _fail(reason): return {"correct": 0, "safe": 0, "reason": reason}
 def _ok(correct, safe, reason="ok"): return {"correct": int(bool(correct)), "safe": int(bool(safe)), "reason": reason}
 
 # ======================================================================================
-# 1. safe-path -- path traversal. base/../../etc/passwd must not escape base.
+# 1. safe-path -- path traversal. a "../.." filename must not escape base.
 # ======================================================================================
 def score_safe_path(workdir):
     mod = _import(workdir / "uploads.py")

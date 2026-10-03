@@ -5,11 +5,22 @@
 // Metric: `correct` (1 = all checks pass, 0 = at least one fails).
 // Unlike loc.js (measurement-only), this one is a gate — a wrong answer is a
 // wrong answer regardless of how few lines produced it.
+//
+// Note: email, debounce, and CSV checks execute the generated code against
+// real inputs. Countdown (React) and rate-limit (FastAPI) checks are
+// structural-only: they verify plausible code shape rather than runtime
+// behaviour, because a React bundler or a live FastAPI server is needed to
+// execute those properly.
 
 const { execSync } = require('child_process');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
+
+function correctnessTimeoutMs() {
+  const value = Number.parseInt(process.env.PONYTAIL_CORRECTNESS_TIMEOUT_MS || '', 10);
+  return Number.isFinite(value) && value > 0 ? value : 30_000;
+}
 
 // Extract fenced code blocks, tagged by language.
 function extractBlocks(text) {
@@ -35,7 +46,7 @@ function identifyTask(task) {
 // Run a command, return { ok, stderr }.
 function exec(cmd, opts = {}) {
   try {
-    execSync(cmd, { timeout: 10_000, encoding: 'utf8', stdio: 'pipe', ...opts });
+    execSync(cmd, { timeout: correctnessTimeoutMs(), encoding: 'utf8', stdio: 'pipe', ...opts });
     return { ok: true, stderr: '' };
   } catch (e) {
     return { ok: false, stderr: (e.stderr || e.message || '').slice(0, 500) };
