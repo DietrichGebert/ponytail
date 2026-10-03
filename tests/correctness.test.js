@@ -6,6 +6,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const correctness = require('../benchmarks/correctness');
+const { execFileSync } = require('node:child_process');
 
 // Helper: wrap code in a fenced block and call the assertion with task vars.
 function check(task, lang, code) {
@@ -218,4 +219,43 @@ test('unknown task is gracefully skipped', () => {
   assert.equal(result.pass, true);
   assert.equal(result.score, 1);
   assert.match(result.reason, /unknown task/i);
+});
+
+test('agentic judges receive source files without tests or workspace artifacts', () => {
+  execFileSync('python3', ['-c', `
+from pathlib import Path
+import sys, tempfile
+sys.path.insert(0, sys.argv[1])
+import judge, complete
+
+with tempfile.TemporaryDirectory() as d:
+    root = Path(d)
+    files = {
+        'source.py': 'def compute(n): return n * n',
+        'contest/view.ts': 'export const view = 1;',
+        'tests/cache_checks.py': 'assert compute(3) == 9',
+        'Test/widget.ts': 'throw new Error("test fixture")',
+        'test_helper.py': 'assert False',
+        'conftest.py': 'def fixture(): pass',
+        'cache_test.py': 'assert False',
+        '.git/config': '[core]',
+        '.git/hooks/helper.py': 'GIT_METADATA',
+        'node_modules/library/index.js': 'DEPENDENCY_SOURCE',
+        '__pycache__/cached.py': 'BYTECODE_ARTIFACT',
+        'report.json': '{"artifact": true}',
+        'image.png': 'IMAGE_ARTIFACT',
+        '_claude.json': '{"result": "not source"}',
+    }
+    for name, body in files.items():
+        p = root / name
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_text(body)
+    expected = '# === contest/view.ts ===\\nexport const view = 1;\\n\\n# === source.py ===\\ndef compute(n): return n * n'
+    assert judge.source_text(root) == expected, judge.source_text(root)
+    assert complete.source_text(root) == expected
+    for name in ('source.py', 'contest/view.ts'):
+        (root / name).unlink()
+    assert judge.source_text(root) == ''
+    assert complete.source_text(root) == ''
+`, require('node:path').resolve(__dirname, '../benchmarks/agentic')], { stdio: 'pipe', timeout: 10_000 });
 });
