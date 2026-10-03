@@ -7,6 +7,28 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const correctness = require('../benchmarks/correctness');
 
+test('agentic diff metrics preserve raw source paths and rename records', () => {
+  const { spawnSync } = require('node:child_process');
+  const script = String.raw`import sys,tempfile
+from pathlib import Path
+sys.path.insert(0,str(Path.cwd()/"benchmarks"/"agentic"))
+from run import _git_snapshot,git_diff_stats
+for name,expected in [('simple.py',(1,0)),('café.py',(1,0)),('with\ttab.py',(1,0)),('with\nnewline.py',(1,0)),('tests/测试.py',(0,1))]:
+    with tempfile.TemporaryDirectory() as root:
+        p=Path(root);file=p/name;file.parent.mkdir(parents=True,exist_ok=True)
+        file.write_text("x=1\n");_git_snapshot(p);file.write_text("x=1\ny=2\n")
+        stats=git_diff_stats(p)
+        assert (stats['src_loc'],stats['test_loc']) == expected,(name,stats)
+with tempfile.TemporaryDirectory() as root:
+    p=Path(root);file=p/'old.py';file.write_text(''.join('v'+str(i)+' = '+str(i)+'\n' for i in range(30)))
+    _git_snapshot(p);file.rename(p/'new.py');(p/'new.py').write_text((p/'new.py').read_text()+'changed=1\n')
+    stats=git_diff_stats(p)
+    assert (stats['src_loc'],stats['src_files']) == (1,1),stats
+`;
+  const result = spawnSync('python3', ['-c', script], { cwd: require('node:path').join(__dirname, '..'), encoding: 'utf8' });
+  assert.equal(result.status, 0, result.stdout + result.stderr);
+});
+
 // Helper: wrap code in a fenced block and call the assertion with task vars.
 function check(task, lang, code) {
   const output = '```' + lang + '\n' + code + '\n```';
