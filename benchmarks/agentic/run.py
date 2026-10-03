@@ -282,7 +282,10 @@ def score_workspace(task_id, arm, model, workdir: Path):
     if TASKS[task_id].get("fixture"):
         sc = {"correct": 1 if stats.get("total_loc", 0) > 0 else 0, "safe": 1, "reason": "git-diff"}
     else:
-        sc = TASKS[task_id]["score"](workdir)
+        try:
+            sc = TASKS[task_id]["score"](workdir)
+        except SystemExit:
+            sc = {"correct": 0, "safe": 0, "reason": "submission exited before scoring completed"}
     return {"task": task_id, "arm": arm, "model": model, **sc, **stats, **meta}
 
 def run_cell(task_id, arm, model, workdir: Path):
