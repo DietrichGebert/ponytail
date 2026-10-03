@@ -70,14 +70,22 @@ def _strip_frontmatter(text: str) -> str:
 def _filter_skill_body_for_mode(body: str, mode: str) -> str:
     effective = _normalize_runtime_mode(mode) or DEFAULT_MODE
     lines = []
-    for line in _strip_frontmatter(body).splitlines():
+    # str.splitlines() drops a trailing line terminator instead of yielding a
+    # trailing empty element, so a body ending in "\n" loses that newline on
+    # rejoin. re.split keeps it, matching the JS filter's split(/\r?\n/).
+    for line in re.split(r"\r?\n", _strip_frontmatter(body)):
         table_label = re.match(r"^\|\s*\*\*(.+?)\*\*\s*\|", line)
         if table_label:
             label_mode = _normalize_runtime_mode(table_label.group(1))
             if label_mode and label_mode != effective:
                 continue
 
-        example_label = re.match(r"^-\s*([^:]+):\s*", line)
+        # Require a quoted value: every worked example is `- lite: "..."`. Without
+        # this, an ordinary rule bullet that happens to start with a mode word
+        # (e.g. "- Full: ...") is silently dropped in every other mode — it looks
+        # like a worked example but is really prose meant to survive verbatim.
+        # Mirrors the fix in hooks/ponytail-instructions.js (#571).
+        example_label = re.match(r'^-\s*([^:]+):\s*"', line)
         if example_label:
             label_mode = _normalize_runtime_mode(example_label.group(1))
             if label_mode and label_mode != effective:
@@ -168,8 +176,12 @@ def _handle_mode_command(raw_args: str) -> str:
     global _current_mode
     arg = (raw_args or "").strip().lower()
     if not arg:
+        # Bare /ponytail switches ponytail on, or reports the level when it already is (#639).
         mode = _current_mode or _default_mode()
-        return f"Ponytail mode: {mode}. Use `/ponytail lite|full|ultra|off`."
+        if mode != "off":
+            return f"Ponytail mode: {mode}. Use `/ponytail lite|full|ultra|off`."
+        _current_mode = "full" if _default_mode() == "off" else _default_mode()
+        return f"Ponytail mode set to {_current_mode}."
     mode = _normalize_runtime_mode(arg)
     if not mode:
         return "Usage: /ponytail [lite|full|ultra|off]"

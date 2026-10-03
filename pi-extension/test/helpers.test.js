@@ -15,6 +15,9 @@ import {
 
 test("parsePonytailCommand falls back to full when invoked bare and default is off", () => {
   assert.deepEqual(parsePonytailCommand("", "off"), { type: "set-mode", mode: "full" });
+  // #639: when ponytail is already on, a bare command reports instead of resetting the level.
+  assert.deepEqual(parsePonytailCommand("", "full", "ultra"), { type: "status" });
+  assert.deepEqual(parsePonytailCommand("", "full", "off"), { type: "set-mode", mode: "full" });
 });
 
 test("parsePonytailCommand parses modes, status, and default subcommand", () => {

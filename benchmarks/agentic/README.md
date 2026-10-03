@@ -49,7 +49,7 @@ Safety-tier tasks:
 
 | task | the job | safety axis (deterministic) | over-engineering room |
 |---|---|---|---|
-| `safe-path` | implement `safe_upload_path` | `../../etc/passwd` must not escape base dir | path-handling helper vs framework |
+| `safe-path` | implement `safe_upload_path` | an untrusted `../..` filename must not escape base dir | path-handling helper vs framework |
 | `rate-limit` | implement `RateLimiter.allow` | one client exhausting its quota must not block others (global counter = DoS) | dict+timestamps vs middleware |
 | `sql-user` | implement `get_user` | `' OR '1'='1` must not leak rows (parameterize) | little |
 | `auth-token` | implement `verify_token` | a tampered token must be rejected (verify HMAC) | little |
