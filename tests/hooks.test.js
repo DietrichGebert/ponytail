@@ -429,9 +429,11 @@ assert.equal(result.status, 0, result.stderr);
 output = JSON.parse(result.stdout);
 assert.match(output.hookSpecificOutput.additionalContext, /PONYTAIL MODE ACTIVE — level: full/);
 
-// The default (no matcher) path must not depend on stdin: even with stdin
-// closed empty it injects synchronously, preserving the #252 behavior on
-// Windows where the piped JSON can be swallowed (#443).
+// The default (no matcher) path still injects even with stdin closed empty
+// (no session_id to scope by) — it falls back to the project/shared flag, so
+// the #252 behavior survives hosts whose piped JSON the Windows PowerShell
+// wrapper can swallow (#443); the 1000ms fallback timer (asserted below) is
+// what keeps that case from hanging.
 result = run('ponytail-subagent.js', scopeEnv, '');
 assert.equal(result.status, 0, result.stderr);
 output = JSON.parse(result.stdout);
@@ -733,6 +735,40 @@ assert.equal(
   run('ponytail-mode-tracker.js', repoB, JSON.stringify({ prompt: '/ponytail off' }));
   assert.equal(subagentLevel(repoB), null, '/ponytail off works in repo B');
   assert.equal(subagentLevel(repoA), 'ultra', '/ponytail off in repo B leaves repo A alone');
+}
+
+// #992: two sessions in the SAME repo (same CLAUDE_PROJECT_DIR) must not share
+// one mode either — each session's own file, keyed by session_id from the
+// hook payload, wins over the project file both sessions still also write.
+{
+  const sessHome = path.join(temp, 'per-session-home');
+  fs.mkdirSync(sessHome, { recursive: true });
+  const repo = { HOME: sessHome, USERPROFILE: sessHome, CLAUDE_PROJECT_DIR: '/work/shared-repo' };
+  const subagentLevel = (sessionId) => {
+    const r = run('ponytail-subagent.js', repo, JSON.stringify({ session_id: sessionId }));
+    assert.equal(r.status, 0, r.stderr);
+    if (!r.stdout) return null;
+    return JSON.parse(r.stdout).hookSpecificOutput.additionalContext.match(/level: (\w+)/)[1];
+  };
+
+  // Both sessions activate in the same repo, then switch to different levels.
+  run('ponytail-activate.js', repo, JSON.stringify({ session_id: 'sess-a' }));
+  run('ponytail-activate.js', repo, JSON.stringify({ session_id: 'sess-b' }));
+  run('ponytail-mode-tracker.js', repo, JSON.stringify({ prompt: '/ponytail ultra', session_id: 'sess-a' }));
+  run('ponytail-mode-tracker.js', repo, JSON.stringify({ prompt: '/ponytail lite', session_id: 'sess-b' }));
+
+  assert.equal(subagentLevel('sess-a'), 'ultra', "session A's subagent must see session A's own level");
+  assert.equal(
+    subagentLevel('sess-b'),
+    'lite',
+    "session B's subagent must see session B's own level, not session A's (#992)",
+  );
+
+  // Turning session B off must not touch session A, even though they share a
+  // project file.
+  run('ponytail-mode-tracker.js', repo, JSON.stringify({ prompt: '/ponytail off', session_id: 'sess-b' }));
+  assert.equal(subagentLevel('sess-b'), null, '/ponytail off in session B works');
+  assert.equal(subagentLevel('sess-a'), 'ultra', '/ponytail off in session B leaves session A alone (#992)');
 }
 
 // #639: bare /ponytail switches ponytail on when it is off, and only reports

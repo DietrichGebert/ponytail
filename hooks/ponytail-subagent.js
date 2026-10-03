@@ -9,19 +9,20 @@
 // the ruleset is injected only into subagents whose agent_type matches. The
 // regex is unanchored and case-insensitive — "explore|general" matches either,
 // "^general$" is exact. Unset means inject into every subagent, as before.
+//
+// The payload also carries session_id, read below so the injected level is the
+// parent session's own mode rather than whichever sibling session in the same
+// repo wrote the project/shared flag last (#992).
 
 const { getPonytailInstructions } = require('./ponytail-instructions');
 const { readMode, writeHookOutput } = require('./ponytail-runtime');
 const vm = require('vm');
 
-const mode = readMode();
-
-// Absent flag or off → ponytail isn't active; inject nothing.
-if (!mode || mode === 'off') {
-  process.exit(0);
-}
-
-function inject() {
+function inject(mode) {
+  // Absent flag or off → ponytail isn't active for this session; inject nothing.
+  if (!mode || mode === 'off') {
+    process.exit(0);
+  }
   try {
     writeHookOutput('SubagentStart', mode, getPonytailInstructions(mode));
   } catch (e) {
@@ -39,18 +40,10 @@ try {
   matcherRe = null;
 }
 
-// No matcher → keep the original synchronous, stdin-independent path. On Windows
-// the PowerShell `if {}` wrapper can swallow the piped JSON so stdin 'end' never
-// fires (#443); the default path must not wait on stdin or it would stall every
-// subagent spawn.
-if (!matcherRe) {
-  inject();
-  process.exit(0);
-}
-
-// Matcher set → read agent_type from stdin and skip only on a definite
-// mismatch. Missing/unparseable agent_type, a stdin error, or the timeout all
-// fail open (inject), so scoping never silently drops the persona.
+// Always read the payload for session_id, and (when scoping is on) agent_type.
+// Missing/unparseable fields, a stdin error, or the timeout all fail open
+// (inject with no session scoping, matcher matches), so this never silently
+// drops the persona or the level.
 let input = '';
 let done = false;
 
@@ -58,28 +51,35 @@ function finish() {
   if (done) return;
   done = true;
 
+  let sessionId;
   let agentType = '';
   try {
     // Strip UTF-8 BOM some shells prepend when piping (breaks JSON.parse)
-    agentType = String(JSON.parse(input.replace(/^\uFEFF/, '')).agent_type || '').trim();
+    const data = JSON.parse(input.replace(/^﻿/, ''));
+    sessionId = data.session_id;
+    agentType = String(data.agent_type || '').trim();
   } catch (e) {
-    // Unparseable payload — fall through and inject to be safe.
+    // Unparseable/empty payload — fall through with no session scoping.
   }
-  // .test() is synchronous, so a backtracking-heavy matcher like (a+)+$ would
-  // block the event loop and the fallback timer below could never fire (#658).
-  // Run it under a vm timeout; a timeout fails open like every other doubt.
-  let matches = true;
-  try {
-    if (agentType) {
-      matches = vm.runInNewContext('re.test(s)', { re: matcherRe, s: agentType }, { timeout: 100 });
+
+  if (matcherRe) {
+    // .test() is synchronous, so a backtracking-heavy matcher like (a+)+$ would
+    // block the event loop and the fallback timer below could never fire (#658).
+    // Run it under a vm timeout; a timeout fails open like every other doubt.
+    let matches = true;
+    try {
+      if (agentType) {
+        matches = vm.runInNewContext('re.test(s)', { re: matcherRe, s: agentType }, { timeout: 100 });
+      }
+    } catch (e) {
+      matches = true;
     }
-  } catch (e) {
-    matches = true;
+    if (!matches) {
+      process.exit(0);
+    }
   }
-  if (!matches) {
-    process.exit(0);
-  }
-  inject();
+
+  inject(readMode(sessionId));
 }
 
 process.stdin.on('data', chunk => { input += chunk; });

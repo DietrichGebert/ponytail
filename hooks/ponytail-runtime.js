@@ -44,30 +44,50 @@ const statePath = path.join(stateDir, STATE_FILE);
 // Claude Code hands every hook its project dir, so the live mode is kept per
 // project and concurrent sessions in different repos stop overwriting each other
 // (#662, #809). Hosts without it keep the single shared flag.
-// ponytail: sessions in the SAME repo still share one mode, and the statusline
-// scripts read the shared flag (last write wins); key by session_id if either matters.
 const projectDir = (process.env.CLAUDE_PROJECT_DIR || '').trim();
 const projectStatePath = projectDir
   ? path.join(stateDir, 'ponytail-modes', projectDir.replace(/[^A-Za-z0-9._-]/g, '_'))
   : null;
 
-// The shared flag is still written, for the statusline and project-less hosts.
-function setMode(mode) {
-  for (const file of [projectStatePath, statePath]) {
+// Sessions in the SAME repo still share the project file (last write wins), so
+// also key by session_id — every hook payload, and the statusline's stdin,
+// carries one (#992). Callers without a session_id (hosts with no concept of
+// one, or a payload that failed to parse) fall back to the project/shared file,
+// same as before.
+function sessionStatePath(sessionId) {
+  const id = (sessionId || '').trim();
+  return id ? path.join(stateDir, 'ponytail-sessions', id.replace(/[^A-Za-z0-9._-]/g, '_')) : null;
+}
+
+// The project and shared flags are still written, for the statusline fallback,
+// subagents whose payload carries no session_id, and project-less hosts.
+function setMode(mode, sessionId) {
+  for (const file of [sessionStatePath(sessionId), projectStatePath, statePath]) {
     if (!file) continue;
     fs.mkdirSync(path.dirname(file), { recursive: true });
     fs.writeFileSync(file, mode);
   }
 }
 
-function clearMode() {
-  for (const file of [projectStatePath, statePath]) {
+function clearMode(sessionId) {
+  for (const file of [sessionStatePath(sessionId), projectStatePath, statePath]) {
     if (file) try { fs.unlinkSync(file); } catch (e) {}
   }
 }
 
 // Live mode written by activate/mode-tracker. Absent flag = ponytail off.
-function readMode() {
+// Prefers this session's own file so a sibling session in the same repo can't
+// leak its level in; falls back to the project/shared file when this session
+// hasn't written one yet (or has none to give).
+function readMode(sessionId) {
+  const sessionFile = sessionStatePath(sessionId);
+  if (sessionFile) {
+    try {
+      return fs.readFileSync(sessionFile, 'utf8').trim() || null;
+    } catch (e) {
+      // No session file yet — fall through to the project/shared one.
+    }
+  }
   try {
     return fs.readFileSync(projectStatePath || statePath, 'utf8').trim() || null;
   } catch (e) {
