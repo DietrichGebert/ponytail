@@ -33,6 +33,57 @@ instruction matches ponytail, the benchmark should show it.
 
 ## Tasks
 
+### Opt-in workflow cleanup task
+
+`workflow-cleanup` is a synthetic Python cleanup task motivated by #974. A native AISP
+program declares and invokes `report.py` without any Python import. The retired
+`legacy_report.py` can be removed, but the live CLI and its documented behavior must
+survive. This is one task, reported separately from the existing benchmark headline.
+
+```bash
+python run.py --selftest
+python run.py --task workflow-cleanup --arms baseline,ponytail --models opus --runs 6
+python run.py --rescore runs/<stamp>
+```
+
+The task is excluded from `--all`. For a comparison, set `PONYTAIL_PLUGIN_DIR` to
+the exact plugin version under test and record the Claude CLI/model versions. Run
+the baseline and current Ponytail on the same seed, then the changed plugin as a
+separate `ponytail` run. Run model cells in a disposable VM or container with
+minimal credentials. This task uses `dontAsk` with an exact `rm` allow rule for
+the retired file, equally across arms; other Bash calls are denied. Other tasks
+continue to disallow Bash.
+
+The scorer first compares the program and discovery index by JSON value (rejecting
+duplicate keys), protects the documentation, and limits edits to Python files. It
+then copies only the package into a fresh temporary directory and invokes the
+known CLI with fixed arguments, a stripped environment, and a timeout. It never
+interprets workflow commands or makes test files available to the CLI.
+`cleanup_delta` is seed production Python LOC minus
+retained production Python LOC, reported only for correct cells; an unchanged seed
+passes with zero cleanup. The `safe` field remains a legacy result field here and
+is not a separate security measurement. Model-produced Python must run in an
+isolated environment without host credentials or unneeded network access: a temp
+directory and timeout do not provide a sandbox.
+
+The fixture's contract was checked with `jsonschema` 4.26.0 against the
+[pinned AISP v1 contract schema](https://github.com/AIXP-Labs/AISP/blob/68777bf65b2229148d599a4abbe2fa931fb756a8/schemas/aisp-contract-v1.schema.json):
+
+```python
+import json, urllib.request, jsonschema
+from pathlib import Path
+schema = json.load(urllib.request.urlopen(
+    "https://raw.githubusercontent.com/AIXP-Labs/AISP/68777bf65b2229148d599a4abbe2fa931fb756a8/schemas/aisp-contract-v1.schema.json"))
+program = json.loads(Path("fixtures/workflow-cleanup/aisp/report_cleanup_aisp/aisp.aisop.json").read_text())
+jsonschema.validate(program[1]["content"]["aisp_contract"], schema)
+```
+
+The complete program follows that issue's pinned AISOP example, but this benchmark
+does not execute an AISOP runtime or establish protocol conformance. The retired
+helper is intentionally undeclared; an AISP resource-inventory warning for it is
+expected. The optional `SKILL.md` bridge and discovery generator are omitted on
+purpose for this native-only fixture.
+
 Two tiers. **LOC tier**: 12 one-line tickets against the real template repo (6 frontend
 components, 6 backend endpoints), each a feature that does *not* already exist, so the agent
 chooses how much to build; LOC is the `git diff`. **Safety tier**: 7 surgical "implement this

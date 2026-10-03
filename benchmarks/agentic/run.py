@@ -116,7 +116,8 @@ def _selfcheck_split(p: Path):
     t, c = cnt(lines[:start]); st, sc = cnt(lines[start:])
     return t, c, st, sc
 
-def code_stats(workdir: Path, selfcheck_as_test: bool = False):
+def code_stats(workdir: Path, selfcheck_as_test: bool = False, exclude_fixture: bool = True,
+               include_private: bool = False):
     """LOC over code-extension source files only (generated images/data can't pollute it).
     total_loc counts every non-blank line including comments and docstrings -- the bloat a vibe
     baseline actually produces. src_loc is code-only, for the breakdown. Tests tracked separately,
@@ -125,13 +126,14 @@ def code_stats(workdir: Path, selfcheck_as_test: bool = False):
     counted as code bloat against it."""
     fixture = set()                                   # files that were seeded, not delivered
     fm = workdir / "_fixture_files.json"
-    if fm.exists():
+    if exclude_fixture and fm.exists():
         try: fixture = set(json.loads(fm.read_text(encoding="utf-8")))
         except Exception: pass
     def _rel(p): return str(p.relative_to(workdir)).replace("\\", "/")
     files = [p for p in workdir.rglob("*") if p.is_file() and p.suffix in CODE_EXT
              and "__pycache__" not in p.parts and "node_modules" not in p.parts
-             and not p.name.startswith((".", "_")) and _rel(p) not in fixture]
+             and not p.name.startswith(".") and (include_private or not p.name.startswith("_"))
+             and _rel(p) not in fixture]
     src = [p for p in files if not _is_test(p, workdir)]
     tst = [p for p in files if _is_test(p, workdir)]
     test_loc = sum(_count(p, True) for p in tst)
@@ -186,6 +188,22 @@ def selftest():
     failures = 0
     for tid, task in TASKS.items():
         if task.get("open"): continue  # open tasks measure LOC only, no good/bad refs
+        if task.get("selftest_cases"):
+            fx = Path(__file__).resolve().parent / "fixtures" / task["fixture"]
+            for name, edits, expected_ok, reason in task["selftest_cases"]():
+                with tempfile.TemporaryDirectory() as d:
+                    shutil.copytree(fx, d, dirs_exist_ok=True)
+                    for fn, content in edits.items():
+                        p = Path(d) / fn
+                        if content is None: p.unlink()
+                        else:
+                            p.parent.mkdir(parents=True, exist_ok=True)
+                            p.write_text(content, encoding="utf-8")
+                    r = task["score"](Path(d))
+                ok = (r["correct"] == int(expected_ok) and r["reason"].startswith(reason))
+                print(f"{'ok ' if ok else 'XX '} {tid:12} {name:22} {r['reason']}")
+                failures += 0 if ok else 1
+            continue
         axis = task.get("axis", "safe")
         for kind in ("good", "bad"):
             with tempfile.TemporaryDirectory() as d:
@@ -199,8 +217,33 @@ def selftest():
             failures += 0 if ok else 1
     failures += _selftest_plugin_dir()
     failures += _selftest_kill()
+    failures += _selftest_scored_fixture()
     print(f"\nselftest: {'all instruments valid' if not failures else str(failures) + ' BROKEN'}")
     return failures
+
+
+def _selftest_scored_fixture():
+    """A scored fixture must use its scorer on both live and offline paths."""
+    task = TASKS["workflow-cleanup"]
+    fx = Path(__file__).resolve().parent / "fixtures" / task["fixture"]
+    with tempfile.TemporaryDirectory() as d:
+        run_dir = Path(d)
+        ws = run_dir / "workflow-cleanup__baseline__haiku__0"
+        shutil.copytree(fx, ws)
+        (ws / "aisp" / "report_cleanup_aisp" / "legacy_report.py").unlink()
+        live = score_workspace("workflow-cleanup", "baseline", "haiku", ws)
+        rescore(run_dir)
+        offline = json.loads((run_dir / "results.json").read_text(encoding="utf-8"))["results"][0]
+        summary = json.loads((run_dir / "summary.json").read_text(encoding="utf-8"))[0]
+        ok = (live["correct"] == offline["correct"] == 1
+              and live["cleanup_delta"] == offline["cleanup_delta"] > 0
+              and summary["cleanup_passing_n"] == 1 and summary["wrote_file_rate"] == 1)
+        (ws / "aisp" / "report_cleanup_aisp" / "report.py").unlink()
+        (ws / "aisp" / "report_cleanup_aisp" / "replacement.py").write_text("x = 1\n")
+        broken = score_workspace("workflow-cleanup", "baseline", "haiku", ws)
+        ok = ok and broken["correct"] == 0 and broken["cleanup_delta"] is None
+    print(f"{'ok ' if ok else 'XX '} scored_fixture normal score, rescore, and failure gate")
+    return 0 if ok else 1
 
 def _selftest_plugin_dir():
     """Plugin-dir resolution must be portable: env override wins, and a missing install
@@ -272,17 +315,27 @@ def score_workspace(task_id, arm, model, workdir: Path):
                     "cache_tokens": (u.get("cache_read_input_tokens") or 0) + (u.get("cache_creation_input_tokens") or 0)}
             result_text = j.get("result", "")
         except Exception: pass
-    surgical = not TASKS[task_id].get("open") and not TASKS[task_id].get("fixture")
-    stats = git_diff_stats(workdir) if TASKS[task_id].get("fixture") else code_stats(workdir, selfcheck_as_test=surgical)
+    task = TASKS[task_id]
+    surgical = not task.get("open") and not task.get("fixture")
+    stats = (code_stats(workdir, exclude_fixture=False, include_private=True) if task.get("scored_fixture")
+             else git_diff_stats(workdir) if task.get("fixture")
+             else code_stats(workdir, selfcheck_as_test=surgical))
     # open/explain tasks answer in the chat, not a file. If no source file was written, count the
     # code the agent delivered in its chat answer so the comparison isn't a false zero.
     if TASKS[task_id].get("open") and stats["total_loc"] == 0 and result_text:
         t, c = chat_code_loc(result_text)
         stats = {**stats, "total_loc": t, "src_loc": c, "src_files": 1 if t else 0}
-    if TASKS[task_id].get("fixture"):
+    if task.get("fixture") and not task.get("scored_fixture"):
         sc = {"correct": 1 if stats.get("total_loc", 0) > 0 else 0, "safe": 1, "reason": "git-diff"}
     else:
-        sc = TASKS[task_id]["score"](workdir)
+        sc = task["score"](workdir)
+    if task.get("scored_fixture"):
+        fx = Path(__file__).resolve().parent / "fixtures" / task["fixture"]
+        seed_loc = code_stats(fx, exclude_fixture=False, include_private=True)["total_loc"]
+        def python_files(root):
+            return {p.relative_to(root).as_posix(): p.read_bytes() for p in root.rglob("*.py")}
+        stats["edited"] = python_files(workdir) != python_files(fx)
+        stats["cleanup_delta"] = seed_loc - stats["total_loc"] if sc["correct"] else None
     return {"task": task_id, "arm": arm, "model": model, **sc, **stats, **meta}
 
 def run_cell(task_id, arm, model, workdir: Path):
@@ -303,19 +356,25 @@ def run_cell(task_id, arm, model, workdir: Path):
         (workdir / "_fixture_files.json").write_text(json.dumps(manifest), encoding="utf-8")
     for fn, content in task.get("seed", {}).items():
         (workdir / fn).write_text(content, encoding="utf-8")
-    if task.get("fixture"): _git_snapshot(workdir)     # baseline commit -> diff the agent's changes
+    if task.get("fixture") and not task.get("scored_fixture"):
+        _git_snapshot(workdir)                 # baseline commit for open-ended fixture diff
     claude = shutil.which("claude")
     if not claude: sys.exit("claude CLI not found on PATH")
     # Skills are PLUGINS (SessionStart hook); --append of the SKILL text does NOT activate them.
     # Exclude the user's globally-enabled plugins for every arm, then load exactly the one this arm
     # needs from its cache dir. baseline loads none; yagni-oneliner is a raw prompt so it uses --append.
-    # No live verification (see NO_RUN): --strict-mcp-config drops all MCP servers so there is no browser
-    # tool, and --disallowedTools Bash blocks running a server/db/npm. An agent writes with
-    # Read/Write/Edit/Glob/Grep and stops -- no login wall, no browser thrash. We measure code, not execution.
+    # No live verification (see NO_RUN): --strict-mcp-config drops all MCP servers.
+    # The cleanup task needs one deletion command. dontAsk plus a narrow allow
+    # rule keeps other shell commands denied, equally for every arm.
     cmd = [claude, "-p", task["prompt"], "--model", MODELS[model],
-           "--permission-mode", "bypassPermissions", "--output-format", "json",
-           "--setting-sources", "project,local", "--strict-mcp-config",
-           "--disallowedTools", "Bash"]
+           "--permission-mode", "dontAsk" if task.get("allow_deletion") else "bypassPermissions",
+           "--output-format", "json",
+           "--setting-sources", "project,local", "--strict-mcp-config"]
+    if task.get("allow_deletion"):
+        cmd += ["--tools", "Read,Write,Edit,Glob,Grep,Bash",
+                "--allowedTools", "Read,Write,Edit,Glob,Grep,Bash(rm aisp/report_cleanup_aisp/legacy_report.py)"]
+    else:
+        cmd += ["--disallowedTools", "Bash"]
     append = NO_RUN                                     # all arms get NO_RUN, identically
     if arm in PLUGIN_ARMS:
         cmd += ["--plugin-dir", _plugin_dir(arm)]       # real activation of exactly one plugin
@@ -355,14 +414,18 @@ def aggregate(results):
         costs = [c["cost"] for c in cells if c.get("cost") is not None]
         loc_cells = [c for c in cells if c.get("total_loc", 0) > 0]   # LOC only where code was delivered
         nl = len(loc_cells)
+        cleanup = [c["cleanup_delta"] for c in cells if c.get("cleanup_delta") is not None]
         rows.append({"task": t, "arm": a, "model": m, "n": n,
                      "safe_rate": round(sum(c["safe"] for c in cells) / n, 3),
                      "correct_rate": round(sum(c["correct"] for c in cells) / n, 3),
-                     "wrote_file_rate": round(nl / n, 3),
+                     "wrote_file_rate": round(sum(bool(c.get("edited")) for c in cells) / n, 3)
+                     if TASKS[t].get("scored_fixture") else round(nl / n, 3),
                      "total_loc_median": statistics.median(c["total_loc"] for c in loc_cells) if nl else 0,
                      "src_loc_median": statistics.median(c["src_loc"] for c in loc_cells) if nl else 0,
                      "total_loc_max": max((c["total_loc"] for c in loc_cells), default=0),
                      "src_files_median": statistics.median(c["src_files"] for c in loc_cells) if nl else 0,
+                     "cleanup_passing_n": len(cleanup) if TASKS[t].get("scored_fixture") else None,
+                     "cleanup_delta_median": statistics.median(cleanup) if cleanup else None,
                      "wrote_tests_rate": round(sum(1 for c in cells if c.get("test_files", 0) > 0) / n, 3),
                      "cost_mean": round(statistics.mean(costs), 4) if costs else None,
                      "out_tokens_mean": (round(statistics.mean([c["out_tokens"] for c in cells if c.get("out_tokens") is not None]))
@@ -386,6 +449,9 @@ def print_table(rows):
             print(f"  {r['arm']:16} {r.get('wrote_file_rate', 1.0):>7} {r['correct_rate']:>8} "
                   f"{r['total_loc_median']:>7} {(tt if tt is not None else '-'):>9} {c:>8} "
                   f"{(t if t is not None else '-'):>7}")
+            if r["cleanup_passing_n"] is not None:
+                print(f"    cleanup on correct cells: {r['cleanup_passing_n']}/{r['n']}, "
+                      f"median source LOC removed: {r['cleanup_delta_median']}")
 
 def rescore(run_dir):
     run_dir = Path(run_dir)
@@ -427,7 +493,7 @@ def main():
     if selftest():
         sys.exit("instruments broken; refusing to spend on the API")
 
-    task_ids = (list(TASKS) if args.all
+    task_ids = ([tid for tid, task in TASKS.items() if not task.get("opt_in")] if args.all
                 else ([t.strip() for t in args.task.split(",")] if args.task else []))
     if not task_ids: sys.exit("give --task <id> (comma list ok), --all, or --rescore <dir>")
     arms = [a.strip() for a in args.arms.split(",")]

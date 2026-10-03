@@ -37,3 +37,6 @@ jobs:
 
       - name: Run tests
         run: npm test
+
+      - name: Verify agentic benchmark scorers
+        run: python benchmarks/agentic/run.py --selftest
