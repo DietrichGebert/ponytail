@@ -141,8 +141,8 @@ export default {
 
   // OpenCode V1: same three behaviors, as hooks on the V1 hook names.
   async server({ client } = {}) {
-    const log = (level, message) => {
-      try { client && client.app && client.app.log({ body: { service: 'ponytail', level, message } }); } catch (e) {}
+    const log = async (level, message) => {
+      try { client && client.app && await client.app.log({ body: { service: 'ponytail', level, message } }); } catch (e) {}
     };
 
     return {
