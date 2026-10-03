@@ -37,6 +37,8 @@ delete process.env.COPILOT_PLUGIN_DATA;
 // A leaked subagent matcher would scope the inject-into-every-subagent assertions.
 delete process.env.PONYTAIL_SUBAGENT_MATCHER;
 delete process.env.QODER_SESSION_ID;
+// A leaked project dir would move the flag into ponytail-modes/ (#662).
+delete process.env.CLAUDE_PROJECT_DIR;
 // Cursor sets these only for hook processes, but a suite launched from a Cursor
 // hook would otherwise steer every case into the Cursor JSON branch (#817).
 delete process.env.CURSOR_VERSION;
@@ -640,5 +642,33 @@ assert.equal(
   false,
   '/ponytail-review must not create a review flag on a fresh session (#736)',
 );
+
+// #662/#809: two Claude Code sessions in different repos keep their own mode.
+{
+  const projHome = path.join(temp, 'per-project-home');
+  fs.mkdirSync(projHome, { recursive: true });
+  const repoA = { HOME: projHome, USERPROFILE: projHome, CLAUDE_PROJECT_DIR: '/work/repo-a' };
+  const repoB = { HOME: projHome, USERPROFILE: projHome, CLAUDE_PROJECT_DIR: '/work/repo-b' };
+  const subagentLevel = (env) => {
+    const r = run('ponytail-subagent.js', env);
+    assert.equal(r.status, 0, r.stderr);
+    if (!r.stdout) return null;
+    return JSON.parse(r.stdout).hookSpecificOutput.additionalContext.match(/level: (\w+)/)[1];
+  };
+
+  run('ponytail-activate.js', repoA);
+  run('ponytail-activate.js', { ...repoB, PONYTAIL_DEFAULT_MODE: 'off' });
+  assert.equal(subagentLevel(repoA), 'full', 'an off session in repo B must not clear repo A');
+  assert.equal(subagentLevel(repoB), null, 'repo B is off');
+
+  run('ponytail-mode-tracker.js', repoA, JSON.stringify({ prompt: '/ponytail ultra' }));
+  run('ponytail-mode-tracker.js', repoB, JSON.stringify({ prompt: '/ponytail lite' }));
+  assert.equal(subagentLevel(repoA), 'ultra');
+  assert.equal(subagentLevel(repoB), 'lite');
+
+  run('ponytail-mode-tracker.js', repoB, JSON.stringify({ prompt: '/ponytail off' }));
+  assert.equal(subagentLevel(repoB), null, '/ponytail off works in repo B');
+  assert.equal(subagentLevel(repoA), 'ultra', '/ponytail off in repo B leaves repo A alone');
+}
 
 console.log('hook compatibility checks passed');

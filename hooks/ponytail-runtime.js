@@ -38,19 +38,35 @@ if (isCursor) stateDir = path.join(os.homedir(), '.cursor');
 
 const statePath = path.join(stateDir, STATE_FILE);
 
+// Claude Code hands every hook its project dir, so the live mode is kept per
+// project and concurrent sessions in different repos stop overwriting each other
+// (#662, #809). Hosts without it keep the single shared flag.
+// ponytail: sessions in the SAME repo still share one mode, and the statusline
+// scripts read the shared flag (last write wins); key by session_id if either matters.
+const projectDir = (process.env.CLAUDE_PROJECT_DIR || '').trim();
+const projectStatePath = projectDir
+  ? path.join(stateDir, 'ponytail-modes', projectDir.replace(/[^A-Za-z0-9._-]/g, '_'))
+  : null;
+
+// The shared flag is still written, for the statusline and project-less hosts.
 function setMode(mode) {
-  fs.mkdirSync(path.dirname(statePath), { recursive: true });
-  fs.writeFileSync(statePath, mode);
+  for (const file of [projectStatePath, statePath]) {
+    if (!file) continue;
+    fs.mkdirSync(path.dirname(file), { recursive: true });
+    fs.writeFileSync(file, mode);
+  }
 }
 
 function clearMode() {
-  try { fs.unlinkSync(statePath); } catch (e) {}
+  for (const file of [projectStatePath, statePath]) {
+    if (file) try { fs.unlinkSync(file); } catch (e) {}
+  }
 }
 
 // Live mode written by activate/mode-tracker. Absent flag = ponytail off.
 function readMode() {
   try {
-    return fs.readFileSync(statePath, 'utf8').trim() || null;
+    return fs.readFileSync(projectStatePath || statePath, 'utf8').trim() || null;
   } catch (e) {
     return null;
   }
