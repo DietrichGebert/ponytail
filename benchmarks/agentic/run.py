@@ -458,7 +458,7 @@ def main():
             try:
                 res = fut.result()
             except Exception as e:
-                res = {"task": tid, "arm": arm, "model": model, "error": str(e)[:200]}
+                res = {"task": tid, "arm": arm, "model": model, "correct": 0, "safe": 0, "error": str(e)[:200]}
             results.append(res)
             done += 1
             print(f"  [{done}/{total}] {tid} / {arm} / {model} #{r}  "

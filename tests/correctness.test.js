@@ -42,6 +42,41 @@ test('email: no code block fails', () => {
   assert.equal(result.pass, false);
 });
 
+
+test('agentic matrix preserves worker failures in its completed summary', () => {
+  require('node:child_process').execFileSync('python3', ['-c', `
+from pathlib import Path
+import json, sys, tempfile
+sys.path.insert(0, str(Path(sys.argv[1]) / 'benchmarks/agentic'))
+import run
+run.selftest = lambda: 0
+run._claude_version = lambda: 'controlled local test'
+def cell(tid, arm, model, ws):
+    if arm == 'baseline': raise OSError('controlled workspace failure')
+    return dict(task=tid, arm=arm, model=model, correct=1, safe=1,
+                files=1, src_files=1, total_loc=2, src_loc=2, test_files=0, test_loc=0)
+run.run_cell = cell
+with tempfile.TemporaryDirectory() as d:
+    run.RUNS_DIR = Path(d)
+    sys.argv = ['run.py', '--task', 'cache', '--arms', 'baseline,yagni', '--model', 'haiku', '--workers', '2']
+    run.main()
+    out = next(Path(d).iterdir())
+    results = json.loads((out / 'results.json').read_text())['results']
+    summary = json.loads((out / 'summary.json').read_text())
+    assert len(results) == len(summary) == 2
+    failed = next(r for r in results if r['arm'] == 'baseline')
+    assert failed['correct'] == failed['safe'] == 0
+    assert failed['error'] == 'controlled workspace failure'
+    by = {r['arm']: r for r in summary}
+    assert by['baseline']['n'] == 1
+    assert by['baseline']['correct_rate'] == by['baseline']['safe_rate'] == by['baseline']['wrote_file_rate'] == 0
+    assert by['baseline']['total_loc_median'] == 0
+    assert by['yagni']['correct_rate'] == by['yagni']['safe_rate'] == 1
+    assert by['yagni']['total_loc_median'] == 2
+    print('two-arm matrix preserves the failed cell and completes both summaries')
+`, require('node:path').resolve(__dirname, '..')], { stdio: 'pipe', timeout: 10_000 });
+});
+
 // --- Debounce ---
 
 test('debounce: correct implementation passes', () => {
