@@ -12,6 +12,10 @@
 </p>
 
 <p align="center">
+  <a href="https://trendshift.io/repositories/50668?utm_source=repository-badge&amp;utm_medium=badge&amp;utm_campaign=badge-repository-50668" target="_blank" rel="noopener noreferrer"><img src="https://trendshift.io/api/badge/repositories/50668" alt="DietrichGebert%2Fponytail | Trendshift" width="250" height="55"/></a>
+</p>
+
+<p align="center">
   <img src="https://img.shields.io/github/stars/DietrichGebert/ponytail?style=flat-square&color=111111&label=stars" alt="Stars">
   <img src="https://img.shields.io/github/v/release/DietrichGebert/ponytail?style=flat-square&color=111111&label=release" alt="Release">
   <img src="https://img.shields.io/npm/v/@dietrichgebert/ponytail?style=flat-square&color=111111&label=npm" alt="npm">
@@ -22,6 +26,7 @@
 <p align="center">
   <a href="https://trendshift.io/repositories/50668" target="_blank" rel="noopener noreferrer"><img src="https://trendshift.io/api/badge/trendshift/repositories/50668/daily" alt="DietrichGebert/ponytail | Trendshift" width="250" height="55"/></a>
   <a href="https://trendshift.io/repositories/50668" target="_blank" rel="noopener noreferrer"><img src="https://trendshift.io/api/badge/trendshift/repositories/50668/weekly" alt="DietrichGebert/ponytail | Trendshift" width="250" height="55"/></a>
+  <a href="https://trendshift.io/repositories/50668?utm_source=trendshift-badge&amp;utm_medium=badge&amp;utm_campaign=badge-trendshift-50668" target="_blank" rel="noopener noreferrer"><img src="https://trendshift.io/api/badge/trendshift/repositories/50668/monthly?language=JavaScript" alt="DietrichGebert%2Fponytail | Trendshift monthly ranking" width="250" height="55"/></a>
 </p>
 
 <p align="center">
@@ -109,7 +114,7 @@ Flojo, no negligente: la validación en límites de confianza, el manejo de pér
 
 El mayor esfuerzo que ponytail te va a pedir:
 
-Los plugins de Claude Code y Codex ejecutan dos pequeños lifecycle hooks de Node.js, así que `node` debe estar en tu PATH (nota para usuarios de Nix/nvm: debe estar en el PATH del shell no-interactivo). Si no lo está, los skills igualmente funcionan, la activación automática simplemente queda en silencio en vez de lanzar un error en cada prompt.
+Los plugins de Claude Code y Codex ejecutan dos pequeños lifecycle hooks de Node.js, así que `node` debe estar en tu PATH (nota para usuarios de Nix/nvm: debe estar en el PATH del shell no-interactivo). Si no lo está, los skills igualmente funcionan, pero cada hook muestra un error inofensivo `node: command not found`; instalar Node (o ponerlo en ese PATH) lo resuelve.
 
 ### Claude Code
 
@@ -163,18 +168,20 @@ pi install git:github.com/DietrichGebert/ponytail
 Agrega esto a `opencode.json`:
 
 ```json
-{ "plugin": ["@dietrichgebert/ponytail"] }
+{ "plugins": ["@dietrichgebert/ponytail"] }
 ```
 
 O ejecútalo desde un checkout (el plugin reutiliza sus `hooks/` y `skills/`):
 
 ```json
-{ "plugin": ["./.opencode/plugins/ponytail.mjs"] }
+{ "plugins": ["./.opencode/plugins"] }
 ```
 
 Inyecta el ruleset en cada turno con el nivel activo; agrega los comandos `/ponytail` (ver [Comandos](#comandos)). OpenCode también carga automáticamente el `AGENTS.md` de este repo, así que las reglas aplican incluso sin el plugin. El plugin agrega los niveles `lite/full/ultra/off`.
 
-El path `./` se resuelve contra el `opencode.json` de tu proyecto; para compartir un único checkout entre proyectos, apunta al path absoluto del `.mjs` (encuentra sus `hooks/` y `skills/` relativo a su propio archivo).
+Solo OpenCode 2. El path `./` se resuelve contra el `opencode.json` de tu proyecto; para compartir un único checkout entre proyectos, apunta al path absoluto del directorio `.opencode/plugins` del checkout. Una entrada de `plugins` debe nombrar un **directorio**, no un archivo: OpenCode 2 rechaza un path a `ponytail.mjs` con `configured plugin path must be a directory`. Abrir este repo en OpenCode 2 no necesita ninguna entrada: carga `.opencode/plugins/index.js` por su cuenta.
+
+OpenCode 1 usa la clave vieja `plugin`: `{ "plugin": ["@dietrichgebert/ponytail"] }`, o desde un checkout el path al archivo: `{ "plugin": ["./.opencode/plugins/ponytail.mjs"] }`.
 
 ### Gemini CLI
 
@@ -231,13 +238,22 @@ Abre una sesión nueva (o recarga los plugins). Los skills aparecen como `/ponyt
 
 `AGENTS.md` sigue funcionando solo como instrucciones desde un checkout sin el plugin. Desinstalar: `grok plugin uninstall ponytail`.
 
+### Cursor
+
+```bash
+git clone https://github.com/DietrichGebert/ponytail
+node ponytail/scripts/cursor-hooks.js install
+```
+
+Fusiona dos hooks nativos en `~/.cursor/hooks.json` (con `--project` escribe `<proyecto>/.cursor/hooks.json`) y conserva los hooks que ya tengas ahí. Las entradas ejecutan `node` desde ese checkout, así que déjalo donde está o vuelve a correr la instalación si lo mueves. Cursor recarga el archivo al guardarlo; abre un chat nuevo y el ruleset de tu nivel por defecto llega por `sessionStart`. Envía `/ponytail lite`, `/ponytail full`, `/ponytail ultra` o `/ponytail off` como mensaje normal para cambiar el nivel durante el resto de la conversación; `/ponytail` lo reporta. El `subagentStart` de Cursor no puede inyectar contexto, así que los subagentes corren sin el ruleset, y los agentes en la nube nunca disparan `sessionStart`. La regla permanente (`.cursor/rules/ponytail.mdc`) y los hooks son alternativas: mientras la regla esté en el workspace los hooks no inyectan nada y los comandos de modo responden con un aviso; borra la regla para que los hooks manejen el nivel. Contrato, verificación y límites: [docs/cursor-hooks.md](docs/cursor-hooks.md). Desinstalar: `node ponytail/scripts/cursor-hooks.js uninstall`.
+
 Eso fue todo. Él estaría orgulloso. No lo va a decir.
 
 Activo en cada sesión, con un puñado de comandos (ver [Comandos](#comandos)). `/ponytail ultra` existe para cuando el codebase te hizo algo personal. El texto de inicio y de cambio de modo muestra el nivel activo.
 
 Configura el nivel para cada nueva sesión con la variable de entorno `PONYTAIL_DEFAULT_MODE` (`lite`/`full`/`ultra`/`off`), o con un campo `defaultMode` en `~/.config/ponytail/config.json` (`%APPDATA%\ponytail\config.json` en Windows). El default es `full`.
 
-Cursor, Windsurf, Cline, GitHub Copilot (editor), Aider, Kiro: copia el archivo de reglas correspondiente de este repo ([`.cursor/rules/`](.cursor/rules/), [`.windsurf/rules/`](.windsurf/rules/), [`.clinerules/`](.clinerules/), [`.github/copilot-instructions.md`](.github/copilot-instructions.md), [`AGENTS.md`](AGENTS.md), [`.kiro/steering/`](.kiro/steering/)).
+Cursor (solo la regla, alternativa a los [hooks](#cursor)), Windsurf, Cline, GitHub Copilot (editor), Aider, Kiro: copia el archivo de reglas correspondiente de este repo ([`.cursor/rules/`](.cursor/rules/), [`.windsurf/rules/`](.windsurf/rules/), [`.clinerules/`](.clinerules/), [`.github/copilot-instructions.md`](.github/copilot-instructions.md), [`AGENTS.md`](AGENTS.md), [`.kiro/steering/`](.kiro/steering/)).
 
 Kiro: copia `.kiro/steering/ponytail.md` a `~/.kiro/steering/` (global) o `.kiro/steering/` en tu proyecto.
 
@@ -257,7 +273,7 @@ Qué archivos corresponden a qué agente: [Portabilidad de agentes](docs/agent-p
 | `/ponytail-debt` | Recolecta los atajos marcados con `ponytail:` que dejaste pendientes en un registro, para que "después" no se convierta en "nunca". |
 | `/ponytail-help` | Referencia rápida de los comandos anteriores. |
 
-Los comandos requieren un host compatible con skills (Claude Code, Codex, Devin CLI, OpenCode, Gemini, pi, Swival). En Codex son skills; se invocan con `@` (`@ponytail-review`). Los adaptadores de solo instrucciones (Cursor, Windsurf, Cline, Copilot, Kiro, Antigravity) cargan el ruleset permanente sin los comandos.
+Los comandos requieren un host compatible con skills (Claude Code, Codex, Devin CLI, OpenCode, Gemini, pi, Swival). En Codex son skills; se invocan con `@` (`@ponytail-review`). Cursor con los [hooks](#cursor) solo tiene el cambio de nivel con `/ponytail`, escrito como mensaje normal. Los adaptadores de solo instrucciones (la regla de Cursor, Windsurf, Cline, Copilot, Kiro, Antigravity) cargan el ruleset permanente sin los comandos.
 
 ## Desarrollo
 

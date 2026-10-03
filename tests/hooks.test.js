@@ -37,6 +37,10 @@ delete process.env.COPILOT_PLUGIN_DATA;
 // A leaked subagent matcher would scope the inject-into-every-subagent assertions.
 delete process.env.PONYTAIL_SUBAGENT_MATCHER;
 delete process.env.QODER_SESSION_ID;
+// Cursor sets these only for hook processes, but a suite launched from a Cursor
+// hook would otherwise steer every case into the Cursor JSON branch (#817).
+delete process.env.CURSOR_VERSION;
+delete process.env.CURSOR_PROJECT_DIR;
 
 const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'ponytail-hooks-'));
 // Runs on normal exit and on assertion-throw exit; force makes it idempotent.
@@ -45,6 +49,62 @@ process.on('exit', () => fs.rmSync(temp, { recursive: true, force: true }));
 const home = path.join(temp, 'home');
 const pluginData = path.join(temp, 'plugin-data');
 fs.mkdirSync(home, { recursive: true });
+
+function collectManifestCommands(file, field) {
+  const manifest = JSON.parse(fs.readFileSync(path.join(root, file), 'utf8'));
+  const commands = [];
+
+  function visit(value) {
+    if (!value || typeof value !== 'object') return;
+    if (typeof value[field] === 'string') commands.push(value[field]);
+    for (const child of Object.values(value)) {
+      if (Array.isArray(child)) child.forEach(visit);
+      else visit(child);
+    }
+  }
+
+  visit(manifest);
+  return commands;
+}
+
+function runShell(command, env, input = '') {
+  return spawnSync('/bin/sh', ['-c', command], {
+    env,
+    input,
+    encoding: 'utf8',
+  });
+}
+
+let result;
+
+// The shared Claude/Codex command must stay guard-free: VS Code runs it in
+// Windows PowerShell, which cannot parse `||` (see hooks-windows.test.js), so
+// it only has to run clean with node.
+// WSL2 can hand hooks a backslashed root (\home\user\...); the commands turn it
+// back into a POSIX path, so both shapes must load the script (#646).
+const roots = [root, root.split(path.sep).join('\\')];
+
+for (const command of collectManifestCommands('hooks/claude-codex-hooks.json', 'command')) {
+  for (const pluginRoot of roots) {
+    result = runShell(command, { ...process.env, HOME: home, USERPROFILE: home, CLAUDE_PLUGIN_ROOT: pluginRoot });
+    assert.equal(result.status, 0, result.stderr);
+    assert.equal(result.stderr, '', command);
+  }
+}
+
+// Copilot CLI has a separate bash field, so it can exit 0 without node (#645).
+// `|| exit 0` also hides a broken hook, so the with-node run must leave stderr empty.
+for (const command of collectManifestCommands('hooks/copilot-hooks.json', 'bash')) {
+  for (const pluginRoot of roots) {
+    const env = { HOME: home, USERPROFILE: home, PLUGIN_ROOT: pluginRoot, COPILOT_PLUGIN_DATA: path.join(temp, 'copilot-manifest-data') };
+    result = runShell(command, { ...process.env, ...env });
+    assert.equal(result.status, 0, result.stderr);
+    assert.equal(result.stderr, '', command);
+
+    result = runShell(command, { ...env, PATH: '' });
+    assert.equal(result.status, 0, result.stderr);
+  }
+}
 
 // USERPROFILE alongside HOME: os.homedir() reads USERPROFILE on Windows, HOME on POSIX.
 const codexEnv = {
@@ -55,7 +115,7 @@ const codexEnv = {
 };
 const codexState = path.join(pluginData, '.ponytail-active');
 
-let result = run('ponytail-activate.js', codexEnv);
+result = run('ponytail-activate.js', codexEnv);
 assert.equal(result.status, 0, result.stderr);
 assert.equal(fs.readFileSync(codexState, 'utf8'), 'ultra');
 let output = JSON.parse(result.stdout);
@@ -345,6 +405,17 @@ assert.equal(result.status, 0, result.stderr);
 output = JSON.parse(result.stdout);
 assert.equal(output.hookSpecificOutput.hookEventName, 'SubagentStart');
 
+// Catastrophic-backtracking matcher → must not hang the hook (#658); the
+// match is time-boxed and a timeout fails open and injects.
+result = run(
+  'ponytail-subagent.js',
+  { ...scopeEnv, PONYTAIL_SUBAGENT_MATCHER: '(a+)+$' },
+  JSON.stringify({ agent_type: 'a'.repeat(40) + '!' }),
+);
+assert.equal(result.status, 0, result.stderr);
+output = JSON.parse(result.stdout);
+assert.match(output.hookSpecificOutput.additionalContext, /PONYTAIL MODE ACTIVE — level: full/);
+
 // The default (no matcher) path must not depend on stdin: even with stdin
 // closed empty it injects synchronously, preserving the #252 behavior on
 // Windows where the piped JSON can be swallowed (#443).
@@ -487,6 +558,50 @@ try {
 } finally {
   if (prevXdgRev === undefined) delete process.env.XDG_CONFIG_HOME; else process.env.XDG_CONFIG_HOME = prevXdgRev;
   if (prevEnvModeRev === undefined) delete process.env.PONYTAIL_DEFAULT_MODE; else process.env.PONYTAIL_DEFAULT_MODE = prevEnvModeRev;
+}
+
+// Normal path stays fast: 'end' exits explicitly, so the (now ref'd) fallback
+// timer never adds its full 1000ms to a prompt that does reach EOF.
+{
+  const t0 = Date.now();
+  const r = run('ponytail-mode-tracker.js', codexEnv, JSON.stringify({ prompt: 'hi' }));
+  assert.equal(r.status, 0, r.stderr);
+  const elapsed = Date.now() - t0;
+  assert.ok(elapsed < 800, `normal path took ${elapsed}ms; ref'd fallback timer is delaying EOF exits`);
+}
+
+// #790: when stdin never emits 'end' (the Windows PowerShell wrapper can
+// swallow the piped JSON, #443), the hook must still exit on its own via the
+// 1000ms fallback timer — not hang until the host's external watchdog kills
+// it. An unref'd timer never fired in that state on Windows (a ref'd stdin
+// keeps the loop alive and the unref'd timer is never scheduled), so the
+// fallback was dead code exactly where it was needed. The timer is now ref'd;
+// the normal 'end' path exits explicitly (checked above) so the ref'd timer
+// adds no latency. spawnSync's timeout acts as the watchdog: status null /
+// SIGTERM means the hook hung past 2500ms instead of exiting on its 1s
+// fallback. The unref starvation itself is Windows-only (a POSIX pipe lets the
+// unref'd timer fire), so the ref'd-timer contract is also asserted
+// statically below.
+{
+  const hangHome = path.join(temp, 'hang-home');
+  fs.mkdirSync(hangHome, { recursive: true });
+  const hangEnv = { HOME: hangHome, USERPROFILE: hangHome, CLAUDE_CONFIG_DIR: hangHome };
+  for (const script of ['ponytail-mode-tracker.js', 'ponytail-subagent.js']) {
+    const r = spawnSync(process.execPath, [path.join(root, 'hooks', script)], {
+      env: { ...process.env, ...hangEnv },
+      timeout: 2500,
+      encoding: 'utf8',
+    });
+    assert.notEqual(r.status, null, `${script} never exited on its fallback with open stdin (#790)`);
+    assert.equal(r.status, 0, `${script} exited non-zero on its fallback (#790): ${r.stderr}`);
+    assert.ok(r.signal === null || r.signal === undefined, `${script} was watchdog-killed; 1s fallback did not fire (#790)`);
+
+    const src = fs.readFileSync(path.join(root, 'hooks', script), 'utf8');
+    assert.ok(
+      !src.includes('.unref('),
+      `${script} fallback timer must stay ref'd (#790): an unref'd timer never fires while a stuck ref'd stdin keeps the loop alive on Windows`,
+    );
+  }
 }
 
 // #736: /ponytail-review is a one-shot skill, not a session level. Persisting
