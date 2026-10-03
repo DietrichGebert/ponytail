@@ -156,7 +156,7 @@ def _git_snapshot(workdir):
     """Commit the seeded repo so we can diff exactly what the agent changes."""
     _git(workdir, "init", "-q")
     _git(workdir, "add", "-A")
-    _git(workdir, "-c", "user.email=bench@local", "-c", "user.name=bench",
+    _git(workdir, "-c", "commit.gpgsign=false", "-c", "user.email=bench@local", "-c", "user.name=bench",
          "commit", "-q", "-m", "base", "--no-verify")
 
 _SKIP_DIFF = ("-lock", ".lock", ".gen.ts", "lock.json", "routeTree.gen")
