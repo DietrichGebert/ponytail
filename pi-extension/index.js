@@ -36,11 +36,13 @@ export function resolveSessionMode(entries, fallbackMode = DEFAULT_MODE) {
   return fallback;
 }
 
-export function parsePonytailCommand(text, defaultMode = DEFAULT_MODE) {
+export function parsePonytailCommand(text, defaultMode = DEFAULT_MODE, currentMode = null) {
   const fallback = normalizePersistedMode(defaultMode) || DEFAULT_MODE;
   const normalizedText = String(text || "").trim().toLowerCase();
 
   if (!normalizedText) {
+    // Bare /ponytail switches ponytail on, or reports the level when it already is (#639).
+    if (currentMode && currentMode !== "off") return { type: "status" };
     return { type: "set-mode", mode: fallback === "off" ? "full" : fallback };
   }
 
@@ -114,7 +116,7 @@ export default function ponytailExtension(pi) {
   pi.registerCommand("ponytail", {
     description: PONYTAIL_COMMAND_DESCRIPTION,
     handler: async (args, ctx) => {
-      const parsed = parsePonytailCommand(args, configuredDefaultMode);
+      const parsed = parsePonytailCommand(args, configuredDefaultMode, currentMode);
 
       if (parsed.type === "status") {
         ctx?.ui?.notify?.(`Ponytail: current ${currentMode} • default ${configuredDefaultMode}`, "info");
@@ -202,10 +204,27 @@ export default function ponytailExtension(pi) {
   });
 
   pi.on("before_agent_start", async (event) => {
-    if (!currentMode || currentMode === "off") return;
+    if (!currentMode || currentMode === "off") {
+      // Clear a stale section when the mode is off so a previous turn does not linger (#953).
+      if (event?.systemPromptOptions?.sections) delete event.systemPromptOptions.sections.ponytail;
+      return;
+    }
+    const instructions = getPonytailInstructions(currentMode);
+    // Prefer structured sections so Pi can keep the cached prefix when other
+    // extensions change their own section (#953). Fall back to replacement
+    // for older Pi versions without systemPromptOptions.sections.
+    const sections = event?.systemPromptOptions?.sections;
+    if (sections && typeof sections === "object") {
+      sections.ponytail = instructions;
+      return;
+    }
+    // OMP passes the system prompt as an array of parts; keep it one (#776).
+    if (Array.isArray(event?.systemPrompt)) {
+      return { systemPrompt: [...event.systemPrompt, instructions] };
+    }
     // Guard a null/undefined event or a missing systemPrompt: don't crash, and
     // don't prepend the literal string "undefined" to the prompt (#439, #440).
     const base = event?.systemPrompt ? `${event.systemPrompt}\n\n` : "";
-    return { systemPrompt: `${base}${getPonytailInstructions(currentMode)}` };
+    return { systemPrompt: `${base}${instructions}` };
   });
 }

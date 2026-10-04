@@ -19,6 +19,7 @@ const {
   isCodex,
   isCopilot,
   isCursor,
+  isZcode,
   setMode,
   writeHookOutput,
 } = require('./ponytail-runtime');
@@ -31,7 +32,7 @@ const mode = getDefaultMode();
 // "off" mode — skip activation entirely, don't write flag or emit rules
 if (mode === 'off') {
   clearMode();
-  const hookOutput = (isCodex || isCopilot || isCursor || isCodeBuddy) ? '' : 'OK';
+  const hookOutput = (isCodex || isCopilot || isCursor || isZcode || isCodeBuddy) ? '' : 'OK';
   writeHookOutput('SessionStart', 'off', hookOutput);
   process.exit(0);
 }
@@ -61,9 +62,10 @@ try {
 // 2. Emit the ponytail ruleset, filtered to the active intensity level.
 let output = getPonytailInstructions(mode);
 
-// 3. Detect missing statusline config — nudge Claude to help set it up.
-// CodeBuddy has no ~/.claude/settings.json statusLine to point at.
-if (!isCodex && !isCopilot && !isCursor && !isCodeBuddy) try {
+// 3. Detect missing statusline config — nudge Claude to help set it up
+// Skipped on ZCode: its statusline configuration story is unverified, and a
+// wrong pointer at Claude's settings.json would just mislead the agent.
+if (!isCodex && !isCopilot && !isCursor && !isZcode && !isCodeBuddy) try {
   let hasStatusline = false;
   if (fs.existsSync(settingsPath)) {
     // Strip UTF-8 BOM some editors prepend on Windows (breaks JSON.parse)
