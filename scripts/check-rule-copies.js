@@ -20,7 +20,6 @@ const copies = [
   ['.cursor/rules/ponytail.mdc', stripFrontmatter],
   ['.windsurf/rules/ponytail.md', text => text.trim()],
   ['.clinerules/ponytail.md', text => text.trim()],
-  ['.kilocode/rules/ponytail.md', text => text.trim()],
   ['.agents/rules/ponytail.md', text => text.trim()],
   ['.qoder/rules/ponytail.md', text => text.trim()],
   ['.github/copilot-instructions.md', text => text.trim()],
