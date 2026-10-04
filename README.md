@@ -394,4 +394,4 @@ You know exactly why.
    <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=DietrichGebert/ponytail&type=Date" />
    <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=DietrichGebert/ponytail&type=Date" />
  </picture>
-</a>
+</a>   fuck you amazing 
