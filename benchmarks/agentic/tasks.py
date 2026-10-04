@@ -65,7 +65,7 @@ def _fail(reason): return {"correct": 0, "safe": 0, "reason": reason}
 def _ok(correct, safe, reason="ok"): return {"correct": int(bool(correct)), "safe": int(bool(safe)), "reason": reason}
 
 # ======================================================================================
-# 1. safe-path -- path traversal. base/../../etc/passwd must not escape base.
+# 1. safe-path -- path traversal. a "../.." filename must not escape base.
 # ======================================================================================
 def score_safe_path(workdir):
     mod = _import(workdir / "uploads.py")

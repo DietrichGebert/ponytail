@@ -24,6 +24,13 @@ function removeIfExists(filePath, label) {
 
 removeIfExists(path.join(getClaudeDir(), '.ponytail-active'), 'mode flag');
 removeIfExists(path.join(os.homedir(), '.cursor', '.ponytail-active'), 'Cursor mode flag');
+for (const dir of [path.join(getClaudeDir(), 'ponytail-modes'), path.join(os.homedir(), '.cursor', 'ponytail-modes'), path.join(process.env.CODEBUDDY_CONFIG_DIR || path.join(os.homedir(), '.codebuddy'), 'ponytail-modes')]) {
+  if (fs.existsSync(dir)) {
+    fs.rmSync(dir, { recursive: true });
+    console.log(`Removed per-project mode flags: ${dir}`);
+  }
+}
+removeIfExists(path.join(process.env.CODEBUDDY_CONFIG_DIR || path.join(os.homedir(), '.codebuddy'), '.ponytail-active'), 'CodeBuddy mode flag');
 removeIfExists(getConfigPath(), 'config file');
 
 // Cursor hooks (#817): drop only ponytail's entries from ~/.cursor/hooks.json,

@@ -27,8 +27,6 @@ Tags:
 - `yagni:` abstraction with one implementation, config nobody sets, layer with one caller.
 - `shrink:` same logic, fewer lines. Show the shorter form.
 
-Search the same repo for an existing equivalent before flagging or accepting
-a new helper — rung 2 of the ladder, checked after the fact.
 
 ## Examples
 

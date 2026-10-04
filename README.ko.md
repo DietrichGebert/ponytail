@@ -114,7 +114,7 @@ ponytail이라면:
 
 ponytail이 당신에게 요구할 수고의 최대치:
 
-Claude Code와 Codex 플러그인은 자그마한 Node.js 라이프사이클 훅 두 개를 돌리니, `node`가 PATH에 잡혀 있어야 한다(Nix/nvm 사용자라면 비대화형 셸의 PATH에 있어야 한다). 없어도 스킬은 멀쩡히 돌아간다. 다만 늘 켜져 있던 자동 활성화가 매 프롬프트마다 에러를 뱉는 대신 조용히 비활성으로 남을 뿐이다.
+Claude Code와 Codex 플러그인은 자그마한 Node.js 라이프사이클 훅 두 개를 돌리니, `node`가 PATH에 잡혀 있어야 한다(Nix/nvm 사용자라면 비대화형 셸의 PATH에 있어야 한다). 없어도 스킬은 멀쩡히 돌아가지만, 훅이 실행될 때마다 무해한 `node: command not found` 에러가 뜬다. Node를 설치하거나 그 PATH에 넣으면 사라진다.
 
 ### Claude Code
 
@@ -172,18 +172,20 @@ pi install git:github.com/DietrichGebert/ponytail
 `opencode.json`에 다음을 더한다:
 
 ```json
-{ "plugin": ["@dietrichgebert/ponytail"] }
+{ "plugins": ["@dietrichgebert/ponytail"] }
 ```
 
 체크아웃에서 직접 돌려도 된다(플러그인이 `hooks/`와 `skills/`를 그대로 쓴다):
 
 ```json
-{ "plugin": ["./.opencode/plugins/ponytail.mjs"] }
+{ "plugins": ["./.opencode/plugins"] }
 ```
 
 매 턴마다 지금 레벨의 룰셋을 주입하고, `/ponytail` 명령들을 붙여 준다([Commands](#commands) 참고). OpenCode는 이 저장소의 `AGENTS.md`도 알아서 불러오니, 플러그인이 없어도 규칙은 살아 있다. 플러그인은 `lite/full/ultra/off` 레벨을 얹어 준다.
 
-`./` 경로는 프로젝트의 `opencode.json`을 기준으로 풀린다. 체크아웃 하나를 여러 프로젝트에서 같이 쓰려면, 대신 `.mjs`의 절대 경로를 가리키면 된다(그 파일은 제 위치를 기준으로 `hooks/`와 `skills/`를 찾는다).
+OpenCode 2 전용이다. `./` 경로는 프로젝트의 `opencode.json`을 기준으로 풀린다. 체크아웃 하나를 여러 프로젝트에서 같이 쓰려면, 대신 그 체크아웃의 `.opencode/plugins` 디렉터리 절대 경로를 가리키면 된다. `plugins` 항목은 **파일**이 아니라 **디렉터리**를 가리켜야 한다. OpenCode 2는 `ponytail.mjs` 파일 경로를 `configured plugin path must be a directory`로 거부한다. 이 저장소를 OpenCode 2로 열면 항목이 아예 필요 없다. `.opencode/plugins/index.js`를 스스로 불러오기 때문이다.
+
+OpenCode 1은 예전 `plugin` 키를 쓴다: `{ "plugin": ["@dietrichgebert/ponytail"] }`. 체크아웃에서 돌릴 때는 파일 경로를 쓴다: `{ "plugin": ["./.opencode/plugins/ponytail.mjs"] }`.
 
 ### Gemini CLI
 
@@ -255,18 +257,6 @@ enabled = ["ponytail"]
 
 체크아웃의 `AGENTS.md`만으로도 지시문 전용 모드는 된다. 제거: `grok plugin uninstall ponytail`.
 
-### Goose
-
-Goose(AAIF / Linux Foundation)는 ponytail의 형식을 Open Plugins 플러그인으로 그대로 이해한다: 저장소 루트에 이미 goose가 기대하는 `plugin.json`과 `skills/` 트리가 있다.
-
-```bash
-goose plugin install https://github.com/DietrichGebert/ponytail.git
-```
-
-이 명령은 저장소를 `~/.agents/plugins/ponytail/`로 클론하고 여섯 개의 스킬을 이름공간이 붙은 슬래시 명령(`/ponytail`, `/ponytail-review`, ...)으로 가져온다. `--auto-update`를 붙이면 goose가 이 저장소에서 스킬을 자동으로 갱신한다.
-
-상시 규칙은 [`AGENTS.md`](AGENTS.md)의 컴팩트 규칙을 `~/.agents/AGENTS.md`(전역) 또는 프로젝트의 `AGENTS.md`에 덧붙인다 — goose는 요청마다 `AGENTS.md`와 `.goosehints`를 컨텍스트 파일로 읽으므로 복사 자체가 활성화 전부다. `goose plugin install` 없이 쓰는 수동 방법: 스킬 폴더를 `~/.agents/skills/`(또는 프로젝트 안의 `.agents/skills/`)로 복사하면 같은 방식으로 발견된다. 등록할 라이프사이클 훅도 모드 플래그도 없다; `/ponytail lite|full|ultra|off`는 스킬 자체로 세션 단위 레벨을 정한다. 제거: 복사한 폴더와 덧붙인 규칙을 삭제.
-
 ### Cursor
 
 ```bash
@@ -296,14 +286,14 @@ Codex 확장을 쓰는 VS Code는 이 저장소가 함께 싣는 `AGENTS.md`를 
 
 | 명령 | 하는 일 |
 |---------|--------------|
-| `/ponytail [lite \| full \| ultra \| off]` | 강도를 정하거나, 끈다. 인수가 없으면 지금 레벨을 알려 준다. |
+| `/ponytail [lite \| full \| ultra \| off]` | 강도를 정하거나, 끈다. 인수가 없으면, 꺼져 있을 때는 기본 레벨로 켜고, 켜져 있으면 지금 레벨을 알려 준다. |
 | `/ponytail-review` | 지금 diff를 과잉 구현 관점에서 훑고, 삭제 목록을 돌려준다. |
 | `/ponytail-audit` | diff만이 아니라 저장소 전체를 과잉 구현 관점에서 감사한다. |
 | `/ponytail-debt` | 미뤄 둔 `ponytail:` 간소화들을 장부로 모아, "나중에"가 "영영"이 되지 않게 한다. |
 | `/ponytail-gain` | 벤치마크로 잰 효과 스코어보드(코드 절감, 비용 절감, 속도 향상)를 보여 준다. |
 | `/ponytail-help` | 위 명령들의 빠른 참조. |
 
-명령들은 스킬을 지원하는 호스트가 있어야 돈다(Claude Code, Codex, Devin CLI, OpenCode, Gemini, pi, Swival). Codex에선 스킬이라 `@`로 부른다(`@ponytail-review`). [훅](#cursor)을 쓰는 Cursor는 `/ponytail` 레벨 전환만 되고, 일반 메시지로 입력한다. 지시문 전용 어댑터(Cursor 규칙 파일, Windsurf, Cline, Copilot, Kiro, Antigravity)는 명령 없이 늘 켜진 룰셋만 불러온다.
+명령들은 스킬을 지원하는 호스트가 있어야 돈다(Claude Code, Codex, Devin CLI, OpenCode, Gemini, pi, Swival). Codex CLI와 IDE 확장에서는 스킬 이름 앞에 `$`를 붙여 부른다(예: `$ponytail-review`). [훅](#cursor)을 쓰는 Cursor는 `/ponytail` 레벨 전환만 되고, 일반 메시지로 입력한다. 지시문 전용 어댑터(Cursor 규칙 파일, Windsurf, Cline, Copilot, Kiro, Antigravity)는 명령 없이 늘 켜진 룰셋만 불러온다.
 
 ## Development
 
