@@ -43,13 +43,13 @@ function identifyTask(task) {
   return null;
 }
 
-// Run a command, return { ok, stderr }.
+// Run a command, return { ok, stdout, stderr }.
 function exec(cmd, opts = {}) {
   try {
-    execSync(cmd, { timeout: correctnessTimeoutMs(), encoding: 'utf8', stdio: 'pipe', ...opts });
-    return { ok: true, stderr: '' };
+    const stdout = execSync(cmd, { timeout: correctnessTimeoutMs(), encoding: 'utf8', stdio: 'pipe', ...opts });
+    return { ok: true, stdout, stderr: '' };
   } catch (e) {
-    return { ok: false, stderr: (e.stderr || e.message || '').slice(0, 500) };
+    return { ok: false, stdout: e.stdout || '', stderr: (e.stderr || e.message || '').slice(0, 500) };
   }
 }
 
@@ -74,10 +74,15 @@ function tmpFile(ext, content) {
   return p;
 }
 
+function completionMarker() {
+  return `__PONYTAIL_CORRECTNESS_COMPLETE_${Date.now()}_${Math.random().toString(36).slice(2)}__`;
+}
+
 // --- Per-task test harnesses ---
 
 const CHECKS = {
   email(blocks) {
+    const marker = completionMarker();
     const code = blocks.find((b) => b.lang === 'python' || b.lang === 'py' || (!b.lang && b.code.includes('def ')));
     if (!code) return { pass: false, reason: 'No Python code block found' };
 
@@ -127,15 +132,19 @@ if failures:
     print("FAIL: " + "; ".join(failures))
     sys.exit(1)
 print("PASS")
+print("${marker}")
 `;
     const f = tmpFile('.py', harness);
     const result = exec(`${python()} "${f}"`);
     fs.unlinkSync(f);
-    if (result.ok) return { pass: true, reason: 'Email validator passes all checks' };
+    if (result.ok && result.stdout.includes(marker)) {
+      return { pass: true, reason: 'Email validator passes all checks' };
+    }
     return { pass: false, reason: result.stderr || 'Email validator failed' };
   },
 
   debounce(blocks) {
+    const marker = completionMarker();
     const code = blocks.find((b) => b.lang === 'javascript' || b.lang === 'js' || (!b.lang && (b.code.includes('function') || b.code.includes('=>'))));
     if (!code) return { pass: false, reason: 'No JavaScript code block found' };
 
@@ -171,16 +180,20 @@ setTimeout(() => {
     process.exit(1);
   }
   console.log("PASS");
+  console.log("${marker}");
 }, 120);
 `;
     const f = tmpFile('.mjs', harness);
     const result = exec(`node "${f}"`);
     fs.unlinkSync(f);
-    if (result.ok) return { pass: true, reason: 'Debounce passes all checks' };
+    if (result.ok && result.stdout.includes(marker)) {
+      return { pass: true, reason: 'Debounce passes all checks' };
+    }
     return { pass: false, reason: result.stderr || 'Debounce failed' };
   },
 
   csv(blocks) {
+    const marker = completionMarker();
     const code = blocks.find((b) => b.lang === 'python' || b.lang === 'py' || (!b.lang && b.code.includes('csv') && b.code.includes('sum')));
     if (!code) return { pass: false, reason: 'No Python code block found' };
 
@@ -217,6 +230,7 @@ sys.stdout = _stdout
 import re
 if re.search(r'(?<![\\d])351(?:\\.0)?(?![\\d])', output):
     print("PASS")
+    print("${marker}")
 else:
     # Try running it differently: maybe it defines a function
     print("FAIL: output was: " + repr(output[:200]))
@@ -226,7 +240,7 @@ else:
     const result = exec(`${python()} "${f}"`);
     try { fs.unlinkSync(f); } catch (e) {}
     try { fs.unlinkSync(csvPath); } catch (e) {}
-    if (result.ok) return { pass: true, reason: 'CSV sum produces correct result (351)' };
+    if (result.ok && result.stdout.includes(marker)) return { pass: true, reason: 'CSV sum produces correct result (351)' };
     return { pass: false, reason: result.stderr || 'CSV sum failed' };
   },
 

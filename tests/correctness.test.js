@@ -219,3 +219,90 @@ test('unknown task is gracefully skipped', () => {
   assert.equal(result.score, 1);
   assert.match(result.reason, /unknown task/i);
 });
+
+test('email: top-level process exit before assertions fails', () => {
+  const result = check(
+    'Write me a Python function that validates email addresses.',
+    'python',
+    `import sys
+sys.exit(0)`,
+  );
+  assert.equal(result.pass, false);
+  assert.equal(result.score, 0);
+});
+
+test('debounce: process exit before assertions fails', () => {
+  const result = check(
+    'Write a JavaScript debounce function.',
+    'javascript',
+    `process.exit(0)`,
+  );
+
+  assert.equal(result.pass, false);
+  assert.equal(result.score, 0);
+});
+
+test('csv: top-level process exit before assertions fails', () => {
+  const result = check(
+    'Write Python code to read a CSV file and calculate the sum of the amount column.',
+    'python',
+    `import sys
+sys.exit(0)`,
+  );
+
+  assert.equal(result.pass, false);
+  assert.equal(result.score, 0);
+});
+
+test('email: validator exits successfully before assertions complete', () => {
+  const result = check(
+    'Write me a Python function that validates email addresses.',
+    'python',
+    `import sys
+
+def validate_email(value):
+    sys.exit(0)`,
+  );
+
+  assert.equal(result.pass, false);
+  assert.equal(result.score, 0);
+});
+
+test('email: generated code printing PASS does not satisfy completion', () => {
+  const result = check(
+    'Write me a Python function that validates email addresses.',
+    'python',
+    `print("PASS")`,
+  );
+
+  assert.equal(result.pass, false);
+  assert.equal(result.score, 0);
+});
+
+test('email: diagnostic output still passes with completion marker', () => {
+  const result = check(
+    'Write me a Python function that validates email addresses.',
+    'python',
+    `def validate_email(value):
+  print("checking:", value)
+  return "@" in value and not value.startswith("@") and "." in value.split("@")[-1]`,
+  );
+
+  assert.equal(result.pass, true);
+  assert.equal(result.score, 1);
+});
+
+test('debounce: callback exits successfully before assertions complete', () => {
+  const result = check(
+    'Write a JavaScript debounce function.',
+    'javascript',
+    `function debounce(fn, delay) {
+  return function () {
+    process.exit(0);
+  };
+}`,
+  );
+
+  assert.equal(result.pass, false);
+  assert.equal(result.score, 0);
+});
