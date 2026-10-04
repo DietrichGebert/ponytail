@@ -19,7 +19,7 @@
   <img src="https://img.shields.io/github/stars/DietrichGebert/ponytail?style=flat-square&color=111111&label=stars" alt="Stars">
   <img src="https://img.shields.io/github/v/release/DietrichGebert/ponytail?style=flat-square&color=111111&label=release" alt="Release">
   <img src="https://img.shields.io/npm/v/@dietrichgebert/ponytail?style=flat-square&color=111111&label=npm" alt="npm">
-  <img src="https://img.shields.io/badge/works%20with-20%20agents-111111?style=flat-square" alt="Works with 20 agents">
+  <img src="https://img.shields.io/badge/works%20with-21%20agents-111111?style=flat-square" alt="Works with 21 agents">
   <img src="https://img.shields.io/badge/license-MIT-111111?style=flat-square" alt="MIT license">
 </p>
 
@@ -222,6 +222,12 @@ agy plugin install https://github.com/DietrichGebert/ponytail
 
 It reuses this repo's `gemini-extension.json`. One difference: Antigravity converts the `/ponytail` commands into skills, so you type them into the chat (e.g. `/ponytail-review` as a message) instead of picking them from a slash menu. Until the migration completes (around June 18, 2026), `gemini extensions install` still works too. To run it as an always-on rule instead, drop the ruleset into `.agents/rules/`.
 
+### ZCode
+
+In ZCode open **Plugin Marketplace → Add → Add Plugin Marketplace**, paste the repo URL `https://github.com/DietrichGebert/ponytail`, then under **Personal → ponytail → ponytail → Install**. Restart ZCode so the six ponytail skills register.
+
+ZCode reads the repo as a plugin marketplace and loads the skills through the manifest at [`.zcode-plugin/plugin.json`](.zcode-plugin/plugin.json), which points at the shared `skills/` directory. The skills auto-trigger from their descriptions on phrases like "be lazy", "yagni", or "ponytail"; level switching (`lite | full | ultra | off`) works the same way, typed as a plain message. The Claude/Codex lifecycle hooks are not wired: ZCode's hook schema and event names differ. Uninstall from **Settings → Plugin Management → Installed**.
+
 ### Hermes Agent
 
 ```bash
@@ -323,6 +329,7 @@ Which files map to which agent: [Agent portability](docs/agent-portability.md).
 | Devin CLI | `devin plugins remove ponytail` |
 | Grok Build | `grok plugin uninstall ponytail` |
 | Pi agent | `pi uninstall ponytail` |
+| ZCode | **Settings → Plugin Management → Installed** → ponytail → Uninstall |
 | Cursor hooks | `node scripts/cursor-hooks.js uninstall` (add `--project` for a project-level install); removes only ponytail's entries from `hooks.json` |
 | Cursor rule / Windsurf / Cline / Qoder / etc. | Delete the copied rule file |
 
