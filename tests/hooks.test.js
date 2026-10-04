@@ -87,25 +87,29 @@ let result;
 // back into a POSIX path, so both shapes must load the script (#646).
 const roots = [root, root.split(path.sep).join('\\')];
 
-for (const command of collectManifestCommands('hooks/claude-codex-hooks.json', 'command')) {
-  for (const pluginRoot of roots) {
-    result = runShell(command, { ...process.env, HOME: home, USERPROFILE: home, CLAUDE_PLUGIN_ROOT: pluginRoot });
-    assert.equal(result.status, 0, result.stderr);
-    assert.equal(result.stderr, '', command);
+// Both loops run the commands through /bin/sh, which native Windows doesn't
+// have; hooks-windows.test.js covers the PowerShell side there (#774).
+if (process.platform !== 'win32') {
+  for (const command of collectManifestCommands('hooks/claude-codex-hooks.json', 'command')) {
+    for (const pluginRoot of roots) {
+      result = runShell(command, { ...process.env, HOME: home, USERPROFILE: home, CLAUDE_PLUGIN_ROOT: pluginRoot });
+      assert.equal(result.status, 0, result.stderr);
+      assert.equal(result.stderr, '', command);
+    }
   }
-}
 
-// Copilot CLI has a separate bash field, so it can exit 0 without node (#645).
-// `|| exit 0` also hides a broken hook, so the with-node run must leave stderr empty.
-for (const command of collectManifestCommands('hooks/copilot-hooks.json', 'bash')) {
-  for (const pluginRoot of roots) {
-    const env = { HOME: home, USERPROFILE: home, PLUGIN_ROOT: pluginRoot, COPILOT_PLUGIN_DATA: path.join(temp, 'copilot-manifest-data') };
-    result = runShell(command, { ...process.env, ...env });
-    assert.equal(result.status, 0, result.stderr);
-    assert.equal(result.stderr, '', command);
+  // Copilot CLI has a separate bash field, so it can exit 0 without node (#645).
+  // `|| exit 0` also hides a broken hook, so the with-node run must leave stderr empty.
+  for (const command of collectManifestCommands('hooks/copilot-hooks.json', 'bash')) {
+    for (const pluginRoot of roots) {
+      const env = { HOME: home, USERPROFILE: home, PLUGIN_ROOT: pluginRoot, COPILOT_PLUGIN_DATA: path.join(temp, 'copilot-manifest-data') };
+      result = runShell(command, { ...process.env, ...env });
+      assert.equal(result.status, 0, result.stderr);
+      assert.equal(result.stderr, '', command);
 
-    result = runShell(command, { ...env, PATH: '' });
-    assert.equal(result.status, 0, result.stderr);
+      result = runShell(command, { ...env, PATH: '' });
+      assert.equal(result.status, 0, result.stderr);
+    }
   }
 }
 
