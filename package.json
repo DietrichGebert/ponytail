@@ -29,6 +29,7 @@
     ".qoder/",
     ".qoder-plugin/",
     "pi-extension/",
+    "scripts/install-muse-skills.js",
     "scripts/uninstall.js",
     "scripts/cursor-hooks.js",
     "assets/",
@@ -45,4 +46,3 @@
     "access": "public"
   }
 }
-

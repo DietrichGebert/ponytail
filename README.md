@@ -206,13 +206,13 @@ The Gemini adapter intentionally does not ship a root `hooks/hooks.json`: Gemini
 
 ### Muse Code CLI
 
-Muse Code loads the repo's `AGENTS.md` automatically when you run it from a Ponytail checkout. To install a skill for use across projects:
+From a Ponytail checkout, install all six skills for your Muse user:
 
 ```bash
-muse skills install ./skills/ponytail --scope user
+node scripts/install-muse-skills.js
 ```
 
-Install other skills the same way by replacing `ponytail` with `ponytail-review`, `ponytail-audit`, `ponytail-debt`, `ponytail-gain`, or `ponytail-help`. Muse Code exposes installed skills as slash commands. See [Muse Code skills](https://ai.developer.meta.com/docs/muse-code/extending#skills) and [project instructions](https://ai.developer.meta.com/docs/muse-code/configuration#agents-md).
+The script runs Muse's one-skill installer once per skill. For a one-off install, use `muse skills install ./skills/<name> --scope user`. Muse exposes installed skills as slash commands. See [Muse Code skills](https://ai.developer.meta.com/docs/muse-code/extending#skills) and [project instructions](https://ai.developer.meta.com/docs/muse-code/configuration#agents-md).
 
 ### Qoder
 
