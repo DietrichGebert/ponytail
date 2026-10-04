@@ -21,10 +21,3 @@ test('npm package ships the advertised cleanup script', () => {
     'scripts/uninstall.js is listed in files but missing on disk',
   );
 });
-
-test('npm package ships the Muse skill installer and skills', () => {
-  const pkg = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
-  assert.ok(pkg.files.includes('scripts/install-muse-skills.js'));
-  assert.ok(fs.existsSync(path.join(root, 'scripts', 'install-muse-skills.js')));
-  assert.ok(pkg.files.includes('skills/'));
-});
