@@ -12,6 +12,14 @@
 // re-parses the plugin root at all).
 //
 // The hook also has to point at a script that actually ships in hooks/.
+//
+// Issue #791: Claude Code on Windows dispatches shell-form hook `command`s
+// through a shell (Git Bash/PowerShell), which allocates a visible conhost
+// window on every hook firing. Claude's hook schema supports an `args` array
+// (exec form), so Claude gets its own hooks/claude-hooks.json with a bare
+// `node` command plus args — Windows then spawns node directly with no shell
+// and no flash. Codex keeps the shared shell-form hooks/claude-codex-hooks.json
+// because its hook schema has no `args` field.
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -22,11 +30,8 @@ const { spawn, execFileSync } = require('child_process');
 
 const root = path.join(__dirname, '..');
 const HOOKS_JSON = 'hooks/claude-codex-hooks.json';
+const CLAUDE_HOOKS_JSON = 'hooks/claude-hooks.json';
 const COPILOT_HOOKS_JSON = 'hooks/copilot-hooks.json';
-const HOST_PLUGIN_MANIFESTS = [
-  '.claude-plugin/plugin.json',
-  '.codex-plugin/plugin.json',
-];
 // PowerShell 5.1 rejects these POSIX shell guards when a host runs `command`.
 const POSIX_GUARD_SYNTAX = /\bcommand\s+-v\b|&&|\|\||>\/dev\/null|2>&1/;
 // Pull the hooks/<script> a command launches, so we can check it exists.
@@ -125,10 +130,76 @@ test('ponytail-mode-tracker self-exits when stdin never closes (no freeze)', asy
   assert.equal(code, 0, 'hook must exit cleanly when stdin never closes');
 });
 
-test('Claude and Codex manifests point at the shared host-specific hook config', () => {
-  for (const rel of HOST_PLUGIN_MANIFESTS) {
+test('Claude and Codex manifests point at a hooks config that ships (#791)', () => {
+  // Claude uses the exec-form config (no shell, no conhost flash on Windows);
+  // Codex keeps the shared shell-form config (its hook schema has no `args`).
+  const expected = {
+    '.claude-plugin/plugin.json': './hooks/claude-hooks.json',
+    '.codex-plugin/plugin.json': './hooks/claude-codex-hooks.json',
+  };
+  for (const [rel, hooks] of Object.entries(expected)) {
     const manifest = JSON.parse(fs.readFileSync(path.join(root, rel), 'utf8'));
-    assert.equal(manifest.hooks, `./${HOOKS_JSON}`, `${rel} must not rely on root hooks auto-discovery`);
+    assert.equal(manifest.hooks, hooks, `${rel} must not rely on root hooks auto-discovery`);
+    assert.ok(
+      fs.existsSync(path.join(root, hooks.replace(/^\.\//, ''))),
+      `${rel} points at a hooks config that must ship: ${hooks}`,
+    );
+  }
+});
+
+// Read inside each case so a missing/malformed file fails as a clean assertion,
+// not a load-time crash.
+function claudeCommandHooks() {
+  const config = JSON.parse(fs.readFileSync(path.join(root, CLAUDE_HOOKS_JSON), 'utf8'));
+  return Object.values(config.hooks)
+    .flat()
+    .flatMap((entry) => entry.hooks);
+}
+
+// Issue #791: exec-form hooks must carry the script in `args` with a bare
+// executable in `command` — no shell string. That is what lets Windows spawn
+// node directly (no conhost flash). A `command` containing whitespace would
+// silently fall back to shell-form dispatch and reintroduce the flash.
+test('claude-hooks.json uses exec form so Windows spawns node with no shell (#791)', () => {
+  const hooks = claudeCommandHooks();
+  assert.ok(hooks.length > 0, 'expected at least one Claude hook entry');
+  for (const hook of hooks) {
+    assert.doesNotMatch(hook.command, /\s/, `exec-form command must be a bare executable, not a shell string: ${hook.command}`);
+    assert.ok(Array.isArray(hook.args) && hook.args.length > 0, `exec-form hook must carry args: ${hook.command}`);
+  }
+});
+
+test('claude-hooks.json covers the same hook events as the shared config (#791)', () => {
+  const shared = JSON.parse(fs.readFileSync(path.join(root, HOOKS_JSON), 'utf8'));
+  const claude = JSON.parse(fs.readFileSync(path.join(root, CLAUDE_HOOKS_JSON), 'utf8'));
+  assert.deepEqual(
+    Object.keys(claude.hooks).sort(),
+    Object.keys(shared.hooks).sort(),
+    'Claude exec-form config must cover the same hook events as the shared config',
+  );
+});
+
+test('claude-hooks.json args point at scripts that ship in hooks/ (#791)', () => {
+  for (const hook of claudeCommandHooks()) {
+    for (const arg of hook.args) {
+      const match = arg.match(HOOK_SCRIPT);
+      assert.ok(match, `cannot find a hooks/ script in arg: ${arg}`);
+      const script = path.join(root, 'hooks', match[1]);
+      assert.ok(fs.existsSync(script), `args reference a missing hook script: ${match[1]}`);
+    }
+  }
+});
+
+// #824, exec-form edition: the ${CLAUDE_PLUGIN_ROOT} placeholder is substituted
+// by the host into an argv element, never parsed by a shell, so a hostile
+// install path cannot break out into shell text the way it could inside a
+// shell-form `command` string. Assert the args carry no shell syntax at all —
+// belt and braces on top of the argv immunity.
+test('claude-hooks.json args carry no shell syntax (#791, #824)', () => {
+  for (const hook of claudeCommandHooks()) {
+    for (const arg of hook.args) {
+      assert.doesNotMatch(arg, /;|`|\$\(|&&|\|\|/, `exec-form arg must not contain shell syntax: ${arg}`);
+    }
   }
 });
 
