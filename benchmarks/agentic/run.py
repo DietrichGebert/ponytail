@@ -150,6 +150,22 @@ def code_stats(workdir: Path, selfcheck_as_test: bool = False, exclude_fixture: 
             "src_loc": sum(_count(p, False) for p in src),    # code only
             "test_files": len(tst), "test_loc": test_loc}
 
+
+def workflow_cleanup_stats(workdir: Path):
+    """Every Python file admitted into the executable package is production source.
+
+    Filename-based test detection would hide helper_test.py or conftest.py even though
+    the CLI can import them. Only the separate tests/ tree is counted as tests.
+    """
+    package = workdir / "aisp" / "report_cleanup_aisp"
+    src = list(package.glob("*.py"))
+    tests = list((workdir / "tests").rglob("*.py"))
+    return {"files": len(src) + len(tests), "src_files": len(src),
+            "total_loc": sum(_count(p, True) for p in src),
+            "src_loc": sum(_count(p, False) for p in src),
+            "test_files": len(tests), "test_loc": sum(_count(p, True) for p in tests)}
+
+
 def _git(workdir, *args):
     return subprocess.run([shutil.which("git") or "git", *args], cwd=str(workdir),
                           capture_output=True, text=True)
@@ -243,7 +259,26 @@ def _selftest_scored_fixture():
         broken = score_workspace("workflow-cleanup", "baseline", "haiku", ws)
         ok = ok and broken["correct"] == 0 and broken["cleanup_delta"] is None
     print(f"{'ok ' if ok else 'XX '} scored_fixture normal score, rescore, and failure gate")
-    return 0 if ok else 1
+    failures = 0 if ok else 1
+    for name in ("helper_test.py", "conftest.py"):
+        with tempfile.TemporaryDirectory() as d:
+            run_dir = Path(d)
+            ws = run_dir / "workflow-cleanup__baseline__haiku__0"
+            shutil.copytree(fx, ws)
+            package = ws / "aisp" / "report_cleanup_aisp"
+            original = (package / "report.py").read_text(encoding="utf-8")
+            wrapper = f"from {Path(name).stem} import main\nimport sys\nraise SystemExit(main(sys.argv[1:]))\n"
+            (package / name).write_text(original, encoding="utf-8")
+            (package / "report.py").write_text(wrapper, encoding="utf-8")
+            live = score_workspace("workflow-cleanup", "baseline", "haiku", ws)
+            rescore(run_dir)
+            offline = json.loads((run_dir / "results.json").read_text(encoding="utf-8"))["results"][0]
+            expected = -sum(bool(line.strip()) for line in wrapper.splitlines())
+            ok = (live["correct"] == offline["correct"] == 1
+                  and live["cleanup_delta"] == offline["cleanup_delta"] == expected)
+            print(f"{'ok ' if ok else 'XX '} scored_fixture {name} production LOC in live and rescore")
+            failures += 0 if ok else 1
+    return failures
 
 def _selftest_plugin_dir():
     """Plugin-dir resolution must be portable: env override wins, and a missing install
@@ -317,7 +352,7 @@ def score_workspace(task_id, arm, model, workdir: Path):
         except Exception: pass
     task = TASKS[task_id]
     surgical = not task.get("open") and not task.get("fixture")
-    stats = (code_stats(workdir, exclude_fixture=False, include_private=True) if task.get("scored_fixture")
+    stats = (workflow_cleanup_stats(workdir) if task.get("scored_fixture")
              else git_diff_stats(workdir) if task.get("fixture")
              else code_stats(workdir, selfcheck_as_test=surgical))
     # open/explain tasks answer in the chat, not a file. If no source file was written, count the
@@ -331,7 +366,7 @@ def score_workspace(task_id, arm, model, workdir: Path):
         sc = task["score"](workdir)
     if task.get("scored_fixture"):
         fx = Path(__file__).resolve().parent / "fixtures" / task["fixture"]
-        seed_loc = code_stats(fx, exclude_fixture=False, include_private=True)["total_loc"]
+        seed_loc = workflow_cleanup_stats(fx)["total_loc"]
         def python_files(root):
             return {p.relative_to(root).as_posix(): p.read_bytes() for p in root.rglob("*.py")}
         stats["edited"] = python_files(workdir) != python_files(fx)

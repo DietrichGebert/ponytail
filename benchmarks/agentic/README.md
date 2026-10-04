@@ -54,16 +54,27 @@ minimal credentials. This task uses `dontAsk` with an exact `rm` allow rule for
 the retired file, equally across arms; other Bash calls are denied. Other tasks
 continue to disallow Bash.
 
+The offline reference proves that the scorer rejects a candidate missing the
+live `report.py`. It does not prove that a live agent independently chooses to
+retain that file: the permission policy only preapproves removal of
+`legacy_report.py` and may itself prevent a `report.py` deletion. Interpret
+live retention with permission denials in view. Measuring the agent's deletion
+choice would require equivalent narrow permissions for both candidate scripts
+in an isolated environment, with the permission behavior verified first.
+
 The scorer first compares the program and discovery index by JSON value (rejecting
 duplicate keys), protects the documentation, and limits edits to Python files. It
 then copies only the package into a fresh temporary directory and invokes the
 known CLI with fixed arguments, a stripped environment, and a timeout. It never
 interprets workflow commands or makes test files available to the CLI.
 `cleanup_delta` is seed production Python LOC minus
-retained production Python LOC, reported only for correct cells; an unchanged seed
-passes with zero cleanup. The `safe` field remains a legacy result field here and
-is not a separate security measurement. Model-produced Python must run in an
-isolated environment without host credentials or unneeded network access: a temp
+retained production Python LOC. Every `.py` file inside the executable package,
+including names such as `helper_test.py` and `conftest.py`, counts as production;
+only the separate `tests/` tree counts as tests. The metric is reported only for
+correct cells; an unchanged seed passes with zero cleanup. The `safe` field remains
+a legacy result field here and is not a separate security measurement.
+Model-produced Python must run in an isolated environment without host
+credentials or unneeded network access: a temp
 directory and timeout do not provide a sandbox.
 
 The fixture's contract was checked with `jsonschema` 4.26.0 against the
