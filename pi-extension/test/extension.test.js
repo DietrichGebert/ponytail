@@ -44,8 +44,10 @@ function withTempConfig(fn) {
   const tempConfigHome = mkdtempSync(join(tmpdir(), "ponytail-test-"));
   const previousXdg = process.env.XDG_CONFIG_HOME;
   const previousHide = process.env.PONYTAIL_HIDE_STATUS;
+  const previousDefault = process.env.PONYTAIL_DEFAULT_MODE;
   process.env.XDG_CONFIG_HOME = tempConfigHome;
   delete process.env.PONYTAIL_HIDE_STATUS;
+  delete process.env.PONYTAIL_DEFAULT_MODE;
 
   return Promise.resolve()
     .then(fn)
@@ -54,6 +56,8 @@ function withTempConfig(fn) {
       else process.env.XDG_CONFIG_HOME = previousXdg;
       if (previousHide === undefined) delete process.env.PONYTAIL_HIDE_STATUS;
       else process.env.PONYTAIL_HIDE_STATUS = previousHide;
+      if (previousDefault === undefined) delete process.env.PONYTAIL_DEFAULT_MODE;
+      else process.env.PONYTAIL_DEFAULT_MODE = previousDefault;
       rmSync(tempConfigHome, { recursive: true, force: true });
     });
 }
@@ -104,6 +108,25 @@ test("before_agent_start guards missing event and missing systemPrompt (#439, #4
   assert.ok(withBase.systemPrompt.includes("PONYTAIL MODE ACTIVE"));
 }));
 
+test("before_agent_start keeps OMP prompt parts and uses Pi sections (#776, #953)", async () => withTempConfig(async () => {
+  const { commands, events } = createPiHarness();
+  const ctx = createCommandContext();
+  await events.get("session_start")({ reason: "startup" }, ctx);
+
+  // OMP: systemPrompt is an array of parts; they must stay separate, not comma-joined.
+  const omp = await events.get("before_agent_start")({ systemPrompt: ["A", "B"] }, ctx);
+  assert.deepEqual(omp.systemPrompt.slice(0, 2), ["A", "B"]);
+  assert.match(omp.systemPrompt[2], /PONYTAIL MODE ACTIVE/);
+
+  // Pi >= 0.86: write a section and leave the prompt alone; off removes it again.
+  const event = { systemPrompt: "BASE", systemPromptOptions: { sections: {} } };
+  assert.equal(await events.get("before_agent_start")(event, ctx), undefined);
+  assert.match(event.systemPromptOptions.sections.ponytail, /PONYTAIL MODE ACTIVE/);
+  await commands.get("ponytail").handler("off", ctx);
+  await events.get("before_agent_start")(event, ctx);
+  assert.equal(event.systemPromptOptions.sections.ponytail, undefined);
+}));
+
 test("session_start restores latest persisted mode", async () => withTempConfig(async () => {
   const { events } = createPiHarness();
   const ctx = createCommandContext({
@@ -118,6 +141,44 @@ test("session_start restores latest persisted mode", async () => withTempConfig(
   const result = await events.get("before_agent_start")({ systemPrompt: "BASE" }, ctx);
 
   assert.ok(result.systemPrompt.includes("lite"));
+}));
+
+test("session_tree restores the selected branch's mode without persisting it", async () => withTempConfig(async () => {
+  const { events, commands, appendedEntries } = createPiHarness();
+  const lite = { type: "custom", customType: "ponytail-mode", data: { mode: "lite" } };
+  const off = { type: "custom", customType: "ponytail-mode", data: { mode: "off" } };
+  let branch = [lite, off];
+  const statusWrites = [];
+  const notifications = [];
+  const ctx = createCommandContext({
+    sessionManager: { getBranch: () => branch, getEntries: () => [lite, off] },
+    ui: {
+      notify: (text) => notifications.push(text),
+      setStatus: (_key, text) => statusWrites.push(text),
+      theme: { fg: (_color, text) => text },
+    },
+  });
+
+  await events.get("session_start")({ reason: "resume" }, ctx);
+  await commands.get("ponytail").handler("default ultra", ctx);
+  assert.equal(await events.get("before_agent_start")({ systemPrompt: "BASE" }, ctx), undefined);
+  const notificationCount = notifications.length;
+
+  for (const [entries, mode] of [[[lite], "lite"], [[lite, off], "off"], [[], "ultra"]]) {
+    branch = entries;
+    await events.get("session_tree")?.({ type: "session_tree" }, ctx);
+    const result = await events.get("before_agent_start")({ systemPrompt: "BASE" }, ctx);
+    if (mode === "off") {
+      assert.equal(result, undefined);
+      assert.equal(statusWrites.at(-1), undefined);
+    } else {
+      assert.ok(result?.systemPrompt.startsWith(`BASE\n\nPONYTAIL MODE ACTIVE — level: ${mode}\n`), `expected ${mode} instructions`);
+      assert.ok(statusWrites.at(-1).includes(mode.toUpperCase()));
+    }
+  }
+
+  assert.deepEqual(appendedEntries, [], "navigation must not append a new mode entry");
+  assert.equal(notifications.length, notificationCount, "navigation must not repeat the startup toast");
 }));
 
 test("skill alias commands delegate to Pi skill commands", async () => {
@@ -136,6 +197,18 @@ test("skill alias commands delegate to Pi skill commands", async () => {
     "/skill:ponytail-debt",
     "/skill:ponytail-gain",
     "/skill:ponytail-help",
+  ]);
+});
+
+test("skill alias commands expand the skill and forward their arguments", async () => {
+  const { commands, sentUserMessages } = createPiHarness();
+
+  await commands.get("ponytail-review").handler("staged", createCommandContext());
+  await commands.get("ponytail-audit").handler("src/api", createCommandContext({ isIdle: () => false }));
+
+  assert.deepEqual(sentUserMessages, [
+    { text: "/skill:ponytail-review staged", options: { expandPromptTemplates: true } },
+    { text: "/skill:ponytail-audit src/api", options: { expandPromptTemplates: true, deliverAs: "followUp" } },
   ]);
 });
 
@@ -177,6 +250,19 @@ test("status bar renders the mode and flips active on agent_start", async () => 
   assert.equal(statusWrites.at(-2).key, "ponytail");
   assert.match(statusWrites.at(-2).text, /○.*ULTRA/);
   assert.match(statusWrites.at(-1).text, /●.*ULTRA/);
+}));
+
+test("off mode clears the status bar entry", async () => withTempConfig(async () => {
+  const { events } = createPiHarness();
+  const statusWrites = [];
+  const ctx = createCommandContext({
+    sessionManager: { getEntries: () => [{ type: "custom", customType: "ponytail-mode", data: { mode: "off" } }] },
+    ui: { notify() {}, setStatus: (key, text) => statusWrites.push({ key, text }), theme: { fg: (_color, text) => text } },
+  });
+
+  await events.get("session_start")({ reason: "resume" }, ctx);
+
+  assert.deepEqual(statusWrites.at(-1), { key: "ponytail", text: undefined });
 }));
 
 test("status bar stays silent when ui lacks a theme", async () => withTempConfig(async () => {
