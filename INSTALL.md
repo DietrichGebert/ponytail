@@ -129,7 +129,7 @@ swival skills add --global ponytail                                    # or acti
 
 Swival also reads `AGENTS.md` from the project root and `~/.config/swival/AGENTS.md` globally, the instruction-only fallback.
 
-On the command line, use a `$` prefix to explicitly activate a skill. For example: `$ponytail-review`.
+On the command line, use a `$` prefix with the plugin namespace to explicitly activate a skill. For example: `$ponytail:ponytail-review`.
 
 ## Devin CLI
 
