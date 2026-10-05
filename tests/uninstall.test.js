@@ -27,16 +27,11 @@ fs.mkdirSync(claudeDir, { recursive: true });
 const flagPath = path.join(claudeDir, '.ponytail-active');
 fs.writeFileSync(flagPath, 'full');
 
-// Codex, Copilot and Qoder keep the flag beside their own state, not in
-// ~/.claude (hooks/ponytail-runtime.js). Uninstall must sweep those too.
+// Qoder keeps its flag in ~/.qoder (hooks/ponytail-runtime.js), and since
+// #676 it holds "off", so a leftover would start a reinstall switched off.
 const qoderFlagPath = path.join(home, '.qoder', '.ponytail-active');
 fs.mkdirSync(path.dirname(qoderFlagPath), { recursive: true });
 fs.writeFileSync(qoderFlagPath, 'ultra');
-
-const codexDir = path.join(temp, 'codex-plugin-data');
-fs.mkdirSync(codexDir, { recursive: true });
-const codexFlagPath = path.join(codexDir, '.ponytail-active');
-fs.writeFileSync(codexFlagPath, 'lite');
 
 const configDir = path.join(temp, 'config-home', 'ponytail');
 fs.mkdirSync(configDir, { recursive: true });
@@ -48,19 +43,41 @@ fs.writeFileSync(settingsPath, JSON.stringify({
   statusLine: { type: 'command', command: 'bash /some/path/ponytail-statusline.sh' },
 }));
 
+// Cursor (#817): the Cursor mode flag goes too, and ~/.cursor/hooks.json loses
+// only ponytail's entries; the user's other hooks stay.
+const cursorDir = path.join(home, '.cursor');
+fs.mkdirSync(cursorDir, { recursive: true });
+const cursorFlagPath = path.join(cursorDir, '.ponytail-active');
+fs.writeFileSync(cursorFlagPath, 'lite');
+const cursorHooksPath = path.join(cursorDir, 'hooks.json');
+fs.writeFileSync(cursorHooksPath, JSON.stringify({
+  version: 1,
+  hooks: {
+    sessionStart: [
+      { command: './hooks/mine.sh' },
+      { command: 'node "/p/ponytail/hooks/ponytail-activate.js"', timeout: 5 },
+    ],
+    beforeSubmitPrompt: [{ command: 'node "/p/ponytail/hooks/ponytail-mode-tracker.js"', timeout: 5 }],
+  },
+}));
+
 const env = {
   HOME: home,
   USERPROFILE: home,
   XDG_CONFIG_HOME: path.join(temp, 'config-home'),
-  PLUGIN_DATA: codexDir,
 };
 
 let result = runUninstall(env);
 assert.equal(result.status, 0, result.stderr);
 assert.equal(fs.existsSync(flagPath), false, 'mode flag must be removed');
 assert.equal(fs.existsSync(qoderFlagPath), false, 'Qoder mode flag must be removed');
-assert.equal(fs.existsSync(codexFlagPath), false, 'Codex mode flag must be removed');
 assert.equal(fs.existsSync(configPath), false, 'config file must be removed');
+assert.equal(fs.existsSync(cursorFlagPath), false, 'Cursor mode flag must be removed');
+assert.deepEqual(
+  JSON.parse(fs.readFileSync(cursorHooksPath, 'utf8')),
+  { version: 1, hooks: { sessionStart: [{ command: './hooks/mine.sh' }] } },
+  "only ponytail's entries may leave ~/.cursor/hooks.json",
+);
 
 const settingsAfter = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
 assert.equal(
@@ -118,6 +135,22 @@ assert.equal(
   fs.readFileSync(settingsPath, 'utf8'),
   malformedSettings,
   'malformed settings.json must be left unchanged',
+);
+
+// A malformed ~/.cursor/hooks.json must not crash the script either (#817).
+const malformedHooks = '{ "version": 1, "hooks": { broken';
+fs.writeFileSync(cursorHooksPath, malformedHooks);
+
+result = runUninstall(env);
+assert.equal(result.status, 0, result.stderr);
+assert.ok(
+  /hooks\.json is malformed/.test(result.stdout + result.stderr),
+  'must warn that the Cursor hook entries could not be removed',
+);
+assert.equal(
+  fs.readFileSync(cursorHooksPath, 'utf8'),
+  malformedHooks,
+  'malformed hooks.json must be left unchanged',
 );
 
 // Running on an already-clean machine must not throw.
