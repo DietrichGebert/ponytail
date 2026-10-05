@@ -351,7 +351,7 @@ These remove the plugin's own files. They leave behind a small amount of state p
 | Command | What it does |
 |---------|--------------|
 | `/ponytail [lite \| full \| ultra \| off]` | Set the intensity, or turn it off. No argument switches ponytail on at the default level if it is off, and otherwise reports the current level. |
-| `/ponytail-review` | Review the current diff for over-engineering, hands back a delete-list. |
+| `/ponytail-review` | Review the current diff for over-engineering, hands back a delete-list. Name a target in plain words to narrow or widen it: `uncommitted`, `staged`, `branch`, or a PR link. |
 | `/ponytail-audit` | Audit the whole repo for over-engineering, not just the diff. |
 | `/ponytail-debt` | Harvest the `ponytail:` shortcuts you've deferred into a ledger, so "later" doesn't become "never". |
 | `/ponytail-gain` | Show the measured impact scoreboard (less code, less cost, more speed) from the benchmark. |
