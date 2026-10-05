@@ -170,7 +170,7 @@ test("session_tree restores the selected branch's mode without persisting it", a
     const result = await events.get("before_agent_start")({ systemPrompt: "BASE" }, ctx);
     if (mode === "off") {
       assert.equal(result, undefined);
-      assert.equal(statusWrites.at(-1), "");
+      assert.equal(statusWrites.at(-1), undefined);
     } else {
       assert.ok(result?.systemPrompt.startsWith(`BASE\n\nPONYTAIL MODE ACTIVE — level: ${mode}\n`), `expected ${mode} instructions`);
       assert.ok(statusWrites.at(-1).includes(mode.toUpperCase()));
