@@ -1,5 +1,6 @@
 #!/usr/bin/env node
-// ponytail — Claude Code SessionStart activation hook
+// ponytail — Claude Code SessionStart activation hook (also Codex, Copilot,
+// Grok, CodeBuddy and Cursor sessionStart)
 //
 // Runs on every session start:
 //   1. Writes flag file at $CLAUDE_CONFIG_DIR/.ponytail-active (defaults to ~/.claude; statusline reads this)
@@ -12,8 +13,13 @@ const { getDefaultMode, getClaudeDir, isShellSafe } = require('./ponytail-config
 const { getPonytailInstructions } = require('./ponytail-instructions');
 const {
   clearMode,
+  cursorRuleNotice,
+  cursorRulePath,
+  isCodeBuddy,
   isCodex,
   isCopilot,
+  isCursor,
+  isZcode,
   setMode,
   writeHookOutput,
 } = require('./ponytail-runtime');
@@ -29,6 +35,21 @@ if (mode === 'off') {
   process.exit(0);
 }
 
+// Cursor with the always-on rule in the workspace: the rule already carries the
+// ruleset and would contradict any other level, so leave the flag alone and
+// hand the model a one-line notice instead of a second copy (#817).
+if (isCursor) {
+  const rule = cursorRulePath();
+  if (rule) {
+    try {
+      writeHookOutput('SessionStart', mode, cursorRuleNotice(rule));
+    } catch (e) {
+      // Silent fail — stdout closed/EPIPE at hook exit must not surface as a hook failure
+    }
+    process.exit(0);
+  }
+}
+
 // 1. Write flag file
 try {
   setMode(mode);
@@ -40,7 +61,9 @@ try {
 let output = getPonytailInstructions(mode);
 
 // 3. Detect missing statusline config — nudge Claude to help set it up
-if (!isCodex && !isCopilot) try {
+// Skipped on ZCode: its statusline configuration story is unverified, and a
+// wrong pointer at Claude's settings.json would just mislead the agent.
+if (!isCodex && !isCopilot && !isCursor && !isZcode && !isCodeBuddy) try {
   let hasStatusline = false;
   if (fs.existsSync(settingsPath)) {
     // Strip UTF-8 BOM some editors prepend on Windows (breaks JSON.parse)
