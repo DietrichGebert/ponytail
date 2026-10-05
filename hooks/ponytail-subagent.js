@@ -12,6 +12,7 @@
 
 const { getPonytailInstructions } = require('./ponytail-instructions');
 const { readMode, writeHookOutput } = require('./ponytail-runtime');
+const vm = require('vm');
 
 const mode = readMode();
 
@@ -64,14 +65,30 @@ function finish() {
   } catch (e) {
     // Unparseable payload — fall through and inject to be safe.
   }
-  if (agentType && !matcherRe.test(agentType)) {
+  // .test() is synchronous, so a backtracking-heavy matcher like (a+)+$ would
+  // block the event loop and the fallback timer below could never fire (#658).
+  // Run it under a vm timeout; a timeout fails open like every other doubt.
+  let matches = true;
+  try {
+    if (agentType) {
+      matches = vm.runInNewContext('re.test(s)', { re: matcherRe, s: agentType }, { timeout: 100 });
+    }
+  } catch (e) {
+    matches = true;
+  }
+  if (!matches) {
     process.exit(0);
   }
   inject();
 }
 
 process.stdin.on('data', chunk => { input += chunk; });
-process.stdin.on('end', finish);
+// Exit on 'end' (not just finish()) so the ref'd fallback timer below can't
+// add its full 1000ms to the normal fast path.
+process.stdin.on('end', () => { finish(); process.exit(0); });
 // Never block the session (#443): recover on stdin error or a short fallback.
+// The fallback stays ref'd: on Windows a stuck ref'd stdin keeps the loop
+// alive and an unref'd timer is never scheduled, so the hook hung to the
+// external watchdog instead of exiting at 1s (#790).
 process.stdin.on('error', () => { finish(); process.exit(0); });
-setTimeout(() => { finish(); process.exit(0); }, 1000).unref();
+setTimeout(() => { finish(); process.exit(0); }, 1000);
