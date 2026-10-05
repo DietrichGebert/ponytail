@@ -207,12 +207,17 @@ def _selftest_plugin_dir():
     fails loudly (sys.exit) instead of silently passing a non-existent path to --plugin-dir."""
     fails = 0
     sentinel = "/tmp/ponytail-selftest-plugin-dir"
+    previous = os.environ.get("PONYTAIL_PLUGIN_DIR")
     os.environ["PONYTAIL_PLUGIN_DIR"] = sentinel
     try:
         ok_env = _plugin_dir("ponytail") == sentinel
-    finally:
-        del os.environ["PONYTAIL_PLUGIN_DIR"]
-    print(f"{'ok ' if ok_env else 'XX '} plugin_dir   env  override honored")
+    finally:                                         # restore, never delete: this selftest runs before
+        if previous is None:                         # every live run, so deleting it silently swapped the
+            del os.environ["PONYTAIL_PLUGIN_DIR"]    # user's override for the newest cached plugin version
+        else:
+            os.environ["PONYTAIL_PLUGIN_DIR"] = previous
+    ok_env = ok_env and os.environ.get("PONYTAIL_PLUGIN_DIR") == previous
+    print(f"{'ok ' if ok_env else 'XX '} plugin_dir   env  override honored and restored")
     fails += 0 if ok_env else 1
     missing = "ponytail-does-not-exist-xyz"          # no env, no cache entry -> must sys.exit
     try:
@@ -325,7 +330,10 @@ def run_cell(task_id, arm, model, workdir: Path):
     # tree -- never a blanket kill, which would also take down this Claude Code session.
     try:
         with open(out_path, "wb") as so, open(err_path, "wb") as se:
-            proc = subprocess.Popen(cmd, cwd=str(workdir), stdout=so, stderr=se,
+            # Cells live under this repo, so without these every arm (baseline too) also loads the
+            # repo's AGENTS.md, which is the ponytail ruleset, plus the user's auto-memory.
+            env = {**os.environ, "CLAUDE_CODE_DISABLE_CLAUDE_MDS": "1", "CLAUDE_CODE_DISABLE_AUTO_MEMORY": "1"}
+            proc = subprocess.Popen(cmd, cwd=str(workdir), stdout=so, stderr=se, env=env,
                                     start_new_session=(os.name != "nt"))
             try:
                 proc.wait(timeout=CELL_TIMEOUT)
