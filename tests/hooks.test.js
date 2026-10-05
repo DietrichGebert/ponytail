@@ -509,9 +509,9 @@ assert.match(
 // "stop ponytail": deactivates and persists off so a later prompt does
 // not mistake the missing flag for first-run initialization.
 result = run(
-    'ponytail-mode-tracker.js',
-    qoderEnv,
-    JSON.stringify({ prompt: 'stop ponytail' }),
+  'ponytail-mode-tracker.js',
+  qoderEnv,
+  JSON.stringify({ prompt: 'stop ponytail' }),
 );
 assert.equal(result.status, 0, result.stderr);
 assert.equal(fs.readFileSync(qoderState, 'utf8'), 'off');
@@ -519,9 +519,9 @@ output = JSON.parse(result.stdout);
 assert.equal(output.hookSpecificOutput.additionalContext, 'PONYTAIL MODE OFF');
 
 result = run(
-    'ponytail-mode-tracker.js',
-    qoderEnv,
-    JSON.stringify({ prompt: 'write another function' }),
+  'ponytail-mode-tracker.js',
+  qoderEnv,
+  JSON.stringify({ prompt: 'write another function' }),
 );
 assert.equal(result.status, 0, result.stderr);
 assert.equal(result.stdout, '', 'Qoder must stay off on later prompts');
