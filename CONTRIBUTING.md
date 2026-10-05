@@ -1,6 +1,10 @@
 # Contributing
 
-Thanks for helping. There are two kinds of changes, with different bars.
+Thanks for helping. Here is what gets merged, and what needs to come with it.
+
+## New skills come from me
+
+I add new skills myself, so please open an issue with the idea instead of a PR.
 
 ## Changes to the ruleset need a benchmark
 
