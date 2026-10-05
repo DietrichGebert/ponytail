@@ -28,7 +28,9 @@ export function DeleteModal({ onConfirm, onCancel }) {
             <Dialog.Close asChild>
               <button onClick={onCancel}>Cancel</button>
             </Dialog.Close>
-            <button className="btn-danger" onClick={onConfirm}>Delete</button>
+            <Dialog.Close asChild>
+              <button className="btn-danger" onClick={onConfirm}>Delete</button>
+            </Dialog.Close>
           </div>
         </Dialog.Content>
       </Dialog.Portal>
