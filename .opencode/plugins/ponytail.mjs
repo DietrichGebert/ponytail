@@ -53,7 +53,9 @@ function writeMode(mode) {
 // synchronous store if same-turn switching ever matters.
 function persistMode(args) {
   const wanted = String(args == null ? '' : args).trim();
-  const mode = wanted ? normalizePersistedMode(wanted) : getDefaultMode();
+  // Bare /ponytail switches ponytail on, or keeps the level when it already is (#639).
+  if (!wanted && readMode() !== 'off') return;
+  const mode = wanted ? normalizePersistedMode(wanted) : (getDefaultMode() === 'off' ? 'full' : getDefaultMode());
   if (!mode) return;
   writeMode(mode);
   console.log('ponytail ' + mode);

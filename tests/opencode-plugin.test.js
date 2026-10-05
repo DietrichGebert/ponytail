@@ -143,6 +143,17 @@ test('V2 unsupported /ponytail arguments do not reset the current mode', async (
   assert.equal(fs.readFileSync(statePath, 'utf8'), 'ultra');
 });
 
+test('V2 bare /ponytail keeps a running level and switches an off session on (#639)', async () => {
+  const { added } = await setupV2();
+  fs.writeFileSync(statePath, 'ultra');
+  await added.commands.ponytail.execute({ sessionID: 's', prompt: { text: '' }, delivery: 'steer' });
+  assert.equal(fs.readFileSync(statePath, 'utf8'), 'ultra', 'checking the level must not reset ultra');
+
+  fs.writeFileSync(statePath, 'off');
+  await added.commands.ponytail.execute({ sessionID: 's', prompt: { text: '' }, delivery: 'steer' });
+  assert.equal(fs.readFileSync(statePath, 'utf8'), 'full');
+});
+
 test('V1 and V2 share one mode file, so a level set under either API applies to both', async () => {
   const { added } = await setupV2();
   await added.commands.ponytail.execute({ sessionID: 's', prompt: { text: 'lite' }, delivery: 'steer' });

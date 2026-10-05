@@ -36,11 +36,13 @@ export function resolveSessionMode(entries, fallbackMode = DEFAULT_MODE) {
   return fallback;
 }
 
-export function parsePonytailCommand(text, defaultMode = DEFAULT_MODE) {
+export function parsePonytailCommand(text, defaultMode = DEFAULT_MODE, currentMode = null) {
   const fallback = normalizePersistedMode(defaultMode) || DEFAULT_MODE;
   const normalizedText = String(text || "").trim().toLowerCase();
 
   if (!normalizedText) {
+    // Bare /ponytail switches ponytail on, or reports the level when it already is (#639).
+    if (currentMode && currentMode !== "off") return { type: "status" };
     return { type: "set-mode", mode: fallback === "off" ? "full" : fallback };
   }
 
@@ -114,7 +116,7 @@ export default function ponytailExtension(pi) {
   pi.registerCommand("ponytail", {
     description: PONYTAIL_COMMAND_DESCRIPTION,
     handler: async (args, ctx) => {
-      const parsed = parsePonytailCommand(args, configuredDefaultMode);
+      const parsed = parsePonytailCommand(args, configuredDefaultMode, currentMode);
 
       if (parsed.type === "status") {
         ctx?.ui?.notify?.(`Ponytail: current ${currentMode} • default ${configuredDefaultMode}`, "info");
