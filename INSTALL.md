@@ -71,7 +71,7 @@ omp runs ponytail's Pi extension unchanged, so the ruleset is injected every tur
 opencode plugin add @dietrichgebert/ponytail
 ```
 
-Add to `opencode.json`:
+Or add it to a project's `opencode.json`:
 
 ```json
 { "plugins": ["@dietrichgebert/ponytail"] }
