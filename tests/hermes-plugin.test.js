@@ -32,7 +32,13 @@ function pythonExe() {
 function python(script, env = {}) {
   const result = spawnSync(pythonExe(), ['-c', script], {
     cwd: root,
-    env: { ...process.env, ...env },
+    // Isolate from the developer's own ~/.config/ponytail and PONYTAIL_DEFAULT_MODE.
+    env: {
+      ...process.env,
+      PONYTAIL_DEFAULT_MODE: '',
+      XDG_CONFIG_HOME: fs.mkdtempSync(path.join(os.tmpdir(), 'ponytail-config-')),
+      ...env,
+    },
     encoding: 'utf8',
   });
   if (result.status !== 0) {
