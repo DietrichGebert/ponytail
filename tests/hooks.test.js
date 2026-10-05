@@ -870,6 +870,24 @@ assert.equal(
   run('ponytail-mode-tracker.js', repoB, JSON.stringify({ prompt: '/ponytail off' }));
   assert.equal(subagentLevel(repoB), null, '/ponytail off works in repo B');
   assert.equal(subagentLevel(repoA), 'ultra', '/ponytail off in repo B leaves repo A alone');
+
+  // Paths with a directory separator and an underscore must not share a mode.
+  const nested = path.join(temp, 'project', 'nested');
+  const sibling = path.join(temp, 'project_nested');
+  fs.mkdirSync(nested, { recursive: true });
+  fs.mkdirSync(sibling, { recursive: true });
+  const nestedEnv = { HOME: projHome, USERPROFILE: projHome, CLAUDE_PROJECT_DIR: nested };
+  const siblingEnv = { HOME: projHome, USERPROFILE: projHome, CLAUDE_PROJECT_DIR: sibling };
+  run('ponytail-activate.js', { ...nestedEnv, PONYTAIL_DEFAULT_MODE: 'ultra' });
+  if (process.platform === 'win32') {
+    assert.equal(subagentLevel({ ...nestedEnv, CLAUDE_PROJECT_DIR: nested.replace(/\\/g, '/') }), 'ultra',
+      'alternate path separators still identify the same project');
+  }
+  run('ponytail-activate.js', { ...siblingEnv, PONYTAIL_DEFAULT_MODE: 'off' });
+  assert.equal(subagentLevel(nestedEnv), 'ultra', 'an off sibling must not clear the nested project');
+  run('ponytail-mode-tracker.js', siblingEnv, JSON.stringify({ prompt: '/ponytail lite' }));
+  assert.equal(subagentLevel(nestedEnv), 'ultra', 'a sibling mode switch must not change the nested project');
+  assert.equal(subagentLevel(siblingEnv), 'lite');
 }
 
 // #639: bare /ponytail switches ponytail on when it is off, and only reports
