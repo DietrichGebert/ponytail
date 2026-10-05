@@ -86,6 +86,16 @@ print(df['amount'].sum())`,
   assert.equal(result.score, 1);
 });
 
+test('csv: an exception in the code is reported, not swallowed (#919)', () => {
+  const result = check(
+    "Write Python code that reads sales.csv and sums the 'amount' column.",
+    'python',
+    `raise RuntimeError("boom")`,
+  );
+  assert.equal(result.pass, false);
+  assert.match(result.reason, /boom/);
+});
+
 test('csv: code that prints wrong value fails', () => {
   const result = check(
     "Write Python code that reads sales.csv and sums the 'amount' column.",
@@ -120,11 +130,13 @@ print(351)`,
     assert.equal(timedOut.pass, false);
     assert.match(timedOut.reason, /ETIMEDOUT|timed out/i);
 
-    process.env.PONYTAIL_CORRECTNESS_TIMEOUT_MS = '5000';
+    process.env.PONYTAIL_CORRECTNESS_TIMEOUT_MS = '1000';
     const completed = check(
       "Write Python code that reads sales.csv and sums the 'amount' column.",
       'python',
-      `import time\ntime.sleep(0.05)\nprint(351)`,
+      `import time
+time.sleep(0.05)
+print(351)`,
     );
     assert.equal(completed.pass, true);
     assert.equal(completed.score, 1);
