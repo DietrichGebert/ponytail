@@ -16,17 +16,18 @@ to cut, what replaces it. The diff's best outcome is getting shorter.
 ## Format
 
 `<N>. L<line>: <tag> <what>. <replacement>.`, or `<N>. <file>:L<line>: ...` for
-multi-file diffs. Number findings sequentially across the whole report (`1.`,
-`2.`, ...) so the user can reference one later ("elaborate on 12", "fix 12,
-15, 18").
+multi-file diffs. Number findings `1.`, `2.`, ... across the whole report, so the
+user can say "fix 2 and 5".
 
 Tags:
 
 - `delete:` dead code, unused flexibility, speculative feature. Replacement: nothing.
 - `stdlib:` hand-rolled thing the standard library ships. Name the function.
 - `native:` dependency or code doing what the platform already does. Name the feature.
+- `reuse:` equivalent helper, util, or pattern already in this repo. Name the path.
 - `yagni:` abstraction with one implementation, config nobody sets, layer with one caller.
 - `shrink:` same logic, fewer lines. Show the shorter form.
+
 
 ## Examples
 
@@ -37,11 +38,13 @@ considered whether all these validation rules are needed at this stage?"
 
 ✅ `2. L4: native: moment.js imported for one format call. Intl.DateTimeFormat, 0 deps.`
 
-✅ `3. repo.py:L88: yagni: AbstractRepository with one implementation. Inline it until a second one exists.`
+✅ `3. L18-29: reuse: slugify helper duplicates src/lib/slug.ts slugify. Delete it, import the existing one.`
 
-✅ `4. L52-71: delete: retry wrapper around an idempotent local call. Nothing replaces it.`
+✅ `4. repo.py:L88: yagni: AbstractRepository with one implementation. Inline it until a second one exists.`
 
-✅ `5. L30-44: shrink: manual loop builds dict. dict(zip(keys, values)), 1 line.`
+✅ `5. L52-71: delete: retry wrapper around an idempotent local call. Nothing replaces it.`
+
+✅ `6. L30-44: shrink: manual loop builds dict. dict(zip(keys, values)), 1 line.`
 
 ## Scoring
 

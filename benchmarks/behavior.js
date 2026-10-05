@@ -10,10 +10,6 @@
 //
 // Metric: `behavior` (1 = behavior present, 0 = absent).
 
-function codeOf(text) {
-  return [...String(text || '').matchAll(/```[\w-]*\n([\s\S]*?)```/g)].map((m) => m[1]).join('\n');
-}
-
 function proseOf(text) {
   return String(text || '').replace(/```[\s\S]*?```/g, ' ').replace(/\s+/g, ' ').trim();
 }
