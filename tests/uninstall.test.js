@@ -33,6 +33,9 @@ const qoderFlagPath = path.join(home, '.qoder', '.ponytail-active');
 fs.mkdirSync(path.dirname(qoderFlagPath), { recursive: true });
 fs.writeFileSync(qoderFlagPath, 'ultra');
 
+const nudgeFlagPath = path.join(claudeDir, '.ponytail-statusline-nudged');
+fs.writeFileSync(nudgeFlagPath, '');
+
 const configDir = path.join(temp, 'config-home', 'ponytail');
 fs.mkdirSync(configDir, { recursive: true });
 const configPath = path.join(configDir, 'config.json');
@@ -71,6 +74,7 @@ let result = runUninstall(env);
 assert.equal(result.status, 0, result.stderr);
 assert.equal(fs.existsSync(flagPath), false, 'mode flag must be removed');
 assert.equal(fs.existsSync(qoderFlagPath), false, 'Qoder mode flag must be removed');
+assert.equal(fs.existsSync(nudgeFlagPath), false, 'statusline nudge flag must be removed');
 assert.equal(fs.existsSync(configPath), false, 'config file must be removed');
 assert.equal(fs.existsSync(cursorFlagPath), false, 'Cursor mode flag must be removed');
 assert.deepEqual(
@@ -98,6 +102,20 @@ assert.equal(
   settingsAfter2.statusLine.command,
   'bash ~/my-custom-statusline.sh',
   "a user's own statusLine must not be touched",
+);
+
+// A user command that merely contains ponytail's script name must also survive.
+fs.writeFileSync(settingsPath, JSON.stringify({
+  statusLine: { type: 'command', command: 'bash ~/my-ponytail-statusline.sh' },
+}));
+
+result = runUninstall(env);
+assert.equal(result.status, 0, result.stderr);
+const settingsAfterSimilarName = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
+assert.equal(
+  settingsAfterSimilarName.statusLine.command,
+  'bash ~/my-ponytail-statusline.sh',
+  "a similarly named user statusLine must not be touched",
 );
 
 // #374: a combined statusline (another plugin && ponytail) must keep the other
