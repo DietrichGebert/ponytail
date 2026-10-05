@@ -36,11 +36,13 @@ export function resolveSessionMode(entries, fallbackMode = DEFAULT_MODE) {
   return fallback;
 }
 
-export function parsePonytailCommand(text, defaultMode = DEFAULT_MODE) {
+export function parsePonytailCommand(text, defaultMode = DEFAULT_MODE, currentMode = null) {
   const fallback = normalizePersistedMode(defaultMode) || DEFAULT_MODE;
   const normalizedText = String(text || "").trim().toLowerCase();
 
   if (!normalizedText) {
+    // Bare /ponytail switches ponytail on, or reports the level when it already is (#639).
+    if (currentMode && currentMode !== "off") return { type: "status" };
     return { type: "set-mode", mode: fallback === "off" ? "full" : fallback };
   }
 
@@ -78,7 +80,7 @@ export default function ponytailExtension(pi) {
     let theme;
     try { theme = c.ui.theme; if (!theme?.fg) return; } catch { return; }
     if (currentMode === "off") {
-      c.ui.setStatus("ponytail", "");
+      c.ui.setStatus("ponytail", undefined);
       return;
     }
     const levelIcons = { lite: "🌿", full: "⚡", ultra: "🔥" };
@@ -102,19 +104,22 @@ export default function ponytailExtension(pi) {
     const normalized = String(args || "").trim();
     const message = normalized ? `${skillName} ${normalized}` : skillName;
 
+    // pi.sendUserMessage does not expand skill commands on its own, so without
+    // expandPromptTemplates the alias lands as the literal text
+    // "/skill:ponytail-review" and the skill body never reaches the agent.
     if (ctx?.isIdle?.() === false) {
-      pi.sendUserMessage(message, { deliverAs: "followUp" });
+      pi.sendUserMessage(message, { expandPromptTemplates: true, deliverAs: "followUp" });
       ctx?.ui?.notify?.(`${skillName} queued as follow-up.`, "info");
       return;
     }
 
-    pi.sendUserMessage(message);
+    pi.sendUserMessage(message, { expandPromptTemplates: true });
   };
 
   pi.registerCommand("ponytail", {
     description: PONYTAIL_COMMAND_DESCRIPTION,
     handler: async (args, ctx) => {
-      const parsed = parsePonytailCommand(args, configuredDefaultMode);
+      const parsed = parsePonytailCommand(args, configuredDefaultMode, currentMode);
 
       if (parsed.type === "status") {
         ctx?.ui?.notify?.(`Ponytail: current ${currentMode} • default ${configuredDefaultMode}`, "info");
@@ -148,47 +153,55 @@ export default function ponytailExtension(pi) {
 
   pi.registerCommand("ponytail-review", {
     description: "Run /skill:ponytail-review",
-    handler: (_args, ctx) => sendAlias("/skill:ponytail-review", "", ctx),
+    handler: (args, ctx) => sendAlias("/skill:ponytail-review", args, ctx),
   });
 
   pi.registerCommand("ponytail-audit", {
     description: "Run /skill:ponytail-audit",
-    handler: (_args, ctx) => sendAlias("/skill:ponytail-audit", "", ctx),
+    handler: (args, ctx) => sendAlias("/skill:ponytail-audit", args, ctx),
   });
 
   pi.registerCommand("ponytail-gain", {
     description: "Run /skill:ponytail-gain",
-    handler: (_args, ctx) => sendAlias("/skill:ponytail-gain", "", ctx),
+    handler: (args, ctx) => sendAlias("/skill:ponytail-gain", args, ctx),
   });
 
   pi.registerCommand("ponytail-debt", {
     description: "Run /skill:ponytail-debt",
-    handler: (_args, ctx) => sendAlias("/skill:ponytail-debt", "", ctx),
+    handler: (args, ctx) => sendAlias("/skill:ponytail-debt", args, ctx),
   });
 
   pi.registerCommand("ponytail-help", {
     description: "Run /skill:ponytail-help",
-    handler: (_args, ctx) => sendAlias("/skill:ponytail-help", "", ctx),
+    handler: (args, ctx) => sendAlias("/skill:ponytail-help", args, ctx),
   });
 
-  pi.on("input", async (event) => {
+  pi.on("input", async (event, ctx) => {
     if (event?.source === "extension") return;
 
     const text = String(event?.text || "");
     if (currentMode !== "off" && isDeactivationCommand(text)) {
-      setMode("off");
+      setMode("off", ctx);
     }
   });
 
-  pi.on("session_start", async (_event, ctx) => {
+  const restoreSessionMode = (ctx) => {
     const entries = ctx?.sessionManager?.getBranch?.() || ctx?.sessionManager?.getEntries?.() || [];
-    configuredDefaultMode = getDefaultMode();
-    hideStatus = getHideStatus();
     currentMode = resolveSessionMode(entries, configuredDefaultMode);
     syncStatus(ctx);
+  };
+
+  pi.on("session_start", async (_event, ctx) => {
+    configuredDefaultMode = getDefaultMode();
+    hideStatus = getHideStatus();
+    restoreSessionMode(ctx);
     if (!getQuietStartup()) {
       ctx?.ui?.notify?.(`Ponytail loaded: ${currentMode}`, "info");
     }
+  });
+
+  pi.on("session_tree", async (_event, ctx) => {
+    restoreSessionMode(ctx);
   });
 
   pi.on("agent_start", async (_event, ctx) => {
@@ -202,10 +215,27 @@ export default function ponytailExtension(pi) {
   });
 
   pi.on("before_agent_start", async (event) => {
-    if (!currentMode || currentMode === "off") return;
+    if (!currentMode || currentMode === "off") {
+      // Clear a stale section when the mode is off so a previous turn does not linger (#953).
+      if (event?.systemPromptOptions?.sections) delete event.systemPromptOptions.sections.ponytail;
+      return;
+    }
+    const instructions = getPonytailInstructions(currentMode);
+    // Prefer structured sections so Pi can keep the cached prefix when other
+    // extensions change their own section (#953). Fall back to replacement
+    // for older Pi versions without systemPromptOptions.sections.
+    const sections = event?.systemPromptOptions?.sections;
+    if (sections && typeof sections === "object") {
+      sections.ponytail = instructions;
+      return;
+    }
+    // OMP passes the system prompt as an array of parts; keep it one (#776).
+    if (Array.isArray(event?.systemPrompt)) {
+      return { systemPrompt: [...event.systemPrompt, instructions] };
+    }
     // Guard a null/undefined event or a missing systemPrompt: don't crash, and
     // don't prepend the literal string "undefined" to the prompt (#439, #440).
     const base = event?.systemPrompt ? `${event.systemPrompt}\n\n` : "";
-    return { systemPrompt: `${base}${getPonytailInstructions(currentMode)}` };
+    return { systemPrompt: `${base}${instructions}` };
   });
 }
