@@ -1,9 +1,10 @@
 #!/usr/bin/env node
 // ponytail — removes state ponytail wrote outside the plugin's own files:
-// the mode flag, the config file, the statusLine entry it added to
-// settings.json, and its entries in ~/.cursor/hooks.json. Plugin files
-// themselves are removed by each host's own uninstall command (see README);
-// this only cleans up what those commands can't see.
+// the mode flag, the config file, the statusline script copy, the
+// statusLine entry it added to settings.json, and its entries in
+// ~/.cursor/hooks.json. Plugin files themselves are removed by each host's
+// own uninstall command (see README); this only cleans up what those
+// commands can't see.
 
 const fs = require('fs');
 const os = require('os');
@@ -34,6 +35,10 @@ for (const dir of [path.join(getClaudeDir(), 'ponytail-modes'), path.join(os.hom
 }
 removeIfExists(path.join(process.env.CODEBUDDY_CONFIG_DIR || path.join(os.homedir(), '.codebuddy'), '.ponytail-active'), 'CodeBuddy mode flag');
 removeIfExists(getConfigPath(), 'config file');
+// Statusline script copies the activate hook keeps in the config dir (#1032).
+for (const name of ['ponytail-statusline.sh', 'ponytail-statusline.ps1']) {
+  removeIfExists(path.join(getClaudeDir(), name), 'statusline script');
+}
 
 // Cursor hooks (#817): drop only ponytail's entries from ~/.cursor/hooks.json,
 // keep every other hook the user configured there.

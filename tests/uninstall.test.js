@@ -41,6 +41,12 @@ fs.mkdirSync(configDir, { recursive: true });
 const configPath = path.join(configDir, 'config.json');
 fs.writeFileSync(configPath, JSON.stringify({ defaultMode: 'ultra' }));
 
+// #1032: the statusline script copy kept in the config dir.
+const statuslineCopyPath = path.join(claudeDir, 'ponytail-statusline.sh');
+fs.writeFileSync(statuslineCopyPath, '#!/usr/bin/env bash\n');
+const statuslinePs1CopyPath = path.join(claudeDir, 'ponytail-statusline.ps1');
+fs.writeFileSync(statuslinePs1CopyPath, '');
+
 const settingsPath = path.join(claudeDir, 'settings.json');
 fs.writeFileSync(settingsPath, JSON.stringify({
   statusLine: { type: 'command', command: 'bash /some/path/ponytail-statusline.sh' },
@@ -77,6 +83,8 @@ assert.equal(fs.existsSync(qoderFlagPath), false, 'Qoder mode flag must be remov
 assert.equal(fs.existsSync(nudgeFlagPath), false, 'statusline nudge flag must be removed');
 assert.equal(fs.existsSync(configPath), false, 'config file must be removed');
 assert.equal(fs.existsSync(cursorFlagPath), false, 'Cursor mode flag must be removed');
+assert.equal(fs.existsSync(statuslineCopyPath), false, 'statusline script copy must be removed (#1032)');
+assert.equal(fs.existsSync(statuslinePs1CopyPath), false, 'statusline .ps1 copy must be removed (#1032)');
 assert.deepEqual(
   JSON.parse(fs.readFileSync(cursorHooksPath, 'utf8')),
   { version: 1, hooks: { sessionStart: [{ command: './hooks/mine.sh' }] } },
