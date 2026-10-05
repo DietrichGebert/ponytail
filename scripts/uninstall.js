@@ -1,9 +1,10 @@
 #!/usr/bin/env node
 // ponytail — removes state ponytail wrote outside the plugin's own files:
-// the mode flag, the config file, the statusLine entry it added to
-// settings.json, and its entries in ~/.cursor/hooks.json. Plugin files
-// themselves are removed by each host's own uninstall command (see README);
-// this only cleans up what those commands can't see.
+// the mode flag, the config file, the statusline script copy, the
+// statusLine entry it added to settings.json, and its entries in
+// ~/.cursor/hooks.json. Plugin files themselves are removed by each host's
+// own uninstall command (see README); this only cleans up what those
+// commands can't see.
 
 const fs = require('fs');
 const os = require('os');
