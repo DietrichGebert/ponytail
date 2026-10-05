@@ -32,6 +32,10 @@ for (const dir of [path.join(getClaudeDir(), 'ponytail-modes'), path.join(os.hom
 }
 removeIfExists(path.join(process.env.CODEBUDDY_CONFIG_DIR || path.join(os.homedir(), '.codebuddy'), '.ponytail-active'), 'CodeBuddy mode flag');
 removeIfExists(getConfigPath(), 'config file');
+// Statusline script copies the activate hook keeps in the config dir (#1032).
+for (const name of ['ponytail-statusline.sh', 'ponytail-statusline.ps1']) {
+  removeIfExists(path.join(getClaudeDir(), name), 'statusline script');
+}
 
 // Cursor hooks (#817): drop only ponytail's entries from ~/.cursor/hooks.json,
 // keep every other hook the user configured there.

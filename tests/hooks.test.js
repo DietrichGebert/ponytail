@@ -259,6 +259,36 @@ assert.ok(
   'nudge must not repeat once the flag file exists (#483)',
 );
 
+// #1032: the plugin root is a versioned cache dir that Claude Code deletes on
+// update, so the nudge points at a copy of the script in the config dir.
+const copyPath = path.join(customConfigDir, process.platform === 'win32' ? 'ponytail-statusline.ps1' : 'ponytail-statusline.sh');
+assert.ok(fs.existsSync(copyPath), 'nudge must copy the statusline script into the config dir (#1032)');
+assert.ok(result.stdout.includes(copyPath), 'nudge must point at the config-dir copy, not the plugin cache (#1032)');
+assert.ok(!result.stdout.includes(path.join(root, 'hooks')), 'nudge must not point into the versioned plugin dir (#1032)');
+// Later sessions refresh the copy, so script fixes ship with plugin updates.
+fs.writeFileSync(copyPath, 'old');
+run('ponytail-activate.js', { HOME: home2, USERPROFILE: home2, CLAUDE_CONFIG_DIR: customConfigDir, PONYTAIL_DEFAULT_MODE: 'lite' });
+assert.notEqual(fs.readFileSync(copyPath, 'utf8'), 'old', 'activate must refresh the statusline copy (#1032)');
+
+// A statusLine set up before #1032 can point at a plugin version that no
+// longer exists. Nudge once per broken path, even after the setup nudge.
+const staleScript = path.join(temp, 'cache', 'ponytail', '4.0.0', 'hooks', 'ponytail-statusline.sh');
+fs.writeFileSync(path.join(customConfigDir, 'settings.json'), JSON.stringify({
+  statusLine: { type: 'command', command: 'bash ~/caveman-statusline.sh && bash "' + staleScript + '"' },
+}));
+const staleEnv = { HOME: home2, USERPROFILE: home2, CLAUDE_CONFIG_DIR: customConfigDir, PONYTAIL_DEFAULT_MODE: 'lite' };
+const staleNudge = run('ponytail-activate.js', staleEnv);
+assert.equal(staleNudge.status, 0, staleNudge.stderr);
+assert.ok(staleNudge.stdout.includes('STATUSLINE BROKEN'), 'a statusLine pointing at a deleted script must be flagged (#1032)');
+assert.ok(staleNudge.stdout.includes(staleScript) && staleNudge.stdout.includes(copyPath), 'broken-path nudge must name the old and new paths');
+assert.ok(!run('ponytail-activate.js', staleEnv).stdout.includes('STATUSLINE'), 'broken-path nudge fires once per path');
+// A working statusLine, or one using ~, is left alone.
+for (const command of ['bash "' + copyPath + '"', 'bash ~/.claude/ponytail-statusline.sh']) {
+  fs.writeFileSync(path.join(customConfigDir, 'settings.json'), JSON.stringify({ statusLine: { type: 'command', command } }));
+  fs.rmSync(path.join(customConfigDir, '.ponytail-statusline-nudged'), { force: true });
+  assert.ok(!run('ponytail-activate.js', staleEnv).stdout.includes('STATUSLINE'), 'no nudge for a working statusLine: ' + command);
+}
+
 const copilotData = path.join(temp, 'copilot-data');
 const codexData = path.join(temp, 'codex-data-shadow');
 result = run('ponytail-activate.js', {

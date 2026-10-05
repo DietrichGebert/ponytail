@@ -66,45 +66,75 @@ let output = getPonytailInstructions(mode);
 // Skipped on ZCode: its statusline configuration story is unverified, and a
 // wrong pointer at Claude's settings.json would just mislead the agent.
 if (!isCodex && !isCopilot && !isCursor && !isZcode && !isCodeBuddy) try {
-  let hasStatusline = false;
+  const isWindows = process.platform === 'win32';
+  const scriptName = isWindows ? 'ponytail-statusline.ps1' : 'ponytail-statusline.sh';
+  // The plugin root is a versioned cache dir (.../ponytail/4.12.0/) that Claude
+  // Code deletes on update, so a statusLine pointing into it goes blank after the
+  // next update (#1032). Point it at a copy in the config dir instead.
+  const scriptPath = path.join(claudeDir, scriptName);
+
+  let statusCommand = null;
   if (fs.existsSync(settingsPath)) {
     // Strip UTF-8 BOM some editors prepend on Windows (breaks JSON.parse)
     const raw = fs.readFileSync(settingsPath, 'utf8').replace(/^\uFEFF/, '');
     const settings = JSON.parse(raw);
     if (settings.statusLine) {
-      hasStatusline = true;
+      statusCommand = String(settings.statusLine.command || '');
     }
   }
 
+  // A statusLine already set up before #1032 can still run a script from a
+  // plugin version that has since been deleted. Only absolute paths are checked,
+  // so ~ or $HOME forms are never mistaken for missing files.
+  const ref = statusCommand &&
+    statusCommand.match(/"([^"]*ponytail-statusline\.(?:sh|ps1))"|(\S*ponytail-statusline\.(?:sh|ps1))/);
+  const refPath = ref ? (ref[1] || ref[2]) : null;
+  const stalePath = refPath && path.isAbsolute(refPath) && !fs.existsSync(refPath) ? refPath : null;
+
   // Nudge at most once — the flag file marks that the user has already seen
   // (and implicitly declined) the statusline setup offer. Repeating it every
-  // session start turns a helpful hint into a nag.
+  // session start turns a helpful hint into a nag. A broken path is nudged once
+  // per path: the flag records it.
   const nudgeFlagPath = path.join(claudeDir, '.ponytail-statusline-nudged');
-  if (!hasStatusline && !fs.existsSync(nudgeFlagPath)) {
-    try { fs.writeFileSync(nudgeFlagPath, ''); } catch (e) { /* best-effort */ }
-    const isWindows = process.platform === 'win32';
-    const scriptName = isWindows ? 'ponytail-statusline.ps1' : 'ponytail-statusline.sh';
-    const scriptPath = path.join(__dirname, scriptName);
+  let nudged = null;
+  try { nudged = fs.readFileSync(nudgeFlagPath, 'utf8'); } catch (e) { /* not nudged yet */ }
+  const nudge = stalePath ? nudged !== stalePath : statusCommand === null && nudged === null;
+
+  // Refresh the copy every session so script fixes ship with plugin updates.
+  if (nudge || fs.existsSync(scriptPath)) {
+    fs.copyFileSync(path.join(__dirname, scriptName), scriptPath);
+  }
+
+  if (nudge) {
+    try { fs.writeFileSync(nudgeFlagPath, stalePath || ''); } catch (e) { /* best-effort */ }
     if (isShellSafe(scriptPath)) {
       const command = isWindows
         ? `powershell -ExecutionPolicy Bypass -File "${scriptPath}"`
         : `bash "${scriptPath}"`;
-      const statusLineSnippet =
-        '"statusLine": { "type": "command", "command": ' + JSON.stringify(command) + ' }';
-      output += "\n\n" +
-        "STATUSLINE SETUP NEEDED: The ponytail plugin includes a statusline badge showing active mode " +
-        "(e.g. [PONYTAIL], [PONYTAIL:ULTRA]). It is not configured yet. " +
-        "To enable, add this to " + settingsPath + ": " +
-        statusLineSnippet + " " +
-        "Proactively offer to set this up for the user on first interaction.";
+      if (stalePath) {
+        output += "\n\n" +
+          "STATUSLINE BROKEN: The statusLine in " + settingsPath + " runs " + stalePath +
+          ", which no longer exists (the ponytail plugin was updated and its old version removed), " +
+          "so the ponytail badge is blank. Replace that path with " + scriptPath + ", which survives updates. " +
+          "Keep the rest of the command. Proactively offer to fix this for the user on first interaction.";
+      } else {
+        const statusLineSnippet =
+          '"statusLine": { "type": "command", "command": ' + JSON.stringify(command) + ' }';
+        output += "\n\n" +
+          "STATUSLINE SETUP NEEDED: The ponytail plugin includes a statusline badge showing active mode " +
+          "(e.g. [PONYTAIL], [PONYTAIL:ULTRA]). It is not configured yet. " +
+          "To enable, add this to " + settingsPath + ": " +
+          statusLineSnippet + " " +
+          "Proactively offer to set this up for the user on first interaction.";
+      }
     } else {
-      // ponytail: install path has shell metacharacters — don't embed it in a
+      // ponytail: config dir path has shell metacharacters — don't embed it in a
       // command snippet; have the agent wire it up by hand instead.
       output += "\n\n" +
         "STATUSLINE SETUP NEEDED: The ponytail plugin includes a statusline badge showing active mode. " +
-        "Its install path contains characters unsafe to embed in a shell command, so configure it manually: " +
+        "Its path contains characters unsafe to embed in a shell command, so configure it manually: " +
         "add a statusLine command of type \"command\" that runs " + scriptName +
-        " from the plugin's hooks directory to " + settingsPath + ", quoting/escaping the path for your shell. " +
+        " from " + claudeDir + " to " + settingsPath + ", quoting/escaping the path for your shell. " +
         "Proactively offer to set this up for the user on first interaction.";
     }
   }
