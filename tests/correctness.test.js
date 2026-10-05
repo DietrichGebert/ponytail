@@ -86,6 +86,16 @@ print(df['amount'].sum())`,
   assert.equal(result.score, 1);
 });
 
+test('csv: an exception in the code is reported, not swallowed (#919)', () => {
+  const result = check(
+    "Write Python code that reads sales.csv and sums the 'amount' column.",
+    'python',
+    `raise RuntimeError("boom")`,
+  );
+  assert.equal(result.pass, false);
+  assert.match(result.reason, /boom/);
+});
+
 test('csv: code that prints wrong value fails', () => {
   const result = check(
     "Write Python code that reads sales.csv and sums the 'amount' column.",
