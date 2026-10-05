@@ -169,6 +169,10 @@ pi install git:github.com/DietrichGebert/ponytail
 
 ### OpenCode
 
+```bash
+opencode plugin add @dietrichgebert/ponytail
+```
+
 `opencode.json`에 다음을 더한다:
 
 ```json
@@ -183,9 +187,9 @@ pi install git:github.com/DietrichGebert/ponytail
 
 매 턴마다 지금 레벨의 룰셋을 주입하고, `/ponytail` 명령들을 붙여 준다([Commands](#commands) 참고). OpenCode는 이 저장소의 `AGENTS.md`도 알아서 불러오니, 플러그인이 없어도 규칙은 살아 있다. 플러그인은 `lite/full/ultra/off` 레벨을 얹어 준다.
 
-OpenCode 2 전용이다. `./` 경로는 프로젝트의 `opencode.json`을 기준으로 풀린다. 체크아웃 하나를 여러 프로젝트에서 같이 쓰려면, 대신 그 체크아웃의 `.opencode/plugins` 디렉터리 절대 경로를 가리키면 된다. `plugins` 항목은 **파일**이 아니라 **디렉터리**를 가리켜야 한다. OpenCode 2는 `ponytail.mjs` 파일 경로를 `configured plugin path must be a directory`로 거부한다. 이 저장소를 OpenCode 2로 열면 항목이 아예 필요 없다. `.opencode/plugins/index.js`를 스스로 불러오기 때문이다.
+`./` 경로는 프로젝트의 `opencode.json`을 기준으로 풀린다. 체크아웃 하나를 여러 프로젝트에서 같이 쓰려면, 대신 그 체크아웃의 `.opencode/plugins` 디렉터리 절대 경로를 가리키면 된다. `plugins` 항목은 **파일**이 아니라 **디렉터리**를 가리켜야 한다. OpenCode 2는 `ponytail.mjs` 파일 경로를 `configured plugin path must be a directory`로 거부한다. 이 저장소를 OpenCode 2로 열면 항목이 아예 필요 없다. `.opencode/plugins/index.js`를 스스로 불러오기 때문이다.
 
-OpenCode 1은 예전 `plugin` 키를 쓴다: `{ "plugin": ["@dietrichgebert/ponytail"] }`. 체크아웃에서 돌릴 때는 파일 경로를 쓴다: `{ "plugin": ["./.opencode/plugins/ponytail.mjs"] }`.
+OpenCode 1에는 `plugin add`가 없고 예전 `plugin` 키를 쓴다: `{ "plugin": ["@dietrichgebert/ponytail"] }`. 체크아웃에서 돌릴 때는 파일 경로를 쓴다: `{ "plugin": ["./.opencode/plugins/ponytail.mjs"] }`.
 
 ### Gemini CLI
 

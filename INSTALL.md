@@ -58,6 +58,10 @@ pi install git:github.com/DietrichGebert/ponytail
 
 ## OpenCode
 
+```bash
+opencode plugin add @dietrichgebert/ponytail
+```
+
 Add to `opencode.json`:
 
 ```json
@@ -72,11 +76,11 @@ Run from a checkout instead (the plugin reuses `hooks/` and `skills/`):
 
 Injects the ruleset every turn at the active level; adds the `/ponytail` commands (see [Commands](README.md#commands)). OpenCode also auto-loads this repo's `AGENTS.md`, so the rules hold even without the plugin. The plugin adds the `lite/full/ultra/off` levels.
 
-OpenCode 2 only. The `./` path resolves against your project's `opencode.json`; to share one checkout across projects, point it at the absolute path of the checkout's `.opencode/plugins` directory. A `plugins` entry must name a **directory**, not a file: OpenCode 2 rejects a path to `ponytail.mjs` with `configured plugin path must be a directory`. Opening this repo in OpenCode 2 needs no entry at all: it loads `.opencode/plugins/index.js` on its own.
+The `./` path resolves against your project's `opencode.json`; to share one checkout across projects, point it at the absolute path of the checkout's `.opencode/plugins` directory. A `plugins` entry must name a **directory**, not a file: OpenCode 2 rejects a path to `ponytail.mjs` with `configured plugin path must be a directory`. Opening this repo in OpenCode 2 needs no entry at all: it loads `.opencode/plugins/index.js` on its own.
 
 Kilo Code is built on OpenCode and runs the same plugin through its `plugin` key: add `{ "plugin": ["@dietrichgebert/ponytail"] }` to `kilo.jsonc` (or `~/.config/kilo/kilo.jsonc` for every project).
 
-OpenCode 1 uses the older `plugin` key: `{ "plugin": ["@dietrichgebert/ponytail"] }`, or from a checkout the file path: `{ "plugin": ["./.opencode/plugins/ponytail.mjs"] }`.
+OpenCode 1 has no `plugin add` and uses the older `plugin` key: `{ "plugin": ["@dietrichgebert/ponytail"] }`, or from a checkout the file path: `{ "plugin": ["./.opencode/plugins/ponytail.mjs"] }`.
 
 ## Gemini CLI
 
@@ -216,6 +220,7 @@ Jules (Google) reads `AGENTS.md` from the repository root, which this repo ships
 | Devin CLI | `devin plugins remove ponytail` |
 | Grok Build | `grok plugin uninstall ponytail` |
 | Pi agent | `pi uninstall ponytail` |
+| OpenCode | `opencode plugin remove @dietrichgebert/ponytail` |
 | Cursor hooks | `node scripts/cursor-hooks.js uninstall` (add `--project` for a project-level install); removes only ponytail's entries from `hooks.json` |
 | Cursor rule / Windsurf / Cline / Qoder / etc. | Delete the copied rule file |
 
