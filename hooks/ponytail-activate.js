@@ -19,7 +19,6 @@ const {
   isCodex,
   isCopilot,
   isCursor,
-  isZcode,
   setMode,
   writeHookOutput,
 } = require('./ponytail-runtime');
@@ -61,9 +60,7 @@ try {
 let output = getPonytailInstructions(mode);
 
 // 3. Detect missing statusline config — nudge Claude to help set it up
-// Skipped on ZCode: its statusline configuration story is unverified, and a
-// wrong pointer at Claude's settings.json would just mislead the agent.
-if (!isCodex && !isCopilot && !isCursor && !isZcode && !isCodeBuddy) try {
+if (!isCodex && !isCopilot && !isCursor && !isCodeBuddy) try {
   const isWindows = process.platform === 'win32';
   let statusCommand = null;
   if (fs.existsSync(settingsPath)) {
