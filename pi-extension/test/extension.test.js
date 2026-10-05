@@ -104,6 +104,25 @@ test("before_agent_start guards missing event and missing systemPrompt (#439, #4
   assert.ok(withBase.systemPrompt.includes("PONYTAIL MODE ACTIVE"));
 }));
 
+test("before_agent_start keeps OMP prompt parts and uses Pi sections (#776, #953)", async () => withTempConfig(async () => {
+  const { commands, events } = createPiHarness();
+  const ctx = createCommandContext();
+  await events.get("session_start")({ reason: "startup" }, ctx);
+
+  // OMP: systemPrompt is an array of parts; they must stay separate, not comma-joined.
+  const omp = await events.get("before_agent_start")({ systemPrompt: ["A", "B"] }, ctx);
+  assert.deepEqual(omp.systemPrompt.slice(0, 2), ["A", "B"]);
+  assert.match(omp.systemPrompt[2], /PONYTAIL MODE ACTIVE/);
+
+  // Pi >= 0.86: write a section and leave the prompt alone; off removes it again.
+  const event = { systemPrompt: "BASE", systemPromptOptions: { sections: {} } };
+  assert.equal(await events.get("before_agent_start")(event, ctx), undefined);
+  assert.match(event.systemPromptOptions.sections.ponytail, /PONYTAIL MODE ACTIVE/);
+  await commands.get("ponytail").handler("off", ctx);
+  await events.get("before_agent_start")(event, ctx);
+  assert.equal(event.systemPromptOptions.sections.ponytail, undefined);
+}));
+
 test("session_start restores latest persisted mode", async () => withTempConfig(async () => {
   const { events } = createPiHarness();
   const ctx = createCommandContext({
