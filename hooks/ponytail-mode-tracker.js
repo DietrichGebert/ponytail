@@ -7,6 +7,7 @@ const {
   clearMode,
   cursorRuleNotice,
   cursorRulePath,
+  isCodex,
   isCursor,
   isQoder,
   readMode,
@@ -79,17 +80,19 @@ function finish() {
           } else {
             mode = getDefaultMode() === 'off' ? 'full' : getDefaultMode();
           }
-        } else {
-          mode = getDefaultMode();
         }
       }
 
       if (isReportOnly) {
-        writeHookOutput(
-          'UserPromptSubmit',
-          mode,
-          'PONYTAIL MODE ACTIVE — level: ' + mode,
-        );
+        // On Qoder the ruleset block below already reports; a second write
+        // here would put two JSON objects on stdout.
+        if (!isQoder) {
+          writeHookOutput(
+            'UserPromptSubmit',
+            mode,
+            'PONYTAIL MODE ACTIVE — level: ' + mode,
+          );
+        }
       } else if (mode && mode !== 'off') {
         setMode(mode);
         modeSwitched = true;
@@ -97,18 +100,21 @@ function finish() {
         // switch happens we fold the confirmation into the ruleset output
         // below (one JSON on stdout) instead of emitting two separate writes.
         if (!isQoder) {
-          // Cursor has no /ponytail command that would load the skill body
-          // for the new level, so the tracker delivers that level's ruleset
-          // along with the confirmation (#817).
+          // Cursor (#817) and Codex have no /ponytail command that would load
+          // the skill body for the new level, and the SessionStart ruleset is
+          // filtered to the start level, so the tracker delivers that level's
+          // ruleset along with the confirmation.
           const header = 'PONYTAIL MODE CHANGED — level: ' + mode;
           writeHookOutput(
             'UserPromptSubmit',
             mode,
-            isCursor ? header + '\n\n' + getPonytailInstructions(mode) : header,
+            (isCodex || isCursor) ? header + '\n\n' + getPonytailInstructions(mode) : header,
           );
         }
       } else if (mode === 'off') {
-        clearMode();
+        if (isQoder) setMode('off');
+        else clearMode();
+
         deactivated = true;
         writeHookOutput('UserPromptSubmit', 'off', 'PONYTAIL MODE OFF');
       }
@@ -116,7 +122,9 @@ function finish() {
 
     // Detect deactivation
     if (!modeSwitched && !deactivated && isDeactivationCommand(prompt)) {
-      clearMode();
+      if (isQoder) setMode('off');
+      else clearMode();
+
       deactivated = true;
       writeHookOutput('UserPromptSubmit', 'off', 'PONYTAIL MODE OFF');
     }

@@ -80,7 +80,7 @@ export default function ponytailExtension(pi) {
     let theme;
     try { theme = c.ui.theme; if (!theme?.fg) return; } catch { return; }
     if (currentMode === "off") {
-      c.ui.setStatus("ponytail", "");
+      c.ui.setStatus("ponytail", undefined);
       return;
     }
     const levelIcons = { lite: "🌿", full: "⚡", ultra: "🔥" };
@@ -104,13 +104,16 @@ export default function ponytailExtension(pi) {
     const normalized = String(args || "").trim();
     const message = normalized ? `${skillName} ${normalized}` : skillName;
 
+    // pi.sendUserMessage does not expand skill commands on its own, so without
+    // expandPromptTemplates the alias lands as the literal text
+    // "/skill:ponytail-review" and the skill body never reaches the agent.
     if (ctx?.isIdle?.() === false) {
-      pi.sendUserMessage(message, { deliverAs: "followUp" });
+      pi.sendUserMessage(message, { expandPromptTemplates: true, deliverAs: "followUp" });
       ctx?.ui?.notify?.(`${skillName} queued as follow-up.`, "info");
       return;
     }
 
-    pi.sendUserMessage(message);
+    pi.sendUserMessage(message, { expandPromptTemplates: true });
   };
 
   pi.registerCommand("ponytail", {
@@ -150,47 +153,55 @@ export default function ponytailExtension(pi) {
 
   pi.registerCommand("ponytail-review", {
     description: "Run /skill:ponytail-review",
-    handler: (_args, ctx) => sendAlias("/skill:ponytail-review", "", ctx),
+    handler: (args, ctx) => sendAlias("/skill:ponytail-review", args, ctx),
   });
 
   pi.registerCommand("ponytail-audit", {
     description: "Run /skill:ponytail-audit",
-    handler: (_args, ctx) => sendAlias("/skill:ponytail-audit", "", ctx),
+    handler: (args, ctx) => sendAlias("/skill:ponytail-audit", args, ctx),
   });
 
   pi.registerCommand("ponytail-gain", {
     description: "Run /skill:ponytail-gain",
-    handler: (_args, ctx) => sendAlias("/skill:ponytail-gain", "", ctx),
+    handler: (args, ctx) => sendAlias("/skill:ponytail-gain", args, ctx),
   });
 
   pi.registerCommand("ponytail-debt", {
     description: "Run /skill:ponytail-debt",
-    handler: (_args, ctx) => sendAlias("/skill:ponytail-debt", "", ctx),
+    handler: (args, ctx) => sendAlias("/skill:ponytail-debt", args, ctx),
   });
 
   pi.registerCommand("ponytail-help", {
     description: "Run /skill:ponytail-help",
-    handler: (_args, ctx) => sendAlias("/skill:ponytail-help", "", ctx),
+    handler: (args, ctx) => sendAlias("/skill:ponytail-help", args, ctx),
   });
 
-  pi.on("input", async (event) => {
+  pi.on("input", async (event, ctx) => {
     if (event?.source === "extension") return;
 
     const text = String(event?.text || "");
     if (currentMode !== "off" && isDeactivationCommand(text)) {
-      setMode("off");
+      setMode("off", ctx);
     }
   });
 
-  pi.on("session_start", async (_event, ctx) => {
+  const restoreSessionMode = (ctx) => {
     const entries = ctx?.sessionManager?.getBranch?.() || ctx?.sessionManager?.getEntries?.() || [];
-    configuredDefaultMode = getDefaultMode();
-    hideStatus = getHideStatus();
     currentMode = resolveSessionMode(entries, configuredDefaultMode);
     syncStatus(ctx);
+  };
+
+  pi.on("session_start", async (_event, ctx) => {
+    configuredDefaultMode = getDefaultMode();
+    hideStatus = getHideStatus();
+    restoreSessionMode(ctx);
     if (!getQuietStartup()) {
       ctx?.ui?.notify?.(`Ponytail loaded: ${currentMode}`, "info");
     }
+  });
+
+  pi.on("session_tree", async (_event, ctx) => {
+    restoreSessionMode(ctx);
   });
 
   pi.on("agent_start", async (_event, ctx) => {

@@ -12,11 +12,11 @@
 // One default export serves both plugin APIs: V2 reads `id` + `setup`, V1 calls
 // `server()`.
 
-import { createRequire } from 'module';
-import fs from 'fs';
-import os from 'os';
-import path from 'path';
-import { fileURLToPath } from 'url';
+import { createRequire } from 'node:module';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 

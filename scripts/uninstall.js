@@ -11,7 +11,7 @@ const path = require('path');
 const { getConfigPath, getClaudeDir } = require('../hooks/ponytail-config');
 const cursorHooks = require('./cursor-hooks');
 
-const STATUSLINE_SCRIPT = 'ponytail-statusline';
+const STATUSLINE_SCRIPT = /(?:^|[\s"'\\/])ponytail-statusline\.(?:sh|ps1)(?=$|[\s"'])/;
 
 function removeIfExists(filePath, label) {
   try {
@@ -23,7 +23,9 @@ function removeIfExists(filePath, label) {
 }
 
 removeIfExists(path.join(getClaudeDir(), '.ponytail-active'), 'mode flag');
+removeIfExists(path.join(getClaudeDir(), '.ponytail-statusline-nudged'), 'statusline nudge flag');
 removeIfExists(path.join(os.homedir(), '.cursor', '.ponytail-active'), 'Cursor mode flag');
+removeIfExists(path.join(os.homedir(), '.qoder', '.ponytail-active'), 'Qoder mode flag');
 for (const dir of [path.join(getClaudeDir(), 'ponytail-modes'), path.join(os.homedir(), '.cursor', 'ponytail-modes'), path.join(process.env.CODEBUDDY_CONFIG_DIR || path.join(os.homedir(), '.codebuddy'), 'ponytail-modes')]) {
   if (fs.existsSync(dir)) {
     fs.rmSync(dir, { recursive: true });
@@ -56,12 +58,12 @@ try {
   // (e.g. caveman && ponytail), keep the other plugin's command intact.
   // ponytail: splits on && / ; to detect other segments — good enough; a user
   // piping statuslines together is on their own.
-  if (typeof cmd === 'string' && cmd.includes(STATUSLINE_SCRIPT)) {
+  if (typeof cmd === 'string' && STATUSLINE_SCRIPT.test(cmd)) {
     const parts = cmd
       .split(/&&|;/)
       .map((s) => s.trim())
       .filter(Boolean);
-    const others = parts.filter((s) => !s.includes(STATUSLINE_SCRIPT));
+    const others = parts.filter((s) => !STATUSLINE_SCRIPT.test(s));
     if (others.length === 0) {
       delete settings.statusLine;
       fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2), 'utf8');
