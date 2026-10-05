@@ -1,6 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
+const { createHash } = require('crypto');
 const { getClaudeDir, getConfigDir } = require('./ponytail-config');
 
 const STATE_FILE = '.ponytail-active';
@@ -51,8 +52,11 @@ const statePath = path.join(stateDir, STATE_FILE);
 // ponytail: sessions in the SAME repo still share one mode, and the statusline
 // scripts read the shared flag (last write wins); key by session_id if either matters.
 const projectDir = (process.env.CLAUDE_PROJECT_DIR || '').trim();
+// Replacing separators with '_' aliases e.g. /work/a/b and /work/a_b (#662).
+// Do not read old sanitized keys: they cannot be assigned to one project safely.
 const projectStatePath = projectDir
-  ? path.join(stateDir, 'ponytail-modes', projectDir.replace(/[^A-Za-z0-9._-]/g, '_'))
+  ? path.join(stateDir, 'ponytail-modes',
+    createHash('sha256').update(path.normalize(projectDir)).digest('hex'))
   : null;
 
 // The shared flag is still written, for the statusline and project-less hosts.
