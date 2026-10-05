@@ -56,6 +56,15 @@ Copilot CLI namespaces plugin commands by plugin name. For example:
 pi install git:github.com/DietrichGebert/ponytail
 ```
 
+## Oh My Pi (omp)
+
+```bash
+omp plugin marketplace add DietrichGebert/ponytail
+omp plugin install ponytail@ponytail
+```
+
+omp runs ponytail's Pi extension unchanged, so the ruleset is injected every turn as in Pi (verified with omp 18.6.1). Start a new session after installing.
+
 ## OpenCode
 
 Add to `opencode.json`:
@@ -93,7 +102,7 @@ Qwen Code installs the same extension: `qwen extensions install DietrichGebert/p
 
 Qoder auto-loads `AGENTS.md` from the repo root as always-on context, so running ponytail from a checkout works with zero setup. For per-project rules, copy [`.qoder/rules/ponytail.md`](.qoder/rules/ponytail.md) into your project's `.qoder/rules/`. The six ponytail skills (`/ponytail`, `/ponytail-review`, `/ponytail-audit`, `/ponytail-debt`, `/ponytail-gain`, `/ponytail-help`) are available via Qoder's Skill system; the plugin manifest at [`.qoder-plugin/plugin.json`](.qoder-plugin/plugin.json) points at the `skills/` directory.
 
-For full plugin-tier support (automatic mode activation + ruleset injection on every prompt), add the hooks from [`hooks/qoder-hooks.json`](hooks/qoder-hooks.json) to your `.qoder/settings.json`. Replace `PONYTAIL_DIR` with the path to your ponytail checkout. Qoder's `UserPromptSubmit` hook activates the default mode on first prompt and injects the ruleset every turn; `PreToolUse` with `task|Task` matcher injects the ruleset into subagents. Level switches (`/ponytail lite|full|ultra|off`) work automatically.
+For full plugin-tier support (automatic mode activation + ruleset injection on every prompt), install ponytail as a Qoder plugin (`qodercli plugins install <path-to-ponytail>`): the manifest loads [`hooks/qoder-hooks.json`](hooks/qoder-hooks.json) and Qoder fills in `${QODER_PLUGIN_ROOT}`. Without the plugin, copy those hooks into your `.qoder/settings.json` and replace `${QODER_PLUGIN_ROOT}` with the path to your ponytail checkout. Qoder's `UserPromptSubmit` hook activates the default mode on first prompt and injects the ruleset every turn; `PreToolUse` with `task|Task` matcher injects the ruleset into subagents. Level switches (`/ponytail lite|full|ultra|off`) work automatically.
 
 ## Antigravity CLI
 
@@ -216,6 +225,7 @@ Jules (Google) reads `AGENTS.md` from the repository root, which this repo ships
 | Devin CLI | `devin plugins remove ponytail` |
 | Grok Build | `grok plugin uninstall ponytail` |
 | Pi agent | `pi uninstall ponytail` |
+| Oh My Pi (omp) | `omp plugin uninstall ponytail@ponytail`, then `omp plugin marketplace remove ponytail` |
 | Cursor hooks | `node scripts/cursor-hooks.js uninstall` (add `--project` for a project-level install); removes only ponytail's entries from `hooks.json` |
 | Cursor rule / Windsurf / Cline / Qoder / etc. | Delete the copied rule file |
 
