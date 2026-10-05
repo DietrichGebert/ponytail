@@ -9,6 +9,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { spawnSync } = require('child_process');
+const { filterSkillBodyForMode } = require('../hooks/ponytail-instructions');
 
 const commands = ['ponytail', 'ponytail-review', 'ponytail-audit', 'ponytail-debt', 'ponytail-gain', 'ponytail-help'];
 const skillCommands = commands.filter((name) => name !== 'ponytail');
@@ -31,7 +32,13 @@ function pythonExe() {
 function python(script, env = {}) {
   const result = spawnSync(pythonExe(), ['-c', script], {
     cwd: root,
-    env: { ...process.env, ...env },
+    // Isolate from the developer's own ~/.config/ponytail and PONYTAIL_DEFAULT_MODE.
+    env: {
+      ...process.env,
+      PONYTAIL_DEFAULT_MODE: '',
+      XDG_CONFIG_HOME: fs.mkdtempSync(path.join(os.tmpdir(), 'ponytail-config-')),
+      ...env,
+    },
     encoding: 'utf8',
   });
   if (result.status !== 0) {
@@ -149,6 +156,52 @@ print(json.dumps({
   assert.match(data.status_after, /Ponytail mode: ultra/);
 });
 
+test('Hermes honors plain and BOM-prefixed default-mode config before LLM calls', (t) => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'ponytail-config-'));
+  t.after(() => fs.rmSync(tmp, { recursive: true, force: true }));
+  fs.mkdirSync(path.join(tmp, 'ponytail'));
+  for (const prefix of ['', '\uFEFF']) {
+    for (const mode of ['lite', 'off']) {
+      fs.writeFileSync(path.join(tmp, 'ponytail', 'config.json'), prefix + JSON.stringify({ defaultMode: mode }));
+      const output = python(String.raw`
+import importlib.util, json
+spec = importlib.util.spec_from_file_location('ponytail_hermes_plugin', '__init__.py')
+mod = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(mod)
+print(json.dumps(mod._pre_llm_call()))
+`, { XDG_CONFIG_HOME: tmp, PONYTAIL_DEFAULT_MODE: '' });
+      const data = JSON.parse(output);
+      if (mode === 'off') assert.equal(data, null);
+      else assert.match(data.context, /PONYTAIL MODE ACTIVE — level: lite/);
+    }
+  }
+});
+
+test('Hermes rejects review as a default while keeping explicit review mode', () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'ponytail-review-default-'));
+  fs.mkdirSync(path.join(tmp, 'ponytail'), { recursive: true });
+  fs.writeFileSync(path.join(tmp, 'ponytail', 'config.json'), JSON.stringify({ defaultMode: 'review' }));
+  const output = python(String.raw`
+import importlib.util, json, os
+spec = importlib.util.spec_from_file_location('ponytail_hermes_plugin', '__init__.py')
+mod = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(mod)
+env_default = mod.build_injected_context(None)
+del os.environ['PONYTAIL_DEFAULT_MODE']
+file_default = mod.build_injected_context(None)
+explicit_review = mod.build_injected_context('review')
+print(json.dumps({
+    'env_default': env_default,
+    'file_default': file_default,
+    'explicit_review': explicit_review,
+}))
+`, { XDG_CONFIG_HOME: tmp, PONYTAIL_DEFAULT_MODE: 'review' });
+  const data = JSON.parse(output);
+  assert.match(data.env_default, /PONYTAIL MODE ACTIVE — level: full/);
+  assert.match(data.file_default, /PONYTAIL MODE ACTIVE — level: full/);
+  assert.match(data.explicit_review, /PONYTAIL MODE ACTIVE — level: review/);
+});
+
 test('Hermes plugin review mode injects the real review skill body', () => {
   const output = python(String.raw`
 import importlib.util, json
@@ -190,6 +243,36 @@ print(json.dumps({'message': message, 'context': injected['context']}))
   assert.match(data.context, /PONYTAIL MODE ACTIVE — level: ultra/);
 });
 
+test('Hermes pre_llm_call does not append the same ruleset to every persisted turn', () => {
+  const output = python(String.raw`
+import importlib.util, json
+spec = importlib.util.spec_from_file_location('ponytail_hermes_plugin', '__init__.py')
+mod = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(mod)
+first = mod._pre_llm_call(conversation_history=[])
+history = [{
+    'role': 'user',
+    'content': 'first task',
+    'api_content': 'first task\\n\\n' + first['context'],
+}]
+second = mod._pre_llm_call(conversation_history=history)
+mod._current_mode = 'ultra'
+switched = mod._pre_llm_call(conversation_history=history)
+history.append({
+    'role': 'user',
+    'content': 'second task',
+    'api_content': 'second task\\n\\n' + switched['context'],
+})
+after_switch = mod._pre_llm_call(conversation_history=history)
+print(json.dumps({'first': first, 'second': second, 'switched': switched, 'after_switch': after_switch}))
+`);
+  const data = JSON.parse(output);
+  assert.match(data.first.context, /PONYTAIL MODE ACTIVE — level: full/);
+  assert.equal(data.second, null);
+  assert.match(data.switched.context, /PONYTAIL MODE ACTIVE — level: ultra/);
+  assert.equal(data.after_switch, null);
+});
+
 test('Hermes gateway rewrite respects slash access denial', () => {
   const output = python(String.raw`
 import importlib.util, json
@@ -210,6 +293,26 @@ result = mod.rewrite_gateway_command(event=Event(), gateway=Gateway())
 print(json.dumps(result))
 `);
   assert.equal(output, 'null');
+});
+
+test('Hermes bare /ponytail switches an off session on and only reports a running level (#639)', () => {
+  const output = python(String.raw`
+import importlib.util, json
+spec = importlib.util.spec_from_file_location('ponytail_hermes_plugin', '__init__.py')
+mod = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(mod)
+mod._current_mode = 'ultra'
+running = mod._handle_mode_command('')
+kept = mod._current_mode
+mod._current_mode = 'off'
+switched = mod._handle_mode_command('')
+print(json.dumps([running, kept, switched, mod._current_mode]))
+`);
+  const [running, kept, switched, after] = JSON.parse(output);
+  assert.match(running, /Ponytail mode: ultra/);
+  assert.equal(kept, 'ultra');
+  assert.match(switched, /set to full/);
+  assert.equal(after, 'full');
 });
 
 test('Hermes gateway rewrite preserves every skill command and ignores unrelated text', () => {
@@ -233,4 +336,50 @@ print(json.dumps(cases, sort_keys=True))
   assert.match(data['/ponytail-help'].text, /ponytail-help/);
   assert.equal(data['/status'], null);
   assert.equal(data.hello, null);
+});
+
+test('Hermes mode filter does not drop a rule bullet whose label matches a mode name', () => {
+  // Regression for the Hermes side of #571: a rule bullet shaped "- Full: ..."
+  // has the same "label: text" shape as a worked example, but isn't one — it
+  // must survive in every mode. Only the quoted `- lite: "..."`-style bullets
+  // are real per-mode examples. hooks/ponytail-instructions.js already guards
+  // against this; the Hermes plugin filter had drifted and lost the same guard.
+  const output = python(String.raw`
+import importlib.util, json
+spec = importlib.util.spec_from_file_location('ponytail_hermes_plugin', '__init__.py')
+mod = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(mod)
+body = (
+    "- Full: do not confuse this rule label with the mode name.\n"
+    "- Lite: same risk, this is a real rule bullet.\n"
+    '- lite: "real worked example"\n'
+    '- ultra: "real worked example"'
+)
+print(json.dumps({'filtered': mod._filter_skill_body_for_mode(body, 'ultra')}))
+`);
+  const { filtered } = JSON.parse(output);
+  assert.ok(filtered.includes('Full: do not confuse'), 'an unquoted rule bullet must not be treated as a mode example');
+  assert.ok(filtered.includes('Lite: same risk'), 'an unquoted rule bullet must not be treated as a mode example');
+  assert.ok(!filtered.includes('- lite:'), 'the real quoted lite example must still be filtered out in ultra mode');
+  assert.ok(filtered.includes('ultra: "real worked example"'));
+});
+
+test('Hermes mode filter stays in lockstep with the JS filter on the real skill body', () => {
+  // The two filters are independent ports of the same contract (one shared
+  // skill file, every host adapter trims it the same way). Diff them directly
+  // on skills/ponytail/SKILL.md instead of trusting the two implementations to
+  // stay in sync by hand.
+  const body = fs.readFileSync(path.join(root, 'skills', 'ponytail', 'SKILL.md'), 'utf8');
+  for (const mode of ['lite', 'full', 'ultra']) {
+    const jsFiltered = filterSkillBodyForMode(body, mode);
+    const pyFiltered = python(String.raw`
+import importlib.util, json
+spec = importlib.util.spec_from_file_location('ponytail_hermes_plugin', '__init__.py')
+mod = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(mod)
+body = open('skills/ponytail/SKILL.md', encoding='utf-8').read()
+print(json.dumps(mod._filter_skill_body_for_mode(body, '${mode}')))
+`);
+    assert.equal(JSON.parse(pyFiltered), jsFiltered, `filters diverge for mode "${mode}"`);
+  }
 });
