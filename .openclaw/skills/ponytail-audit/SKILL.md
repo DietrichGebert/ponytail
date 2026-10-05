@@ -15,6 +15,7 @@ Same as ponytail-review:
 - `delete:` dead code, unused flexibility, speculative feature. Replacement: nothing.
 - `stdlib:` hand-rolled thing the standard library ships. Name the function.
 - `native:` dependency or code doing what the platform already does. Name the feature.
+- `reuse:` equivalent helper, util, or pattern already in this repo. Name the path.
 - `yagni:` abstraction with one implementation, config nobody sets, layer with one caller.
 - `shrink:` same logic, fewer lines. Show the shorter form.
 
@@ -22,11 +23,15 @@ Same as ponytail-review:
 
 Deps the stdlib or platform already ships, single-implementation interfaces,
 factories with one product, wrappers that only delegate, files exporting one
-thing, dead flags and config, hand-rolled stdlib.
+thing, dead flags and config, hand-rolled stdlib, helpers duplicating an
+equivalent that already lives in this repo.
+Before emitting `delete:`, grep the whole tree for the symbol, including tests,
+fixtures and string or dynamic references.
 
 ## Output
 
-One line per finding, ranked: `<tag> <what to cut>. <replacement>. [path]`.
+One line per finding, numbered and ranked: `<N>. <tag> <what to cut>. <replacement>. [path]`,
+so the user can say "fix 2 and 5".
 End with `net: -<N> lines, -<M> deps possible.` Nothing to cut: `Lean already. Ship.`
 
 ## Boundaries
