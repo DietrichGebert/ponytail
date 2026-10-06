@@ -200,9 +200,13 @@ export default function ponytailExtension(pi) {
     }
   });
 
-  pi.on("session_tree", async (_event, ctx) => {
-    restoreSessionMode(ctx);
-  });
+  // Both hosts emit session_tree. Pi re-emits session_start on /new, /resume and
+  // /fork; OMP emits session_switch and session_branch instead.
+  for (const eventName of ["session_tree", "session_switch", "session_branch"]) {
+    pi.on(eventName, async (_event, ctx) => {
+      restoreSessionMode(ctx);
+    });
+  }
 
   pi.on("agent_start", async (_event, ctx) => {
     isActive = true;
