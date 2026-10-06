@@ -23,7 +23,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 // The shared instruction builder is CommonJS; bridge to it from this ES module.
 const require = createRequire(import.meta.url);
 const { getPonytailInstructions } = require('../../hooks/ponytail-instructions');
-const { getDefaultMode, normalizePersistedMode } = require('../../hooks/ponytail-config');
+const { getDefaultMode, normalizeMode, normalizePersistedMode } = require('../../hooks/ponytail-config');
 const { parseCommandFile, parseSkillFile } = require('./ponytail-frontmatter.cjs');
 
 // OpenCode has no flag-file convention of its own; keep mode beside its config.
@@ -55,7 +55,7 @@ function persistMode(args) {
   const wanted = String(args == null ? '' : args).trim();
   // Bare /ponytail switches ponytail on, or keeps the level when it already is (#639).
   if (!wanted && readMode() !== 'off') return;
-  const mode = wanted ? normalizePersistedMode(wanted) : (getDefaultMode() === 'off' ? 'full' : getDefaultMode());
+  const mode = wanted ? normalizeMode(wanted) : (getDefaultMode() === 'off' ? 'full' : getDefaultMode());
   if (!mode) return;
   writeMode(mode);
   console.log('ponytail ' + mode);
