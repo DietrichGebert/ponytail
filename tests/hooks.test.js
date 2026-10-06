@@ -38,6 +38,8 @@ delete process.env.COPILOT_PLUGIN_DATA;
 // A leaked subagent matcher would scope the inject-into-every-subagent assertions.
 delete process.env.PONYTAIL_SUBAGENT_MATCHER;
 delete process.env.QODER_SESSION_ID;
+// Same for ZCode (#798), which sets it in every child process it spawns.
+delete process.env.ZCODE_APP_VERSION;
 // A leaked project dir would move the flag into ponytail-modes/ (#662).
 delete process.env.CLAUDE_PROJECT_DIR;
 // Cursor sets these only for hook processes, but a suite launched from a Cursor
@@ -698,6 +700,109 @@ const codebuddyConfigDir = path.join(temp, 'codebuddy-config');
 result = run('ponytail-activate.js', { ...codebuddyEnv, CODEBUDDY_CONFIG_DIR: codebuddyConfigDir });
 assert.equal(result.status, 0, result.stderr);
 assert.equal(fs.readFileSync(path.join(codebuddyConfigDir, '.ponytail-active'), 'utf8'), 'lite');
+
+// Zcode: parses hook stdout as strict JSON, so the native-Claude raw-text
+// SessionStart output is silently discarded (#798). Same hookSpecificOutput
+// shape as Qoder, but Zcode does have SessionStart — activate.js injects the
+// ruleset at startup and the mode-tracker only speaks up on mode switches.
+const zcodeHome = path.join(temp, 'zcode-home');
+const zcodeState = path.join(zcodeHome, '.claude', '.ponytail-active');
+fs.mkdirSync(zcodeHome, { recursive: true });
+
+const zcodeEnv = {
+  HOME: zcodeHome,
+  USERPROFILE: zcodeHome,
+  ZCODE_APP_VERSION: '3.10.2',
+  PONYTAIL_DEFAULT_MODE: 'full',
+};
+
+// SessionStart: flag written, ruleset emitted as hookSpecificOutput JSON.
+result = run('ponytail-activate.js', zcodeEnv);
+assert.equal(result.status, 0, result.stderr);
+assert.equal(fs.readFileSync(zcodeState, 'utf8'), 'full');
+output = JSON.parse(result.stdout);
+assert.equal(output.systemMessage, undefined, 'Zcode must not emit systemMessage');
+assert.equal(output.hookSpecificOutput.hookEventName, 'SessionStart');
+assert.match(
+  output.hookSpecificOutput.additionalContext,
+  /PONYTAIL MODE ACTIVE — level: full/,
+);
+
+// '@ponytail lite': mode tracker updates the flag and confirms via JSON.
+result = run(
+  'ponytail-mode-tracker.js',
+  zcodeEnv,
+  JSON.stringify({ prompt: '@ponytail lite' }),
+);
+assert.equal(result.status, 0, result.stderr);
+assert.equal(fs.readFileSync(zcodeState, 'utf8'), 'lite');
+output = JSON.parse(result.stdout);
+assert.equal(output.hookSpecificOutput.hookEventName, 'UserPromptSubmit');
+assert.match(
+  output.hookSpecificOutput.additionalContext,
+  /PONYTAIL MODE CHANGED — level: lite/,
+);
+
+// ZCode renders a slash command as a markdown link, so the prompt arrives as
+// [$ponytail](path) args — the raw ^[/@$]ponytail match never saw that form.
+result = run(
+  'ponytail-mode-tracker.js',
+  zcodeEnv,
+  JSON.stringify({ prompt: '[$ponytail](C:\\\\Users\\\\me\\\\SKILL.md) ultra' }),
+);
+assert.equal(result.status, 0, result.stderr);
+assert.equal(fs.readFileSync(zcodeState, 'utf8'), 'ultra');
+output = JSON.parse(result.stdout);
+assert.match(
+  output.hookSpecificOutput.additionalContext,
+  /PONYTAIL MODE CHANGED — level: ultra/,
+);
+
+// A wrapped non-ponytail label is not a ponytail command and stays silent.
+result = run(
+  'ponytail-mode-tracker.js',
+  zcodeEnv,
+  JSON.stringify({ prompt: '[$grill-me](C:\\\\Users\\\\me\\\\SKILL.md) grill me' }),
+);
+assert.equal(result.status, 0, result.stderr);
+assert.equal(result.stdout, '', 'a wrapped non-ponytail label must stay silent');
+assert.equal(fs.readFileSync(zcodeState, 'utf8'), 'ultra');
+
+// ZCode resumes its runtime right after a slash-command prompt, firing
+// SessionStart(resume) seconds after the tracker set the level. On ZCode the
+// switched level must survive that resume instead of resetting to the default.
+result = run('ponytail-activate.js', zcodeEnv, JSON.stringify({ source: 'resume' }));
+assert.equal(result.status, 0, result.stderr);
+assert.equal(fs.readFileSync(zcodeState, 'utf8'), 'ultra', 'resume must keep the switched level on ZCode');
+
+// The keep is gated on ZCode: without ZCODE_APP_VERSION a resume still resets
+// to the default, so Claude Code / Codex behavior is unchanged (#1040 follow-up).
+const { ZCODE_APP_VERSION: _, ...claudeShapedEnv } = zcodeEnv;
+result = run('ponytail-activate.js', claudeShapedEnv, JSON.stringify({ source: 'resume' }));
+assert.equal(result.status, 0, result.stderr);
+assert.equal(fs.readFileSync(zcodeState, 'utf8'), 'full', 'resume must still reset to the default off ZCode');
+
+// The unwrap is gated on ZCode: off ZCode a [ponytail](url) link at the
+// start of an ordinary prompt must stay silent, not switch the level.
+result = run(
+  'ponytail-mode-tracker.js',
+  claudeShapedEnv,
+  JSON.stringify({ prompt: '[ponytail](https://github.com/DietrichGebert/ponytail) full of ideas' }),
+);
+assert.equal(result.status, 0, result.stderr);
+assert.equal(result.stdout, '', 'a pasted ponytail link must stay silent off ZCode');
+assert.equal(fs.readFileSync(zcodeState, 'utf8'), 'full');
+
+// "stop ponytail": deactivates, clears flag, short confirmation as JSON.
+result = run(
+  'ponytail-mode-tracker.js',
+  zcodeEnv,
+  JSON.stringify({ prompt: 'stop ponytail' }),
+);
+assert.equal(result.status, 0, result.stderr);
+assert.equal(fs.existsSync(zcodeState), false, 'flag must be cleared after stop ponytail');
+output = JSON.parse(result.stdout);
+assert.equal(output.hookSpecificOutput.additionalContext, 'PONYTAIL MODE OFF');
 
 // writeDefaultMode must merge into existing config, not overwrite it (#490).
 const mergeHome = path.join(temp, 'merge-home');

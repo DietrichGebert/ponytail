@@ -125,6 +125,37 @@ test('ponytail-mode-tracker self-exits when stdin never closes (no freeze)', asy
   assert.equal(code, 0, 'hook must exit cleanly when stdin never closes');
 });
 
+// Same #443 contract for the SessionStart hook: activate reads its payload's
+// source field since the ZCode resume fix, so it must also self-exit when the
+// piped stdin never reaches EOF instead of freezing session start.
+test('ponytail-activate self-exits when stdin never closes (no freeze)', async () => {
+  const hook = path.join(root, 'hooks', 'ponytail-activate.js');
+  // activate always writes the mode flag, so point its config dir at a
+  // throwaway home instead of the developer's real ~/.claude.
+  const home = fs.mkdtempSync(path.join(os.tmpdir(), 'ponytail-activate-neof-'));
+  const child = spawn(process.execPath, [hook], {
+    stdio: ['pipe', 'ignore', 'ignore'],
+    env: {
+      ...process.env,
+      HOME: home,
+      USERPROFILE: home,
+      CLAUDE_CONFIG_DIR: path.join(home, '.claude'),
+      PONYTAIL_DEFAULT_MODE: 'lite',
+    },
+  });
+
+  const code = await new Promise((resolve, reject) => {
+    const guard = setTimeout(() => {
+      child.kill('SIGKILL');
+      reject(new Error('activate hung on open stdin — it would freeze session start'));
+    }, 3000);
+    child.on('exit', (c) => { clearTimeout(guard); resolve(c); });
+    child.on('error', reject);
+  });
+
+  assert.equal(code, 0, 'activate must exit cleanly when stdin never closes');
+});
+
 test('Claude and Codex manifests point at the shared host-specific hook config', () => {
   for (const rel of HOST_PLUGIN_MANIFESTS) {
     const manifest = JSON.parse(fs.readFileSync(path.join(root, rel), 'utf8'));
