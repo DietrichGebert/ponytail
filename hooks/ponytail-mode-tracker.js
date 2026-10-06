@@ -10,6 +10,7 @@ const {
   isCodex,
   isCursor,
   isQoder,
+  isZcode,
   readMode,
   setMode,
   writeHookOutput,
@@ -25,7 +26,15 @@ function finish() {
   try {
     // Strip UTF-8 BOM some shells prepend when piping (breaks JSON.parse)
     const data = JSON.parse(input.replace(/^\uFEFF/, ''));
-    const prompt = (data.prompt || '').trim().toLowerCase();
+    // ZCode renders a slash command as a markdown link ([$ponytail](path)
+    // args); unwrap it so the /^[/@$]ponytail/ match below sees the bare
+    // command. Gated on ZCode: a [ponytail](url) link pasted at the start of
+    // an ordinary prompt must not switch the level on other hosts. Bare
+    // /ponytail, @ponytail and $ponytail forms pass through everywhere.
+    let prompt = (data.prompt || '').trim().toLowerCase();
+    if (isZcode) {
+      prompt = prompt.replace(/^\[([/@$]?)(ponytail[^\]]*)\]\([^)]*\)/, '/$2');
+    }
 
     // Cursor with the always-on rule in the workspace: no hook can change or
     // switch off a rule, so answer the command with the notice instead of
