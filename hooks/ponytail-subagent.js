@@ -11,7 +11,7 @@
 // "^general$" is exact. Unset means inject into every subagent, as before.
 
 const { getPonytailInstructions } = require('./ponytail-instructions');
-const { readMode, writeHookOutput } = require('./ponytail-runtime');
+const { exitAfterOutput, readMode, writeHookOutput } = require('./ponytail-runtime');
 const vm = require('vm');
 
 const mode = readMode();
@@ -39,13 +39,13 @@ try {
   matcherRe = null;
 }
 
-// No matcher → keep the original synchronous, stdin-independent path. On Windows
+// No matcher → keep the original stdin-independent path. On Windows
 // the PowerShell `if {}` wrapper can swallow the piped JSON so stdin 'end' never
 // fires (#443); the default path must not wait on stdin or it would stall every
 // subagent spawn.
 if (!matcherRe) {
   inject();
-  process.exit(0);
+  return exitAfterOutput();
 }
 
 // Matcher set → read agent_type from stdin and skip only on a definite
@@ -85,10 +85,10 @@ function finish() {
 process.stdin.on('data', chunk => { input += chunk; });
 // Exit on 'end' (not just finish()) so the ref'd fallback timer below can't
 // add its full 1000ms to the normal fast path.
-process.stdin.on('end', () => { finish(); process.exit(0); });
+process.stdin.on('end', () => { finish(); exitAfterOutput(); });
 // Never block the session (#443): recover on stdin error or a short fallback.
 // The fallback stays ref'd: on Windows a stuck ref'd stdin keeps the loop
 // alive and an unref'd timer is never scheduled, so the hook hung to the
 // external watchdog instead of exiting at 1s (#790).
-process.stdin.on('error', () => { finish(); process.exit(0); });
-setTimeout(() => { finish(); process.exit(0); }, 1000);
+process.stdin.on('error', () => { finish(); exitAfterOutput(); });
+setTimeout(() => { finish(); exitAfterOutput(); }, 1000);

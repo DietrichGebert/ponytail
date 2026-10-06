@@ -161,10 +161,28 @@ function writeHookOutput(event, mode, context = '') {
   process.stdout.write(context);
 }
 
+let exiting = false;
+function exitAfterOutput() {
+  if (exiting) return;
+  exiting = true;
+  // POSIX pipes are asynchronous: exit only after queued JSON has flushed
+  // (#1043). Repeated stdin events must not restart or shorten this wait.
+  // ponytail: best effort, at most 1s for an asynchronous non-draining reader;
+  // a synchronous OS write cannot be interrupted by a JavaScript timer.
+  setTimeout(() => process.exit(0), 1000);
+  process.stdout.write('', (error) => {
+    // A closed reader is harmless at hook shutdown, but other output failures
+    // must not be turned into a successful exit by this callback.
+    if (error && error.code !== 'EPIPE') throw error;
+    process.exit(0);
+  });
+}
+
 module.exports = {
   clearMode,
   cursorRuleNotice,
   cursorRulePath,
+  exitAfterOutput,
   isCodeBuddy,
   isCodex,
   isCopilot,

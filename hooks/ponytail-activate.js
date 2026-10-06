@@ -15,6 +15,7 @@ const {
   clearMode,
   cursorRuleNotice,
   cursorRulePath,
+  exitAfterOutput,
   isCodeBuddy,
   isCodex,
   isCopilot,
@@ -45,7 +46,7 @@ if (isCursor) {
     } catch (e) {
       // Silent fail — stdout closed/EPIPE at hook exit must not surface as a hook failure
     }
-    process.exit(0);
+    return exitAfterOutput();
   }
 }
 
