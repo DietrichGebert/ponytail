@@ -15,20 +15,10 @@ const { isShellSafe } = require('../hooks/ponytail-config');
 
 const ROOT = path.join(__dirname, '..');
 const TEMPLATE = path.join(ROOT, 'hooks', 'cursor-hooks.json');
+const PONYTAIL_HOOK = /[\\/]hooks[\\/]ponytail-[\w-]+\.js(?=["'\s]|$)/;
 
 function isPonytailHook(entry) {
-  if (!entry || typeof entry.command !== 'string') return false;
-  const command = entry.command.replace(/\\/g, '/');
-  const marker = '/hooks/ponytail-';
-  const start = command.lastIndexOf(marker);
-  if (start < 0) return false;
-  const nameStart = start + marker.length;
-  const end = command.indexOf('.js', nameStart);
-  if (end < 0) return false;
-  const name = command.slice(nameStart, end);
-  if (!name || !/^[A-Za-z0-9_-]+$/.test(name)) return false;
-  const boundary = command[end + 3];
-  return boundary === undefined || boundary === '"' || boundary === "'" || /\s/.test(boundary);
+  return Boolean(entry && typeof entry.command === 'string' && PONYTAIL_HOOK.test(entry.command));
 }
 
 function hooksPath(scope) {
