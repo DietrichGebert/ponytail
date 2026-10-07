@@ -19,6 +19,7 @@ const { spawnSync } = require('child_process');
 const root = path.join(__dirname, '..');
 const rootFwd = root.replace(/\\/g, '/');
 const TEMPLATE = 'hooks/cursor-hooks.json';
+const { isPonytailHook } = require('../scripts/cursor-hooks');
 
 // Keep host detection and config resolution deterministic whatever shell the
 // suite runs in (a Cursor hook env, a Codex shell, a machine-wide default mode).
@@ -104,6 +105,12 @@ test('cursor hooks template is a valid hooks.json with the two events that can i
       assert.ok(fs.existsSync(path.join(root, 'hooks', script)), `command references a missing hook script: ${script}`);
     }
   }
+});
+
+test('hook detection ignores later lookalike arguments after a real ponytail hook', () => {
+  assert.equal(isPonytailHook({
+    command: 'node "/opt/p/hooks/ponytail-activate.js" --log /tmp/hooks/ponytail-x/',
+  }), true);
 });
 
 test('isCursor is off outside a Cursor hook process', () => {
