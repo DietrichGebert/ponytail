@@ -315,3 +315,20 @@ test('installer refuses to touch a malformed hooks.json', () => {
     assert.equal(fs.readFileSync(file, 'utf8'), broken, 'malformed file must be left byte-for-byte intact');
   }
 });
+
+for (const [name, config] of Object.entries({
+  'root-array': [{ command: 'keep me' }],
+  'hooks-array': { hooks: [{ command: 'keep me' }] },
+  'event-string': { hooks: { sessionStart: 'node custom-hook.js' } },
+})) {
+  test(`installer refuses ${name} without overwriting hooks.json`, () => {
+    const c = cursorEnv(`invalid-${name}`);
+    const file = path.join(c.home, '.cursor', 'hooks.json');
+    fs.mkdirSync(path.dirname(file), { recursive: true });
+    const original = JSON.stringify(config, null, 2) + '\n';
+    fs.writeFileSync(file, original);
+    const result = cli(['install'], c.env);
+    assert.notEqual(result.status, 0, 'invalid config must not be silently rewritten');
+    assert.equal(fs.readFileSync(file, 'utf8'), original);
+  });
+}
