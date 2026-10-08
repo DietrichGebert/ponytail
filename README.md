@@ -79,7 +79,7 @@ Two things the chart does not show: in a blind comparison, Ponytail 5's replies 
 
 **The rule was never "fewest tokens."** It is: write only what the task needs, and never cut validation, error handling, security, or accessibility. The code ends up small because it is necessary, not golfed. Lower cost and latency are a side effect.
 
-## Before / after
+## Before / After
 
 <p align="center">
   <img src="assets/v5/beforeafter.png" width="880" alt="Add a date picker to the frontend. No skill: 335 lines, a calendar and a date picker built by hand. Ponytail 5: one 10-line file that reuses the repo's Input with type date, so the browser brings the calendar.">
@@ -89,7 +89,7 @@ You ask for a date picker. Without Ponytail, the agent installs a date picker li
 
 More survivors in [examples/](examples/).
 
-## The review, rebuilt
+## The Review, Rebuilt
 
 <p align="center">
   <img src="assets/v5/review.png" width="880" alt="The review, rebuilt. A real /ponytail-review finding from the benchmark: the change renamed a field, and an untouched file, src/routes/feed.js, now crashes. Must fix: the Atom feed now crashes on every request, with what this is, the problem, the fix, and what happens if we skip it. 100% of planted problems found, no skill 87%. 100% of problems outside the diff found, no skill 78%.">
@@ -97,7 +97,7 @@ More survivors in [examples/](examples/).
 
 `/ponytail-review` used to look only for code to cut. Now it reviews like the senior dev who gets paged when it breaks: it reads the code your change touches, not just the diff, and checks bugs, security, real load, missing tests, speed, and what to cut. Each finding says what the code does, what goes wrong, how to fix it, and what happens if you don't.
 
-## The audit, rebuilt
+## The Audit, Rebuilt
 
 <p align="center">
   <img src="assets/v5/audit.png" width="880" alt="Your whole repo, ranked. Fix this first. A real /ponytail-audit from the benchmark on a warehouse stock repo: 1 must fix, office batches with 1,200 fail completely; 2 must fix, the import silently skips bad rows; 3 must fix, a mistyped SKU in an office batch is silently ignored; 4 should fix, the risky code paths have no tests; 5 nice to have, the API crashes on a body that isn't an object. Verdict: fix 1 first.">
@@ -105,7 +105,7 @@ More survivors in [examples/](examples/).
 
 `/ponytail-audit` runs the same checks on the whole repo. It maps the code first: entry points, how data moves, what load the project expects. Then it ranks what it finds and tells you what to fix first. The old audit only listed what to delete.
 
-## How it works
+## How it works?
 
 <p align="center">
   <img src="assets/v5/ladder.png" width="880" alt="Before writing code, stop at the first rung that holds: 1 does this need to exist, 2 already in this codebase, 3 does the standard library do it, 4 a native platform feature, 5 an installed dependency, 6 can it be one line, 7 only then the minimum that works, plus one small test if it has logic.">
@@ -117,11 +117,11 @@ Lazy, not negligent: trust-boundary validation, data-loss handling, security, an
 
 Logic with a branch, a loop, a parser, money or security leaves one small test behind. Every reply ends with what was skipped or not checked and any risk you should know.
 
-## The prompt
+## The Prompt
 
 Ponytail is one prompt: [`skills/ponytail/SKILL.md`](skills/ponytail/SKILL.md). The compact version, for agents that read a rules file, is [`AGENTS.md`](AGENTS.md). Everything else in this repo loads that prompt into different agents.
 
-## Install
+## Installation
 
 **Claude Code**, as two separate prompts:
 
