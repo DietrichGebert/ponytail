@@ -18,6 +18,8 @@ const MAX_FILES = 4000;
 const SRC = /\.(py|js|jsx|mjs|cjs|ts|tsx|go|rs|rb|java|kt|php|swift|cs)$/;
 const SKIP_DIR = /(^|\/)(node_modules|\.git|dist|build|out|vendor|venv|\.venv|__pycache__|coverage|\.next|target|migrations|versions|fixtures|tests?|__tests__|spec)(\/|$)/;
 const SKIP_FILE = /(^|\/)(test_[^/]*|[^/]*(_test|\.test|\.spec|\.gen|\.min|\.d)\.[a-z]+)$/;
+const NAME = /^(?:type\s+)?(?:[\w$]+\s+as\s+)?([A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*)?)$/;
+const SAFE_PATH = /^[\w.@+$()[\]\/-]+$/;
 const SHARED = /(util|helper|lib|common|shared|service|component|hook|core|model|schema|api)/i;
 
 const PATTERNS = {
@@ -59,7 +61,7 @@ function namesIn(file, text) {
   const names = [];
   for (const re of PATTERNS[lang] || []) {
     for (const m of text.matchAll(re)) {
-      for (const n of m[1].split(',').map((s) => s.trim().split(/\s+as\s+/).pop()).filter(Boolean)) {
+      for (const n of m[1].split(',').map((s) => (s.trim().match(NAME) || [])[1]).filter(Boolean)) {
         if (!n.startsWith('_') && !names.includes(n)) names.push(n);
       }
     }
@@ -69,14 +71,17 @@ function namesIn(file, text) {
 
 function buildMap(root = process.cwd()) {
   const files = listFiles(root)
-    .filter((f) => SRC.test(f) && !SKIP_DIR.test(f) && !SKIP_FILE.test(f))
+    .filter((f) => SAFE_PATH.test(f) && SRC.test(f) && !SKIP_DIR.test(f) && !SKIP_FILE.test(f))
     .slice(0, MAX_FILES)
     .sort((a, b) => (SHARED.test(b) - SHARED.test(a)) || a.localeCompare(b));
   // One line per directory: names are enough to know something exists; grep finds the file.
   const dirs = new Map();
   for (const f of files) {
     let text;
-    try { text = fs.readFileSync(path.join(root, f), 'utf8').slice(0, 65536); } catch (e) { continue; }
+    try {
+      if (!fs.lstatSync(path.join(root, f)).isFile()) continue;
+      text = fs.readFileSync(path.join(root, f), 'utf8').slice(0, 65536);
+    } catch (e) { continue; }
     const names = namesIn(f, text);
     if (!names.length) continue;
     const dir = path.dirname(f) === '.' ? '.' : path.dirname(f);
