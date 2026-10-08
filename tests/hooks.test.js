@@ -922,4 +922,28 @@ assert.equal(
   assert.equal(fs.readFileSync(bareFlag, 'utf8'), 'full', 'an off default still switches on at full');
 }
 
+// Compaction re-runs SessionStart inside the same conversation: it must keep the
+// live level, and keep ponytail off after "stop ponytail", not reset to the default.
+{
+  const compactHome = path.join(temp, 'compact-home');
+  const compactFlag = path.join(compactHome, '.claude', '.ponytail-active');
+  const compactEnv = { HOME: compactHome, USERPROFILE: compactHome };
+  const start = (source) => run('ponytail-activate.js', compactEnv, JSON.stringify({ source }));
+  const compact = () => start('compact');
+
+  start('startup');
+  run('ponytail-mode-tracker.js', compactEnv, JSON.stringify({ prompt: '/ponytail ultra' }));
+  assert.match(compact().stdout, /PONYTAIL MODE ACTIVE — level: ultra/);
+  assert.equal(fs.readFileSync(compactFlag, 'utf8'), 'ultra', 'compaction must keep the live level');
+
+  run('ponytail-mode-tracker.js', compactEnv, JSON.stringify({ prompt: 'stop ponytail' }));
+  assert.equal(compact().stdout, '', 'compaction must not switch a stopped session back on');
+  assert.equal(fs.existsSync(compactFlag), false);
+
+  // Every other source still starts at the default level.
+  for (const source of ['startup', 'resume', 'clear']) {
+    assert.match(start(source).stdout, /PONYTAIL MODE ACTIVE — level: full/, `${source} must start at the default level`);
+  }
+}
+
 console.log('hook compatibility checks passed');
