@@ -66,9 +66,20 @@ for (const phrase of INVARIANTS) {
   }
 }
 
+// The /ponytail command prompts carry the SKILL.md body verbatim, so hosts that
+// load commands (Gemini, Qwen, Copilot CLI, Grok, OpenCode) get the current rules.
+const COMMAND_PROMPTS = ['commands/ponytail.toml', '.opencode/command/ponytail.md'];
+const skillBody = stripFrontmatter(skill);
+for (const relPath of COMMAND_PROMPTS) {
+  if (!read(relPath).includes(skillBody)) {
+    console.error(`${relPath} drifted from the skills/ponytail/SKILL.md body`);
+    failed = true;
+  }
+}
+
 if (failed) {
   console.error('Update the copied rule text, AGENTS.md, or SKILL.md so the shared rules match.');
   process.exit(1);
 }
 
-console.log(`Rule copies match AGENTS.md; ${INVARIANTS.length} rule invariants present in SKILL.md and AGENTS.md.`);
+console.log(`Rule copies match AGENTS.md; ${INVARIANTS.length} rule invariants present in SKILL.md and AGENTS.md; ${COMMAND_PROMPTS.length} /ponytail command prompts carry the SKILL.md body.`);
