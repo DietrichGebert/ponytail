@@ -30,8 +30,14 @@
 </p>
 
 <p align="center">
-  <strong>~54% de code en moins (jusqu'à 94%) &middot; ~20% moins cher &middot; ~27% plus rapide &middot; 100% sûr</strong><br>
-  <sub>De vraies sessions Claude Code qui modifient un vrai dépôt FastAPI + React, le même agent avec et sans le skill (12 tickets de fonctionnalité, Haiku 4.5, n=4). <a href="#numbers">Détails</a>.</sub>
+  <img src="../assets/v5/hero.jpg" width="880" alt="Ponytail 5, reconstruit de zéro : -53% de code, -41% de temps, -26% de coût, -45% de tokens. Et pourtant 98% de la logique à risque part avec un test ; sans Ponytail, 68%.">
+</p>
+
+<p align="center">
+  <strong>Ponytail 5 : reconstruit de zéro.</strong><br>
+  <strong>-53% de code &middot; -41% de temps &middot; -26% de coût &middot; -45% de tokens</strong><br>
+  <strong>Et pourtant : 98% de la logique à risque part avec un test.</strong> Sans Ponytail : 68%.<br>
+  <sub>Mesuré dans Claude Code, le même agent avec et sans le skill : 39 tâches, dont un vrai dépôt FastAPI + React, Opus 5.5, 5 runs chacune. <a href="#numbers">Détails</a>.</sub>
 </p>
 
 <p align="center">
@@ -56,9 +62,62 @@
 
 ---
 
-Vous le connaissez. Longue queue de cheval. Lunettes ovales. Il est dans la boîte depuis plus longtemps que le gestionnaire de versions. Vous lui montrez cinquante lignes ; il les regarde, ne dit rien, et les remplace par une seule.
+Vous le connaissez. Long ponytail. Lunettes ovales. Il est dans la boîte depuis plus longtemps que le gestionnaire de versions. Vous lui montrez cinquante lignes ; il les regarde, ne dit rien, et les remplace par une seule.
 
 Ponytail le met dans votre agent IA.
+
+<a id="numbers"></a>
+## Chiffres
+
+<p align="center">
+  <img src="../assets/v5/chart.png" width="880" alt="Part de la référence sans skill. Lignes de code : Ponytail v4.13 52%, Ponytail 5 47%. Tokens de sortie : 57% et 55%. Coût : 84% et 74%. Temps : 62% et 59%.">
+</p>
+
+<p align="center">
+  <img src="../assets/v5/tests.png" width="880" alt="Moitié moins de code, et pourtant mieux : 98% de la logique à risque part avec un test (sans skill 68%) ; les propres tests de l'agent attrapent 66% des bugs injectés (sans skill 46%).">
+</p>
+
+Deux choses que le graphique ne montre pas : dans une comparaison à l'aveugle, les réponses de Ponytail 5 battent celles du Ponytail précédent 110 à 67. Et sur les six tâches de sécurité (injection SQL, path traversal, jetons falsifiés, limitation de débit, lignes CSV malformées, cache), il a réussi les 30 runs : moins de code, pas moins sûr. Méthode, tableaux par tâche et limites : [benchmarks/results/2026-10-07-agentic.md](../benchmarks/results/2026-10-07-agentic.md).
+
+**La règle n'a jamais été "le moins de tokens possible".** C'est : écrire seulement ce dont la tâche a besoin, et ne jamais couper la validation, la gestion d'erreurs, la sécurité ou l'accessibilité. Le code finit petit parce qu'il est nécessaire, pas parce qu'il est compressé à l'extrême. Un coût et une latence plus bas sont un effet de bord.
+
+## Avant / après
+
+<p align="center">
+  <img src="../assets/v5/beforeafter.png" width="880" alt="Ajouter un sélecteur de date au frontend. Sans skill : 335 lignes, un calendrier et un sélecteur de date écrits à la main. Ponytail 5 : un fichier de 10 lignes qui réutilise l'Input du dépôt avec type date, et le navigateur fournit le calendrier.">
+</p>
+
+Vous demandez un sélecteur de date. Sans Ponytail, l'agent installe une bibliothèque de sélecteur de date ou écrit tout un calendrier à la main : 335 lignes. Ponytail 5 regarde d'abord ce qui existe déjà : le dépôt a un composant `Input`, et tous les navigateurs ont un sélecteur de date. Il assemble les deux. 10 lignes.
+
+D'autres rescapés dans [examples/](../examples/).
+
+## La revue, reconstruite
+
+<p align="center">
+  <img src="../assets/v5/review.png" width="880" alt="La revue, reconstruite. Un vrai constat de /ponytail-review tiré du benchmark : le changement a renommé un champ, et un fichier non modifié, src/routes/feed.js, plante désormais. À corriger : le flux Atom plante maintenant à chaque requête, avec ce que c'est, le problème, le correctif et ce qui arrive si on laisse passer. 100% des problèmes plantés trouvés, sans skill 87%. 100% des problèmes hors du diff trouvés, sans skill 78%.">
+</p>
+
+`/ponytail-review` ne cherchait que du code à couper. Maintenant il relit comme le senior dev qu'on réveille quand ça casse : il lit le code que votre changement touche, pas seulement le diff, et vérifie les bugs, la sécurité, la charge réelle, les tests manquants, la vitesse et ce qui est en trop. Chaque constat dit ce que fait le code, ce qui ne va pas, comment le corriger et ce qui arrive si on ne le fait pas.
+
+## L'audit, reconstruit
+
+<p align="center">
+  <img src="../assets/v5/audit.png" width="880" alt="Tout votre dépôt, classé. À corriger en premier. Un vrai /ponytail-audit tiré du benchmark sur un dépôt de stock d'entrepôt : 1 à corriger, les lots de bureau de 1 200 échouent complètement ; 2 à corriger, l'import ignore en silence les lignes erronées ; 3 à corriger, un SKU mal saisi dans un lot de bureau est ignoré en silence ; 4 à corriger ensuite, les chemins de code à risque n'ont pas de tests ; 5 souhaitable, l'API plante sur un corps qui n'est pas un objet. Verdict : corriger le 1 d'abord.">
+</p>
+
+`/ponytail-audit` fait les mêmes vérifications sur tout le dépôt. Il cartographie d'abord le code : points d'entrée, circulation des données, charge attendue par le projet. Puis il classe ce qu'il trouve et vous dit quoi corriger en premier. L'ancien audit se contentait de lister ce qu'il fallait supprimer.
+
+## Comment ça marche
+
+<p align="center">
+  <img src="../assets/v5/ladder.png" width="880" alt="Avant d'écrire du code, s'arrêter au premier barreau qui tient : 1 faut-il que ça existe, 2 déjà dans ce code, 3 la bibliothèque standard le fait-elle, 4 une fonction native de la plateforme, 5 une dépendance installée, 6 peut-il tenir en une ligne, 7 seulement alors le minimum qui marche, plus un petit test s'il y a de la logique.">
+</p>
+
+L'échelle intervient *après* avoir compris le problème, pas à sa place : l'agent lit le code que le changement touche et suit le vrai flux avant de choisir un barreau. Paresseux sur la solution, jamais sur la lecture.
+
+Paresseux, pas négligent : la validation aux frontières de confiance, la gestion des pertes de données, la sécurité et l'accessibilité ne passent jamais à la trappe.
+
+Une logique avec une condition, une boucle, un parseur, de l'argent ou de la sécurité laisse derrière elle un petit test. Chaque réponse se termine par ce qui a été sauté ou non vérifié et par tout risque à connaître.
 
 ## Le prompt
 
@@ -92,87 +151,21 @@ Actif à chaque session, avec une poignée de commandes (voir [Commandes](#comma
 
 N'installez ponytail que depuis `DietrichGebert/ponytail` sur GitHub ou `@dietrichgebert/ponytail` sur npm. Il ne livre jamais de fichiers `.exe` ou `.dll` ; une copie qui en contient ne vient pas de moi.
 
-## Avant / après
-
-Vous demandez un sélecteur de date. Votre agent installe flatpickr, écrit un composant wrapper, ajoute une feuille de style et lance une discussion sur les fuseaux horaires.
-
-Avec ponytail :
-
-```html
-<!-- ponytail: browser has one -->
-<input type="date">
-```
-
-D'autres rescapés dans [examples/](../examples/).
-
-## Comment ça marche
-
-Avant d'écrire du code, l'agent s'arrête au premier barreau qui tient :
-
-```
-1. Faut-il que ça existe ?             → non : on saute (YAGNI)
-2. Déjà dans ce code ?                 → réutiliser, ne pas réécrire
-3. La bibliothèque standard le fait ?  → l'utiliser
-4. Fonction native de la plateforme ?  → l'utiliser
-5. Dépendance déjà installée ?         → l'utiliser
-6. Une ligne ?                         → une ligne
-7. Seulement alors : le minimum qui marche
-```
-
-L'échelle intervient *après* avoir compris le problème, pas à sa place : l'agent lit le code que le changement touche et suit le vrai flux avant de choisir un barreau. Paresseux sur la solution, jamais sur la lecture.
-
-Paresseux, pas négligent : la validation aux frontières de confiance, la gestion des pertes de données, la sécurité et l'accessibilité ne passent jamais à la trappe.
-
 <a id="commands"></a>
 ## Commandes
 
 | Commande | Ce qu'elle fait |
 |---------|--------------|
 | `/ponytail [lite \| full \| ultra \| off]` | Règle l'intensité, ou coupe ponytail. Sans argument, active ponytail au niveau par défaut s'il est coupé, et sinon indique le niveau en cours. |
-| `/ponytail-review` | Passe en revue le diff en cours à la recherche de sur-ingénierie et rend une liste de suppressions. Nommez une cible en clair pour réduire ou élargir : `uncommitted`, `staged`, `branch`, ou un lien de PR. |
-| `/ponytail-audit` | Audite tout le dépôt à la recherche de sur-ingénierie, pas seulement le diff. |
+| `/ponytail-review` | Relit le diff en cours comme le senior dev qu'on réveille quand ça casse : bugs, sécurité, charge réelle, code à risque sans test, chemins lents et ce qui est en trop. Chaque constat dit ce que fait le code, ce qui ne va pas, comment le corriger et ce qui arrive si on ne le fait pas. Nommez une cible en clair pour réduire ou élargir : `uncommitted`, `staged`, `branch`, ou un lien de PR. |
+| `/ponytail-audit` | La même vérification pour tout le dépôt, le plus important d'abord. |
 | `/ponytail-debt` | Rassemble les raccourcis `ponytail:` que vous avez remis à plus tard dans un registre, pour que "plus tard" ne devienne pas "jamais". |
 | `/ponytail-gain` | Affiche le tableau de l'impact mesuré par le benchmark (moins de code, moins de coût, plus de vitesse). |
 | `/ponytail-help` | Aide-mémoire des commandes ci-dessus. |
 
 Les commandes demandent un hôte qui gère les skills (Claude Code, Codex, Devin CLI, OpenCode, Gemini, pi, Hermes Agent, Qoder, Grok Build). Dans Codex CLI et l'extension IDE, ce sont des skills dans l'espace de noms du plugin ; on les appelle avec `$ponytail:ponytail-review`. Cursor avec les [hooks](../INSTALL.md#cursor) n'a que le changement de niveau `/ponytail`, tapé comme un message normal. Les adaptateurs à instructions seules (fichier de règles de Cursor, Windsurf, Cline, Copilot, Kiro, Antigravity) chargent les règles toujours actives, sans les commandes.
 
-<a id="numbers"></a>
-## Chiffres
-
-La mesure honnête, c'est un vrai agent qui fait un vrai travail : une session Claude Code headless qui modifie le [full-stack-fastapi-template de tiangolo](https://github.com/fastapi/full-stack-fastapi-template) (un vrai dépôt FastAPI + React), notée sur le `git diff` qu'elle laisse. Douze tickets de fonctionnalité, le même agent avec et sans le skill, n=4, Haiku 4.5.
-
-<p align="center">
-  <img src="../assets/benchmark-agentic.svg" width="860" alt="Chaque variante en pourcentage de la référence sans skill, en lignes de code, tokens, coût et temps (Haiku 4.5). ponytail est le plus bas sur chaque mesure (lignes 46%, tokens 78%, coût 80%, temps 73%) ; caveman dépasse 100% en tokens, coût et temps ; yagni-oneliner lignes 67%. Sécurité, palier adverse séparé : référence, caveman et ponytail 100%, yagni-oneliner 95%.">
-</p>
-
-| vs référence sans skill | lignes | tokens | coût | temps | sûr |
-|---|--:|--:|--:|--:|--:|
-| **ponytail** | **-54%** | **-22%** | **-20%** | **-27%** | **100%** |
-| caveman (contrôle prose concise) | -20% | +7% | +3% | +2% | 100% |
-| prompt "YAGNI + one-liners" | -33% | -14% | -21% | -30% | 95% |
-
-ponytail est la seule variante qui réduit toutes les mesures, et la seule qui reste entièrement sûre en le faisant. La réduction est la plus forte là où il y a un vrai piège de sur-construction (sélecteur de date de 404 à 23 lignes, sélecteur de couleur de 287 à 23, parce qu'il choisit un `<input>` natif au lieu d'un composant) et quasi nulle sur du code déjà minimal. Méthode complète, tableaux par ticket et limites : [benchmarks/results/2026-06-18-agentic.md](../benchmarks/results/2026-06-18-agentic.md).
-
-<details>
-<summary><strong>Anciens chiffres en un seul passage (génération isolée)</strong></summary>
-
-Cinq tâches courantes, trois modèles, trois variantes (sans skill, [caveman](https://github.com/JuliusBrussee/caveman), ponytail), dix runs, médiane retenue. Un prompt, une réponse, en comptant les lignes de la réponse :
-
-<p align="center">
-  <img src="../assets/benchmark-3model.svg" width="860" alt="Médiane des lignes de code par variante sur Haiku, Sonnet et Opus">
-</p>
-
-Cela montrait **80-94% de code en moins**. [#126](https://github.com/DietrichGebert/ponytail/issues/126) a fait remarquer, à juste titre, que la référence du modèle nu remplit sa réponse de prose et d'options, donc cet écart vient en partie d'une référence conversationnelle. Les chiffres agentiques ci-dessus en sont la version corrigée et défendable. Pour reproduire le run en un seul passage : `npx promptfoo eval -c benchmarks/promptfooconfig.yaml`.
-
-</details>
-
-**La règle n'a jamais été "le moins de tokens possible".** C'est : écrire seulement ce dont la tâche a besoin, et ne jamais couper la validation, la gestion d'erreurs, la sécurité ou l'accessibilité. Le code finit petit parce qu'il est nécessaire, pas parce qu'il est compressé à l'extrême. Un coût et une latence plus bas sont un effet de bord sur les modèles qui suivent l'échelle ; un modèle de raisonnement laconique qui dépense des tokens de réflexion à peser les barreaux peut aller dans l'autre sens (c'est le cas sur GPT-5.5).
-
 ## FAQ
-
-**Puis-je l'utiliser avec [caveman](https://github.com/JuliusBrussee/caveman) ?**
-Oui, et vous devriez. Caveman réduit ce que l'agent dit ; ponytail réduit ce qu'il construit. Deux moitiés différentes, aucun chevauchement : caveman laisse le code exact à l'octet près, ponytail ne touche pas à la prose. Un discours concis sur du code minimal.
 
 **Faut-il un fichier de configuration ?**
 Non. Un `~/.config/ponytail/config.json` facultatif ou la variable d'environnement `PONYTAIL_DEFAULT_MODE` peut fixer le niveau par défaut, mais rien n'est obligatoire.
