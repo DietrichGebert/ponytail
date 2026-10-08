@@ -57,10 +57,16 @@ const debtSamples = [
   ['/* ponytail: block marker, closed here */', true],
   ['/*ponytail: block marker, no space */', true],
   ['/* ponytail: block opener, closed some lines below', true],
+  // SQL, Lua and HTML comments, INI and Lisp ones, and JSDoc continuation lines.
+  ['-- shortcut: double-dash marker', true],
+  ['<!-- shortcut: HTML marker -->', true],
+  ['; shortcut: semicolon marker', true],
+  [' * shortcut: marker on a block comment continuation line', true],
   ['prose that merely mentions ponytail: markers stays out of the ledger', false],
+  ['**shortcut:** bold prose stays out too', false],
 ];
 
-test('every ponytail-debt copy greps #, // and /* markers but not prose', (t) => {
+test('every ponytail-debt copy greps #, //, /*, --, ; and * markers but not prose', (t) => {
   const input = debtSamples.map(([line]) => line).join('\n') + '\n';
   const expected = debtSamples.flatMap(([line, hit], i) => (hit ? [`${i + 1}:${line}`] : []));
 
@@ -78,11 +84,11 @@ test('every ponytail-debt copy greps #, // and /* markers but not prose', (t) =>
   }
 });
 
-// The full documented command must skip dependency and build dirs (#948).
-test('the ponytail-debt scan skips .git, node_modules, dist and build', (t) => {
+// The full documented command must skip dependency, virtualenv and build dirs (#948).
+test('the ponytail-debt scan skips dependency, virtualenv and build dirs', (t) => {
   const cmd = fs.readFileSync(path.join(root, 'skills/ponytail-debt/SKILL.md'), 'utf8').match(/`(grep -rnE [^`]+)`/)[1];
   const dir = fs.mkdtempSync(path.join(require('os').tmpdir(), 'ponytail-debt-'));
-  for (const sub of ['src', '.git', 'node_modules/pkg', 'dist', 'build']) {
+  for (const sub of ['src', '.git', 'node_modules/pkg', 'dist', 'build', 'vendor/pkg', '.venv/lib', 'venv/lib', 'target/debug']) {
     fs.mkdirSync(path.join(dir, sub), { recursive: true });
     fs.writeFileSync(path.join(dir, sub, 'a.js'), '// ponytail: marker\n');
   }
