@@ -118,6 +118,21 @@ test('V2 /ponytail ultra persists the level and sends the template with the args
   assert.ok(!prompts[0].text.includes('$ARGUMENTS'), 'template placeholder substituted');
 });
 
+test('V2 commands without $ARGUMENTS keep the requested target once', async () => {
+  const { added, prompts } = await setupV2();
+  await added.commands['ponytail-review'].execute({
+    sessionID: 's', prompt: { text: '  feature/login  ' }, delivery: 'steer',
+  });
+  assert.match(prompts[0].text, /Review the current code changes/);
+  assert.match(prompts[0].text, /\n\nfeature\/login$/);
+  assert.equal(prompts[0].text.split('feature/login').length, 2);
+
+  await added.commands['ponytail-review'].execute({
+    sessionID: 's', prompt: { text: '   ' }, delivery: 'steer',
+  });
+  assert.equal(prompts[1].text, parseCommandFile(path.join(__dirname, '..', '.opencode', 'command', 'ponytail-review.md')).template);
+});
+
 test('V2 context hook injects the ruleset, and stays silent when off', async () => {
   try { fs.unlinkSync(statePath); } catch (e) {}
   let { hooks } = await setupV2();

@@ -119,10 +119,13 @@ export default {
           description: command.description,
           execute: async ({ sessionID, prompt, delivery }) => {
             if (command.name === 'ponytail') persistMode(prompt.text);
+            const input = (prompt.text || '').trim();
             await ctx.session.prompt({
               ...prompt,
               sessionID,
-              text: command.template.replaceAll('$ARGUMENTS', prompt.text || ''),
+              text: command.template.includes('$ARGUMENTS')
+                ? command.template.replaceAll('$ARGUMENTS', input)
+                : input ? `${command.template}\n\n${input}` : command.template,
               delivery,
             });
           },
