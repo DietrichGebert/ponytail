@@ -146,6 +146,13 @@ blocks running a server, so no database, server, or login is needed. The LOC tie
 N` runs N isolated cells concurrently. Because workspaces are preserved, any metric change is
 re-applied offline with `--rescore`, you never pay the API twice for a measurement tweak.
 
+**Shell variant.** `BENCH_ALLOW_SHELL=1` drops `--disallowedTools Bash`, so agents can run quick
+commands: a skill's bundled scripts, or the tests they just wrote. Every arm gets the same adapted
+instruction (still no server, install, database or browser). Agents then hold a shell under
+`bypassPermissions`, so `run.py` refuses this variant outside a Docker container: run it in a
+throwaway one (e.g. `node:24-bookworm` plus `npm i -g @anthropic-ai/claude-code`) with the repo
+mounted read-only. `results.json` records which variant produced it (`"shell"`).
+
 ## What this can and cannot show
 
 - It **can** show whether a skill keeps code minimal *without* dropping safety **or
