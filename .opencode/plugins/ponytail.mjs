@@ -132,11 +132,15 @@ export default {
 
     // Append the ruleset to the system prompt every turn. V2 hands over owned
     // system parts, so push one instead of rewriting the tail of another.
-    await ctx.session.hook('context', (event) => {
+    // Summary compaction runs its own hook with the same event shape; without
+    // it the compaction request misses the ruleset and the provider prompt cache.
+    const addRuleset = (event) => {
       const mode = readMode();
       if (mode === 'off') return;
       event.system.push({ type: 'text', text: getPonytailInstructions(mode) });
-    });
+    };
+    await ctx.session.hook('context', addRuleset);
+    await ctx.session.hook('compaction', addRuleset);
   },
 
   // OpenCode V1: same three behaviors, as hooks on the V1 hook names.

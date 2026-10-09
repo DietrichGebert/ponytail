@@ -136,6 +136,23 @@ test('V2 context hook injects the ruleset, and stays silent when off', async () 
   assert.deepEqual(quiet.system, []);
 });
 
+test('V2 compaction hook injects the same ruleset as context, and stays silent when off (#1086)', async () => {
+  try { fs.unlinkSync(statePath); } catch (e) {}
+  let { hooks } = await setupV2();
+  const fromContext = { system: [] };
+  const fromCompaction = { system: [] };
+  await hooks.context(fromContext);
+  await hooks.compaction(fromCompaction);
+  assert.equal(fromCompaction.system.length, 1);
+  assert.deepEqual(fromCompaction.system, fromContext.system);
+
+  fs.writeFileSync(statePath, 'off');
+  ({ hooks } = await setupV2());
+  const quiet = { system: [] };
+  await hooks.compaction(quiet);
+  assert.deepEqual(quiet.system, []);
+});
+
 test('V2 unsupported /ponytail arguments do not reset the current mode', async () => {
   const { added } = await setupV2();
   fs.writeFileSync(statePath, 'ultra');
