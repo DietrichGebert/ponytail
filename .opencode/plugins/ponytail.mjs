@@ -101,6 +101,14 @@ function readSkills() {
   }
 }
 
+// Templates without $ARGUMENTS would drop what the user typed after the
+// command (/ponytail-review feature/login), so append it instead.
+function withArguments(template, input) {
+  const text = String(input == null ? '' : input);
+  if (template.includes('$ARGUMENTS')) return template.replaceAll('$ARGUMENTS', text);
+  return text.trim() ? template + '\n\n' + text.trim() : template;
+}
+
 export default {
   id: 'ponytail',
 
@@ -122,7 +130,7 @@ export default {
             await ctx.session.prompt({
               ...prompt,
               sessionID,
-              text: command.template.replaceAll('$ARGUMENTS', prompt.text || ''),
+              text: withArguments(command.template, prompt.text),
               delivery,
             });
           },
