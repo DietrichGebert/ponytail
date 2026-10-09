@@ -114,13 +114,17 @@ For full plugin-tier support (automatic mode activation + ruleset injection on e
 
 ## Antigravity CLI
 
-Google is renaming Gemini CLI to Antigravity CLI (the `agy` binary); the same extension installs there:
+[Antigravity CLI supports installing plugins from GitHub](https://www.antigravity.google/docs/cli/features#manage-plugins-from-your-shell-agy-plugin):
 
 ```bash
 agy plugin install https://github.com/DietrichGebert/ponytail
 ```
 
-It reuses this repo's `gemini-extension.json`. One difference: Antigravity converts the `/ponytail` commands into skills, so you type them into the chat (e.g. `/ponytail-review` as a message) instead of picking them from a slash menu. Until the migration completes (around June 18, 2026), `gemini extensions install` still works too. To run it as an always-on rule instead, drop the ruleset into `.agents/rules/`.
+- Uses this repo's root `plugin.json` and existing `skills/`. Antigravity CLI [exposes skills as slash commands](https://www.antigravity.google/docs/skills#slash-command-conversion), such as `/ponytail-review`.
+- `gemini-extension.json` belongs to the separate [Gemini extension migration](https://www.antigravity.google/docs/cli/gcli-migration#converting-extensions-to-plugins), not the native plugin layout.
+- For always-on rules, copy [`AGENTS.md`](AGENTS.md) into your project; [Antigravity reads it as workspace instructions](https://www.antigravity.google/docs/rules). This fallback does not install skills.
+- No Ponytail lifecycle-hook adapter or persisted level switching.
+- [UNVERIFIED] Installation and invocation follow Google's documented contract; they have not been tested in a live Antigravity CLI session.
 
 ## Hermes Agent
 
