@@ -118,6 +118,19 @@ test('V2 /ponytail ultra persists the level and sends the template with the args
   assert.ok(!prompts[0].text.includes('$ARGUMENTS'), 'template placeholder substituted');
 });
 
+test('V2 command without $ARGUMENTS appends the typed input instead of dropping it (#1087)', async () => {
+  const { added, prompts } = await setupV2();
+  assert.ok(added.commands['ponytail-review'], 'ponytail-review is registered');
+  await added.commands['ponytail-review'].execute({ sessionID: 's', prompt: { text: ' feature/login ' }, delivery: 'steer' });
+  await added.commands['ponytail-review'].execute({ sessionID: 's', prompt: { text: '  ' }, delivery: 'steer' });
+  await added.commands['ponytail-review'].execute({ sessionID: 's', prompt: {}, delivery: 'steer' });
+  const [withInput, blank, missing] = prompts.map((p) => p.text);
+  assert.ok(withInput.endsWith('\n\nfeature/login'), 'input appended, trimmed');
+  assert.equal(withInput.slice(0, -'\n\nfeature/login'.length), blank, 'blank input leaves the template unchanged');
+  assert.equal(missing, blank);
+  assert.ok(!blank.includes('$ARGUMENTS'));
+});
+
 test('V2 context hook injects the ruleset, and stays silent when off', async () => {
   try { fs.unlinkSync(statePath); } catch (e) {}
   let { hooks } = await setupV2();
