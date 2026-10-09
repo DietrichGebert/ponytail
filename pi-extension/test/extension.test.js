@@ -127,6 +127,73 @@ test("before_agent_start keeps OMP prompt parts and uses Pi sections (#776, #953
   assert.equal(event.systemPromptOptions.sections.ponytail, undefined);
 }));
 
+test("session_start adds the codebase map to the same section, once per session", async () => withTempConfig(async () => {
+  const dir = mkdtempSync(join(tmpdir(), "ponytail-pi-map-"));
+  mkdirSync(join(dir, "lib"));
+  writeFileSync(join(dir, "lib", "things.js"), "export function reuseMe() {}\n");
+  const previousMap = process.env.PONYTAIL_MAP;
+
+  try {
+    const { events } = createPiHarness();
+
+    // No cwd on the context: the ruleset still arrives, the map does not.
+    await events.get("session_start")({ reason: "startup" }, createCommandContext());
+    const withoutCwd = { systemPromptOptions: { sections: {} } };
+    await events.get("before_agent_start")(withoutCwd, createCommandContext({ cwd: dir }));
+    assert.match(withoutCwd.systemPromptOptions.sections.ponytail, /PONYTAIL MODE ACTIVE/);
+    assert.doesNotMatch(withoutCwd.systemPromptOptions.sections.ponytail, /Codebase map/);
+
+    // With a cwd the map lands in the section the ruleset already uses, so the existing
+    // off/review handling clears it with the ruleset (#953) instead of leaving it behind.
+    const ctx = createCommandContext({ cwd: dir });
+    await events.get("session_start")({ reason: "startup" }, ctx);
+    const event = { systemPromptOptions: { sections: {} } };
+    await events.get("before_agent_start")(event, ctx);
+    assert.match(event.systemPromptOptions.sections.ponytail, /lib\/: reuseMe/);
+
+    // Built once per session: every run republishes the same string, which is what keeps
+    // the cached prompt prefix intact.
+    const nextRun = { systemPromptOptions: { sections: {} } };
+    await events.get("before_agent_start")(nextRun, ctx);
+    assert.equal(nextRun.systemPromptOptions.sections.ponytail, event.systemPromptOptions.sections.ponytail);
+
+    // Same kill switch as the hook.
+    process.env.PONYTAIL_MAP = "0";
+    await events.get("session_start")({ reason: "startup" }, ctx);
+    const disabled = { systemPromptOptions: { sections: {} } };
+    await events.get("before_agent_start")(disabled, ctx);
+    assert.doesNotMatch(disabled.systemPromptOptions.sections.ponytail, /Codebase map/);
+  } finally {
+    if (previousMap === undefined) delete process.env.PONYTAIL_MAP;
+    else process.env.PONYTAIL_MAP = previousMap;
+    rmSync(dir, { recursive: true, force: true });
+  }
+}));
+
+test("review mode keeps the skill pointer and no map", async () => withTempConfig(async () => {
+  const dir = mkdtempSync(join(tmpdir(), "ponytail-pi-map-"));
+  writeFileSync(join(dir, "a.js"), "export const reuseMe = 1\n");
+
+  try {
+    const { events } = createPiHarness();
+    const ctx = createCommandContext({
+      cwd: dir,
+      sessionManager: {
+        getEntries: () => [{ type: "custom", customType: "ponytail-mode", data: { mode: "review" } }],
+      },
+    });
+
+    await events.get("session_start")({ reason: "resume" }, ctx);
+    const event = { systemPromptOptions: { sections: {} } };
+    await events.get("before_agent_start")(event, ctx);
+
+    assert.match(event.systemPromptOptions.sections.ponytail, /Behavior defined by \/ponytail-review skill/);
+    assert.doesNotMatch(event.systemPromptOptions.sections.ponytail, /Codebase map/);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+}));
+
 test("session_start restores latest persisted mode", async () => withTempConfig(async () => {
   const { events } = createPiHarness();
   const ctx = createCommandContext({
