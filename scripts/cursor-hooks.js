@@ -15,7 +15,7 @@ const { isShellSafe } = require('../hooks/ponytail-config');
 
 const ROOT = path.join(__dirname, '..');
 const TEMPLATE = path.join(ROOT, 'hooks', 'cursor-hooks.json');
-const PONYTAIL_HOOK = /ponytail-[\w-]+\.js/;
+const PONYTAIL_HOOK = /[\\/]hooks[\\/]ponytail-[\w-]+\.js(?=["'\s]|$)/;
 
 function isPonytailHook(entry) {
   return Boolean(entry && typeof entry.command === 'string' && PONYTAIL_HOOK.test(entry.command));
