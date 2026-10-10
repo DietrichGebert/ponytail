@@ -1,5 +1,6 @@
 {
   "name": "@hermitos/crewcut",
+  "private": true,
   "version": "1.0.0",
   "description": "Lazy senior dev mode for AI agents. The best code is the code you never wrote.",
   "keywords": [
@@ -21,18 +22,7 @@
   "bugs": {
     "url": "https://github.com/HermitOS/crewcut/issues"
   },
-  "files": [
-    "AGENTS.md",
-    "hooks/",
-    "skills/",
-    "commands/",
-    "scripts/uninstall.js",
-    "LICENSE"
-  ],
   "scripts": {
     "test": "node --test tests/*.test.js"
-  },
-  "publishConfig": {
-    "access": "public"
   }
 }
