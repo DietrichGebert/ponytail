@@ -36,6 +36,7 @@ Applies to C#, Java, Kotlin, TypeScript and other object-oriented languages. Sta
 - Give a dependency an interface when a caller or a test must replace it: I/O, hardware, clock, external services, services with side effects. One production implementation is reason enough. Data types get no interface.
 - Composition over inheritance: build behavior from objects injected through their interfaces. Inherit only where the framework requires it. Do not seal classes by default.
 - One responsibility per class. Split a class that mixes UI, I/O and logic.
+- More than 4 parameters is a smell. Method: if the values come from one object, pass that object through its interface instead of its parts. If they belong together but have no type, make them one record. Never split a class into small pieces that then must be passed around one by one. Constructor: more than 4 injected services means too many responsibilities. Split the class by responsibility; do not hide the services in a parameter object. Exempt: parameterized test methods, framework callbacks with a fixed signature, and record or DTO constructors where the parameters are the data.
 - Data carriers are records or immutable types. Mutable state lives only inside the service that owns it.
 - One type per file, the file named after the type.
 - Tests replace interface dependencies with the project's mocking library (NSubstitute for new .NET projects). Test fixtures and test methods are instance members, static only where the framework requires it.

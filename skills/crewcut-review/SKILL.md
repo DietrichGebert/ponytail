@@ -59,7 +59,9 @@ This is a report the user asked for, so give it in full.
 7. **Structure:** breaks the crewcut object-oriented rules: a static class
    that does I/O or holds state, a service created inside the class instead
    of injected, a dependency a test must replace but has no interface,
-   inheritance where composition fits, a class mixing UI, I/O and logic.
+   inheritance where composition fits, a class mixing UI, I/O and logic,
+   a method with more than 4 parameters where an object or interface
+   should be passed, a constructor injecting more than 4 services.
    Name the concrete cost (cannot test it, cannot swap it).
 
 ## 3. Check before you report
