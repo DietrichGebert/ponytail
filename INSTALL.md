@@ -72,24 +72,26 @@ omp runs ponytail's Pi extension unchanged, so the ruleset is injected every tur
 ## OpenCode
 
 ```bash
-opencode plugin add @dietrichgebert/ponytail
+opencode plugin @dietrichgebert/ponytail
 ```
 
-Or add it to a project's `opencode.json`:
+The subcommand is `plugin`, not `plugin add`. Add `--global` to install into `~/.config/opencode/opencode.json` for every project; without it the plugin is written to the current project's `.opencode/opencode.json`.
+
+Or add it to an `opencode.json` by hand under the `plugin` key (singular):
 
 ```json
-{ "plugins": ["@dietrichgebert/ponytail"] }
+{ "plugin": ["@dietrichgebert/ponytail"] }
 ```
 
 Run from a checkout instead (the plugin reuses `hooks/` and `skills/`):
 
 ```json
-{ "plugins": ["./.opencode/plugins"] }
+{ "plugin": ["./.opencode/plugins"] }
 ```
 
 Injects the ruleset every turn at the active level; adds the `/ponytail` commands (see [Commands](README.md#commands)). OpenCode also auto-loads this repo's `AGENTS.md`, so the rules hold even without the plugin. The plugin adds the `lite/full/ultra/off` levels.
 
-The `./` path resolves against your project's `opencode.json`; to share one checkout across projects, point it at the absolute path of the checkout's `.opencode/plugins` directory. A `plugins` entry must name a **directory**, not a file: OpenCode 2 rejects a path to `ponytail.mjs` with `configured plugin path must be a directory`. Opening this repo in OpenCode 2 needs no entry at all: it loads `.opencode/plugins/index.js` on its own.
+The `./` path resolves against your project's `opencode.json`; to share one checkout across projects, point it at the absolute path of the checkout's `.opencode/plugins` directory. A `plugin` entry pointing at a checkout must name a **directory**, not a file: OpenCode 2 rejects a path to `ponytail.mjs` with `configured plugin path must be a directory`. Opening this repo in OpenCode 2 needs no entry at all: it loads `.opencode/plugins/index.js` on its own.
 
 Kilo Code is built on OpenCode and runs the same plugin through its `plugin` key: add `{ "plugin": ["@dietrichgebert/ponytail"] }` to `kilo.jsonc` (or `~/.config/kilo/kilo.jsonc` for every project).
 
