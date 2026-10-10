@@ -5,12 +5,13 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { spawnSync } = require('child_process');
+const { childEnv } = require('./child-env');
 
 const root = path.join(__dirname, '..');
 
 function runUninstall(env) {
   return spawnSync(process.execPath, [path.join(root, 'scripts', 'uninstall.js')], {
-    env: { ...process.env, ...env },
+    env: childEnv(env),
     encoding: 'utf8',
   });
 }

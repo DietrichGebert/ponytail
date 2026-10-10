@@ -5,6 +5,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { spawnSync } = require('child_process');
+const { childEnv } = require('./child-env');
 
 const root = path.join(__dirname, '..');
 
@@ -21,7 +22,7 @@ assert.equal(isShellSafe('/tmp/a;rm -rf/x.sh'), false);
 
 function run(script, env, input = '') {
   return spawnSync(process.execPath, [path.join(root, 'hooks', script)], {
-    env: { ...process.env, ...env },
+    env: childEnv(env),
     input,
     encoding: 'utf8',
   });
@@ -29,7 +30,7 @@ function run(script, env, input = '') {
 
 // Keep the base env clean so the default-dir / native-Claude checks are
 // deterministic; the CLAUDE_CONFIG_DIR and codex/copilot cases set these
-// explicitly where needed. run() spreads process.env, so a PLUGIN_DATA /
+// explicitly where needed. run() copies part of process.env, so a PLUGIN_DATA /
 // COPILOT_PLUGIN_DATA leaked from the dev or CI shell would otherwise steer
 // writeHookOutput into the wrong branch and mis-fire the native assertions.
 delete process.env.CLAUDE_CONFIG_DIR;
@@ -132,7 +133,7 @@ if (fs.existsSync('/bin/sh')) {
 
   for (const command of collectManifestCommands('hooks/claude-codex-hooks.json', 'command')) {
     for (const pluginRoot of roots) {
-      result = runShell(command, { ...process.env, HOME: home, USERPROFILE: home, CLAUDE_PLUGIN_ROOT: pluginRoot });
+      result = runShell(command, childEnv({ HOME: home, USERPROFILE: home, CLAUDE_PLUGIN_ROOT: pluginRoot }));
       assert.equal(result.status, 0, result.stderr);
       assert.equal(result.stderr, '', command);
     }
@@ -143,7 +144,7 @@ if (fs.existsSync('/bin/sh')) {
   for (const command of collectManifestCommands('hooks/copilot-hooks.json', 'bash')) {
     for (const pluginRoot of roots) {
       const env = { HOME: home, USERPROFILE: home, PLUGIN_ROOT: pluginRoot, COPILOT_PLUGIN_DATA: path.join(temp, 'copilot-manifest-data') };
-      result = runShell(command, { ...process.env, ...env });
+      result = runShell(command, childEnv(env));
       assert.equal(result.status, 0, result.stderr);
       assert.equal(result.stderr, '', command);
 
@@ -803,7 +804,7 @@ try {
   const hangEnv = { HOME: hangHome, USERPROFILE: hangHome, CLAUDE_CONFIG_DIR: hangHome };
   for (const script of ['crewcut-mode-tracker.js', 'crewcut-subagent.js']) {
     const r = spawnSync(process.execPath, [path.join(root, 'hooks', script)], {
-      env: { ...process.env, ...hangEnv },
+      env: childEnv(hangEnv),
       timeout: 2500,
       encoding: 'utf8',
     });
