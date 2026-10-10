@@ -107,8 +107,8 @@ test('every hook command points at a script that ships in hooks/', () => {
 // `if {}` wrapper that can swallow the piped prompt JSON, so stdin 'end' never
 // fires. The hook must never wait on stdin forever — that freezes the whole
 // session. It has to self-exit even when stdin stays open and empty.
-test('ponytail-mode-tracker self-exits when stdin never closes (no freeze)', async () => {
-  const hook = path.join(root, 'hooks', 'ponytail-mode-tracker.js');
+test('crewcut-mode-tracker self-exits when stdin never closes (no freeze)', async () => {
+  const hook = path.join(root, 'hooks', 'crewcut-mode-tracker.js');
   // stdin is a pipe we never write to or end, reproducing the deadlock.
   const child = spawn(process.execPath, [hook], { stdio: ['pipe', 'ignore', 'ignore'] });
 
@@ -166,7 +166,7 @@ test('a hostile plugin root cannot inject shell commands via host-side textual s
   const commands = [...commandHooks().map((h) => h.command), ...copilotCommands()].filter(Boolean);
   assert.ok(commands.length > 0, 'expected at least one command to check');
 
-  const marker = path.join(os.tmpdir(), `ponytail-824-marker-${process.pid}`);
+  const marker = path.join(os.tmpdir(), `crewcut-824-marker-${process.pid}`);
   const hostileRoot = isWindows
     ? `C:\\x" ; New-Item -ItemType File -Path "${marker}" ; "`
     : `/tmp/x"; touch "${marker}"; echo "`;

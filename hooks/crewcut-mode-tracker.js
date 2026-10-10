@@ -1,8 +1,8 @@
 #!/usr/bin/env node
-// ponytail — UserPromptSubmit hook to track which ponytail mode is active
-// Inspects user input for /ponytail commands and writes mode to flag file
+// crewcut — UserPromptSubmit hook to track which crewcut mode is active
+// Inspects user input for /crewcut commands and writes mode to flag file
 
-const { getDefaultMode, isDeactivationCommand, writeDefaultMode } = require('./ponytail-config');
+const { getDefaultMode, isDeactivationCommand, writeDefaultMode } = require('./crewcut-config');
 const {
   clearMode,
   cursorRuleNotice,
@@ -13,8 +13,8 @@ const {
   readMode,
   setMode,
   writeHookOutput,
-} = require('./ponytail-runtime');
-const { getPonytailInstructions } = require('./ponytail-instructions');
+} = require('./crewcut-runtime');
+const { getCrewcutInstructions } = require('./crewcut-instructions');
 
 let input = '';
 let done = false;
@@ -31,7 +31,7 @@ function finish() {
     // switch off a rule, so answer the command with the notice instead of
     // writing a mode the rule would contradict (#817). Ordinary prompts
     // stay silent as usual.
-    if (isCursor && (/^[/@$]ponytail/.test(prompt) || isDeactivationCommand(prompt))) {
+    if (isCursor && (/^[/@$]crewcut/.test(prompt) || isDeactivationCommand(prompt))) {
       const rule = cursorRulePath();
       if (rule) {
         writeHookOutput('UserPromptSubmit', readMode() || 'off', cursorRuleNotice(rule));
@@ -39,10 +39,10 @@ function finish() {
       }
     }
 
-    // Match /ponytail commands
+    // Match /crewcut commands
     let modeSwitched = false;
     let deactivated = false;
-    if (/^[/@$]ponytail/.test(prompt)) {
+    if (/^[/@$]crewcut/.test(prompt)) {
       const parts = prompt.split(/\s+/);
       const cmd = parts[0].replace(/^[@$]/, '/');
       const arg = parts[1] || '';
@@ -50,11 +50,11 @@ function finish() {
       let mode = null;
       let isReportOnly = false;
 
-      // /ponytail-review is a one-shot skill, not a session level (#736).
+      // /crewcut-review is a one-shot skill, not a session level (#736).
       // Matching it here used to setMode('review'), which latched
       // INDEPENDENT_MODES for the rest of the session.
-      if (cmd === '/ponytail' || cmd === '/ponytail:ponytail') {
-        // `/ponytail default <mode>` persists the default to config (survives
+      if (cmd === '/crewcut' || cmd === '/crewcut:crewcut') {
+        // `/crewcut default <mode>` persists the default to config (survives
         // restarts). Plain switches stay session-scoped ("sticks until session
         // end"), so this is the only path that writes config. review is not a
         // valid default (#377), so only off/lite/full/ultra are accepted.
@@ -62,7 +62,7 @@ function finish() {
           const dmode = parts[2];
           if (dmode === 'off' || dmode === 'lite' || dmode === 'full' || dmode === 'ultra') {
             writeDefaultMode(dmode);
-            writeHookOutput('UserPromptSubmit', dmode, 'PONYTAIL DEFAULT SET — new sessions start in ' + dmode + '.');
+            writeHookOutput('UserPromptSubmit', dmode, 'CREWCUT DEFAULT SET — new sessions start in ' + dmode + '.');
           }
           return; // don't fall through to the session-mode switch
         }
@@ -71,7 +71,7 @@ function finish() {
         else if (arg === 'ultra') mode = 'ultra';
         else if (arg === 'off') mode = 'off';
         else if (arg === '') {
-          // Bare /ponytail switches ponytail on: off → the default level (full if
+          // Bare /crewcut switches crewcut on: off → the default level (full if
           // the default is off too); already on → keep the level, report it (#639).
           const live = readMode();
           if (live && live !== 'off') {
@@ -90,25 +90,25 @@ function finish() {
           writeHookOutput(
             'UserPromptSubmit',
             mode,
-            'PONYTAIL MODE ACTIVE — level: ' + mode,
+            'CREWCUT MODE ACTIVE — level: ' + mode,
           );
         }
       } else if (mode && mode !== 'off') {
         setMode(mode);
         modeSwitched = true;
-        // ponytail: Qoder needs the full ruleset every turn, so when a mode
+        // crewcut: Qoder needs the full ruleset every turn, so when a mode
         // switch happens we fold the confirmation into the ruleset output
         // below (one JSON on stdout) instead of emitting two separate writes.
         if (!isQoder) {
-          // Cursor (#817) and Codex have no /ponytail command that would load
+          // Cursor (#817) and Codex have no /crewcut command that would load
           // the skill body for the new level, and the SessionStart ruleset is
           // filtered to the start level, so the tracker delivers that level's
           // ruleset along with the confirmation.
-          const header = 'PONYTAIL MODE CHANGED — level: ' + mode;
+          const header = 'CREWCUT MODE CHANGED — level: ' + mode;
           writeHookOutput(
             'UserPromptSubmit',
             mode,
-            (isCodex || isCursor) ? header + '\n\n' + getPonytailInstructions(mode) : header,
+            (isCodex || isCursor) ? header + '\n\n' + getCrewcutInstructions(mode) : header,
           );
         }
       } else if (mode === 'off') {
@@ -116,7 +116,7 @@ function finish() {
         else clearMode();
 
         deactivated = true;
-        writeHookOutput('UserPromptSubmit', 'off', 'PONYTAIL MODE OFF');
+        writeHookOutput('UserPromptSubmit', 'off', 'CREWCUT MODE OFF');
       }
     }
 
@@ -126,14 +126,14 @@ function finish() {
       else clearMode();
 
       deactivated = true;
-      writeHookOutput('UserPromptSubmit', 'off', 'PONYTAIL MODE OFF');
+      writeHookOutput('UserPromptSubmit', 'off', 'CREWCUT MODE OFF');
     }
 
     // Qoder has no SessionStart event, so UserPromptSubmit does double duty:
     // activate the default mode on first prompt (if no flag exists yet), then
     // inject the ruleset on every prompt. Claude Code/Codex do this in
-    // SessionStart via ponytail-activate.js; Qoder can't, so we do it here.
-    // Skip when deactivated — user just turned ponytail off.
+    // SessionStart via crewcut-activate.js; Qoder can't, so we do it here.
+    // Skip when deactivated — user just turned crewcut off.
     if (isQoder && !deactivated) {
       let currentMode = readMode();
       if (!currentMode) {
@@ -144,12 +144,12 @@ function finish() {
         }
       }
       if (currentMode && currentMode !== 'off') {
-        // ponytail: one JSON per invocation — mode-switch confirmation is
+        // crewcut: one JSON per invocation — mode-switch confirmation is
         // folded into the ruleset header so Qoder gets both in one write.
         const header = modeSwitched
-          ? 'PONYTAIL MODE CHANGED — level: ' + currentMode + '\n\n'
+          ? 'CREWCUT MODE CHANGED — level: ' + currentMode + '\n\n'
           : '';
-        writeHookOutput('UserPromptSubmit', currentMode, header + getPonytailInstructions(currentMode));
+        writeHookOutput('UserPromptSubmit', currentMode, header + getCrewcutInstructions(currentMode));
       }
     }
   } catch (e) {

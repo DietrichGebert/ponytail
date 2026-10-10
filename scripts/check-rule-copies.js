@@ -31,7 +31,7 @@ for (const [relPath, normalize] of copies) {
 }
 
 // SKILL.md is the runtime source of truth and is longer than the compact body,
-// so it cannot be byte-compared. ponytail: canary, not full equality. Assert the
+// so it cannot be byte-compared. crewcut: canary, not full equality. Assert the
 // load-bearing rules survive verbatim in both the source and AGENTS.md. Changing
 // a rule's wording trips this, which is the reminder to propagate it everywhere.
 // Upgrade path: generate the copies from SKILL.md if this ever misses a real drift.
@@ -49,8 +49,8 @@ const INVARIANTS = [
   'accessibility',
 ];
 
-const skill = read('skills/ponytail/SKILL.md');
-const sources = [['skills/ponytail/SKILL.md', skill], ['AGENTS.md', agents]];
+const skill = read('skills/crewcut/SKILL.md');
+const sources = [['skills/crewcut/SKILL.md', skill], ['AGENTS.md', agents]];
 for (const phrase of INVARIANTS) {
   for (const [label, text] of sources) {
     if (!text.includes(phrase)) {

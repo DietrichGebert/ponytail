@@ -2,13 +2,13 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const { createHash } = require('crypto');
-const { getClaudeDir, getConfigDir } = require('./ponytail-config');
+const { getClaudeDir, getConfigDir } = require('./crewcut-config');
 
-const STATE_FILE = '.ponytail-active';
+const STATE_FILE = '.crewcut-active';
 
-// ponytail: VS Code Copilot never sets COPILOT_PLUGIN_DATA — it only injects
+// crewcut: VS Code Copilot never sets COPILOT_PLUGIN_DATA — it only injects
 // CLAUDE_PLUGIN_ROOT, pointed at an install path under .vscode/agent-plugins/
-// (#528). Without this fallback isCopilot was false, so ponytail assumed
+// (#528). Without this fallback isCopilot was false, so crewcut assumed
 // native Claude Code and emitted the statusline nudge, which VS Code Copilot
 // doesn't read.
 function isVsCodeCopilotRoot(pluginRoot) {
@@ -46,13 +46,13 @@ const statePath = path.join(stateDir, STATE_FILE);
 // Claude Code hands every hook its project dir, so the live mode is kept per
 // project and concurrent sessions in different repos stop overwriting each other
 // (#662, #809). Hosts without it keep the single shared flag.
-// ponytail: sessions in the SAME repo still share one mode, and the statusline
+// crewcut: sessions in the SAME repo still share one mode, and the statusline
 // scripts read the shared flag (last write wins); key by session_id if either matters.
 const projectDir = (process.env.CLAUDE_PROJECT_DIR || '').trim();
 // Replacing separators with '_' aliases e.g. /work/a/b and /work/a_b (#662).
 // Do not read old sanitized keys: they cannot be assigned to one project safely.
 const projectStatePath = projectDir
-  ? path.join(stateDir, 'ponytail-modes',
+  ? path.join(stateDir, 'crewcut-modes',
     createHash('sha256').update(path.normalize(projectDir)).digest('hex'))
   : null;
 
@@ -71,7 +71,7 @@ function clearMode() {
   }
 }
 
-// Live mode written by activate/mode-tracker. Absent flag = ponytail off.
+// Live mode written by activate/mode-tracker. Absent flag = crewcut off.
 function readMode() {
   try {
     return fs.readFileSync(projectStatePath || statePath, 'utf8').trim() || null;
@@ -80,24 +80,24 @@ function readMode() {
   }
 }
 
-// Cursor's always-on project rule (.cursor/rules/ponytail.mdc) already puts the
+// Cursor's always-on project rule (.cursor/rules/crewcut.mdc) already puts the
 // ruleset in front of every prompt and no hook can switch a rule off, so while
 // it is in the workspace the hooks step back instead of injecting a second,
 // possibly contradicting, copy (#817). Cursor hands every hook the workspace
 // root as CURSOR_PROJECT_DIR; project hooks also run from that directory.
-// ponytail: first workspace root only, a rule in a secondary folder of a
+// crewcut: first workspace root only, a rule in a secondary folder of a
 // multi-root workspace goes undetected.
 function cursorRulePath() {
   const root = process.env.CURSOR_PROJECT_DIR || process.cwd();
-  const rule = path.join(root, '.cursor', 'rules', 'ponytail.mdc');
+  const rule = path.join(root, '.cursor', 'rules', 'crewcut.mdc');
   return fs.existsSync(rule) ? rule : null;
 }
 
 function cursorRuleNotice(rule) {
-  return 'PONYTAIL: the always-on Cursor rule ' + rule + ' is active in this workspace and ' +
-    'already carries the ponytail ruleset, so the ponytail hooks injected nothing further. ' +
-    'Mode switching (/ponytail lite|full|ultra|off, "stop ponytail") is unavailable while ' +
-    'that rule exists. When the user tries to switch or turn off ponytail, tell them to ' +
+  return 'CREWCUT: the always-on Cursor rule ' + rule + ' is active in this workspace and ' +
+    'already carries the crewcut ruleset, so the crewcut hooks injected nothing further. ' +
+    'Mode switching (/crewcut lite|full|ultra|off, "stop crewcut") is unavailable while ' +
+    'that rule exists. When the user tries to switch or turn off crewcut, tell them to ' +
     'delete that rule so hooks.json can manage the level.';
 }
 
@@ -112,8 +112,8 @@ function writeHookOutput(event, mode, context = '') {
     // No systemMessage: Codex maps it to a yellow `warning:` entry (and de-greens the
     // completed-hook bullet), reading as an error every session (#605). The mode still
     // shows via the additionalContext "hook context:" line — active level when on,
-    // "PONYTAIL MODE OFF" when off (that path passes context too).
-    // ponytail: if openai/codex#16933 lands and hides additionalContext, restore a
+    // "CREWCUT MODE OFF" when off (that path passes context too).
+    // crewcut: if openai/codex#16933 lands and hides additionalContext, restore a
     // non-warning mode signal here.
     const output = {};
     if (context) {

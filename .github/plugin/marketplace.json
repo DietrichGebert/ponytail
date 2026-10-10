@@ -1,13 +1,13 @@
 {
-  "name": "ponytail",
+  "name": "crewcut",
   "description": "Lazy senior dev mode for AI agents. The best code is the code you never wrote.",
   "owner": {
-    "name": "Dietrich Gebert",
-    "url": "https://github.com/DietrichGebert"
+    "name": "Terje Sandstrom",
+    "url": "https://github.com/HermitOS"
   },
   "plugins": [
     {
-      "name": "ponytail",
+      "name": "crewcut",
       "description": "Forces the laziest solution that works. YAGNI, stdlib first, one line over fifty.",
       "source": "./",
       "category": "productivity",

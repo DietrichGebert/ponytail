@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Version-consistency guard. Ponytail declares its version in seven files across
+// Version-consistency guard. Crewcut declares its version in seven files across
 // five host ecosystems, and every release bumps all of them by hand.
 //
 // tests/gemini-extension.test.js already checks the four plugin manifests agree

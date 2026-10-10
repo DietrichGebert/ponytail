@@ -1,10 +1,10 @@
 {
-  "name": "ponytail",
+  "name": "crewcut",
   "version": "5.1.0",
   "description": "Lazy senior dev mode. Forces the simplest, shortest solution that actually works: YAGNI, stdlib first, no unrequested abstractions.",
   "author": {
-    "name": "Dietrich Gebert",
-    "url": "https://github.com/DietrichGebert"
+    "name": "Terje Sandstrom",
+    "url": "https://github.com/HermitOS"
   },
   "hooks": "./hooks/claude-codex-hooks.json"
 }

@@ -1,13 +1,13 @@
 {
-  "name": "ponytail",
+  "name": "crewcut",
   "description": "Lazy senior dev mode. Forces the simplest, shortest solution that actually works: YAGNI, stdlib first, no unrequested abstractions.",
   "version": "5.1.0",
   "author": {
-    "name": "Dietrich Gebert",
-    "url": "https://github.com/DietrichGebert"
+    "name": "Terje Sandstrom",
+    "url": "https://github.com/HermitOS"
   },
-  "homepage": "https://github.com/DietrichGebert/ponytail",
-  "repository": "https://github.com/DietrichGebert/ponytail",
+  "homepage": "https://github.com/HermitOS/crewcut",
+  "repository": "https://github.com/HermitOS/crewcut",
   "license": "MIT",
   "keywords": ["yagni", "minimalism", "code-review", "productivity"],
   "commands": "commands/",

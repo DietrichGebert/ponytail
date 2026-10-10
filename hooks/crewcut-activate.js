@@ -1,16 +1,16 @@
 #!/usr/bin/env node
-// ponytail — Claude Code SessionStart activation hook (also Codex, Copilot,
+// crewcut — Claude Code SessionStart activation hook (also Codex, Copilot,
 // Grok, CodeBuddy and Cursor sessionStart)
 //
 // Runs on every session start:
-//   1. Writes flag file at $CLAUDE_CONFIG_DIR/.ponytail-active (defaults to ~/.claude; statusline reads this)
-//   2. Emits ponytail ruleset as hidden SessionStart context
+//   1. Writes flag file at $CLAUDE_CONFIG_DIR/.crewcut-active (defaults to ~/.claude; statusline reads this)
+//   2. Emits crewcut ruleset as hidden SessionStart context
 //   3. Detects missing statusline config and emits setup nudge
 
 const fs = require('fs');
 const path = require('path');
-const { getDefaultMode, getClaudeDir, isShellSafe } = require('./ponytail-config');
-const { getPonytailInstructions } = require('./ponytail-instructions');
+const { getDefaultMode, getClaudeDir, isShellSafe } = require('./crewcut-config');
+const { getCrewcutInstructions } = require('./crewcut-instructions');
 const {
   clearMode,
   cursorRuleNotice,
@@ -21,7 +21,7 @@ const {
   isCursor,
   setMode,
   writeHookOutput,
-} = require('./ponytail-runtime');
+} = require('./crewcut-runtime');
 
 const claudeDir = getClaudeDir();
 const settingsPath = path.join(claudeDir, 'settings.json');
@@ -56,13 +56,13 @@ try {
   // Silent fail -- flag is best-effort, don't block the hook
 }
 
-// 2. Emit the ponytail ruleset, filtered to the active intensity level.
-let output = getPonytailInstructions(mode);
+// 2. Emit the crewcut ruleset, filtered to the active intensity level.
+let output = getCrewcutInstructions(mode);
 
 // 2b. Codebase map: what already exists, so "reuse first" costs no search. Fail open: a map
 // that cannot be built must never block or slow the session start.
-if (mode !== 'review' && process.env.PONYTAIL_MAP !== '0') try {
-  const map = require('./ponytail-map').buildMap(process.cwd());
+if (mode !== 'review' && process.env.CREWCUT_MAP !== '0') try {
+  const map = require('./crewcut-map').buildMap(process.cwd());
   if (map) output += '\n\n' + map;
 } catch (e) { /* no map */ }
 
@@ -83,7 +83,7 @@ if (!isCodex && !isCopilot && !isCursor && !isCodeBuddy) try {
   // plugin version that has since been deleted. Only absolute paths are checked,
   // so ~ or $HOME forms are never mistaken for missing files.
   const ref = statusCommand &&
-    statusCommand.match(/"([^"]*ponytail-statusline\.(?:sh|ps1))"|(\S*ponytail-statusline\.(?:sh|ps1))/);
+    statusCommand.match(/"([^"]*crewcut-statusline\.(?:sh|ps1))"|(\S*crewcut-statusline\.(?:sh|ps1))/);
   const refPath = ref ? (ref[1] || ref[2]) : null;
   // isShellSafe keeps quotes, newlines and shell metacharacters from
   // settings.json out of the model context.
@@ -94,19 +94,19 @@ if (!isCodex && !isCopilot && !isCursor && !isCodeBuddy) try {
     (!isWindows || /^([A-Za-z]:[\\/]|\\\\)/.test(refPath));
   const stalePath = checkable && !fs.existsSync(refPath) ? refPath : null;
 
-  // The plugin root is a versioned cache dir (.../ponytail/4.12.0/) that Claude
+  // The plugin root is a versioned cache dir (.../crewcut/4.12.0/) that Claude
   // Code deletes on update, so a statusLine pointing into it goes blank after the
   // next update (#1032). Point it at a copy in the config dir instead. A statusLine
-  // that already runs ponytail keeps its script type, so its copy stays fresh.
+  // that already runs crewcut keeps its script type, so its copy stays fresh.
   const usePs1 = refPath ? refPath.endsWith('.ps1') : isWindows;
-  const scriptName = usePs1 ? 'ponytail-statusline.ps1' : 'ponytail-statusline.sh';
+  const scriptName = usePs1 ? 'crewcut-statusline.ps1' : 'crewcut-statusline.sh';
   const scriptPath = path.join(claudeDir, scriptName);
 
   // Nudge at most once — the flag file marks that the user has already seen
   // (and implicitly declined) the statusline setup offer. Repeating it every
   // session start turns a helpful hint into a nag. A broken path is nudged once
   // per path: the flag records it.
-  const nudgeFlagPath = path.join(claudeDir, '.ponytail-statusline-nudged');
+  const nudgeFlagPath = path.join(claudeDir, '.crewcut-statusline-nudged');
   let nudged = null;
   try { nudged = fs.readFileSync(nudgeFlagPath, 'utf8'); } catch (e) { /* not nudged yet */ }
   const nudge = stalePath ? nudged !== stalePath : statusCommand === null && nudged === null;
@@ -131,8 +131,8 @@ if (!isCodex && !isCopilot && !isCursor && !isCodeBuddy) try {
     if (stalePath) {
       output += "\n\n" +
         "STATUSLINE BROKEN: The statusLine in " + settingsPath + " runs " + stalePath +
-        ", which no longer exists (the ponytail plugin was updated and its old version removed), " +
-        "so the ponytail badge is blank. Replace that path with " + scriptPath + ", which survives updates, " +
+        ", which no longer exists (the crewcut plugin was updated and its old version removed), " +
+        "so the crewcut badge is blank. Replace that path with " + scriptPath + ", which survives updates, " +
         "quoting it for your shell. Keep the rest of the command. " +
         "Proactively offer to fix this for the user on first interaction.";
     } else if (isShellSafe(scriptPath)) {
@@ -142,16 +142,16 @@ if (!isCodex && !isCopilot && !isCursor && !isCodeBuddy) try {
       const statusLineSnippet =
         '"statusLine": { "type": "command", "command": ' + JSON.stringify(command) + ' }';
       output += "\n\n" +
-        "STATUSLINE SETUP NEEDED: The ponytail plugin includes a statusline badge showing active mode " +
-        "(e.g. [PONYTAIL], [PONYTAIL:ULTRA]). It is not configured yet. " +
+        "STATUSLINE SETUP NEEDED: The crewcut plugin includes a statusline badge showing active mode " +
+        "(e.g. [CREWCUT], [CREWCUT:ULTRA]). It is not configured yet. " +
         "To enable, add this to " + settingsPath + ": " +
         statusLineSnippet + " " +
         "Proactively offer to set this up for the user on first interaction.";
     } else {
-      // ponytail: config dir path has shell metacharacters; don't embed it in a
+      // crewcut: config dir path has shell metacharacters; don't embed it in a
       // command snippet; have the agent wire it up by hand instead.
       output += "\n\n" +
-        "STATUSLINE SETUP NEEDED: The ponytail plugin includes a statusline badge showing active mode. " +
+        "STATUSLINE SETUP NEEDED: The crewcut plugin includes a statusline badge showing active mode. " +
         "Its path contains characters unsafe to embed in a shell command, so configure it manually: " +
         "add a statusLine command of type \"command\" that runs " + scriptName +
         " from " + claudeDir + " to " + settingsPath + ", quoting/escaping the path for your shell. " +

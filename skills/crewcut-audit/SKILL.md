@@ -1,11 +1,11 @@
 ---
-name: ponytail-audit
+name: crewcut-audit
 description: >
   Quality audit of a whole repo: bugs, security holes, what breaks under real
   load, risky code without tests, slow paths, and what to delete, merge or
   split. Ranked, each finding explained in plain English. One-shot report,
   changes nothing. Use for "audit this codebase", "review the whole repo",
-  "find bloat", "what can I delete", /ponytail-audit.
+  "find bloat", "what can I delete", /crewcut-audit.
 ---
 
 Audit the whole repo like the senior developer who just inherited it and
@@ -60,7 +60,7 @@ tested and fixed later. This is a report the user asked for, so give it in full.
   wrong result". No case, no finding.
 - Before calling code unused, grep the whole tree for it, including tests,
   fixtures, config, and string or dynamic references.
-- A shortcut marked with a `shortcut:` (or older `ponytail:`) comment that names its limit is a
+- A shortcut marked with a `shortcut:` (or older `crewcut:`) comment that names its limit is a
   decision, not a finding, unless the expected load already crosses it.
 - Propose the smallest fix that works. Prefer fixes that delete code. Never
   add layers, frameworks or config the problem does not need.

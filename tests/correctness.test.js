@@ -131,9 +131,9 @@ test('csv: value containing 351 as substring fails (e.g. 13510)', () => {
 });
 
 test('csv: timeout can be raised for slow pandas startup', () => {
-  const previous = process.env.PONYTAIL_CORRECTNESS_TIMEOUT_MS;
+  const previous = process.env.CREWCUT_CORRECTNESS_TIMEOUT_MS;
   try {
-    process.env.PONYTAIL_CORRECTNESS_TIMEOUT_MS = '1';
+    process.env.CREWCUT_CORRECTNESS_TIMEOUT_MS = '1';
     const timedOut = check(
       "Write Python code that reads sales.csv and sums the 'amount' column.",
       'python',
@@ -144,7 +144,7 @@ print(351)`,
     assert.equal(timedOut.pass, false);
     assert.match(timedOut.reason, /ETIMEDOUT|timed out/i);
 
-    process.env.PONYTAIL_CORRECTNESS_TIMEOUT_MS = '1000';
+    process.env.CREWCUT_CORRECTNESS_TIMEOUT_MS = '1000';
     const completed = check(
       "Write Python code that reads sales.csv and sums the 'amount' column.",
       'python',
@@ -155,8 +155,8 @@ print(351)`,
     assert.equal(completed.pass, true);
     assert.equal(completed.score, 1);
   } finally {
-    if (previous === undefined) delete process.env.PONYTAIL_CORRECTNESS_TIMEOUT_MS;
-    else process.env.PONYTAIL_CORRECTNESS_TIMEOUT_MS = previous;
+    if (previous === undefined) delete process.env.CREWCUT_CORRECTNESS_TIMEOUT_MS;
+    else process.env.CREWCUT_CORRECTNESS_TIMEOUT_MS = previous;
   }
 });
 

@@ -1,5 +1,5 @@
 {
-  "name": "@dietrichgebert/ponytail",
+  "name": "@hermitos/crewcut",
   "version": "5.1.0",
   "description": "Lazy senior dev mode for AI agents. The best code is the code you never wrote.",
   "keywords": [
@@ -10,16 +10,16 @@
   ],
   "license": "MIT",
   "author": {
-    "name": "Dietrich Gebert",
-    "url": "https://github.com/DietrichGebert"
+    "name": "Terje Sandstrom",
+    "url": "https://github.com/HermitOS"
   },
-  "homepage": "https://github.com/DietrichGebert/ponytail",
+  "homepage": "https://github.com/HermitOS/crewcut",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/DietrichGebert/ponytail.git"
+    "url": "git+https://github.com/HermitOS/crewcut.git"
   },
   "bugs": {
-    "url": "https://github.com/DietrichGebert/ponytail/issues"
+    "url": "https://github.com/HermitOS/crewcut/issues"
   },
   "files": [
     "AGENTS.md",

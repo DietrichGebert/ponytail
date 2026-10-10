@@ -1,17 +1,17 @@
 ---
-name: ponytail-gain
+name: crewcut-gain
 description: >
-  Show ponytail's measured savings (code, cost, speed) from the benchmark.
-  One-shot display. Use for /ponytail-gain, "what does ponytail save",
-  "ponytail impact".
+  Show crewcut's measured savings (code, cost, speed) from the benchmark.
+  One-shot display. Use for /crewcut-gain, "what does crewcut save",
+  "crewcut impact".
 ---
 
-# Ponytail Gain
+# Crewcut Gain
 
 Display this scoreboard when invoked. One-shot: do NOT change mode, write flag
 files, or persist anything.
 
-The figures are the published agentic benchmark of Ponytail 5: headless Claude
+The figures are the published agentic benchmark of Crewcut 5: headless Claude
 Code (Opus 5.5, default effort) on 39 tasks (feature tickets in a real FastAPI +
 React repo, bug fixes, security and privacy cases, small apps), 5 runs each,
 against the same agent without the skill. 18 of the tasks have hidden checks
@@ -21,11 +21,11 @@ Source: `benchmarks/results/2026-10-07-agentic.md` and the README.
 
 ## Scoreboard
 
-Render plain ASCII bars. The bar length shows ponytail as a share of the
+Render plain ASCII bars. The bar length shows crewcut as a share of the
 no-skill baseline; the label carries the exact figure:
 
 ```
-  ponytail gain           benchmark · 39 tasks × 5 runs · Opus 5.5
+  crewcut gain           benchmark · 39 tasks × 5 runs · Opus 5.5
 
   no-skill        ████████████████████  100%
   Lines of code   █████████···········   47%   ▼ 53%
@@ -35,8 +35,8 @@ no-skill baseline; the label carries the exact figure:
   Hidden checks passed   97%  (no-skill 96%)
   Tests where the logic needs one   98%  (no-skill 68%)
 
-  This repo:  /ponytail-debt  (shortcuts you deferred)
-              /ponytail-audit (what's still cuttable)
+  This repo:  /crewcut-debt  (shortcuts you deferred)
+              /crewcut-audit (what's still cuttable)
 ```
 
 ## Honesty boundary
@@ -44,10 +44,10 @@ no-skill baseline; the label carries the exact figure:
 These are benchmark averages, not this repo. NEVER print a per-repo savings
 number ("you saved X lines/tokens here"): the unbuilt version was never
 written, so there is no real baseline to subtract from in a live repo. The
-only real per-repo figures come from `/ponytail-debt` (a counted ledger), and
+only real per-repo figures come from `/crewcut-debt` (a counted ledger), and
 this card points there instead of inventing one.
 
 ## Boundaries
 
 One-shot display. Edits nothing, changes no mode.
-"stop ponytail" or "normal mode": revert.
+"stop crewcut" or "normal mode": revert.

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # CLAUDE_CONFIG_DIR overrides ~/.claude, matching where the hooks write the flag (issue #34)
-flag="${CLAUDE_CONFIG_DIR:-$HOME/.claude}/.ponytail-active"
+flag="${CLAUDE_CONFIG_DIR:-$HOME/.claude}/.crewcut-active"
 [ -f "$flag" ] || exit 0
 
 mode=$(head -n1 "$flag" | tr -d '[:space:]')
@@ -12,7 +12,7 @@ color=108
 [ "$mode" = "ultra" ] && color=173
 
 if [ -z "$mode" ] || [ "$mode" = "full" ]; then
-    printf '\033[38;5;%sm[PONYTAIL]\033[0m' "$color"
+    printf '\033[38;5;%sm[CREWCUT]\033[0m' "$color"
 else
-    printf '\033[38;5;%sm[PONYTAIL:%s]\033[0m' "$color" "$(printf '%s' "$mode" | tr '[:lower:]' '[:upper:]')"
+    printf '\033[38;5;%sm[CREWCUT:%s]\033[0m' "$color" "$(printf '%s' "$mode" | tr '[:lower:]' '[:upper:]')"
 fi

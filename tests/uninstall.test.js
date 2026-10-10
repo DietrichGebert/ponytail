@@ -17,33 +17,33 @@ function runUninstall(env) {
 
 delete process.env.CLAUDE_CONFIG_DIR;
 
-const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'ponytail-uninstall-'));
+const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'crewcut-uninstall-'));
 process.on('exit', () => fs.rmSync(temp, { recursive: true, force: true }));
 
 const home = path.join(temp, 'home');
 const claudeDir = path.join(home, '.claude');
 fs.mkdirSync(claudeDir, { recursive: true });
 
-const flagPath = path.join(claudeDir, '.ponytail-active');
+const flagPath = path.join(claudeDir, '.crewcut-active');
 fs.writeFileSync(flagPath, 'full');
 
-const nudgeFlagPath = path.join(claudeDir, '.ponytail-statusline-nudged');
+const nudgeFlagPath = path.join(claudeDir, '.crewcut-statusline-nudged');
 fs.writeFileSync(nudgeFlagPath, '');
 
-const configDir = path.join(temp, 'config-home', 'ponytail');
+const configDir = path.join(temp, 'config-home', 'crewcut');
 fs.mkdirSync(configDir, { recursive: true });
 const configPath = path.join(configDir, 'config.json');
 fs.writeFileSync(configPath, JSON.stringify({ defaultMode: 'ultra' }));
 
 // #1032: the statusline script copy kept in the config dir.
-const statuslineCopyPath = path.join(claudeDir, 'ponytail-statusline.sh');
+const statuslineCopyPath = path.join(claudeDir, 'crewcut-statusline.sh');
 fs.writeFileSync(statuslineCopyPath, '#!/usr/bin/env bash\n');
-const statuslinePs1CopyPath = path.join(claudeDir, 'ponytail-statusline.ps1');
+const statuslinePs1CopyPath = path.join(claudeDir, 'crewcut-statusline.ps1');
 fs.writeFileSync(statuslinePs1CopyPath, '');
 
 const settingsPath = path.join(claudeDir, 'settings.json');
 fs.writeFileSync(settingsPath, JSON.stringify({
-  statusLine: { type: 'command', command: 'bash /some/path/ponytail-statusline.sh' },
+  statusLine: { type: 'command', command: 'bash /some/path/crewcut-statusline.sh' },
 }));
 
 const env = {
@@ -64,7 +64,7 @@ const settingsAfter = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
 assert.equal(
   settingsAfter.statusLine,
   undefined,
-  'ponytail statusLine entry must be removed',
+  'crewcut statusLine entry must be removed',
 );
 
 // A user's own, unrelated statusLine must survive untouched.
@@ -81,9 +81,9 @@ assert.equal(
   "a user's own statusLine must not be touched",
 );
 
-// A user command that merely contains ponytail's script name must also survive.
+// A user command that merely contains crewcut's script name must also survive.
 fs.writeFileSync(settingsPath, JSON.stringify({
-  statusLine: { type: 'command', command: 'bash ~/my-ponytail-statusline.sh' },
+  statusLine: { type: 'command', command: 'bash ~/my-crewcut-statusline.sh' },
 }));
 
 result = runUninstall(env);
@@ -91,14 +91,14 @@ assert.equal(result.status, 0, result.stderr);
 const settingsAfterSimilarName = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
 assert.equal(
   settingsAfterSimilarName.statusLine.command,
-  'bash ~/my-ponytail-statusline.sh',
+  'bash ~/my-crewcut-statusline.sh',
   "a similarly named user statusLine must not be touched",
 );
 
-// #374: a combined statusline (another plugin && ponytail) must keep the other
+// #374: a combined statusline (another plugin && crewcut) must keep the other
 // plugin's part — uninstall must not nuke the whole command or leave a husk.
 fs.writeFileSync(settingsPath, JSON.stringify({
-  statusLine: { type: 'command', command: 'bash ~/caveman-statusline.sh && bash /p/ponytail-statusline.sh' },
+  statusLine: { type: 'command', command: 'bash ~/caveman-statusline.sh && bash /p/crewcut-statusline.sh' },
 }));
 
 result = runUninstall(env);
@@ -107,13 +107,13 @@ const settingsAfter3 = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
 assert.equal(
   settingsAfter3.statusLine.command,
   'bash ~/caveman-statusline.sh',
-  'a combined statusLine must keep the non-ponytail command',
+  'a combined statusLine must keep the non-crewcut command',
 );
 
 // #434: a malformed settings.json must not crash the script mid-cleanup. It
 // can't be safely edited, so uninstall warns and leaves the file byte-for-byte
 // intact instead of throwing a SyntaxError after other state was already removed.
-const malformedSettings = '{ "statusLine": { "command": "ponytail-statusline.sh", broken';
+const malformedSettings = '{ "statusLine": { "command": "crewcut-statusline.sh", broken';
 fs.writeFileSync(settingsPath, malformedSettings);
 
 result = runUninstall(env);

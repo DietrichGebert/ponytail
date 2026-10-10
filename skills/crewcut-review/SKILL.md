@@ -1,11 +1,11 @@
 ---
-name: ponytail-review
+name: crewcut-review
 description: >
   Quality review of a change: is the logic right, is it safe, does it hold
   under real load, is risky code tested, is it fast enough, and is every line
   needed. Reads the connected code, not only the diff. Each finding is
   explained in plain English. Use for "review this", "code review", "review
-  the last commit", "review my PR", "is this over-engineered", /ponytail-review.
+  the last commit", "review my PR", "is this over-engineered", /crewcut-review.
 ---
 
 Review a change like the senior developer who will be paged when it breaks.
@@ -60,7 +60,7 @@ This is a report the user asked for, so give it in full.
   wrong result". No case, no finding.
 - Re-read the lines and confirm: the caller exists, the value can really be
   empty, the code really is unused.
-- A shortcut marked with a `shortcut:` (or older `ponytail:`) comment that names its limit is a
+- A shortcut marked with a `shortcut:` (or older `crewcut:`) comment that names its limit is a
   decision, not a finding, unless the expected load already crosses it.
 - Propose the smallest fix that works. Prefer fixes that delete code. Never
   add layers, frameworks or config the problem does not need.

@@ -1,19 +1,19 @@
 #!/usr/bin/env node
-// ponytail — codebase map: what already exists, so "reuse first" costs no search.
+// crewcut — codebase map: what already exists, so "reuse first" costs no search.
 //
 // Lists the top-level functions, classes and exports of the project's source files, one line
 // per folder, inside a character budget. No model, no dependencies: `git ls-files` (or a short
 // directory walk) plus a regex per language. Tests, generated and vendored files are skipped;
 // shared code (utils, lib, services, components, hooks) is listed first when the budget is tight.
 //
-// ponytail: regex, not a parser. Misses nested or dynamic definitions; a tree-sitter index is the
+// crewcut: regex, not a parser. Misses nested or dynamic definitions; a tree-sitter index is the
 // upgrade if the map ever needs to be exact.
 
 const fs = require('fs');
 const path = require('path');
 const { execFileSync } = require('child_process');
 
-const BUDGET = Number(process.env.PONYTAIL_MAP_CHARS || 2000);
+const BUDGET = Number(process.env.CREWCUT_MAP_CHARS || 2000);
 const MAX_FILES = 4000;
 const SRC = /\.(py|js|jsx|mjs|cjs|ts|tsx|go|rs|rb|java|kt|php|swift|cs)$/;
 const SKIP_DIR = /(^|\/)(node_modules|\.git|dist|build|out|vendor|venv|\.venv|__pycache__|coverage|\.next|target|migrations|versions|fixtures|tests?|__tests__|spec)(\/|$)/;
