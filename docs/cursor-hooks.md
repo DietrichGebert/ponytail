@@ -98,7 +98,10 @@ Execution environment (client, 3.20.17):
   stop applying it, the same as in Claude Code.
 - `/ponytail`: reports `PONYTAIL MODE ACTIVE — level: <level>` without changing
   anything. `/ponytail default <level>` persists the default to `config.json`.
-- Any other prompt: no output.
+- Any other prompt: injects the live-level ruleset (`continue: true` plus
+  `additional_context`). Cursor 3.24 never fires `sessionStart`, including on
+  existing chats, so this is the Qoder path: every turn carries the ruleset.
+  A workspace `.cursor/rules/ponytail.mdc` still keeps ordinary prompts silent.
 
 ### Coexistence with `.cursor/rules/ponytail.mdc`
 
@@ -144,7 +147,7 @@ for teammates without hooks stays on the rule's fixed behavior for everyone.
 `node --test tests/cursor-hooks.test.js` feeds each hook the Cursor input shape
 and asserts the output shape: template validity, `sessionStart` JSON and flag
 placement, `off`, the Claude-plugin environment, every `/ponytail` form on
-`beforeSubmitPrompt`, silence on ordinary prompts, the rule-coexistence notice
+`beforeSubmitPrompt`, ruleset injection on ordinary prompts, the rule-coexistence notice
 from both `CURSOR_PROJECT_DIR` and the working directory, and the installer's
 merge, idempotence, project scope, file removal and malformed-file refusal.
 `tests/uninstall.test.js` covers the shared uninstall script.

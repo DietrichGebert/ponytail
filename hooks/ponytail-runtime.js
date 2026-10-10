@@ -139,7 +139,9 @@ function writeHookOutput(event, mode, context = '') {
     process.stdout.write(JSON.stringify(output));
     return;
   }
-  if (isCursor) {
+  // CURSOR_VERSION is set on the hook process; Cursor 3.24 also puts
+  // cursor_version on stdin, so the tracker can set the env before calling us.
+  if (isCursor || process.env.CURSOR_VERSION) {
     // Cursor parses stdout as JSON and treats empty stdout as "nothing to
     // say"; raw text would be logged as a parse error. sessionStart takes
     // additional_context into the conversation's system context;
