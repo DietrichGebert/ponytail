@@ -119,10 +119,14 @@ export default {
           description: command.description,
           execute: async ({ sessionID, prompt, delivery }) => {
             if (command.name === 'ponytail') persistMode(prompt.text);
+            const withoutMentions = (items) => items?.map(({ mention, ...item }) => item);
             await ctx.session.prompt({
               ...prompt,
               sessionID,
               text: command.template.replaceAll('$ARGUMENTS', prompt.text || ''),
+              files: withoutMentions(prompt.files),
+              agents: withoutMentions(prompt.agents),
+              skills: withoutMentions(prompt.skills),
               delivery,
             });
           },
