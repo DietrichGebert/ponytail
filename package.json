@@ -2,7 +2,7 @@
   "name": "@hermitos/crewcut",
   "private": true,
   "version": "1.0.0",
-  "description": "Lazy senior dev mode for AI agents. The best code is the code you never wrote.",
+  "description": "Slim code, proper structure: the smallest complete change, as clean object-oriented code.",
   "keywords": [
     "claude-code",
     "copilot",

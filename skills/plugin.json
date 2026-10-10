@@ -1,5 +1,5 @@
 {
   "name": "crewcut",
-  "description": "Lazy senior dev mode. Forces the simplest solution that works: YAGNI, stdlib first, one line over fifty.",
+  "description": "Slim senior dev mode with proper structure. The smallest change that fully solves the task, written as clean object-oriented code: instance classes, constructor injection, interfaces where substitution is needed, and unit tests.",
   "skills": "."
 }

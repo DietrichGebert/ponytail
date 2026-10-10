@@ -1,7 +1,7 @@
 {
   "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
   "name": "crewcut",
-  "description": "Lazy senior dev mode for AI agents. The best code is the code you never wrote.",
+  "description": "Slim code, proper structure: the smallest complete change, as clean object-oriented code.",
   "owner": {
     "name": "Terje Sandstrom",
     "url": "https://github.com/HermitOS"
@@ -9,7 +9,7 @@
   "plugins": [
     {
       "name": "crewcut",
-      "description": "Forces the laziest solution that works. YAGNI, stdlib first, one line over fifty.",
+      "description": "Slim senior dev mode with proper structure. The smallest change that fully solves the task, written as clean object-oriented code: instance classes, constructor injection, interfaces where substitution is needed, and unit tests.",
       "source": "./",
       "category": "productivity"
     }

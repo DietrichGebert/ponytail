@@ -1,7 +1,7 @@
 {
   "name": "crewcut",
   "version": "1.0.0",
-  "description": "Lazy senior dev mode. Forces the simplest, shortest solution that actually works: YAGNI, stdlib first, no unrequested abstractions.",
+  "description": "Slim senior dev mode with proper structure. The smallest change that fully solves the task, written as clean object-oriented code: instance classes, constructor injection, interfaces where substitution is needed, and unit tests.",
   "author": {
     "name": "Terje Sandstrom",
     "url": "https://github.com/HermitOS"
