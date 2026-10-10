@@ -163,7 +163,7 @@ codex plugin add ponytail@ponytail
 | `/ponytail-gain` | 以计分板形式显示基准测试测得的效果（更少代码、更低成本、更快速度）。 |
 | `/ponytail-help` | 上述命令的速查表。 |
 
-命令需要支持 skill 的宿主（Claude Code、Codex、Devin CLI、OpenCode、Gemini、pi、Hermes Agent、Qoder、Grok Build）。在 Codex CLI 和 IDE 扩展中，它们是插件命名空间下的 skill，用 `$ponytail:ponytail-review` 调用。使用 [hooks](../INSTALL.md#cursor) 的 Cursor 只支持 `/ponytail` 级别切换，以普通消息输入。只有指令的适配器（Cursor 的规则文件、Windsurf、Cline、Copilot、Kiro、Antigravity）会加载始终生效的规则，但没有这些命令。
+命令需要支持 skill 的宿主（Claude Code、Codex、Devin CLI、OpenCode、Gemini、Antigravity CLI、pi、Hermes Agent、Qoder、Grok Build）。在 Codex CLI 和 IDE 扩展中，它们是插件命名空间下的 skill，用 `$ponytail:ponytail-review` 调用。使用 [hooks](../INSTALL.md#cursor) 的 Cursor 只支持 `/ponytail` 级别切换，以普通消息输入。只有指令的适配器（Cursor 的规则文件、Windsurf、Cline、Copilot、Kiro、Antigravity 的 `AGENTS.md` 备用模式）会加载始终生效的规则，但没有这些命令。
 
 ## 常见问题
 
