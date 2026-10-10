@@ -24,7 +24,39 @@ The full rules are in [`skills/crewcut/SKILL.md`](skills/crewcut/SKILL.md).
 
 ## Install
 
-See [INSTALL.md](INSTALL.md).
+Claude Code:
+
+```
+/plugin install crewcut --marketplace HermitOS/crewcut
+```
+
+Older Claude Code versions, GitHub Copilot and settings: see [INSTALL.md](INSTALL.md).
+
+## What the plugin does on your machine
+
+Crewcut runs three Node.js hooks from the plugin folder. It sends nothing over the network and fetches nothing.
+
+| Hook               | What it does |
+|--------------------|--------------|
+| `SessionStart`     | Adds the crewcut rules to the session context. Adds a short map of the project's top-level classes and functions, built from `git ls-files` and a regex per language, so existing code is reused. |
+| `SubagentStart`    | Adds the same rules to each subagent. Limit this with `CREWCUT_SUBAGENT_MATCHER`. |
+| `UserPromptSubmit` | Detects level switches (`/crewcut lite`, "stop crewcut") and records the level. |
+
+Files it writes, all outside the plugin folder:
+
+| File | Purpose |
+|------|---------|
+| `~/.claude/.crewcut-active` | The current level, read by the statusline. |
+| `~/.claude/crewcut-modes/<hash>` | The level per project, keyed by a SHA-256 hash of the project path. |
+| `~/.claude/crewcut-statusline.sh` or `.ps1` | A copy of the statusline script, so it survives plugin updates. |
+| `~/.claude/.crewcut-statusline-nudged` | Marks that the statusline setup was offered once. |
+| `~/.config/crewcut/config.json` (`%APPDATA%\crewcut\config.json` on Windows) | The default level, only when you run `/crewcut default <level>`. |
+
+`~/.claude` is replaced by `CLAUDE_CONFIG_DIR` when that is set.
+
+**Statusline offer:** if you have no `statusLine` in `~/.claude/settings.json`, the first session asks the agent to offer adding one that runs the copied statusline script. Nothing is changed unless you accept. Crewcut makes this offer only once.
+
+To remove all of these files, run `node scripts/uninstall.js` before uninstalling the plugin.
 
 ## Commands
 
