@@ -7,12 +7,6 @@ const path = require('path');
 
 const root = path.join(__dirname, '..');
 
-test('root npm test covers bundled subprojects', () => {
-  const packageJson = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
-
-  assert.match(packageJson.scripts.test, /npm test --prefix pi-extension/);
-});
-
 test('publishing gates OIDC access on tests and pins executable dependencies', () => {
   const publish = fs.readFileSync(path.join(root, '.github', 'workflows', 'publish.yml'), 'utf8').replace(/\r\n/g, '\n');
   const ci = fs.readFileSync(path.join(root, '.github', 'workflows', 'test.yml'), 'utf8').replace(/\r\n/g, '\n');

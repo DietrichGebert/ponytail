@@ -20,12 +20,8 @@ const PINNED_SEMVER = /^\d+\.\d+\.\d+$/;
 // manifests here so a future ecosystem can't drift unnoticed.
 const VERSION_FILES = [
   '.claude-plugin/plugin.json',  // Claude Code plugin — what users install
-  '.codex-plugin/plugin.json',   // Codex plugin
-  '.devin-plugin/plugin.json',   // Devin CLI plugin
   '.github/plugin/plugin.json',  // Copilot plugin
-  '.qoder-plugin/plugin.json',   // Qoder plugin
-  'gemini-extension.json',       // Gemini CLI extension
-  'package.json',                // pi-package / repo root
+  'package.json',                // npm package / repo root
 ];
 
 function readVersion(relPath) {

@@ -13,12 +13,12 @@ const path = require('path');
 
 const root = path.join(__dirname, '..');
 
-// pi-extension registers the canonical command set.
-const piSource = fs.readFileSync(path.join(root, 'pi-extension', 'index.js'), 'utf8');
-const commands = [...piSource.matchAll(/registerCommand\(["']([\w-]+)["']/g)].map((m) => m[1]);
+// Every skill except the base one is also a slash command.
+const commands = fs.readdirSync(path.join(root, 'skills'), { withFileTypes: true })
+  .filter((d) => d.isDirectory()).map((d) => d.name);
 
-test('pi registers at least the base command', () => {
-  assert.ok(commands.includes('ponytail'), 'expected pi to register a ponytail command');
+test('skills include the base command', () => {
+  assert.ok(commands.includes('ponytail'), 'expected a ponytail skill');
 });
 
 test('every registered command ships a Claude commands/*.toml', () => {
@@ -30,24 +30,13 @@ test('every registered command ships a Claude commands/*.toml', () => {
   }
 });
 
-test('every registered command ships an OpenCode .opencode/command/*.md', () => {
-  for (const name of commands) {
-    assert.ok(
-      fs.existsSync(path.join(root, '.opencode', 'command', `${name}.md`)),
-      `missing .opencode/command/${name}.md`,
-    );
-  }
-});
-
 // /ponytail-debt documents one grep for the whole tree, shipped in four copies.
 // It missed C-style /* ponytail: */ block comments (#810), so the ledger silently
 // skipped every C/Java/CSS marker. Feed each shipped expression to real grep
 // rather than restating it here: a copied regex only tests the copy.
 const debtCopies = [
   'skills/ponytail-debt/SKILL.md',
-  '.openclaw/skills/ponytail-debt/SKILL.md',
   'commands/ponytail-debt.toml',
-  '.opencode/command/ponytail-debt.md',
 ];
 const debtSamples = [
   ['# ponytail: hash marker', true],

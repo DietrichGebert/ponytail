@@ -25,7 +25,6 @@ const HOOKS_JSON = 'hooks/claude-codex-hooks.json';
 const COPILOT_HOOKS_JSON = 'hooks/copilot-hooks.json';
 const HOST_PLUGIN_MANIFESTS = [
   '.claude-plugin/plugin.json',
-  '.codex-plugin/plugin.json',
 ];
 // PowerShell 5.1 rejects these POSIX shell guards when a host runs `command`.
 const POSIX_GUARD_SYNTAX = /\bcommand\s+-v\b|&&|\|\||>\/dev\/null|2>&1/;
@@ -125,7 +124,7 @@ test('ponytail-mode-tracker self-exits when stdin never closes (no freeze)', asy
   assert.equal(code, 0, 'hook must exit cleanly when stdin never closes');
 });
 
-test('Claude and Codex manifests point at the shared host-specific hook config', () => {
+test('Claude manifest points at the shared host-specific hook config', () => {
   for (const rel of HOST_PLUGIN_MANIFESTS) {
     const manifest = JSON.parse(fs.readFileSync(path.join(root, rel), 'utf8'));
     assert.equal(manifest.hooks, `./${HOOKS_JSON}`, `${rel} must not rely on root hooks auto-discovery`);
