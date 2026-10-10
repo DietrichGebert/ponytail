@@ -75,6 +75,13 @@ CELL_TIMEOUT = 300  # seconds per cell; a hung agent is force-killed (process tr
 NO_RUN = ("Write the implementation (include tests if you normally would for a change like this). "
           "Do not run a dev server, install dependencies, run a database, or open a browser to verify -- "
           "just write the code and stop. Only the code you write is measured, not its execution.")
+# Shell variant (BENCH_ALLOW_SHELL=1): agents may run commands, e.g. a plugin's bundled scripts or the
+# tests they wrote. They run under bypassPermissions, so main() refuses it outside a Docker container.
+ALLOW_SHELL = os.environ.get("BENCH_ALLOW_SHELL") == "1"
+if ALLOW_SHELL:
+    NO_RUN = ("Write the implementation (include tests if you normally would for a change like this). "
+              "You may run quick commands such as tests or scripts. Do not run a dev server, install "
+              "dependencies, run a database, or open a browser. Only the code you write is measured.")
 
 def _is_test(p: Path, workdir: Path):
     rel = p.relative_to(workdir)
@@ -221,6 +228,7 @@ def selftest():
             failures += 0 if ok else 1
     failures += _selftest_plugin_dir()
     failures += _selftest_kill()
+    failures += _selftest_shell()
     print(f"\nselftest: {'all instruments valid' if not failures else str(failures) + ' BROKEN'}")
     return failures
 
@@ -270,6 +278,13 @@ def _selftest_kill():
     print(f"{'ok ' if ok else 'XX '} tree_kill    terminates a timed-out cell")
     return 0 if ok else 1
 
+def _selftest_shell():
+    """Bash stays blocked unless BENCH_ALLOW_SHELL=1 asked for the shell variant."""
+    blocked = _base_cmd("claude", "p", "opus")[-2:] == ["--disallowedTools", "Bash"]
+    ok = blocked != ALLOW_SHELL
+    print(f"{'ok ' if ok else 'XX '} shell        {'allowed' if ALLOW_SHELL else 'blocked'}, as requested")
+    return 0 if ok else 1
+
 def chat_code_loc(text):
     """LOC of fenced code blocks in a chat answer: (total incl comments, code-only)."""
     total = code = 0
@@ -313,10 +328,10 @@ def score_workspace(task_id, arm, model, workdir: Path):
     return {"task": task_id, "arm": arm, "model": model, **sc, **stats, **meta}
 
 def _base_cmd(claude, prompt, model):
-    return [claude, "-p", prompt, "--model", MODELS.get(model, model),
-            "--permission-mode", "bypassPermissions", "--output-format", "json",
-            "--setting-sources", "project,local", "--strict-mcp-config",
-            "--disallowedTools", "Bash"]
+    cmd = [claude, "-p", prompt, "--model", MODELS.get(model, model),
+           "--permission-mode", "bypassPermissions", "--output-format", "json",
+           "--setting-sources", "project,local", "--strict-mcp-config"]
+    return cmd if ALLOW_SHELL else cmd + ["--disallowedTools", "Bash"]
 
 def warm_cache(model):
     """One throwaway call before the pool. Without it the first parallel cells each pay the cold
@@ -472,6 +487,8 @@ def main():
         sys.exit(1 if selftest() else 0)
     if args.rescore:
         return rescore(args.rescore)
+    if ALLOW_SHELL and not os.path.exists("/.dockerenv"):
+        sys.exit("BENCH_ALLOW_SHELL=1 gives agents a shell under bypassPermissions: run it only in a Docker container")
     if selftest():
         sys.exit("instruments broken; refusing to spend on the API")
 
@@ -505,7 +522,7 @@ def main():
             shutil.move(str(ws), str(out_dir / name))
 
     for m in models: warm_cache(m)
-    print(f"running {total} cells, {args.workers} at a time", flush=True)
+    print(f"running {total} cells, {args.workers} at a time, shell {'allowed' if ALLOW_SHELL else 'blocked'}", flush=True)
     # Cells are fully isolated (own copy + own claude context), so they parallelize safely.
     # To STOP a parallel run, kill the whole tree: taskkill /PID <pid> /T /F. Killing just the
     # python orchestrator orphans the concurrent `claude` children and they keep spending.
@@ -526,7 +543,7 @@ def main():
                   f"correct={res.get('correct')}", flush=True)
             (out_dir / "results.json").write_text(json.dumps(
                 {"date": stamp, "models": {m: MODELS.get(m, m) for m in models},
-                 "claude": _claude_version(), "results": results}, indent=2), encoding="utf-8")
+                 "claude": _claude_version(), "shell": ALLOW_SHELL, "results": results}, indent=2), encoding="utf-8")
 
     shutil.rmtree(scratch, ignore_errors=True)
     rows = aggregate(results)
