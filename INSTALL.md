@@ -95,6 +95,14 @@ Kilo Code is built on OpenCode and runs the same plugin through its `plugin` key
 
 OpenCode 1 has no `plugin add` and uses the older `plugin` key: `{ "plugin": ["@dietrichgebert/ponytail"] }`, or from a checkout the file path: `{ "plugin": ["./.opencode/plugins/ponytail.mjs"] }`.
 
+Older OpenCode 1 releases with a function-only plugin loader (for example 1.2.21) log `is not a function` and skip loading Ponytail. Upgrade OpenCode, or point the `plugin` entry at the checkout's legacy entrypoint instead:
+
+```json
+{ "plugin": ["file:///absolute/path/to/ponytail/.opencode/legacy/ponytail.mjs"] }
+```
+
+This uses the same commands, skills and mode handling. Run OpenCode from your project, outside the Ponytail checkout, so it does not also auto-load the newer entrypoint in `.opencode/plugins/`.
+
 ## Gemini CLI
 
 ```bash

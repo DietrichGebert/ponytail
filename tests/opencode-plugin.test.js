@@ -172,6 +172,20 @@ test('V1 and V2 share one mode file, so a level set under either API applies to 
 
 // ---------------------------------------------------------------- V1 ------
 
+test('legacy entrypoint supports function-only V1 loaders using the same server', async () => {
+  const url = pathToFileURL(path.join(__dirname, '..', '.opencode', 'legacy', 'ponytail.mjs'));
+  const mod = await import(url);
+  assert.deepEqual(Object.keys(mod), ['default']);
+  assert.equal(mod.default, loadPlugin.server);
+  for (const factory of Object.values(mod)) {
+    const hooks = await factory({});
+    const config = {};
+    await hooks.config(config);
+    assert.equal(Object.keys(config.command).length, 6);
+    assert.deepEqual(config.skills.paths, [path.join(__dirname, '..', 'skills')]);
+  }
+});
+
 function transform(hooks) {
   const output = { system: [] };
   return hooks['experimental.chat.system.transform']({ model: {} }, output).then(() => output.system);
