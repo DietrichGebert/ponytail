@@ -12,10 +12,10 @@ can't quietly become permanent.
 
 ## Scan
 
-Grep the repo for comment markers, skipping `node_modules`, `.git`, and build
-output:
+Grep the repo for comment markers, skipping `node_modules`, `.git`, `vendor`,
+virtualenvs and build output:
 
-`grep -rnE --exclude-dir=.git --exclude-dir=node_modules --exclude-dir=dist --exclude-dir=build '(#|//|/[*]) ?(shortcut|ponytail):' .`  (add other comment prefixes if your stack uses them)
+`grep -rnE --exclude-dir=.git --exclude-dir=node_modules --exclude-dir=dist --exclude-dir=build --exclude-dir=vendor --exclude-dir=.venv --exclude-dir=venv --exclude-dir=target '(#|//|/[*]|--|;|^[[:space:]]*[*]) ?(shortcut|ponytail):' .`  (add other comment prefixes if your stack uses them)
 
 If the user names their own marker word (`/ponytail-debt TODO`), grep for that word instead.
 
