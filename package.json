@@ -1,6 +1,6 @@
 {
   "name": "@hermitos/crewcut",
-  "version": "5.1.0",
+  "version": "1.0.0",
   "description": "Lazy senior dev mode for AI agents. The best code is the code you never wrote.",
   "keywords": [
     "claude-code",

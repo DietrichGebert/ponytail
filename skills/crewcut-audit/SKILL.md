@@ -10,7 +10,7 @@ description: >
 
 Audit the whole repo like the senior developer who just inherited it and
 will be paged when it breaks. Order of importance: correct, safe, holds under
-load, tested, fast, lean. Lean still matters: every extra line must be read,
+load, tested, fast, lean, structure. Lean still matters: every extra line must be read,
 tested and fixed later. This is a report the user asked for, so give it in full.
 
 ## 1. Map first
@@ -47,12 +47,18 @@ tested and fixed later. This is a report the user asked for, so give it in full.
    - reuse: two helpers doing the same thing (keep one, name the path)
    - stdlib / native: the standard library or platform already does it;
      a dependency doing what a few lines or the platform can do
-   - yagni: interface with one implementation, factory with one product,
-     wrapper that only passes calls through
+   - yagni: factory with one product, wrapper that only passes calls
+     through, config nobody sets. An interface with one implementation is
+     not yagni when a caller or test must replace it.
    - merge: near-copies that must change together
    - split: one function or class doing several unrelated jobs, so it is
      hard to read or test. Split by job, never by line count, and never into
      helpers that exist only to make a function shorter.
+7. **Structure:** breaks the crewcut object-oriented rules: a static class
+   that does I/O or holds state, a service created inside the class instead
+   of injected, a dependency a test must replace but has no interface,
+   inheritance where composition fits, a class mixing UI, I/O and logic.
+   Name the concrete cost (cannot test it, cannot swap it).
 
 ## 3. Check before you report
 
@@ -77,7 +83,7 @@ you assumed.
 Then the findings in three groups, most important first, skip empty groups:
 - **Must fix:** bug, security, data loss, breaks at the expected load.
 - **Should fix:** risky code without a test, real slowness, duplication, a
-  function that mixes jobs, code that should not exist.
+  function that mixes jobs, code that should not exist, structure.
 - **Nice to have:** small speed-ups, shorter forms.
 
 Number findings across all groups, so the user can say "fix 2 and 5". At

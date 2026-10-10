@@ -24,16 +24,13 @@ Level sticks until changed or session end.
 
 | Skill | Trigger | What it does |
 |-------|---------|--------------|
-| **crewcut** | `/crewcut` | Lazy mode itself: least new code, clear replies that name skipped work and risks. |
+| **crewcut** | `/crewcut` | The mode itself: least new code, proper OO structure, clear replies that name skipped work and risks. |
 | **crewcut-review** | `/crewcut-review` | Quality review of a diff: bugs, security, load, missing tests, speed, what to cut. Each finding says what goes wrong and how to fix it. |
 | **crewcut-audit** | `/crewcut-audit` | The same quality review for the whole repo, ranked. |
 | **crewcut-debt** | `/crewcut-debt` | Harvest `shortcut:` comments into a tracked ledger. |
-| **crewcut-gain** | `/crewcut-gain` | Measured-impact scoreboard: less code, less cost, more speed. |
 | **crewcut-help** | `/crewcut-help` | This card. |
 
-In Codex CLI and the IDE extension, invoke skills with `$crewcut:crewcut`,
-`$crewcut:crewcut-review`, or `$crewcut:crewcut-help`. Claude Code and OpenCode use the
-slash-command forms above (OpenCode ships all six as slash commands).
+In Copilot CLI, commands are namespaced: `/crewcut:crewcut`, `/crewcut:crewcut-review`.
 
 ## Deactivate
 

@@ -41,7 +41,10 @@ const INVARIANTS = [
   'never about the change itself',         // scope: callers, tests and fixtures the change breaks
   'shortcut: <the limit>, <when to upgrade>',   // shortcut marker comment
   'correct on edge cases',                 // robust-variant rule
-  'Lazy code without its check is unfinished', // test reflex
+  'Code without its check is unfinished',   // test reflex
+  'Static only for pure functions',         // OO: no static services
+  'One production implementation is reason enough', // OO: interfaces
+  'Refactor it only when the user asks',    // OO: legacy code
   // the "never cut" carve-outs: pin each so a reword in either file can't silently drop one.
   'validation at trust boundaries',
   'prevents data loss',

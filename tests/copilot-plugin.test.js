@@ -13,7 +13,6 @@ const REQUIRED_COMMAND_FILES = [
   'crewcut-review.toml',
   'crewcut-audit.toml',
   'crewcut-debt.toml',
-  'crewcut-gain.toml',
   'crewcut-help.toml',
 ];
 
