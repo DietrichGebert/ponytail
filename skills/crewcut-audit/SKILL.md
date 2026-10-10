@@ -63,7 +63,9 @@ tested and fixed later. This is a report the user asked for, so give it in full.
    a method with more than 4 parameters where an object or interface
    should be passed, a constructor injecting more than 4 services, the
    same switch on a type or mode in several places or a method with more
-   than 3 branches with real logic, where classes behind an interface fit.
+   than 3 branches with real logic, where classes behind an interface fit,
+   a method (often static) that mainly uses another object's data and
+   belongs in that class, public members no caller outside needs.
    Name the concrete cost (cannot test it, cannot swap it).
 
 ## 3. Check before you report

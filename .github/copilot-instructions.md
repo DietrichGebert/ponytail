@@ -33,6 +33,7 @@ Take the first option that fully works:
 Applies to C#, Java, Kotlin, TypeScript and other object-oriented languages. Standalone scripts and microcontroller firmware are exempt.
 
 - Static only for pure functions, extension methods, constants and factory methods. A class that does I/O or holds mutable state is an instance class, never static.
+- A method belongs with the data it uses most (no feature envy). A method that mainly reads or changes another object's data, often static because it uses none of its own, moves into that object's class. The data it uses there can then become private. Tell objects what to do; do not pull their data out to decide for them. Keep public only what callers need. Static stays right for pure functions over primitives or framework types, extension methods on types you do not own, and mapping between layers at a boundary.
 - Dependencies come in through the constructor. Never create or reach statically for a service that does I/O. Use the platform's standard DI container when the app already has one or the framework expects one (ASP.NET Core, Generic Host, Spring). Otherwise wire by hand in the composition root (Main).
 - Give a dependency an interface when a caller or a test must replace it: I/O, hardware, clock, external services, services with side effects. One production implementation is reason enough. Data types get no interface.
 - Composition over inheritance: build behavior from objects injected through their interfaces. Inherit only where the framework requires it. Do not seal classes by default.
