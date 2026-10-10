@@ -316,8 +316,10 @@ assert.ok(
 // update, so the nudge points at a copy of the script in the config dir.
 const copyPath = path.join(customConfigDir, process.platform === 'win32' ? 'crewcut-statusline.ps1' : 'crewcut-statusline.sh');
 assert.ok(fs.existsSync(copyPath), 'nudge must copy the statusline script into the config dir (#1032)');
-assert.ok(result.stdout.includes(copyPath), 'nudge must point at the config-dir copy, not the plugin cache (#1032)');
-assert.ok(!result.stdout.includes(path.join(root, 'hooks')), 'nudge must not point into the versioned plugin dir (#1032)');
+// The path sits inside a JSON settings snippet, so Windows backslashes appear escaped.
+const inSnippet = (p) => JSON.stringify(p).slice(1, -1);
+assert.ok(result.stdout.includes(inSnippet(copyPath)), 'nudge must point at the config-dir copy, not the plugin cache (#1032)');
+assert.ok(!result.stdout.includes(inSnippet(path.join(root, 'hooks'))), 'nudge must not point into the versioned plugin dir (#1032)');
 // Later sessions refresh the copy, so script fixes ship with plugin updates.
 fs.writeFileSync(copyPath, 'old');
 run('crewcut-activate.js', { HOME: home2, USERPROFILE: home2, CLAUDE_CONFIG_DIR: customConfigDir, CREWCUT_DEFAULT_MODE: 'lite' });
