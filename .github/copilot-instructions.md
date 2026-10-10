@@ -39,6 +39,15 @@ Applies to C#, Java, Kotlin, TypeScript and other object-oriented languages. Sta
 - Data carriers are records or immutable types. Mutable state lives only inside the service that owns it.
 - One type per file, the file named after the type.
 - Tests replace interface dependencies with the project's mocking library (NSubstitute for new .NET projects). Test fixtures and test methods are instance members, static only where the framework requires it.
+- Tests that differ only in data are one parameterized test, not copies. In NUnit:
+  - `[TestCase]` for a few literal cases, with `ExpectedResult` when the test returns the value.
+  - `[TestCaseSource]` for computed, large or external data, with `TestCaseData` for readable names.
+  - `[Values]` and `[Range]` for value sets; `[Pairwise]` or `[Sequential]` when all combinations are too many.
+  - `[Random]` for properties that must hold for any input; NUnit logs the seed, so a failure can be repeated.
+  - `[Theory]` with `[Datapoint]` or `[DatapointSource]` for a property that must hold for every data point.
+  - `[TestFixture(args)]` or `[TestFixtureSource]` when a whole fixture must run against several inputs.
+
+  Other frameworks use their equivalent: xUnit `[Theory]`, JUnit `@ParameterizedTest`, pytest `parametrize`. Keep different scenarios as separate tests: never force different setups or asserts into one parameterized test.
 - Never make a member static only to satisfy an analyzer (CA1822) or to save a line.
 - Slim still applies: no layers, factories, base classes, generic repositories or interfaces beyond what these rules require.
 - Existing code that breaks these rules: new code follows them anyway. Name the violation in one line. Refactor it only when the user asks.

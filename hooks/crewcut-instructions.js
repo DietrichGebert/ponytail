@@ -83,6 +83,15 @@ function getFallbackInstructions(mode) {
     "- Data carriers are records or immutable types. Mutable state lives only inside the service that owns it.\n" +
     "- One type per file, the file named after the type.\n" +
     "- Tests replace interface dependencies with the project's mocking library (NSubstitute for new .NET projects). Test fixtures and test methods are instance members, static only where the framework requires it.\n" +
+    "- Tests that differ only in data are one parameterized test, not copies. In NUnit:\n" +
+    "  - `[TestCase]` for a few literal cases, with `ExpectedResult` when the test returns the value.\n" +
+    "  - `[TestCaseSource]` for computed, large or external data, with `TestCaseData` for readable names.\n" +
+    "  - `[Values]` and `[Range]` for value sets; `[Pairwise]` or `[Sequential]` when all combinations are too many.\n" +
+    "  - `[Random]` for properties that must hold for any input; NUnit logs the seed, so a failure can be repeated.\n" +
+    "  - `[Theory]` with `[Datapoint]` or `[DatapointSource]` for a property that must hold for every data point.\n" +
+    "  - `[TestFixture(args)]` or `[TestFixtureSource]` when a whole fixture must run against several inputs.\n" +
+    "\n" +
+    "  Other frameworks use their equivalent: xUnit `[Theory]`, JUnit `@ParameterizedTest`, pytest `parametrize`. Keep different scenarios as separate tests: never force different setups or asserts into one parameterized test.\n" +
     "- Never make a member static only to satisfy an analyzer (CA1822) or to save a line.\n" +
     "- Slim still applies: no layers, factories, base classes, generic repositories or interfaces beyond what these rules require.\n" +
     "- Existing code that breaks these rules: new code follows them anyway. Name the violation in one line. Refactor it only when the user asks.\n" +

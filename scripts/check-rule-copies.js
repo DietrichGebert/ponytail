@@ -45,6 +45,7 @@ const INVARIANTS = [
   'Static only for pure functions',         // OO: no static services
   'One production implementation is reason enough', // OO: interfaces
   'Refactor it only when the user asks',    // OO: legacy code
+  'one parameterized test, not copies',     // tests: no duplicated test code
   // the "never cut" carve-outs: pin each so a reword in either file can't silently drop one.
   'validation at trust boundaries',
   'prevents data loss',

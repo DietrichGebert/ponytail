@@ -50,7 +50,8 @@ tested and fixed later. This is a report the user asked for, so give it in full.
    - yagni: factory with one product, wrapper that only passes calls
      through, config nobody sets. An interface with one implementation is
      not yagni when a caller or test must replace it.
-   - merge: near-copies that must change together
+   - merge: near-copies that must change together, including test methods
+     that differ only in data (make them one parameterized test)
    - split: one function or class doing several unrelated jobs, so it is
      hard to read or test. Split by job, never by line count, and never into
      helpers that exist only to make a function shorter.
