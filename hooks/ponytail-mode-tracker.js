@@ -26,12 +26,20 @@ function finish() {
     // Strip UTF-8 BOM some shells prepend when piping (breaks JSON.parse)
     const data = JSON.parse(input.replace(/^\uFEFF/, ''));
     const prompt = (data.prompt || '').trim().toLowerCase();
+    // Cursor 3.24 stdin has cursor_version even when CURSOR_VERSION env is unset.
+    if (data.cursor_version && !process.env.CURSOR_VERSION) {
+      process.env.CURSOR_VERSION = String(data.cursor_version);
+    }
+    if (Array.isArray(data.workspace_roots) && data.workspace_roots[0] && !process.env.CURSOR_PROJECT_DIR) {
+      process.env.CURSOR_PROJECT_DIR = String(data.workspace_roots[0]);
+    }
+    const cursorHost = isCursor || Boolean(process.env.CURSOR_VERSION);
 
     // Cursor with the always-on rule in the workspace: no hook can change or
     // switch off a rule, so answer the command with the notice instead of
     // writing a mode the rule would contradict (#817). Ordinary prompts
     // stay silent as usual.
-    if (isCursor && (/^[/@$]ponytail/.test(prompt) || isDeactivationCommand(prompt))) {
+    if (cursorHost && (/^[/@$]ponytail/.test(prompt) || isDeactivationCommand(prompt))) {
       const rule = cursorRulePath();
       if (rule) {
         writeHookOutput('UserPromptSubmit', readMode() || 'off', cursorRuleNotice(rule));
@@ -42,13 +50,13 @@ function finish() {
     // Match /ponytail commands
     let modeSwitched = false;
     let deactivated = false;
+    let isReportOnly = false;
     if (/^[/@$]ponytail/.test(prompt)) {
       const parts = prompt.split(/\s+/);
       const cmd = parts[0].replace(/^[@$]/, '/');
       const arg = parts[1] || '';
 
       let mode = null;
-      let isReportOnly = false;
 
       // /ponytail-review is a one-shot skill, not a session level (#736).
       // Matching it here used to setMode('review'), which latched
@@ -108,7 +116,7 @@ function finish() {
           writeHookOutput(
             'UserPromptSubmit',
             mode,
-            (isCodex || isCursor) ? header + '\n\n' + getPonytailInstructions(mode) : header,
+            (isCodex || cursorHost) ? header + '\n\n' + getPonytailInstructions(mode) : header,
           );
         }
       } else if (mode === 'off') {
@@ -129,12 +137,11 @@ function finish() {
       writeHookOutput('UserPromptSubmit', 'off', 'PONYTAIL MODE OFF');
     }
 
-    // Qoder has no SessionStart event, so UserPromptSubmit does double duty:
-    // activate the default mode on first prompt (if no flag exists yet), then
-    // inject the ruleset on every prompt. Claude Code/Codex do this in
-    // SessionStart via ponytail-activate.js; Qoder can't, so we do it here.
-    // Skip when deactivated — user just turned ponytail off.
-    if (isQoder && !deactivated) {
+    // Qoder has no SessionStart. Cursor 3.24 also never fires it (existing
+    // chats included), so UserPromptSubmit injects every turn.
+    // Skip when this turn already wrote, or the always-on rule owns the ruleset.
+    if ((isQoder || cursorHost) && !deactivated && !isReportOnly) {
+      if (cursorHost && cursorRulePath()) return;
       let currentMode = readMode();
       if (!currentMode) {
         // First prompt in session — initialize from config/env default
@@ -149,7 +156,9 @@ function finish() {
         const header = modeSwitched
           ? 'PONYTAIL MODE CHANGED — level: ' + currentMode + '\n\n'
           : '';
-        writeHookOutput('UserPromptSubmit', currentMode, header + getPonytailInstructions(currentMode));
+        if (isQoder || !modeSwitched) {
+          writeHookOutput('UserPromptSubmit', currentMode, header + getPonytailInstructions(currentMode));
+        }
       }
     }
   } catch (e) {

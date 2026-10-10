@@ -183,12 +183,28 @@ test('beforeSubmitPrompt tracks /ponytail commands and delivers the new level ru
   assert.equal(stop.additional_context, 'PONYTAIL MODE OFF');
   assert.equal(fs.existsSync(c.flag), false);
 
-  // Ordinary prompts produce no output at all: Cursor treats empty stdout as "carry on".
+  // Ordinary prompts inject the live ruleset: Cursor 3.24 never fires
+  // sessionStart, so existing chats would otherwise never see ponytail.
   writeFlag(c, 'full');
-  const plain = run('ponytail-mode-tracker.js', c.env, JSON.stringify({ prompt: 'add a normal mode toggle next to dark mode' }));
-  assert.equal(plain.status, 0, plain.stderr);
-  assert.equal(plain.stdout, '');
+  const plain = parse(run('ponytail-mode-tracker.js', c.env, JSON.stringify({ prompt: 'add a normal mode toggle next to dark mode' })));
+  assert.equal(plain.continue, true);
+  assert.match(plain.additional_context, /^PONYTAIL MODE ACTIVE — level: full/);
   assert.equal(fs.readFileSync(c.flag, 'utf8'), 'full', 'incidental "normal mode" must not turn ponytail off');
+});
+
+test('beforeSubmitPrompt injects when Cursor only sends cursor_version on stdin', () => {
+  const c = cursorEnv('stdin-ver', { PONYTAIL_DEFAULT_MODE: 'full' });
+  writeFlag(c, 'full');
+  const env = { ...c.env };
+  delete env.CURSOR_VERSION;
+  const out = parse(run('ponytail-mode-tracker.js', env, JSON.stringify({
+    hook_event_name: 'beforeSubmitPrompt',
+    prompt: 'hello',
+    cursor_version: '3.24.12',
+    workspace_roots: [c.project],
+  })));
+  assert.equal(out.continue, true);
+  assert.match(out.additional_context, /^PONYTAIL MODE ACTIVE — level: full/);
 });
 
 test('with the always-on rule in the workspace the hooks step back instead of duplicating the ruleset', () => {
