@@ -1,6 +1,8 @@
 # Crewcut
 
-Short hair, short code, proper structure.
+**Short grey hair, short code, proper structure.**
+
+You know him. Grey crew cut. Has seen every framework come and go. He writes less code than you, but every class has one job and every dependency comes through the constructor.
 
 Crewcut is a plugin for Claude Code and GitHub Copilot. It makes the agent write the smallest change that fully solves the task, as proper object-oriented code.
 
