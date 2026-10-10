@@ -41,7 +41,7 @@
 </p>
 
 <p align="center">
-  <sub><a href="../README.md">English</a> &middot; Español &middot; <a href="README.ko.md">한국어</a> &middot; <a href="README.zh-CN.md">简体中文</a> &middot; <a href="README.ja.md">日本語</a></sub><br>
+  <sub><a href="../README.md">English</a> &middot; Español &middot; <a href="README.fr.md">Français</a> &middot; <a href="README.ko.md">한국어</a> &middot; <a href="README.zh-CN.md">简体中文</a> &middot; <a href="README.ja.md">日本語</a></sub><br>
   <sub>Traducción del README en inglés. Si algo no coincide, vale la <a href="../README.md">versión en inglés</a>.</sub>
 </p>
 

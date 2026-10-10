@@ -45,7 +45,7 @@
 </p>
 
 <p align="center">
-  <sub><a href="i18n/README.es.md">Español</a> &middot; <a href="i18n/README.ko.md">한국어</a> &middot; <a href="i18n/README.zh-CN.md">简体中文</a> &middot; <a href="i18n/README.ja.md">日本語</a></sub>
+  <sub><a href="i18n/README.es.md">Español</a> &middot; <a href="i18n/README.fr.md">Français</a> &middot; <a href="i18n/README.ko.md">한국어</a> &middot; <a href="i18n/README.zh-CN.md">简体中文</a> &middot; <a href="i18n/README.ja.md">日本語</a></sub>
 </p>
 
 ---

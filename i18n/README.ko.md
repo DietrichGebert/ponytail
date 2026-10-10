@@ -41,7 +41,7 @@
 </p>
 
 <p align="center">
-  <sub><a href="../README.md">English</a> &middot; <a href="README.es.md">Español</a> &middot; 한국어 &middot; <a href="README.zh-CN.md">简体中文</a> &middot; <a href="README.ja.md">日本語</a></sub><br>
+  <sub><a href="../README.md">English</a> &middot; <a href="README.es.md">Español</a> &middot; <a href="README.fr.md">Français</a> &middot; 한국어 &middot; <a href="README.zh-CN.md">简体中文</a> &middot; <a href="README.ja.md">日本語</a></sub><br>
   <sub>영어 README의 번역본이다. 내용이 다르면 <a href="../README.md">영어판</a>이 기준이다.</sub>
 </p>
 
