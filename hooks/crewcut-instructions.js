@@ -64,6 +64,7 @@ function getFallbackInstructions(mode) {
     "- Be lazy about the solution, never about the change itself: finish every part the task needs, including the callers, tests and fixtures your change breaks.\n" +
     "- No feature, option, config, wrapper, type conversion, boilerplate or \"for later\" code nobody asked for. Keep values in the form the platform already gives you. Deletion beats addition. Keep the layers and conventions the codebase already has. The structure rules below are not extra abstraction: never cut them to save lines.\n" +
     "- The shortest working diff wins, once you know everything it must touch. A one-liner that needs decoding is not short.\n" +
+    "- Nesting deeper than 3 levels of `if` or loops: flatten with guard clauses or extract a method.\n" +
     "- Comment only the why the code cannot show, in one line.\n" +
     "- Bug fix: before you edit, grep every caller of the function you touch, then fix the root cause once in the shared code.\n" +
     "- Code you move or merge keeps its error handling and validation.\n" +
@@ -81,6 +82,11 @@ function getFallbackInstructions(mode) {
     "- Composition over inheritance: build behavior from objects injected through their interfaces. Inherit only where the framework requires it. Do not seal classes by default.\n" +
     "- One responsibility per class. Split a class that mixes UI, I/O and logic.\n" +
     "- More than 4 parameters is a smell. Method: if the values come from one object, pass that object through its interface instead of its parts. If they belong together but have no type, make them one record. Never split a class into small pieces that then must be passed around one by one. Constructor: more than 4 injected services means too many responsibilities. Split the class by responsibility; do not hide the services in a parameter object. Exempt: parameterized test methods, framework callbacks with a fixed signature, and record or DTO constructors where the parameters are the data.\n" +
+    "- Branching on a type, kind or mode (`if`/`else` chains or `switch` on an enum, type code or string) is a sign of mixed responsibilities when the same switch appears in more than one place, or one method has more than 3 branches with real logic in each. Fix: one class per case behind a shared interface. Pick the class once, at creation (DI or a single factory switch). After that, callers call the interface. Not a smell:\n" +
+    "  - guard clauses and input validation\n" +
+    "  - a single switch in a factory or the composition root\n" +
+    "  - a switch that only maps values (enum to string, status code to message)\n" +
+    "  - pattern matching on data in records\n" +
     "- Data carriers are records or immutable types. Mutable state lives only inside the service that owns it.\n" +
     "- One type per file, the file named after the type.\n" +
     "- Tests replace interface dependencies with the project's mocking library (NSubstitute for new .NET projects). Test fixtures and test methods are instance members, static only where the framework requires it.\n" +

@@ -53,14 +53,17 @@ tested and fixed later. This is a report the user asked for, so give it in full.
    - merge: near-copies that must change together, including test methods
      that differ only in data (make them one parameterized test)
    - split: one function or class doing several unrelated jobs, so it is
-     hard to read or test. Split by job, never by line count, and never into
+     hard to read or test. Nesting deeper than 3 levels of `if` or loops:
+     flatten with guard clauses or extract a method. Split by job, never by line count, and never into
      helpers that exist only to make a function shorter.
 7. **Structure:** breaks the crewcut object-oriented rules: a static class
    that does I/O or holds state, a service created inside the class instead
    of injected, a dependency a test must replace but has no interface,
    inheritance where composition fits, a class mixing UI, I/O and logic,
    a method with more than 4 parameters where an object or interface
-   should be passed, a constructor injecting more than 4 services.
+   should be passed, a constructor injecting more than 4 services, the
+   same switch on a type or mode in several places or a method with more
+   than 3 branches with real logic, where classes behind an interface fit.
    Name the concrete cost (cannot test it, cannot swap it).
 
 ## 3. Check before you report

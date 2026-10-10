@@ -47,6 +47,8 @@ const INVARIANTS = [
   'Refactor it only when the user asks',    // OO: legacy code
   'one parameterized test, not copies',     // tests: no duplicated test code
   'More than 4 parameters is a smell',      // OO: long parameter lists
+  'one class per case behind a shared interface', // OO: replace conditional with polymorphism
+  'Nesting deeper than 3 levels',           // readability
   // the "never cut" carve-outs: pin each so a reword in either file can't silently drop one.
   'validation at trust boundaries',
   'prevents data loss',
