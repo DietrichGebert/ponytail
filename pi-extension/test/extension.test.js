@@ -181,6 +181,25 @@ test("session_tree restores the selected branch's mode without persisting it", a
   assert.equal(notifications.length, notificationCount, "navigation must not repeat the startup toast");
 }));
 
+test("OMP session_switch and session_branch restore the target session's mode", async () => withTempConfig(async () => {
+  // OMP keeps the legacy Pi events instead of re-emitting session_start on /new, /resume, /fork and /branch.
+  const { events, appendedEntries } = createPiHarness();
+  const lite = { type: "custom", customType: "ponytail-mode", data: { mode: "lite" } };
+  const off = { type: "custom", customType: "ponytail-mode", data: { mode: "off" } };
+  let branch = [off];
+  const ctx = createCommandContext({ sessionManager: { getBranch: () => branch } });
+
+  await events.get("session_start")({ type: "session_start" }, ctx);
+  for (const [type, entries, mode] of [["session_switch", [lite], "lite"], ["session_branch", [off], "off"], ["session_switch", [], "full"]]) {
+    branch = entries;
+    await events.get(type)?.({ type }, ctx);
+    const result = await events.get("before_agent_start")({ systemPrompt: ["BASE"] }, ctx);
+    if (mode === "off") assert.equal(result, undefined, `${type} should restore off`);
+    else assert.ok(result?.systemPrompt.at(-1).startsWith(`PONYTAIL MODE ACTIVE — level: ${mode}\n`), `${type} should restore ${mode}`);
+  }
+  assert.deepEqual(appendedEntries, [], "restoring must not append a new mode entry");
+}));
+
 test("skill alias commands delegate to Pi skill commands", async () => {
   const { commands, sentUserMessages } = createPiHarness();
   const ctx = createCommandContext();
