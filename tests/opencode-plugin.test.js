@@ -118,6 +118,22 @@ test('V2 /ponytail ultra persists the level and sends the template with the args
   assert.ok(!prompts[0].text.includes('$ARGUMENTS'), 'template placeholder substituted');
 });
 
+test('V2 commands keep attachments without offsets into the replaced prompt text', async () => {
+  const { added, prompts } = await setupV2();
+  const prompt = {
+    text: '@src/a.ts',
+    files: [{ path: 'src/a.ts', mention: { start: 0, end: 9 } }],
+    agents: [{ name: 'reviewer', mention: { start: 0, end: 9 } }],
+    skills: [{ name: 'test', mention: { start: 0, end: 9 } }],
+  };
+  await added.commands['ponytail-review'].execute({ sessionID: 's', prompt, delivery: 'steer' });
+  assert.notEqual(prompts[0].text, prompt.text);
+  assert.deepEqual(prompts[0].files, [{ path: 'src/a.ts' }]);
+  assert.deepEqual(prompts[0].agents, [{ name: 'reviewer' }]);
+  assert.deepEqual(prompts[0].skills, [{ name: 'test' }]);
+  assert.deepEqual(prompt.files[0].mention, { start: 0, end: 9 }, 'original input is unchanged');
+});
+
 test('V2 context hook injects the ruleset, and stays silent when off', async () => {
   try { fs.unlinkSync(statePath); } catch (e) {}
   let { hooks } = await setupV2();
