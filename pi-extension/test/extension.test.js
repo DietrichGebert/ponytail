@@ -327,3 +327,17 @@ test("PONYTAIL_HIDE_STATUS=0 does not hide the indicator", async () => withTempC
 
   assert.ok(statusWrites.length > 0, "0 must be treated as 'do not hide'");
 }));
+
+test("/ponytail autocompletes modes, commands and default <mode>", () => {
+  const { commands } = createPiHarness();
+  const complete = (prefix) => commands.get("ponytail").getArgumentCompletions(prefix);
+
+  assert.deepEqual(complete("").map((item) => item.value), ["lite", "full", "ultra", "off", "status", "default "]);
+  assert.deepEqual(complete("fu").map((item) => item.value), ["full"]);
+  assert.deepEqual(complete("default ").map((item) => item.value), ["default lite", "default full", "default ultra", "default off"]);
+  assert.deepEqual(complete("default l").map((item) => item.value), ["default lite"]);
+  assert.deepEqual(complete("default").map((item) => item.value), ["default "], "no trailing space yet: offer the command itself");
+  assert.equal(complete("status x"), null, "no command takes a second word after status");
+  assert.equal(complete("lite x"), null);
+  assert.equal(complete("bogus"), null, "nothing matches an unknown prefix");
+});
