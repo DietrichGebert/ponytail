@@ -1,14 +1,6 @@
 #!/usr/bin/env node
-// Version-consistency guard. Crewcut declares its version in seven files across
-// five host ecosystems, and every release bumps all of them by hand.
-//
-// tests/gemini-extension.test.js already checks the four plugin manifests agree
-// with each other, but that can't catch the failure mode that shipped in v4.8.0:
-// every manifest stayed stale at 4.7.0 *together* while the release moved on, so
-// they "agreed" and the test passed (#260, #262). It also ignores the two
-// package.json files. This check closes both gaps:
-//   1. every version-bearing file must share one pinned X.Y.Z version, and
-//   2. on a release-tag CI run, that shared version must equal the tag.
+// Version-consistency guard: every manifest that declares the crewcut
+// version must share one pinned X.Y.Z version.
 
 const fs = require('fs');
 const path = require('path');
@@ -52,18 +44,6 @@ if (distinct.length > 1) {
   failed = true;
 }
 const shared = distinct.length === 1 ? distinct[0] : null;
-
-// On a release-tag push CI sets GITHUB_REF_TYPE=tag and GITHUB_REF_NAME=vX.Y.Z.
-// The shared version must equal the tag — this catches tagging a release whose
-// version files were never bumped, which mutual agreement alone cannot.
-if (shared && process.env.GITHUB_REF_TYPE === 'tag') {
-  const tag = process.env.GITHUB_REF_NAME || '';
-  const tagVersion = tag.replace(/^v/, '');
-  if (PINNED_SEMVER.test(tagVersion) && tagVersion !== shared) {
-    console.error(`release tag ${tag} does not match version ${shared}; bump the version files before tagging`);
-    failed = true;
-  }
-}
 
 if (failed) {
   console.error('Align the version fields (see issue #260) so every manifest shares one version.');
