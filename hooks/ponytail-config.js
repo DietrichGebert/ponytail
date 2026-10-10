@@ -73,6 +73,10 @@ function getClaudeDir() {
   return process.env.CLAUDE_CONFIG_DIR || path.join(os.homedir(), '.claude');
 }
 
+function getQoderDir() {
+  return process.env.QODER_CONFIG_DIR || path.join(os.homedir(), '.qoder');
+}
+
 function getDefaultMode() {
   // 1. Environment variable (highest priority)
   // ponytail: a default must be a runtime level (off/lite/full/ultra); review is
@@ -159,6 +163,7 @@ module.exports = {
   getConfigDir,
   getConfigPath,
   getClaudeDir,
+  getQoderDir,
   getHideStatus,
   getQuietStartup,
   isShellSafe,

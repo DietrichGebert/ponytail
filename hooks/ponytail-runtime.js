@@ -2,7 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const { createHash } = require('crypto');
-const { getClaudeDir, getConfigDir } = require('./ponytail-config');
+const { getClaudeDir, getQoderDir } = require('./ponytail-config');
 
 const STATE_FILE = '.ponytail-active';
 
@@ -37,7 +37,7 @@ if (isCodex) stateDir = process.env.PLUGIN_DATA;
 // COPILOT_PLUGIN_DATA is unset under VS Code Copilot, so fall back to
 // getClaudeDir() rather than building a path from undefined.
 if (isCopilot) stateDir = process.env.COPILOT_PLUGIN_DATA || getClaudeDir();
-if (isQoder) stateDir = path.join(os.homedir(), '.qoder');
+if (isQoder) stateDir = getQoderDir();
 if (isCodeBuddy) stateDir = process.env.CODEBUDDY_CONFIG_DIR || path.join(os.homedir(), '.codebuddy');
 if (isCursor) stateDir = path.join(os.homedir(), '.cursor');
 
