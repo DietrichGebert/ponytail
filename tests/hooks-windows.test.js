@@ -107,23 +107,30 @@ test('every hook command points at a script that ships in hooks/', () => {
 // Issue #443: on Windows the UserPromptSubmit hook runs inside a PowerShell
 // `if {}` wrapper that can swallow the piped prompt JSON, so stdin 'end' never
 // fires. The hook must never wait on stdin forever — that freezes the whole
-// session. It has to self-exit even when stdin stays open and empty.
-test('ponytail-mode-tracker self-exits when stdin never closes (no freeze)', async () => {
-  const hook = path.join(root, 'hooks', 'ponytail-mode-tracker.js');
-  // stdin is a pipe we never write to or end, reproducing the deadlock.
-  const child = spawn(process.execPath, [hook], { stdio: ['pipe', 'ignore', 'ignore'] });
+// session. It has to self-exit even when stdin stays open and empty. The
+// activate hook reads the SessionStart source from stdin too.
+for (const script of ['ponytail-mode-tracker.js', 'ponytail-activate.js']) {
+  test(`${script} self-exits when stdin never closes (no freeze)`, async () => {
+    const hook = path.join(root, 'hooks', script);
+    // A throwaway home: the activate fallback writes the flag and the statusline copy.
+    const home = fs.mkdtempSync(path.join(os.tmpdir(), 'ponytail-stdin-'));
+    const env = { ...process.env, HOME: home, USERPROFILE: home, CLAUDE_CONFIG_DIR: path.join(home, '.claude'), PONYTAIL_MAP: '0' };
+    // stdin is a pipe we never write to or end, reproducing the deadlock.
+    const child = spawn(process.execPath, [hook], { env, stdio: ['pipe', 'ignore', 'ignore'] });
 
-  const code = await new Promise((resolve, reject) => {
-    const guard = setTimeout(() => {
-      child.kill('SIGKILL');
-      reject(new Error('hook hung on open stdin — it would freeze the session'));
-    }, 3000);
-    child.on('exit', (c) => { clearTimeout(guard); resolve(c); });
-    child.on('error', reject);
+    const code = await new Promise((resolve, reject) => {
+      const guard = setTimeout(() => {
+        child.kill('SIGKILL');
+        reject(new Error('hook hung on open stdin — it would freeze the session'));
+      }, 3000);
+      child.on('exit', (c) => { clearTimeout(guard); resolve(c); });
+      child.on('error', reject);
+    });
+    fs.rmSync(home, { recursive: true, force: true });
+
+    assert.equal(code, 0, 'hook must exit cleanly when stdin never closes');
   });
-
-  assert.equal(code, 0, 'hook must exit cleanly when stdin never closes');
-});
+}
 
 test('Claude and Codex manifests point at the shared host-specific hook config', () => {
   for (const rel of HOST_PLUGIN_MANIFESTS) {
