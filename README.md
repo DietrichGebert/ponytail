@@ -24,7 +24,7 @@
 </p>
 
 <p align="center">
-  <strong>Using Ponytail at work?</strong> Tell us your story: <a href="https://ponytail.dev/stories">ponytail.dev/stories</a>
+  <a href="https://ponytail.dev/stories"><img src="assets/stories-banner.png" alt="Using Ponytail at work? Tell us your story" width="760"></a>
 </p>
 
 <p align="center">
