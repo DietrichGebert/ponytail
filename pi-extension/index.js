@@ -13,10 +13,29 @@ const {
   writeDefaultMode,
 } = require("../hooks/ponytail-config.js");
 const { getPonytailInstructions, filterSkillBodyForMode } = require("../hooks/ponytail-instructions.js");
+const { buildMap } = require("../hooks/ponytail-map.js");
 
 export { filterSkillBodyForMode };
 export const readDefaultMode = getDefaultMode;
 export const readQuietStartup = getQuietStartup;
+
+/**
+ * The codebase map with its blank-line separator, or "" when it is switched off, unavailable or
+ * not applicable. Built once per session: the map walks the repo, while the prompt sections are
+ * rebuilt on every run, so before_agent_start only reads this string.
+ */
+export function readCodebaseMap(cwd) {
+  if (process.env.PONYTAIL_MAP === "0") return "";
+  // Pi always supplies a cwd; without one this would map whatever directory the process sits in.
+  if (typeof cwd !== "string" || !cwd) return "";
+  try {
+    const map = buildMap(cwd);
+    return map ? `\n\n${map}` : "";
+  } catch (e) {
+    // Fail open, like the hook: a map must never block a session start.
+    return "";
+  }
+}
 
 const RUNTIME_MODE_LIST = RUNTIME_MODES.join("|");
 const PONYTAIL_COMMAND_DESCRIPTION = `Set mode: ${RUNTIME_MODE_LIST}. Commands: status, default <mode>`;
@@ -64,6 +83,8 @@ export { writeDefaultMode };
 
 export default function ponytailExtension(pi) {
   let currentMode = DEFAULT_MODE;
+  // "\n\n" + map, or ""; built at session start, never per turn.
+  let codebaseMap = "";
   let configuredDefaultMode = getDefaultMode();
   let hideStatus = getHideStatus();
   let isActive = false;
@@ -195,6 +216,7 @@ export default function ponytailExtension(pi) {
     configuredDefaultMode = getDefaultMode();
     hideStatus = getHideStatus();
     restoreSessionMode(ctx);
+    codebaseMap = readCodebaseMap(ctx?.cwd);
     if (!getQuietStartup()) {
       ctx?.ui?.notify?.(`Ponytail loaded: ${currentMode}`, "info");
     }
@@ -220,7 +242,8 @@ export default function ponytailExtension(pi) {
       if (event?.systemPromptOptions?.sections) delete event.systemPromptOptions.sections.ponytail;
       return;
     }
-    const instructions = getPonytailInstructions(currentMode);
+    // Review is a skill pointer, not a working level, so it gets no map — same as the hook.
+    const instructions = getPonytailInstructions(currentMode) + (currentMode === "review" ? "" : codebaseMap);
     // Prefer structured sections so Pi can keep the cached prefix when other
     // extensions change their own section (#953). Fall back to replacement
     // for older Pi versions without systemPromptOptions.sections.
