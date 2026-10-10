@@ -17,7 +17,8 @@ completeness also drops is doing less, not less-bloated -- and now the bench sho
   python complete.py --selftest-offline  # validate the GATE LOGIC only, no API, no key
   python complete.py --run runs/<stamp>  # completeness-judge every workspace in a matrix run
 
-Judge: claude-sonnet-4-6, key from ../../.env (shared with judge.py). ~$0.003/cell.
+Judge: --model (default claude-sonnet-4-6). API key from ../../.env (shared with judge.py), or the
+claude CLI login when there is none.
 
 ponytail: reuses judge.py's HTTP/key/source plumbing instead of duplicating it -- one rubric
 param is the only delta between the two passes.
