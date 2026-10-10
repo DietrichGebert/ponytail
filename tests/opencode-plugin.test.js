@@ -140,6 +140,7 @@ test('V2 unsupported /ponytail arguments do not reset the current mode', async (
   const { added } = await setupV2();
   fs.writeFileSync(statePath, 'ultra');
   await added.commands.ponytail.execute({ sessionID: 's', prompt: { text: 'status' }, delivery: 'steer' });
+  await added.commands.ponytail.execute({ sessionID: 's', prompt: { text: 'review' }, delivery: 'steer' });
   assert.equal(fs.readFileSync(statePath, 'utf8'), 'ultra');
 });
 
@@ -216,6 +217,7 @@ test('unsupported /ponytail arguments do not reset the current mode', async () =
   const hooks = await loadPlugin.server({});
   fs.writeFileSync(statePath, 'ultra');
   await hooks['command.execute.before']({ command: 'ponytail', arguments: 'status', sessionID: 's' });
+  await hooks['command.execute.before']({ command: 'ponytail', arguments: 'review', sessionID: 's' });
   assert.equal(fs.readFileSync(statePath, 'utf8'), 'ultra');
 });
 
