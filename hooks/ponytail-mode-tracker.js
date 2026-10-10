@@ -7,6 +7,7 @@ const {
   clearMode,
   cursorRuleNotice,
   cursorRulePath,
+  exitAfterOutput,
   isCodex,
   isCursor,
   isQoder,
@@ -162,7 +163,7 @@ process.stdin.on('data', chunk => { input += chunk; });
 // (see #790) so it can actually fire when stdin is stuck, and a ref'd timer
 // would otherwise keep the process alive for its full 1000ms on this normal
 // fast path.
-process.stdin.on('end', () => { finish(); process.exit(0); });
+process.stdin.on('end', () => { finish(); exitAfterOutput(); });
 
 // Never hang the session. On Windows, Claude Code runs this hook through a
 // PowerShell `if {}` wrapper that can swallow the piped prompt JSON, so stdin
@@ -174,5 +175,5 @@ process.stdin.on('end', () => { finish(); process.exit(0); });
 // dead code in exactly the #443/#790 case it exists for, and the hook hung
 // until Claude Code's external 5s watchdog killed it (#790). Mirrors the
 // best-effort, never-block contract the other lifecycle hooks already follow.
-process.stdin.on('error', () => { finish(); process.exit(0); });
-setTimeout(() => { finish(); process.exit(0); }, 1000);
+process.stdin.on('error', () => { finish(); exitAfterOutput(); });
+setTimeout(() => { finish(); exitAfterOutput(); }, 1000);
