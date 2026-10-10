@@ -24,7 +24,7 @@
 </p>
 
 <p align="center">
-  <strong>New:</strong> a $6,000 bounty pool for case studies and introductions. <a href="https://ponytail.dev/bounties">Details</a>
+  <strong>Using Ponytail at work?</strong> Tell us your story: <a href="https://ponytail.dev/stories">ponytail.dev/stories</a>
 </p>
 
 <p align="center">
