@@ -10,7 +10,6 @@ from typing import Any, Callable
 
 DEFAULT_MODE = "full"
 RUNTIME_MODES = {"off", "lite", "full", "ultra"}
-CONFIG_MODES = RUNTIME_MODES | {"review"}
 SKILL_COMMANDS = {
     "ponytail-review": "Review the current diff or provided target: bugs, security, load, missing tests, speed, and what to cut.",
     "ponytail-audit": "Audit the whole repo: bugs, security, load, missing tests, speed, and what to cut.",
@@ -22,7 +21,6 @@ SKILL_COMMANDS = {
 ROOT = Path(__file__).resolve().parent
 SKILLS_DIR = ROOT / "skills"
 PONYTAIL_SKILL = SKILLS_DIR / "ponytail" / "SKILL.md"
-REVIEW_SKILL = SKILLS_DIR / "ponytail-review" / "SKILL.md"
 
 _current_mode = None
 
@@ -32,13 +30,6 @@ def _normalize_runtime_mode(mode: str | None) -> str | None:
         return None
     mode = mode.strip().lower()
     return mode if mode in RUNTIME_MODES else None
-
-
-def _normalize_config_mode(mode: str | None) -> str | None:
-    if not isinstance(mode, str):
-        return None
-    mode = mode.strip().lower()
-    return mode if mode in CONFIG_MODES else None
 
 
 def _config_dir() -> Path:
@@ -110,17 +101,9 @@ def _fallback_instructions(mode: str) -> str:
 
 def build_injected_context(mode: str | None = None) -> str:
     """Return the mode-filtered Ponytail context injected before LLM turns."""
-    configured = _normalize_config_mode(mode) or _default_mode()
-    if configured == "off":
+    effective = _normalize_runtime_mode(mode) or _default_mode()
+    if effective == "off":
         return ""
-    if configured == "review":
-        try:
-            body = REVIEW_SKILL.read_text(encoding="utf-8")
-            return f"PONYTAIL MODE ACTIVE — level: review\n\n{_strip_frontmatter(body)}"
-        except OSError:
-            return "PONYTAIL MODE ACTIVE — level: review. Review the diff for bugs, risks, load, missing tests, speed and bloat; explain each finding in plain English."
-
-    effective = _normalize_runtime_mode(configured) or DEFAULT_MODE
     try:
         body = PONYTAIL_SKILL.read_text(encoding="utf-8")
         return f"PONYTAIL MODE ACTIVE — level: {effective}\n\n{_filter_skill_body_for_mode(body, effective)}"

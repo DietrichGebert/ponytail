@@ -177,7 +177,7 @@ print(json.dumps(mod._pre_llm_call()))
   }
 });
 
-test('Hermes rejects review as a default while keeping explicit review mode', () => {
+test('Hermes treats review as a command, never a level', () => {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'ponytail-review-default-'));
   fs.mkdirSync(path.join(tmp, 'ponytail'), { recursive: true });
   fs.writeFileSync(path.join(tmp, 'ponytail', 'config.json'), JSON.stringify({ defaultMode: 'review' }));
@@ -199,23 +199,7 @@ print(json.dumps({
   const data = JSON.parse(output);
   assert.match(data.env_default, /PONYTAIL MODE ACTIVE — level: full/);
   assert.match(data.file_default, /PONYTAIL MODE ACTIVE — level: full/);
-  assert.match(data.explicit_review, /PONYTAIL MODE ACTIVE — level: review/);
-});
-
-test('Hermes plugin review mode injects the real review skill body', () => {
-  const output = python(String.raw`
-import importlib.util, json
-spec = importlib.util.spec_from_file_location('ponytail_hermes_plugin', '__init__.py')
-mod = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(mod)
-ctx = mod.build_injected_context('review')
-print(json.dumps({'ctx': ctx}))
-`);
-  const { ctx } = JSON.parse(output);
-  assert.match(ctx, /PONYTAIL MODE ACTIVE — level: review/);
-  assert.match(ctx, /Review a change like the senior developer/);
-  assert.match(ctx, /Verdict: Ship\./);
-  assert.doesNotMatch(ctx, /^---/);
+  assert.match(data.explicit_review, /PONYTAIL MODE ACTIVE — level: full/);
 });
 
 test('Hermes /ponytail command changes mode and pre_llm_call injects current context', () => {
