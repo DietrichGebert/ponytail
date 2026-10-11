@@ -185,5 +185,7 @@ function finish() {
 process.stdin.on('data', chunk => { input += chunk; });
 process.stdin.on('end', () => { finish(); process.exit(0); });
 // Never hang the session (#443, #790): same ref'd fallback as the mode tracker.
+// shortcut: when a Windows wrapper swallows stdin (#443), source is unknown: startup
+// waits 1s and compaction falls back to the default; read source another way if hosts pass it in env.
 process.stdin.on('error', () => { finish(); process.exit(0); });
 setTimeout(() => { finish(); process.exit(0); }, 1000);
