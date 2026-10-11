@@ -33,6 +33,12 @@ const qoderFlagPath = path.join(home, '.qoder', '.ponytail-active');
 fs.mkdirSync(path.dirname(qoderFlagPath), { recursive: true });
 fs.writeFileSync(qoderFlagPath, 'ultra');
 
+// OpenCode keeps its flag beside its own config; a leftover "off" would start a
+// reinstall switched off.
+const opencodeFlagPath = path.join(temp, 'config-home', 'opencode', '.ponytail-active');
+fs.mkdirSync(path.dirname(opencodeFlagPath), { recursive: true });
+fs.writeFileSync(opencodeFlagPath, 'off');
+
 const nudgeFlagPath = path.join(claudeDir, '.ponytail-statusline-nudged');
 fs.writeFileSync(nudgeFlagPath, '');
 
@@ -80,6 +86,7 @@ let result = runUninstall(env);
 assert.equal(result.status, 0, result.stderr);
 assert.equal(fs.existsSync(flagPath), false, 'mode flag must be removed');
 assert.equal(fs.existsSync(qoderFlagPath), false, 'Qoder mode flag must be removed');
+assert.equal(fs.existsSync(opencodeFlagPath), false, 'OpenCode mode flag must be removed');
 assert.equal(fs.existsSync(nudgeFlagPath), false, 'statusline nudge flag must be removed');
 assert.equal(fs.existsSync(configPath), false, 'config file must be removed');
 assert.equal(fs.existsSync(cursorFlagPath), false, 'Cursor mode flag must be removed');

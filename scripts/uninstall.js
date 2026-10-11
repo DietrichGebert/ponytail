@@ -34,6 +34,7 @@ for (const dir of [path.join(getClaudeDir(), 'ponytail-modes'), path.join(os.hom
   }
 }
 removeIfExists(path.join(process.env.CODEBUDDY_CONFIG_DIR || path.join(os.homedir(), '.codebuddy'), '.ponytail-active'), 'CodeBuddy mode flag');
+removeIfExists(path.join(process.env.XDG_CONFIG_HOME || path.join(os.homedir(), '.config'), 'opencode', '.ponytail-active'), 'OpenCode mode flag');
 removeIfExists(getConfigPath(), 'config file');
 // Statusline script copies the activate hook keeps in the config dir (#1032).
 for (const name of ['ponytail-statusline.sh', 'ponytail-statusline.ps1']) {
