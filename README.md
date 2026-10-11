@@ -21,6 +21,7 @@
   <img src="https://img.shields.io/npm/v/@dietrichgebert/ponytail?style=flat-square&color=111111&label=npm" alt="npm">
   <img src="https://img.shields.io/badge/works%20with-20%20agents-111111?style=flat-square" alt="Works with 20 agents">
   <img src="https://img.shields.io/badge/license-MIT-111111?style=flat-square" alt="MIT license">
+  <a href="https://gaiaskilltree.com/named/#explorer/DietrichGebert/ponytail"><img src="https://gaiaskilltree.com/badges/_assets/DietrichGebert/ponytail.svg?repo=DietrichGebert/ponytail" alt="Gaia Skill: ponytail"></a>
 </p>
 
 <p align="center">
