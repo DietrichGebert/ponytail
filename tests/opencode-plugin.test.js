@@ -219,6 +219,25 @@ test('unsupported /ponytail arguments do not reset the current mode', async () =
   assert.equal(fs.readFileSync(statePath, 'utf8'), 'ultra');
 });
 
+test('/ponytail review is not a level: the flag keeps the current mode (#736)', async () => {
+  const hooks = await loadPlugin.server({});
+  fs.writeFileSync(statePath, 'ultra');
+  await hooks['command.execute.before']({ command: 'ponytail', arguments: 'review', sessionID: 's' });
+  assert.equal(fs.readFileSync(statePath, 'utf8'), 'ultra');
+  // A review saved by an older version falls back to the default instead of latching.
+  fs.writeFileSync(statePath, 'review');
+  assert.match((await transform(hooks))[0], /PONYTAIL MODE ACTIVE — level: full/);
+});
+
+test('/ponytail default lite saves the default and leaves the session level alone', async () => {
+  const hooks = await loadPlugin.server({});
+  fs.writeFileSync(statePath, 'ultra');
+  await hooks['command.execute.before']({ command: 'ponytail', arguments: 'default lite', sessionID: 's' });
+  assert.equal(JSON.parse(fs.readFileSync(path.join(tmp, 'ponytail', 'config.json'), 'utf8')).defaultMode, 'lite');
+  assert.equal(fs.readFileSync(statePath, 'utf8'), 'ultra');
+  fs.rmSync(path.join(tmp, 'ponytail'), { recursive: true, force: true });
+});
+
 test('unrelated commands do not touch the flag', async () => {
   try { fs.unlinkSync(statePath); } catch (e) {}
   const hooks = await loadPlugin.server({});
