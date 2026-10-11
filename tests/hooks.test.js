@@ -799,7 +799,7 @@ try {
   const hangHome = path.join(temp, 'hang-home');
   fs.mkdirSync(hangHome, { recursive: true });
   const hangEnv = { HOME: hangHome, USERPROFILE: hangHome, CLAUDE_CONFIG_DIR: hangHome };
-  for (const script of ['ponytail-mode-tracker.js', 'ponytail-subagent.js']) {
+  for (const script of ['ponytail-activate.js', 'ponytail-mode-tracker.js', 'ponytail-subagent.js']) {
     const r = spawnSync(process.execPath, [path.join(root, 'hooks', script)], {
       env: { ...process.env, ...hangEnv },
       timeout: 2500,
@@ -853,6 +853,29 @@ assert.equal(
   false,
   '/ponytail-review must not create a review flag on a fresh session (#736)',
 );
+
+// Compaction re-runs SessionStart: it must keep the session's level, and keep
+// ponytail off after "stop ponytail", instead of resetting to the default.
+{
+  const compactHome = path.join(temp, 'compact-home');
+  fs.mkdirSync(compactHome, { recursive: true });
+  const env = { HOME: compactHome, USERPROFILE: compactHome, CLAUDE_PROJECT_DIR: '/work/compact', PONYTAIL_MAP: '0' };
+  const compact = () => run('ponytail-activate.js', env, JSON.stringify({ source: 'compact' }));
+
+  run('ponytail-activate.js', env, JSON.stringify({ source: 'startup' }));
+  run('ponytail-mode-tracker.js', env, JSON.stringify({ prompt: '/ponytail ultra' }));
+  let r = compact();
+  assert.equal(r.status, 0, r.stderr);
+  assert.match(r.stdout, /PONYTAIL MODE ACTIVE — level: ultra/, 'compaction keeps the switched level');
+
+  run('ponytail-mode-tracker.js', env, JSON.stringify({ prompt: 'stop ponytail' }));
+  r = compact();
+  assert.equal(r.status, 0, r.stderr);
+  assert.equal(r.stdout, '', 'compaction after "stop ponytail" stays off');
+
+  r = run('ponytail-activate.js', env, JSON.stringify({ source: 'startup' }));
+  assert.match(r.stdout, /level: full/, 'a new session starts from the default again');
+}
 
 // #662/#809: two Claude Code sessions in different repos keep their own mode.
 {
