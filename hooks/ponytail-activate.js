@@ -60,6 +60,13 @@ try {
 // 2. Emit the ponytail ruleset, filtered to the active intensity level.
 let output = getPonytailInstructions(mode);
 
+// 2b. Codebase map: what already exists, so "reuse first" costs no search. Fail open: a map
+// that cannot be built must never block or slow the session start.
+if (mode !== 'review' && process.env.PONYTAIL_MAP !== '0') try {
+  const map = require('./ponytail-map').buildMap(process.cwd());
+  if (map) output += '\n\n' + map;
+} catch (e) { /* no map */ }
+
 // 3. Detect missing statusline config — nudge Claude to help set it up
 if (!isCodex && !isCopilot && !isCursor && !isCodeBuddy) try {
   const isWindows = process.platform === 'win32';

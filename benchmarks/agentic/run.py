@@ -22,11 +22,11 @@ over-engineering score is a later pass.
 ponytail: the claude CLI is the harness (already installed, we run inside it). No SDK
 dependency. The CLI's JSON output already carries cost/tokens/duration/permission_denials.
 """
-import argparse, concurrent.futures, datetime, json, os, re, shutil, signal, statistics, subprocess, sys, tempfile
+import argparse, concurrent.futures, datetime, json, os, re, shutil, signal, statistics, subprocess, sys, tempfile, zlib
 from collections import defaultdict
 from pathlib import Path
 
-from tasks import TASKS
+from tasks import QUICK, TASKS
 
 ROOT = Path(__file__).resolve().parents[2]
 RUNS_DIR = Path(__file__).resolve().parent / "runs"
@@ -38,13 +38,19 @@ ARMS = {
     "caveman":        lambda: _skill("benchmarks/arms/caveman-SKILL.md"),
     "yagni":          lambda: "Follow YAGNI principles.",
     "yagni-oneliner": lambda: "Follow YAGNI principles, and prefer one-liner solutions.",
+    "brief":          lambda: "Be brief.",   # the two words that matched caveman in an independent test
+    "ponytail2":      lambda: None,          # plugin arm: PONYTAIL2_PLUGIN_DIR points at the candidate
+    "concise":        lambda: None,          # Claude Code's built-in Concise output style, no plugin
 }
-MODELS = {"haiku": "claude-haiku-4-5-20251001", "sonnet": "claude-sonnet-4-6", "opus": "claude-opus-4-8"}
+SETTINGS_ARMS = {"concise": '{"outputStyle": "Concise"}'}   # arms that differ only by a settings value
+# Shorthands; any other value is passed to `claude --model` as is, so new models need no code change.
+MODELS = {"haiku": "claude-haiku-4-5-20251001", "sonnet": "claude-sonnet-5-5", "opus": "claude-opus-5-5",
+          "fable": "claude-fable-5-1"}
 
 # Skills are plugins activated by a SessionStart hook. To test exactly one at a time we exclude the
 # user's globally-enabled plugins (--setting-sources project,local) and load one plugin from its
 # cache dir (--plugin-dir). The smoke test verifies activation by output style.
-PLUGIN_ARMS = ("ponytail", "caveman")          # arms activated via --plugin-dir (vs raw --append prompts)
+PLUGIN_ARMS = ("ponytail", "caveman", "ponytail2")          # arms activated via --plugin-dir (vs raw --append prompts)
 PLUGIN_CACHE = Path.home() / ".claude" / "plugins" / "cache"
 
 def _plugin_dir(name):
@@ -116,6 +122,14 @@ def _selfcheck_split(p: Path):
     t, c = cnt(lines[:start]); st, sc = cnt(lines[start:])
     return t, c, st, sc
 
+def gz(text):
+    """Information content in bytes: raw-deflate size (Minimum Description Length proxy). Repeated
+    names and boilerplate cost little, so packing code into one line gains much less here than in LOC."""
+    data = text.encode("utf-8", "ignore")
+    if not data: return 0
+    c = zlib.compressobj(9, zlib.DEFLATED, -15)
+    return len(c.compress(data) + c.flush())
+
 def code_stats(workdir: Path, selfcheck_as_test: bool = False):
     """LOC over code-extension source files only (generated images/data can't pollute it).
     total_loc counts every non-blank line including comments and docstrings -- the bloat a vibe
@@ -135,6 +149,7 @@ def code_stats(workdir: Path, selfcheck_as_test: bool = False):
     src = [p for p in files if not _is_test(p, workdir)]
     tst = [p for p in files if _is_test(p, workdir)]
     test_loc = sum(_count(p, True) for p in tst)
+    gz_code = gz("\n".join(p.read_text(encoding="utf-8", errors="ignore") for p in src))
     if selfcheck_as_test:
         total = code = sc_test = 0
         for p in src:
@@ -142,11 +157,11 @@ def code_stats(workdir: Path, selfcheck_as_test: bool = False):
             total += t; code += c; sc_test += st
         return {"files": len(files), "src_files": len(src),
                 "total_loc": total, "src_loc": code,
-                "test_files": len(tst), "test_loc": test_loc + sc_test}
+                "test_files": len(tst), "test_loc": test_loc + sc_test, "gz_code": gz_code}
     return {"files": len(files), "src_files": len(src),
             "total_loc": sum(_count(p, True) for p in src),   # incl comments + docstrings (the bloat)
             "src_loc": sum(_count(p, False) for p in src),    # code only
-            "test_files": len(tst), "test_loc": test_loc}
+            "test_files": len(tst), "test_loc": test_loc, "gz_code": gz_code}
 
 def _git(workdir, *args):
     return subprocess.run([shutil.which("git") or "git", *args], cwd=str(workdir),
@@ -167,6 +182,7 @@ def git_diff_stats(workdir):
     _git(workdir, "add", "-A")
     out = _git(workdir, "diff", "--cached", "--numstat", "HEAD").stdout
     loc = files = test_loc = test_files = 0
+    src_paths = []
     for line in out.splitlines():
         parts = line.split("\t")
         if len(parts) != 3: continue
@@ -176,9 +192,15 @@ def git_diff_stats(workdir):
         if any(k in path for k in _SKIP_DIFF) or "node_modules" in path: continue
         n = int(added)
         if _is_test(Path(workdir) / path, Path(workdir)): test_loc += n; test_files += 1
-        else: loc += n; files += 1
+        else: loc += n; files += 1; src_paths.append(path)
+    added = _git(workdir, "diff", "--cached", "-U0", "HEAD", "--", *src_paths).stdout if src_paths else ""
+    gz_code = gz("\n".join(l[1:] for l in added.splitlines() if l.startswith("+") and not l.startswith("+++")))
     return {"files": files, "src_files": files, "total_loc": loc, "src_loc": loc,
-            "test_files": test_files, "test_loc": test_loc}
+            "test_files": test_files, "test_loc": test_loc, "gz_code": gz_code}
+
+def _write(path: Path, content):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(content, encoding="utf-8")
 
 def selftest():
     """Each task's good ref must score correct+safe; the bad ref must be caught on its
@@ -189,9 +211,9 @@ def selftest():
         axis = task.get("axis", "safe")
         for kind in ("good", "bad"):
             with tempfile.TemporaryDirectory() as d:
-                for fn, content in task.get("seed", {}).items():   # seed siblings (a helper module
-                    (Path(d) / fn).write_text(content, encoding="utf-8")  # the ref imports) too
-                (Path(d) / task["file"]).write_text(task[kind], encoding="utf-8")  # entry = the ref
+                ref = task[kind] if isinstance(task[kind], dict) else {task["file"]: task[kind]}
+                for fn, content in {**task.get("seed", {}), **ref}.items():  # seed, then the ref on top
+                    _write(Path(d) / fn, content)
                 r = task["score"](Path(d))
             ok = (r["correct"] == 1 and r["safe"] == 1) if kind == "good" else (r[axis] == 0)
             print(f"{'ok ' if ok else 'XX '} {tid:12} {kind:4} correct={r['correct']} "
@@ -271,9 +293,14 @@ def score_workspace(task_id, arm, model, workdir: Path):
                     "out_tokens": u.get("output_tokens"), "in_tokens": u.get("input_tokens"),
                     "cache_tokens": (u.get("cache_read_input_tokens") or 0) + (u.get("cache_creation_input_tokens") or 0)}
             result_text = j.get("result", "")
+            meta["reply_words"] = len(result_text.split())
+            # share of the reply that is not redundancy: compressed / raw. Filler and repeated
+            # recaps compress well; dense information does not. Reported, not optimized blindly.
+            meta["reply_density"] = round(gz(result_text) / max(1, len(result_text.encode())), 3)
         except Exception: pass
     surgical = not TASKS[task_id].get("open") and not TASKS[task_id].get("fixture")
-    stats = git_diff_stats(workdir) if TASKS[task_id].get("fixture") else code_stats(workdir, selfcheck_as_test=surgical)
+    diffed = TASKS[task_id].get("fixture") or TASKS[task_id].get("diff")
+    stats = git_diff_stats(workdir) if diffed else code_stats(workdir, selfcheck_as_test=surgical)
     # open/explain tasks answer in the chat, not a file. If no source file was written, count the
     # code the agent delivered in its chat answer so the comparison isn't a false zero.
     if TASKS[task_id].get("open") and stats["total_loc"] == 0 and result_text:
@@ -284,6 +311,21 @@ def score_workspace(task_id, arm, model, workdir: Path):
     else:
         sc = TASKS[task_id]["score"](workdir)
     return {"task": task_id, "arm": arm, "model": model, **sc, **stats, **meta}
+
+def _base_cmd(claude, prompt, model):
+    return [claude, "-p", prompt, "--model", MODELS.get(model, model),
+            "--permission-mode", "bypassPermissions", "--output-format", "json",
+            "--setting-sources", "project,local", "--strict-mcp-config",
+            "--disallowedTools", "Bash"]
+
+def warm_cache(model):
+    """One throwaway call before the pool. Without it the first parallel cells each pay the cold
+    prompt-cache write of the shared prefix (smoke run: ~$0.32 vs ~$0.10 per cell, in both arms),
+    which is ordering noise, not an arm effect. Cells running back to back keep the cache warm."""
+    with tempfile.TemporaryDirectory() as d:
+        subprocess.run(_base_cmd(shutil.which("claude"), "Reply with: ok", model) + ["--append-system-prompt", NO_RUN],
+                       cwd=d, capture_output=True, timeout=CELL_TIMEOUT,
+                       env={**os.environ, "CLAUDE_CODE_DISABLE_CLAUDE_MDS": "1", "CLAUDE_CODE_DISABLE_AUTO_MEMORY": "1"})
 
 def run_cell(task_id, arm, model, workdir: Path):
     task = TASKS[task_id]
@@ -302,8 +344,8 @@ def run_cell(task_id, arm, model, workdir: Path):
                           for p in workdir.rglob("*") if p.is_file())
         (workdir / "_fixture_files.json").write_text(json.dumps(manifest), encoding="utf-8")
     for fn, content in task.get("seed", {}).items():
-        (workdir / fn).write_text(content, encoding="utf-8")
-    if task.get("fixture"): _git_snapshot(workdir)     # baseline commit -> diff the agent's changes
+        _write(workdir / fn, content)
+    if task.get("fixture") or task.get("diff"): _git_snapshot(workdir)  # baseline commit -> diff the agent's changes
     claude = shutil.which("claude")
     if not claude: sys.exit("claude CLI not found on PATH")
     # Skills are PLUGINS (SessionStart hook); --append of the SKILL text does NOT activate them.
@@ -312,13 +354,12 @@ def run_cell(task_id, arm, model, workdir: Path):
     # No live verification (see NO_RUN): --strict-mcp-config drops all MCP servers so there is no browser
     # tool, and --disallowedTools Bash blocks running a server/db/npm. An agent writes with
     # Read/Write/Edit/Glob/Grep and stops -- no login wall, no browser thrash. We measure code, not execution.
-    cmd = [claude, "-p", task["prompt"], "--model", MODELS[model],
-           "--permission-mode", "bypassPermissions", "--output-format", "json",
-           "--setting-sources", "project,local", "--strict-mcp-config",
-           "--disallowedTools", "Bash"]
+    cmd = _base_cmd(claude, task["prompt"], model)
     append = NO_RUN                                     # all arms get NO_RUN, identically
     if arm in PLUGIN_ARMS:
         cmd += ["--plugin-dir", _plugin_dir(arm)]       # real activation of exactly one plugin
+    elif arm in SETTINGS_ARMS:
+        cmd += ["--settings", SETTINGS_ARMS[arm]]
     else:
         extra = ARMS[arm]()                             # baseline -> None; yagni-oneliner -> the prompt
         if extra: append = extra + "\n\n" + NO_RUN
@@ -353,6 +394,8 @@ def aggregate(results):
     for (t, a, m), cells in sorted(groups.items()):
         n = len(cells)
         costs = [c["cost"] for c in cells if c.get("cost") is not None]
+        passes = sum(1 for c in cells if c.get("correct") and c.get("safe"))
+        words = [c["reply_words"] for c in cells if c.get("reply_words") is not None]
         loc_cells = [c for c in cells if c.get("total_loc", 0) > 0]   # LOC only where code was delivered
         nl = len(loc_cells)
         rows.append({"task": t, "arm": a, "model": m, "n": n,
@@ -365,6 +408,9 @@ def aggregate(results):
                      "src_files_median": statistics.median(c["src_files"] for c in loc_cells) if nl else 0,
                      "wrote_tests_rate": round(sum(1 for c in cells if c.get("test_files", 0) > 0) / n, 3),
                      "cost_mean": round(statistics.mean(costs), 4) if costs else None,
+                     # what a finished task costs: all spend over the cells that passed both gates
+                     "cost_per_pass": round(sum(costs) / passes, 4) if costs and passes else None,
+                     "reply_words_median": statistics.median(words) if words else None,
                      "out_tokens_mean": (round(statistics.mean([c["out_tokens"] for c in cells if c.get("out_tokens") is not None]))
                                          if any(c.get("out_tokens") is not None for c in cells) else None),
                      "total_tokens_mean": (round(statistics.mean([(c.get("in_tokens") or 0) + (c.get("out_tokens") or 0) + (c.get("cache_tokens") or 0)
@@ -379,13 +425,15 @@ def print_table(rows):
     for r in rows: by[(r["task"], r["model"])].append(r)
     for (task, model), rs in sorted(by.items()):
         print(f"\n=== {task}  ({model}, n={rs[0]['n']}) ===")
-        print(f"  {'arm':16} {'wrote%':>7} {'correct':>8} {'LOC':>7} {'tot_tok':>9} {'$/run':>8} {'time_s':>7}")
+        print(f"  {'arm':16} {'wrote%':>7} {'correct':>8} {'safe':>5} {'LOC':>7} {'tot_tok':>9} {'$/run':>8} {'$/pass':>8} {'words':>6} {'time_s':>7}")
         for r in sorted(rs, key=lambda x: x["arm"]):
             c = ("$" + format(r["cost_mean"], ".4f")) if r["cost_mean"] is not None else "-"
             tt = r.get("total_tokens_mean"); t = r.get("time_s_mean")
-            print(f"  {r['arm']:16} {r.get('wrote_file_rate', 1.0):>7} {r['correct_rate']:>8} "
-                  f"{r['total_loc_median']:>7} {(tt if tt is not None else '-'):>9} {c:>8} "
-                  f"{(t if t is not None else '-'):>7}")
+            cp = ("$" + format(r["cost_per_pass"], ".4f")) if r.get("cost_per_pass") is not None else "-"
+            w = r.get("reply_words_median")
+            print(f"  {r['arm']:16} {r.get('wrote_file_rate', 1.0):>7} {r['correct_rate']:>8} {r['safe_rate']:>5} "
+                  f"{r['total_loc_median']:>7} {(tt if tt is not None else '-'):>9} {c:>8} {cp:>8} "
+                  f"{(w if w is not None else '-'):>6} {(t if t is not None else '-'):>7}")
 
 def rescore(run_dir):
     run_dir = Path(run_dir)
@@ -427,7 +475,7 @@ def main():
     if selftest():
         sys.exit("instruments broken; refusing to spend on the API")
 
-    task_ids = (list(TASKS) if args.all
+    task_ids = (list(TASKS) if args.all else QUICK if args.task == "quick"
                 else ([t.strip() for t in args.task.split(",")] if args.task else []))
     if not task_ids: sys.exit("give --task <id> (comma list ok), --all, or --rescore <dir>")
     arms = [a.strip() for a in args.arms.split(",")]
@@ -441,12 +489,22 @@ def main():
     total = len(cells)
     results, done = [], 0
 
+    # Cells run outside any git repo, then move into out_dir. Inside a repo, Claude Code shows the
+    # model that repo's branch and recent commit messages, so this repo's own history leaked into
+    # every task without its own git snapshot.
+    scratch = Path(tempfile.mkdtemp(prefix=f"ponytail-bench-{stamp}-"))
+
     def _one(spec):
         tid, arm, model, r = spec
-        ws = out_dir / f"{tid}__{arm}__{model}__{r}"
+        name = f"{tid}__{arm}__{model}__{r}"
+        ws = scratch / name
         ws.mkdir(parents=True, exist_ok=True)
-        return run_cell(tid, arm, model, ws)
+        try:
+            return run_cell(tid, arm, model, ws)
+        finally:
+            shutil.move(str(ws), str(out_dir / name))
 
+    for m in models: warm_cache(m)
     print(f"running {total} cells, {args.workers} at a time", flush=True)
     # Cells are fully isolated (own copy + own claude context), so they parallelize safely.
     # To STOP a parallel run, kill the whole tree: taskkill /PID <pid> /T /F. Killing just the
@@ -467,9 +525,10 @@ def main():
                   f"cost=${res.get('cost')} time={round((res.get('duration_ms') or 0) / 1000, 1)}s "
                   f"correct={res.get('correct')}", flush=True)
             (out_dir / "results.json").write_text(json.dumps(
-                {"date": stamp, "models": {m: MODELS[m] for m in models},
+                {"date": stamp, "models": {m: MODELS.get(m, m) for m in models},
                  "claude": _claude_version(), "results": results}, indent=2), encoding="utf-8")
 
+    shutil.rmtree(scratch, ignore_errors=True)
     rows = aggregate(results)
     (out_dir / "summary.json").write_text(json.dumps(rows, indent=2), encoding="utf-8")
     print_table(rows)

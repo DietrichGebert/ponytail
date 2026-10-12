@@ -30,8 +30,14 @@
 </p>
 
 <p align="center">
-  <strong>代码减少约 54%（最多 94%）&middot; 成本降低约 20% &middot; 速度提升约 27% &middot; 100% 安全</strong><br>
-  <sub>在真实的 Claude Code 会话中修改一个真实的 FastAPI + React 仓库，同一个智能体分别在启用和不启用该 skill 时运行（12 个功能任务，Haiku 4.5，n=4）。<a href="#numbers">详情</a>。</sub>
+  <img src="../assets/v5/hero-zh-CN.jpg" width="880" alt="Ponytail 5，从头重建：代码 -53%，时间 -41%，成本 -26%，token -45%。即便如此，98% 的高风险逻辑交付时都带着测试，没有 Ponytail 时是 68%。">
+</p>
+
+<p align="center">
+  <strong>Ponytail 5：从头重建。</strong><br>
+  <strong>代码 -53% &middot; 时间 -41% &middot; 成本 -26% &middot; token -45%</strong><br>
+  <strong>即便如此：98% 的高风险逻辑交付时都带着测试。</strong>没有 Ponytail：68%。<br>
+  <sub>在 Claude Code 中测得，同一个智能体分别在启用和不启用该 skill 时运行：39 个任务，其中包括一个真实的 FastAPI + React 仓库，Opus 5.5，每个任务运行 5 次。<a href="#numbers">详情</a>。</sub>
 </p>
 
 <p align="center">
@@ -42,7 +48,7 @@
 ---
 
 <p align="center">
-  <a href="https://ponytail.dev/soon"><img src="../assets/waitlist-banner.png" alt="新东西即将到来，加入等候名单" width="760"></a>
+  <a href="https://ponytail.dev/soon"><img src="../assets/waitlist-banner-zh-CN.png" alt="新东西即将到来，加入等候名单" width="760"></a>
 </p>
 
 ## 已用 Ponytail 构建
@@ -59,6 +65,59 @@
 你认识他。长马尾。椭圆眼镜。他在公司待的时间比版本控制系统还长。你给他看五十行代码；他看了看，一言不发，把它们换成了一行。
 
 Ponytail 把他放进你的 AI 智能体里。
+
+<a id="numbers"></a>
+## 数据
+
+<p align="center">
+  <img src="../assets/v5/chart-zh-CN.png" width="880" alt="相对于无 skill 基线的比例。代码行数：Ponytail v4.13 为 52%，Ponytail 5 为 47%。输出 token：57% 和 55%。成本：84% 和 74%。时间：62% 和 59%。">
+</p>
+
+<p align="center">
+  <img src="../assets/v5/tests-zh-CN.png" width="880" alt="代码少了一半，却更好：98% 的高风险逻辑交付时带着测试（无 skill 时 68%）；智能体自己写的测试能抓到 66% 的注入 bug（无 skill 时 46%）。">
+</p>
+
+图表里没有体现的两点：在盲测对比中，Ponytail 5 的回复以 110 比 67 胜过上一版 Ponytail。另外，在 6 个安全任务上（SQL 注入、路径穿越、伪造 token、限流、格式错误的 CSV 行、缓存），它全部 30 次运行都通过了：代码更少，安全一点不少。方法、逐任务表格和局限性：[benchmarks/results/2026-10-07-agentic.md](../benchmarks/results/2026-10-07-agentic.md)。
+
+**规则从来不是"token 最少"。**规则是：只写任务需要的东西，永远不砍校验、错误处理、安全和无障碍访问。代码最后变小，是因为只留下了必要的部分，而不是被硬压缩出来的。成本和延迟的降低只是副作用。
+
+## 之前 / 之后
+
+<p align="center">
+  <img src="../assets/v5/beforeafter-zh-CN.png" width="880" alt="给前端加一个日期选择器。没有 skill：335 行，手写了一个日历和一个日期选择器。Ponytail 5：一个 10 行的文件，复用仓库里的 Input 并设置 type date，日历由浏览器提供。">
+</p>
+
+你要一个日期选择器。没有 Ponytail，智能体会安装一个日期选择器库，或者干脆手写一整个日历：335 行。Ponytail 5 会先看看已经有什么：仓库里有一个 `Input` 组件，而每个浏览器都自带日期选择器。它把这两样组合起来。10 行。
+
+更多幸存的例子见 [examples/](../examples/)。
+
+## 审查，从头重建
+
+<p align="center">
+  <img src="../assets/v5/review-zh-CN.png" width="880" alt="审查，从头重建。基准测试中一条真实的 /ponytail-review 发现：这次改动重命名了一个字段，结果一个没被改动的文件 src/routes/feed.js 现在会崩溃。必须修复：Atom feed 现在每次请求都会崩溃，并写明这是什么、问题在哪、怎么修、不修会怎样。预先埋入的问题 100% 被找到，无 skill 时 87%。diff 之外的问题 100% 被找到，无 skill 时 78%。">
+</p>
+
+`/ponytail-review` 以前只找可以删掉的代码。现在它像出了故障会被叫醒的资深开发者那样审查：它会读你的改动涉及的代码，而不只是 diff，并检查 bug、安全、真实负载、缺失的测试、速度，以及可以删掉的东西。每条发现都写清这段代码做什么、哪里出错、怎么修、不修会怎样。
+
+## 审计，从头重建
+
+<p align="center">
+  <img src="../assets/v5/audit-zh-CN.png" width="880" alt="整个仓库，按优先级排好。先修这个。基准测试中在一个仓储库存项目上真实运行的 /ponytail-audit：1 必须修复，数量写成 1,200 的办公室批次会完全失败；2 必须修复，导入时会悄悄跳过有问题的行；3 必须修复，办公室批次里打错的 SKU 会被悄悄忽略；4 应该修复，高风险的代码路径没有测试；5 锦上添花，请求体不是对象时 API 会崩溃。结论：先修 1。">
+</p>
+
+`/ponytail-audit` 对整个仓库做同样的检查。它先摸清代码的全貌：入口在哪、数据怎么流动、项目预计要承受多大负载。然后给发现的问题排好优先级，告诉你先修哪个。旧版审计只会列出可以删掉的东西。
+
+## 工作原理
+
+<p align="center">
+  <img src="../assets/v5/ladder-zh-CN.png" width="880" alt="在写代码之前，停在第一个成立的台阶上：1 这东西需要存在吗，2 代码库里已经有了吗，3 标准库能做吗，4 平台原生功能，5 已安装的依赖，6 一行能搞定吗，7 只有到这一步才写能跑的最少代码，如果有逻辑，再加一个小测试。">
+</p>
+
+这个阶梯在理解问题*之后*才运行，而不是代替理解：它会先读改动涉及的代码，追踪真实的执行流程，再选择台阶。对方案偷懒，对阅读从不偷懒。
+
+偷懒，但不失职：信任边界上的输入校验、防止数据丢失的处理、安全和无障碍访问，永远不会被砍掉。
+
+带分支、循环、解析器，或涉及金钱、安全的逻辑，会留下一个小测试。每条回复结尾都会写明跳过了什么、没检查什么，以及你应该知道的风险。
 
 ## 提示词
 
@@ -92,90 +151,27 @@ codex plugin add ponytail@ponytail
 
 只从 GitHub 上的 `DietrichGebert/ponytail` 或 npm 上的 `@dietrichgebert/ponytail` 安装 ponytail。它从不包含 `.exe` 或 `.dll` 文件；包含这些文件的副本不是我的。
 
-## 之前 / 之后
-
-你要一个日期选择器。你的智能体安装了 flatpickr，写了一个包装组件，加了一个样式表，还开始讨论时区问题。
-
-用了 ponytail：
-
-```html
-<!-- ponytail: browser has one -->
-<input type="date">
-```
-
-更多幸存的例子见 [examples/](../examples/)。
-
-## 工作原理
-
-在写代码之前，智能体会停在第一个成立的台阶上：
-
-```
-1. 这东西真的需要存在吗？   → 不需要：跳过（YAGNI）
-2. 代码库里已经有了吗？     → 复用，不要重写
-3. 标准库能做吗？           → 用标准库
-4. 平台原生功能能做吗？     → 用原生功能
-5. 已安装的依赖能做吗？     → 用它
-6. 一行能搞定吗？           → 就写一行
-7. 只有到这一步：写能跑的最少代码
-```
-
-这个阶梯在理解问题*之后*才运行，而不是代替理解：它会先读改动涉及的代码，追踪真实的执行流程，再选择台阶。对方案偷懒，对阅读从不偷懒。
-
-偷懒，但不失职：信任边界上的输入校验、防止数据丢失的处理、安全和无障碍访问，永远不会被砍掉。
-
 <a id="commands"></a>
 ## 命令
 
 | 命令 | 作用 |
 |------|------|
 | `/ponytail [lite \| full \| ultra \| off]` | 设置强度或关闭。不带参数时：如果已关闭，就以默认级别打开；否则显示当前级别。 |
-| `/ponytail-review` | 审查当前 diff 中的过度设计，返回一份删除清单。用普通的话指定目标来缩小或扩大范围：`uncommitted`、`staged`、`branch`，或一个 PR 链接。 |
-| `/ponytail-audit` | 审查整个仓库的过度设计，而不只是 diff。 |
-| `/ponytail-debt` | 把你推迟处理的 `ponytail:` 捷径收集成一份清单，免得"以后再说"变成"永远不做"。 |
+| `/ponytail-review` | 像出了故障会被叫醒的资深开发者那样审查当前 diff：bug、安全、真实负载、没有测试的高风险代码、慢的地方，以及可以删掉的东西。每条发现都写清这段代码做什么、哪里出错、怎么修、不修会怎样。用普通的话指定目标来缩小或扩大范围：`uncommitted`、`staged`、`branch`，或一个 PR 链接。 |
+| `/ponytail-audit` | 对整个仓库做同样的检查，最重要的排在前面。 |
+| `/ponytail-debt` | 把你推迟处理的 `shortcut:` 捷径收集成一份清单，免得"以后再说"变成"永远不做"。 |
 | `/ponytail-gain` | 以计分板形式显示基准测试测得的效果（更少代码、更低成本、更快速度）。 |
 | `/ponytail-help` | 上述命令的速查表。 |
 
 命令需要支持 skill 的宿主（Claude Code、Codex、Devin CLI、OpenCode、Gemini、pi、Hermes Agent、Qoder、Grok Build）。在 Codex CLI 和 IDE 扩展中，它们是插件命名空间下的 skill，用 `$ponytail:ponytail-review` 调用。使用 [hooks](../INSTALL.md#cursor) 的 Cursor 只支持 `/ponytail` 级别切换，以普通消息输入。只有指令的适配器（Cursor 的规则文件、Windsurf、Cline、Copilot、Kiro、Antigravity）会加载始终生效的规则，但没有这些命令。
 
-<a id="numbers"></a>
-## 数据
-
-诚实的测量方式是让真实的智能体做真实的工作：一个无界面的 Claude Code 会话修改 [tiangolo 的 full-stack-fastapi-template](https://github.com/fastapi/full-stack-fastapi-template)（一个真实的 FastAPI + React 仓库），按它留下的 `git diff` 打分。12 个功能工单，同一个智能体分别在启用和不启用该 skill 时运行，n=4，Haiku 4.5。
-
-<p align="center">
-  <img src="../assets/benchmark-agentic.svg" width="860" alt="各组相对于无 skill 基线的百分比，涵盖代码行数、token、成本和时间（Haiku 4.5）。ponytail 在所有指标上都最低（行数 46%、token 78%、成本 80%、时间 73%）；caveman 在 token、成本和时间上超过 100%；yagni-oneliner 行数 67%。安全性（单独的对抗测试）：基线、caveman 和 ponytail 均为 100%，yagni-oneliner 为 95%。">
-</p>
-
-| 相对于无 skill 基线 | 行数 | token | 成本 | 时间 | 安全 |
-|---|--:|--:|--:|--:|--:|
-| **ponytail** | **-54%** | **-22%** | **-20%** | **-27%** | **100%** |
-| caveman（简洁话语对照组） | -20% | +7% | +3% | +2% | 100% |
-| "YAGNI + 一行代码" 提示词 | -33% | -14% | -21% | -30% | 95% |
-
-ponytail 是唯一在所有指标上都有削减的一组，也是唯一在削减的同时保持完全安全的一组。在真正存在过度构建陷阱的地方削减最多（日期选择器从 404 行降到 23 行，颜色选择器从 287 行降到 23 行，因为它直接用原生 `<input>` 而不是组件），而在本来就很精简的代码上几乎为零。完整方法、逐任务表格和局限性：[benchmarks/results/2026-06-18-agentic.md](../benchmarks/results/2026-06-18-agentic.md)。
-
-<details>
-<summary><strong>早期的单次生成数据（孤立生成）</strong></summary>
-
-5 个日常任务，3 个模型，3 组（无 skill、[caveman](https://github.com/JuliusBrussee/caveman)、ponytail），每组运行 10 次，报告中位数。一个提示，一次回答，统计回答的行数：
-
-<p align="center">
-  <img src="../assets/benchmark-3model.svg" width="860" alt="Haiku、Sonnet 和 Opus 上各组代码行数的中位数">
-</p>
-
-这里显示**代码减少 80-94%**。[#126](https://github.com/DietrichGebert/ponytail/issues/126) 很公道地指出，什么都不加的基线模型会用说明文字和多种选项把回答撑大，所以这个差距部分是对话式基线造成的假象。上面的智能体数据才是修正过的、站得住脚的版本。用 `npx promptfoo eval -c benchmarks/promptfooconfig.yaml` 可以复现单次生成的测试。
-
-</details>
-
-**规则从来不是"token 最少"。**规则是：只写任务需要的东西，永远不砍校验、错误处理、安全和无障碍访问。代码最后变小，是因为只留下了必要的部分，而不是被硬压缩出来的。成本和延迟的降低，是遵循阶梯的模型上的副作用；一个为了斟酌台阶而消耗思考 token 的简洁推理模型，可能会反过来（在 GPT-5.5 上就是这样）。
-
 ## 常见问题
-
-**可以和 [caveman](https://github.com/JuliusBrussee/caveman) 一起用吗？**
-可以，而且应该一起用。caveman 精简智能体说的话；ponytail 精简智能体造的东西。各管一半，互不重叠：caveman 让代码一字节都不变，ponytail 不碰说话方式。用简短的话谈最少的代码。
 
 **需要配置文件吗？**
 不需要。可选的 `~/.config/ponytail/config.json` 或环境变量 `PONYTAIL_DEFAULT_MODE` 可以设置默认级别，但什么都不是必需的。
+
+**为什么它会写 `shortcut:` 注释？**
+它标记一个有意的捷径以及何时该回头处理，`/ponytail-debt` 会把它们收集成一份清单。想换个词，或者完全不要？在项目的 `CLAUDE.md` 或 `AGENTS.md` 里写明，然后运行 `/ponytail-debt <你的词>`。
 
 **如果我真的需要那个 120 行的缓存类呢？**
 你不需要。非要的话，他也会写。慢慢地。正确地。一边看着你。

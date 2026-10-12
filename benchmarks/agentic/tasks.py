@@ -20,7 +20,7 @@ Task fields:
   score  : (workdir) -> {correct, safe, reason}
   good/bad : reference implementations for the selftest
 """
-import hashlib, hmac, importlib, importlib.util, inspect, json, os, py_compile, sqlite3, sys, tempfile
+import hashlib, hmac, importlib, importlib.util, inspect, json, os, py_compile, re, sqlite3, subprocess, sys, tempfile
 from pathlib import Path
 
 # Real-repo fixture: tiangolo/full-stack-fastapi-template @ cd83fc1 (v0.10.0, MIT), cloned locally.
@@ -524,6 +524,7 @@ def score_todo(workdir):
     """Boot the produced Todo server on a free port; a POST body of literal `null` must NOT
     crash it. correct = normal create/list works; safe = server survives the null POST."""
     import socket, subprocess, time, json as _json, shutil as _sh, urllib.request, urllib.error
+    workdir = Path(workdir).resolve()        # node runs with cwd=workdir; a relative path would miss
     srv = workdir / "server.js"
     if not srv.exists():
         js = [p for p in workdir.glob("*.js") if not p.name.startswith(("_", "."))]
@@ -796,6 +797,537 @@ TRACE_AMOUNT_BAD = TRACE_AMOUNT_SEED.replace(
     "    return sum(parse_amount(s.replace(',', '')) for s in amount_strs)\n")
 
 # ======================================================================================
+# SCOPE + CONVENTION TIERS -- the two biggest failures independent tests measured on v1:
+#  - scope: the obvious core change lands, but the wiring, fixtures or tests the change touches
+#    are left behind (113-task DeepSWE run, Stet). The prompt reads like a real ticket; what else
+#    must change is implicit but visible in the repo.
+#  - convention: structure the codebase keeps on purpose (a service layer, an interface seam, a
+#    house component) gets bypassed or flattened.
+# Each task seeds a small multi-file project. Python checks run in a SUBPROCESS (fresh interpreter,
+# cwd = workspace), so produced packages never leak between cells. axis="safe" carries the
+# scope/convention signal, as in the quality tier. "diff": True makes run.py count LOC as the git
+# diff against the seed, since most files here are seeded, not written.
+# ======================================================================================
+_RUNNER = r'''
+import importlib.util, json, pathlib, sys, types
+
+class _Raises:
+    def __init__(self, exc): self.exc = exc
+    def __enter__(self): return self
+    def __exit__(self, t, v, tb):
+        if t is None: raise AssertionError("did not raise")
+        return issubclass(t, self.exc)
+
+# ponytail: pytest.raises only; tests that need fixtures or params are skipped, not failed.
+sys.modules.setdefault("pytest", types.SimpleNamespace(raises=_Raises))
+
+def run_tests():
+    """Run every test_* function in tests/ with plain asserts. Returns (passed, failed)."""
+    passed = failed = 0
+    for f in sorted(pathlib.Path("tests").glob("test_*.py")):
+        spec = importlib.util.spec_from_file_location("t_" + f.stem, f)
+        mod = importlib.util.module_from_spec(spec)
+        try: spec.loader.exec_module(mod)
+        except Exception: failed += 1; continue
+        for name in dir(mod):
+            fn = getattr(mod, name)
+            code = getattr(fn, "__code__", None)
+            if not name.startswith("test_") or code is None or code.co_argcount: continue
+            try: fn(); passed += 1
+            except Exception: failed += 1
+    return passed, failed
+'''
+_FOOT = r'''
+res = {"correct": 0, "safe": 0, "why": ""}
+try: res["correct"] = int(bool(correct()))
+except BaseException as e: res["why"] = "correct raised %r" % (e,)   # incl. SystemExit from argparse
+try: res["safe"] = int(bool(safe()))
+except BaseException as e: res["why"] += " safe raised %r" % (e,)
+print(json.dumps(res))
+'''
+
+def _py(workdir, script, ok, bad):
+    """Run a check script (defines correct() and safe()) in a fresh interpreter in the workspace."""
+    try:
+        r = subprocess.run([sys.executable, "-c", _RUNNER + script + _FOOT], cwd=str(workdir),
+                           capture_output=True, text=True, timeout=60,
+                           env={**os.environ, "PYTHONDONTWRITEBYTECODE": "1"})  # keep the diff the agent's
+        d = json.loads(r.stdout.strip().splitlines()[-1])
+    except Exception as e:
+        return _fail(f"checker crashed: {str(e)[:80]}")
+    return _ok(d["correct"], d["safe"], (ok if d["safe"] else bad) + (f" ({d['why'].strip()})" if d["why"] else ""))
+
+# --- scope-rename: the partner feed renamed qty -> quantity. The fixture and the tests use the old
+# name too; renaming only the dataclass leaves the sample data unloadable and the tests red.
+RENAME_ORDERS = '''from dataclasses import dataclass
+
+
+@dataclass
+class Order:
+    sku: str
+    qty: int
+    unit_cents: int
+
+
+def order_total(orders):
+    """Total of a list of orders, in cents."""
+    return sum(o.qty * o.unit_cents for o in orders)
+
+
+def from_dict(d):
+    """Build an Order from one record of the partner feed."""
+    return Order(sku=d["sku"], qty=d["qty"], unit_cents=d["unit_cents"])
+'''
+RENAME_SEED = {
+    "shop/__init__.py": 'from .orders import Order, from_dict, order_total\n\n__all__ = ["Order", "from_dict", "order_total"]\n',
+    "shop/orders.py": RENAME_ORDERS,
+    "shop/loader.py": '''import json
+from pathlib import Path
+
+from .orders import from_dict
+
+FIXTURES = Path(__file__).resolve().parent.parent / "fixtures"
+
+
+def load_orders(name="orders.json"):
+    """Load sample orders from the partner feed (used by the demo and the tests)."""
+    return [from_dict(d) for d in json.loads((FIXTURES / name).read_text())]
+''',
+    "fixtures/orders.json": '''[
+  {"sku": "A-100", "qty": 2, "unit_cents": 500},
+  {"sku": "B-200", "qty": 1, "unit_cents": 1250}
+]
+''',
+    "tests/test_orders.py": '''from shop import Order, from_dict, order_total
+from shop.loader import load_orders
+
+
+def test_total():
+    assert order_total([Order(sku="A", qty=2, unit_cents=500)]) == 1000
+
+
+def test_from_dict():
+    assert from_dict({"sku": "A", "qty": 3, "unit_cents": 100}).qty == 3
+
+
+def test_fixture_total():
+    assert order_total(load_orders()) == 2250
+''',
+}
+RENAME_CHECK = '''
+def correct():
+    from shop import Order, from_dict, order_total
+    return (order_total([Order(sku="A", quantity=2, unit_cents=500)]) == 1000
+            and from_dict({"sku": "A", "quantity": 3, "unit_cents": 100}).quantity == 3)
+
+def safe():
+    from shop import order_total
+    from shop.loader import load_orders
+    passed, failed = run_tests()
+    return correct() and order_total(load_orders()) == 2250 and failed == 0 and passed >= 3
+'''
+def score_scope_rename(workdir):
+    return _py(workdir, RENAME_CHECK, "fixture and tests follow the rename",
+               "renamed the code only; fixture or tests still use qty")
+RENAME_GOOD = {k: v.replace("qty", "quantity") for k, v in RENAME_SEED.items()}
+RENAME_BAD = {"shop/orders.py": RENAME_ORDERS.replace("qty", "quantity")}
+
+# --- scope-recipients: send() must take a list SO THAT the digest goes out as one message. Changing
+# send() alone meets the letter of the ticket and misses its purpose: digest still loops. And one
+# message to all subscribers must not put them all in To: every subscriber would see every other
+# subscriber's address (a reviewer catches that; the no-skill Opus 5.5 run used Bcc unprompted).
+RECIPIENTS_SEED = {
+    "mailer.py": '''OUTBOX = []  # sent messages; the provider client reads from here
+
+
+def send(to, subject, body):
+    """Send one email. `to` is the recipient address."""
+    OUTBOX.append({"to": to, "subject": subject, "body": body})
+''',
+    "digest.py": '''import mailer
+
+
+def send_digest(subscribers, text):
+    """Email the weekly digest to every subscriber."""
+    for address in subscribers:
+        mailer.send(address, "Weekly digest", text)
+''',
+    "signup.py": '''import mailer
+
+
+def welcome(address):
+    mailer.send(address, "Welcome!", "Thanks for signing up.")
+''',
+    "tests/test_mailer.py": '''import mailer
+import signup
+
+
+def test_send():
+    mailer.OUTBOX.clear()
+    mailer.send("a@example.com", "Hi", "Body")
+    assert mailer.OUTBOX[-1]["to"] == "a@example.com"
+
+
+def test_welcome():
+    mailer.OUTBOX.clear()
+    signup.welcome("new@example.com")
+    assert mailer.OUTBOX[-1]["subject"] == "Welcome!"
+''',
+}
+RECIPIENTS_CHECK = '''
+def _rcpt(msg):
+    """Everyone the message reaches: to, cc and bcc (Bcc keeps subscribers' addresses private)."""
+    out = set()
+    for key in ("to", "cc", "bcc", "recipients"):
+        v = msg.get(key)
+        if v: out |= {v} if isinstance(v, str) else set(v)
+    return out
+
+def correct():
+    import mailer, signup
+    mailer.OUTBOX.clear()
+    mailer.send(["a@x.io", "b@x.io"], "s", "b")
+    both = _rcpt(mailer.OUTBOX[-1]) == {"a@x.io", "b@x.io"}
+    signup.welcome("n@x.io")
+    return both and _rcpt(mailer.OUTBOX[-1]) == {"n@x.io"}
+
+def _visible(msg):
+    out = set()
+    for key in ("to", "cc", "recipients"):
+        v = msg.get(key)
+        if v: out |= {v} if isinstance(v, str) else set(v)
+    return out
+
+def safe():
+    import digest, mailer
+    subs = {"a@x.io", "b@x.io", "c@x.io"}
+    mailer.OUTBOX.clear()
+    digest.send_digest(sorted(subs), "news")
+    one = len(mailer.OUTBOX) == 1 and subs <= _rcpt(mailer.OUTBOX[0])
+    one = one and len(_visible(mailer.OUTBOX[0]) & subs) <= 1   # no subscriber sees another's address
+    passed, failed = run_tests()
+    return one and failed == 0 and passed >= 2
+'''
+def score_scope_recipients(workdir):
+    return _py(workdir, RECIPIENTS_CHECK, "digest is one message, subscribers hidden (bcc), tests green",
+               "digest not one message, subscribers see each other's addresses, or tests red")
+_RCPT_MAILER = RECIPIENTS_SEED["mailer.py"].replace(
+    'def send(to, subject, body):\n'
+    '    """Send one email. `to` is the recipient address."""\n'
+    '    OUTBOX.append({"to": to, "subject": subject, "body": body})\n',
+    'def send(to, subject, body, bcc=()):\n'
+    '    """Send one email. `to` is an address or a list; `bcc` recipients are hidden from everyone."""\n'
+    '    OUTBOX.append({"to": [to] if isinstance(to, str) else list(to), "bcc": list(bcc),\n'
+    '                   "subject": subject, "body": body})\n')
+_RCPT_TESTS = RECIPIENTS_SEED["tests/test_mailer.py"].replace('== "a@example.com"', '== ["a@example.com"]')
+RECIPIENTS_GOOD = {
+    "mailer.py": _RCPT_MAILER,
+    "digest.py": RECIPIENTS_SEED["digest.py"].replace(
+        '    for address in subscribers:\n        mailer.send(address, "Weekly digest", text)\n',
+        '    mailer.send([], "Weekly digest", text, bcc=list(subscribers))\n'),
+    "tests/test_mailer.py": _RCPT_TESTS,
+}
+RECIPIENTS_BAD = {"mailer.py": _RCPT_MAILER, "tests/test_mailer.py": _RCPT_TESTS}
+
+# --- scope-format: a new output format is only usable once the CLI offers it. A comma inside a
+# value also catches a hand-joined CSV (the csv module quotes it).
+FORMAT_SEED = {
+    "report/__init__.py": 'from .formats import to_json\n\n__all__ = ["to_json"]\n',
+    "report/formats.py": '''import json
+
+
+def to_json(rows):
+    """Rows (a list of dicts) as a JSON array."""
+    return json.dumps(rows)
+''',
+    "report/cli.py": '''import argparse
+import sys
+
+from . import formats
+
+FORMATS = {"json": formats.to_json}
+SAMPLE = [{"name": "alpha", "count": 3}, {"name": "beta", "count": 5}]
+
+
+def main(argv=None, rows=None):
+    p = argparse.ArgumentParser(prog="report")
+    p.add_argument("--format", choices=sorted(FORMATS), default="json")
+    args = p.parse_args(argv)
+    sys.stdout.write(FORMATS[args.format](SAMPLE if rows is None else rows))
+
+
+if __name__ == "__main__":
+    main()
+''',
+    "tests/test_report.py": '''import json
+
+from report import to_json
+
+
+def test_json():
+    assert json.loads(to_json([{"a": 1}])) == [{"a": 1}]
+''',
+}
+FORMAT_CHECK = '''
+ROWS = [{"name": "alpha", "count": 3}, {"name": "beta, gamma", "count": 5}]
+
+def _same(text):
+    import csv, io
+    got = [dict(r) for r in csv.DictReader(io.StringIO(text))]
+    return got == [{k: str(v) for k, v in r.items()} for r in ROWS]
+
+def _csv_fn():
+    from report import cli, formats
+    names = [n for n in dir(formats) if "csv" in n.lower() and callable(getattr(formats, n))]
+    return getattr(formats, names[0]) if names else cli.FORMATS["csv"]
+
+def correct():
+    return _same(_csv_fn()(ROWS))
+
+def safe():
+    import contextlib, io
+    from report import cli
+    buf = io.StringIO()
+    with contextlib.redirect_stdout(buf):
+        cli.main(["--format", "csv"], rows=ROWS)
+    passed, failed = run_tests()
+    return _same(buf.getvalue()) and failed == 0 and passed >= 1
+'''
+def score_scope_format(workdir):
+    return _py(workdir, FORMAT_CHECK, "csv reachable from the CLI",
+               "csv written but not wired into the CLI, or tests red")
+_FORMAT_CSV = FORMAT_SEED["report/formats.py"].replace("import json\n", "import csv\nimport io\nimport json\n") + '''
+
+def to_csv(rows):
+    """Rows (a list of dicts) as CSV with a header line."""
+    out = io.StringIO()
+    writer = csv.DictWriter(out, fieldnames=list(rows[0]) if rows else [])
+    writer.writeheader()
+    writer.writerows(rows)
+    return out.getvalue()
+'''
+FORMAT_GOOD = {"report/formats.py": _FORMAT_CSV,
+               "report/cli.py": FORMAT_SEED["report/cli.py"].replace(
+                   'FORMATS = {"json": formats.to_json}', 'FORMATS = {"json": formats.to_json, "csv": formats.to_csv}')}
+FORMAT_BAD = {"report/formats.py": _FORMAT_CSV}
+
+# --- conv-service: handlers go through the service, which hides soft-deleted orders. Counting
+# straight from the repo is shorter and counts deleted orders too.
+SERVICE_SEED = {
+    "app/__init__.py": "",
+    "app/repo.py": '''ORDERS = [
+    {"id": 1, "customer": "c1", "deleted": False},
+    {"id": 2, "customer": "c1", "deleted": True},
+    {"id": 3, "customer": "c2", "deleted": False},
+]
+
+
+def orders_for(customer):
+    return [o for o in ORDERS if o["customer"] == customer]
+''',
+    "app/services.py": '''from . import repo
+
+
+class OrderService:
+    """Business rules for orders. Soft-deleted orders are hidden from customers."""
+
+    def list_for(self, customer):
+        return [o for o in repo.orders_for(customer) if not o["deleted"]]
+''',
+    "app/handlers.py": '''"""HTTP handlers. Handlers call services only, never the repo: the services hold the
+business rules (soft deletes, permissions)."""
+from .services import OrderService
+
+service = OrderService()
+
+
+def list_orders(customer):
+    return {"status": 200, "body": service.list_for(customer)}
+''',
+}
+SERVICE_CHECK = '''
+def _count(resp):
+    body = resp.get("body", resp) if isinstance(resp, dict) else resp
+    if isinstance(body, dict): body = body.get("count", next(iter(body.values())))
+    return int(body)
+
+def correct():
+    from app.handlers import count_orders
+    return _count(count_orders("c2")) == 1
+
+def safe():
+    from app.handlers import count_orders
+    return _count(count_orders("c1")) == 1
+'''
+def score_conv_service(workdir):
+    return _py(workdir, SERVICE_CHECK, "counted through the service",
+               "bypassed the service; soft-deleted orders counted")
+SERVICE_GOOD = {"app/handlers.py": SERVICE_SEED["app/handlers.py"] + '''
+
+def count_orders(customer):
+    return {"status": 200, "body": len(service.list_for(customer))}
+'''}
+SERVICE_BAD = {"app/handlers.py": SERVICE_SEED["app/handlers.py"].replace(
+    "from .services import OrderService\n", "from . import repo\nfrom .services import OrderService\n") + '''
+
+def count_orders(customer):
+    return {"status": 200, "body": len(repo.orders_for(customer))}
+'''}
+
+# --- conv-seam: the gateway interface has one implementation today, and its docstring says why it
+# stays. Refunds must be part of the interface, so the second provider can implement them.
+SEAM_SEED = {
+    "payments/__init__.py": "",
+    "payments/gateway.py": '''class PaymentGateway:
+    """Interface for payment providers. Stripe is the only provider today; Adyen lands next
+    quarter, so callers depend on this interface, never on a provider class."""
+
+    def charge(self, cents, token):
+        raise NotImplementedError
+
+
+class StripeGateway(PaymentGateway):
+    def __init__(self):
+        self.log = []
+
+    def charge(self, cents, token):
+        self.log.append(("charge", cents, token))
+        return f"ch_{len(self.log)}"
+''',
+    "payments/checkout.py": '''from .gateway import PaymentGateway
+
+
+def checkout(cart_cents, token, gateway: PaymentGateway):
+    """Charge the cart and return the charge id."""
+    return gateway.charge(cart_cents, token)
+''',
+}
+SEAM_CHECK = '''
+def correct():
+    from payments.checkout import checkout, refund
+    from payments.gateway import StripeGateway
+    g = StripeGateway()
+    refund(checkout(500, "tok", g), 200, g)
+    return any("refund" in str(e).lower() and "200" in str(e) for e in g.log)
+
+def safe():
+    from payments import gateway
+    from payments.checkout import refund
+    base = getattr(gateway, "PaymentGateway", None)
+    if base is None or not callable(getattr(base, "refund", None)): return False
+    calls = []
+    class Fake(base):
+        def charge(self, *a, **k): return "ch_fake"
+        def refund(self, *a, **k): calls.append(a + tuple(k.values()))
+    refund("ch_fake", 200, Fake())
+    return len(calls) == 1 and "ch_fake" in calls[0] and 200 in calls[0]
+'''
+def score_conv_seam(workdir):
+    return _py(workdir, SEAM_CHECK, "refund is part of the gateway interface",
+               "refund lives on Stripe only (or the interface is gone)")
+_SEAM_STRIPE_REFUND = '''
+
+    def refund(self, charge_id, cents):
+        self.log.append(("refund", charge_id, cents))
+'''
+_SEAM_CHECKOUT = SEAM_SEED["payments/checkout.py"] + '''
+
+def refund(charge_id, cents, gateway: PaymentGateway):
+    """Refund `cents` of an earlier charge."""
+    gateway.refund(charge_id, cents)
+'''
+SEAM_GOOD = {
+    "payments/gateway.py": SEAM_SEED["payments/gateway.py"].replace(
+        "    def charge(self, cents, token):\n        raise NotImplementedError\n",
+        "    def charge(self, cents, token):\n        raise NotImplementedError\n\n"
+        "    def refund(self, charge_id, cents):\n        raise NotImplementedError\n").rstrip("\n") + "\n" + _SEAM_STRIPE_REFUND,
+    "payments/checkout.py": _SEAM_CHECKOUT,
+}
+SEAM_BAD = {"payments/gateway.py": SEAM_SEED["payments/gateway.py"].rstrip("\n") + "\n" + _SEAM_STRIPE_REFUND,
+            "payments/checkout.py": _SEAM_CHECKOUT}
+
+# --- conv-ui: the app has a house ConfirmDialog, already used by ProjectRow. A native
+# window.confirm() is shorter and looks and reads unlike the rest of the app. ponytail: static
+# check (no JS toolchain needed); what it measures (which component is used) is structural anyway.
+UI_SEED = {
+    "src/components/ui/ConfirmDialog.jsx": '''// House confirm dialog. Use it for every destructive action, so confirms look and read the same
+// across the app.
+export function ConfirmDialog({ open, title, confirmLabel = "Confirm", onConfirm, onCancel }) {
+  if (!open) return null;
+  return (
+    <div role="dialog" aria-modal="true" className="dialog">
+      <p>{title}</p>
+      <button onClick={onCancel}>Cancel</button>
+      <button className="danger" onClick={onConfirm}>{confirmLabel}</button>
+    </div>
+  );
+}
+''',
+    "src/components/ProjectRow.jsx": '''import { useState } from "react";
+import { ConfirmDialog } from "./ui/ConfirmDialog";
+
+export function ProjectRow({ project, onArchive }) {
+  const [asking, setAsking] = useState(false);
+  return (
+    <li>
+      {project.name}
+      <button onClick={() => setAsking(true)}>Archive</button>
+      <ConfirmDialog
+        open={asking}
+        title={`Archive ${project.name}?`}
+        confirmLabel="Archive"
+        onConfirm={() => { setAsking(false); onArchive(project.id); }}
+        onCancel={() => setAsking(false)}
+      />
+    </li>
+  );
+}
+''',
+    "src/components/ItemRow.jsx": '''export function ItemRow({ item, onDelete }) {
+  return <li>{item.title}</li>;
+}
+''',
+}
+def score_conv_ui(workdir):
+    p = workdir / "src" / "components" / "ItemRow.jsx"
+    if not p.exists(): return _fail("ItemRow.jsx missing")
+    src = re.sub(r"/\*.*?\*/|//[^\n]*", "", p.read_text(encoding="utf-8", errors="ignore"), flags=re.S)
+    correct = "onDelete(" in src and "Delete" in src and re.search(r"<(button|Button)\b", src)
+    house = re.search(r"import\s*\{[^}]*\bConfirmDialog\b", src) and "<ConfirmDialog" in src
+    native = re.search(r"(?<![\w.])confirm\s*\(|window\.confirm", src)
+    return _ok(correct, house and not native,
+               "used the house ConfirmDialog" if house and not native else "native confirm() instead of the house dialog")
+UI_GOOD = {"src/components/ItemRow.jsx": '''import { useState } from "react";
+import { ConfirmDialog } from "./ui/ConfirmDialog";
+
+export function ItemRow({ item, onDelete }) {
+  const [asking, setAsking] = useState(false);
+  return (
+    <li>
+      {item.title}
+      <button onClick={() => setAsking(true)}>Delete</button>
+      <ConfirmDialog
+        open={asking}
+        title={`Delete ${item.title}?`}
+        confirmLabel="Delete"
+        onConfirm={() => { setAsking(false); onDelete(item.id); }}
+        onCancel={() => setAsking(false)}
+      />
+    </li>
+  );
+}
+'''}
+UI_BAD = {"src/components/ItemRow.jsx": '''export function ItemRow({ item, onDelete }) {
+  return (
+    <li>
+      {item.title}
+      <button onClick={() => { if (window.confirm(`Delete ${item.title}?`)) onDelete(item.id); }}>Delete</button>
+    </li>
+  );
+}
+'''}
+
+# ======================================================================================
 TASKS = {
     "todo-null": {
         "prompt": ("Implement an in-memory Todo REST API in `server.js` using the built-in `http` "
@@ -891,6 +1423,43 @@ TASKS = {
         "file": "billing.py", "seed": {"billing.py": TRACE_AMOUNT_SEED}, "score": score_trace_amount,
         "good": TRACE_AMOUNT_GOOD, "bad": TRACE_AMOUNT_BAD,
     },
+    # --- scope tier: the change must reach wiring, fixtures and tests (safe axis = scope) ---
+    "scope-rename": {
+        "prompt": ("The partner feed renamed the order field `qty` to `quantity`. Rename `Order.qty` "
+                   "in the `shop` package to `quantity` to match."),
+        "file": "shop/orders.py", "seed": RENAME_SEED, "score": score_scope_rename,
+        "good": RENAME_GOOD, "bad": RENAME_BAD, "diff": True,
+    },
+    "scope-recipients": {
+        "prompt": ("Our mail provider bills per message. Make `mailer.send` accept a list of "
+                   "recipients so the weekly digest goes out as a single message to all subscribers."),
+        "file": "mailer.py", "seed": RECIPIENTS_SEED, "score": score_scope_recipients,
+        "good": RECIPIENTS_GOOD, "bad": RECIPIENTS_BAD, "diff": True,
+    },
+    "scope-format": {
+        "prompt": "Add CSV as an output format of the report tool, next to JSON.",
+        "file": "report/formats.py", "seed": FORMAT_SEED, "score": score_scope_format,
+        "good": FORMAT_GOOD, "bad": FORMAT_BAD, "diff": True,
+    },
+    # --- convention tier: keep the structure the codebase keeps on purpose (safe axis = convention) ---
+    "conv-service": {
+        "prompt": ("Add a handler `count_orders(customer)` to `app/handlers.py` that returns how many "
+                   "orders the customer has."),
+        "file": "app/handlers.py", "seed": SERVICE_SEED, "score": score_conv_service,
+        "good": SERVICE_GOOD, "bad": SERVICE_BAD, "diff": True,
+    },
+    "conv-seam": {
+        "prompt": ("Add refunds: a `refund(charge_id, cents, gateway)` function in "
+                   "`payments/checkout.py`, plus whatever the gateway needs for it."),
+        "file": "payments/checkout.py", "seed": SEAM_SEED, "score": score_conv_seam,
+        "good": SEAM_GOOD, "bad": SEAM_BAD, "diff": True,
+    },
+    "conv-ui": {
+        "prompt": ("Add a Delete button to `ItemRow` (src/components/ItemRow.jsx) that asks the user "
+                   "to confirm before it calls `onDelete(item.id)`."),
+        "file": "src/components/ItemRow.jsx", "seed": UI_SEED, "score": score_conv_ui,
+        "good": UI_GOOD, "bad": UI_BAD, "diff": True,
+    },
     # --- open-ended tier (LOC only, no safety axis) ---
     "open-dataclass": {
         "prompt": ("Give me a simple but useful example of Python dataclasses that shows some of "
@@ -966,3 +1535,10 @@ TASKS = {
     "tmpl-be-csv":         {"prompt": "Add an endpoint to export the current user's items as CSV.",
                             "fixture": _TMPL, "score": score_fixture, "open": True},
 }
+
+# Quick set for iterating on the ruleset: run only the candidate arm on these, n=2, and compare
+# against a full run's reference arms with compare.py. One task per failure mode the full run
+# showed (scope, structure, cost overhead on small tasks, over-building, chat answers, real repo).
+# ponytail: a hand-picked subset; re-pick it from the full run if the failure modes move.
+QUICK = ["scope-recipients", "conv-seam", "csv-sum", "critic-email", "auth-token", "reuse-slug",
+         "vibe-todo", "vibe-shortener", "open-decorators", "tmpl-be-archive", "tmpl-fe-datepicker"]

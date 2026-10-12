@@ -15,7 +15,7 @@ files only (tests excluded -- a test is not over-engineering). Cost is ~$0.003/c
 
 ponytail: stdlib urllib for the API call, no requests dependency.
 """
-import argparse, json, os, re, sys, time, urllib.request
+import argparse, json, os, re, shutil, subprocess, sys, tempfile, time, urllib.request
 from collections import defaultdict
 from pathlib import Path
 
@@ -61,12 +61,25 @@ def source_text(workdir: Path):
         except Exception: continue
     return "\n\n".join(out)
 
-def judge_call(task_prompt, files, key, retries=3, system=RUBRIC):
-    user = f"TASK GIVEN TO THE AUTHOR:\n{task_prompt}\n\nFILES THEY WROTE:\n{files}"
-    body = json.dumps({"model": JUDGE_MODEL, "max_tokens": 300, "temperature": 0,
+def _cli_call(system, user, model):
+    """No API key: the same judge through the headless claude CLI and the user's login. No tools,
+    no plugins, no CLAUDE.md, empty cwd. ponytail: the CLI has no temperature flag, so CLI judging
+    is not temperature 0; the live selftest gates it the same way."""
+    env = {**os.environ, "CLAUDE_CODE_DISABLE_CLAUDE_MDS": "1", "CLAUDE_CODE_DISABLE_AUTO_MEMORY": "1"}
+    with tempfile.TemporaryDirectory() as d:
+        r = subprocess.run([shutil.which("claude") or "claude", "-p", "--model", model, "--system-prompt", system,
+                            "--output-format", "json", "--tools", "", "--setting-sources", "project,local",
+                            "--strict-mcp-config"], input=user, cwd=d, env=env,
+                           capture_output=True, text=True, timeout=300)
+    return json.loads(r.stdout)["result"]
+
+def judge_call(task_prompt, files, key, retries=3, system=RUBRIC, model=JUDGE_MODEL, user=None, max_tokens=300):
+    user = user or f"TASK GIVEN TO THE AUTHOR:\n{task_prompt}\n\nFILES THEY WROTE:\n{files}"
+    body = json.dumps({"model": model, "max_tokens": max_tokens, "temperature": 0,
                        "system": system, "messages": [{"role": "user", "content": user}]}).encode()
     for attempt in range(retries):
         try:
+            if not key: return _cli_call(system, user, model)
             req = urllib.request.Request("https://api.anthropic.com/v1/messages", data=body,
                 headers={"x-api-key": key, "anthropic-version": "2023-06-01", "content-type": "application/json"})
             with urllib.request.urlopen(req, timeout=60) as r:
