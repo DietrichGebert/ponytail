@@ -17,12 +17,14 @@ completeness also drops is doing less, not less-bloated -- and now the bench sho
   python complete.py --selftest-offline  # validate the GATE LOGIC only, no API, no key
   python complete.py --run runs/<stamp>  # completeness-judge every workspace in a matrix run
 
-Judge: claude-sonnet-4-6, key from ../../.env (shared with judge.py). ~$0.003/cell.
+Judge: --model (default claude-sonnet-4-6). API key from ../../.env (shared with judge.py), or the
+claude CLI login when there is none.
 
 ponytail: reuses judge.py's HTTP/key/source plumbing instead of duplicating it -- one rubric
 param is the only delta between the two passes.
 """
-import argparse, json, sys
+import argparse, json, re, subprocess, sys
+from concurrent.futures import ThreadPoolExecutor
 from collections import defaultdict
 from pathlib import Path
 
@@ -31,7 +33,9 @@ from judge import load_key, source_text, judge_call, parse_score, RUNS_DIR, JUDG
 
 SCORE_KEY = "completeness"
 FLAG_AT = 1                 # cells scoring <= this are under-delivery (stub/partial) and get listed
-ARMS_ORDER = ["baseline", "caveman", "ponytail", "yagni", "yagni-oneliner"]
+ARMS_ORDER = ["baseline", "caveman", "ponytail", "ponytail2", "yagni", "yagni-oneliner"]
+# the tasks scored on LOC alone (no deterministic check): the only ones this pass is for
+LOC_ONLY = ("vibe-", "open-", "tmpl-")
 
 RUBRIC = (
     "You are a senior engineer checking whether a code submission ACTUALLY IMPLEMENTS the task it "
@@ -76,11 +80,11 @@ STUBS = {
 PAIRS = [(t, lbl, code) for t in STUBS for lbl, code in
          (("complete", TASKS[t]["good"]), ("stub", STUBS[t]))]
 
-def selftest(key):
+def selftest(key, model=JUDGE_MODEL):
     """Live: the judge model must rank each complete ref above its stub."""
     scores = {}
     for task_id, label, code in PAIRS:
-        s = parse_complete(judge_call(TASKS[task_id]["prompt"], code, key, system=RUBRIC))
+        s = parse_complete(judge_call(TASKS[task_id]["prompt"], code, key, system=RUBRIC, model=model))
         scores[(task_id, label)] = s or {}
         print(f"  {task_id:10} {label:8} -> {s}")
     ok = _rank_ok(scores)
@@ -101,28 +105,46 @@ def selftest_offline():
     print(f"\ncompleteness gate selftest (offline): {'valid' if passed else 'BROKEN'}")
     return 0 if passed else 1
 
-def run(run_dir, key):
+def submission(ws, tid):
+    """What the agent delivered. Fixture tasks: only its diff against the seeded repo, not the whole
+    repo. Open tasks may answer in chat with no file. Arm-revealing marker words are neutralized so
+    the judge stays blind."""
+    if TASKS[tid].get("fixture"):
+        text = subprocess.run(["git", "-C", str(ws), "diff", "--cached", "-U10", "HEAD", "--", ".", ":(exclude)_*"],
+                              capture_output=True, text=True).stdout
+    else:
+        text = source_text(ws)
+        if not text.strip() and (ws / "_claude.json").exists():
+            try: text = json.loads((ws / "_claude.json").read_text(encoding="utf-8")).get("result", "") or ""
+            except ValueError: text = ""                # the agent timed out: nothing delivered
+    return re.sub(r"\bponytail:", "note:", text, flags=re.I)
+
+def run(run_dir, key, model=JUDGE_MODEL, arms=None, workers=6):
     run_dir = Path(run_dir)
     if not run_dir.exists(): run_dir = RUNS_DIR / run_dir.name
-    cells = []
+    cells, timed_out = [], defaultdict(int)
     for ws in sorted(p for p in run_dir.iterdir() if p.is_dir()):
         parts = ws.name.split("__")
         if len(parts) != 4 or parts[0] not in TASKS: continue
+        if not parts[0].startswith(LOC_ONLY) or (arms and parts[1] not in arms): continue
+        if (ws / "_claude.json").exists() and not (ws / "_claude.json").stat().st_size:
+            timed_out[parts[1]] += 1; continue           # killed at the cell timeout: nothing to judge, counted apart
         cells.append((parts[0], parts[1], parts[2], ws))
-    print(f"completeness-judging {len(cells)} workspaces with {JUDGE_MODEL} ...")
-    scored = []
-    for i, (tid, arm, model, ws) in enumerate(cells, 1):
-        s = parse_complete(judge_call(TASKS[tid]["prompt"], source_text(ws), key, system=RUBRIC)) \
+    print(f"completeness-judging {len(cells)} workspaces with {model} ...; timed out, not judged: {dict(timed_out) or 0}")
+    def one(cell):
+        tid, arm, mdl, ws = cell
+        r = parse_complete(judge_call(TASKS[tid]["prompt"], submission(ws, tid), key, system=RUBRIC, model=model)) \
             or {SCORE_KEY: None}
-        scored.append({"task": tid, "arm": arm, "model": model, SCORE_KEY: s.get(SCORE_KEY),
-                       "why": s.get("why", ""), "missing": s.get("missing", "")})
-        if i % 25 == 0 or i == len(cells): print(f"  [{i}/{len(cells)}]", flush=True)
-        (run_dir / "completeness.json").write_text(
-            json.dumps({"judge": JUDGE_MODEL, "rubric": RUBRIC, "scores": scored}, indent=2), encoding="utf-8")
+        return {"task": tid, "arm": arm, "model": mdl, "cell": ws.name, SCORE_KEY: r.get(SCORE_KEY),
+                "why": r.get("why", ""), "missing": r.get("missing", "")}
+    with ThreadPoolExecutor(workers) as ex:
+        scored = list(ex.map(one, cells))
+    (run_dir / "completeness.json").write_text(
+        json.dumps({"judge": model, "rubric": RUBRIC, "timed_out": timed_out, "scores": scored}, indent=2), encoding="utf-8")
     by_arm = defaultdict(list)
     for r in scored:
         if isinstance(r[SCORE_KEY], int): by_arm[r["arm"]].append(r[SCORE_KEY])
-    print(f"\n=== completeness by arm (judge: {JUDGE_MODEL}, 0=stub .. 3=fully implements) ===")
+    print(f"\n=== completeness by arm (judge: {model}, 0=stub .. 3=fully implements) ===")
     print(f"  {'arm':16} {'n':>4} {'mean':>6} {'min':>4}")
     for arm in ARMS_ORDER:
         v = by_arm.get(arm, [])
@@ -139,15 +161,17 @@ def main():
     ap.add_argument("--selftest", action="store_true", help="live: judge ranks complete > stub")
     ap.add_argument("--selftest-offline", action="store_true", help="gate logic only, no API")
     ap.add_argument("--run", help="run dir to completeness-judge")
+    ap.add_argument("--model", default=JUDGE_MODEL, help="judge model")
+    ap.add_argument("--arms", help="comma list, default all")
+    ap.add_argument("--workers", type=int, default=6)
     args = ap.parse_args()
     if args.selftest_offline:
         sys.exit(selftest_offline())
     key = load_key()
-    if not key: sys.exit("no ANTHROPIC_API_KEY (.env or env)")
-    if args.selftest: sys.exit(selftest(key))
+    if args.selftest: sys.exit(selftest(key, args.model))
     if args.run:
-        if selftest(key): sys.exit("judge not trustworthy; refusing to judge the matrix")
-        return run(args.run, key)
+        if selftest(key, args.model): sys.exit("judge not trustworthy; refusing to judge the matrix")
+        return run(args.run, key, args.model, args.arms and args.arms.split(","), args.workers)
     sys.exit("give --selftest, --selftest-offline, or --run <dir>")
 
 if __name__ == "__main__":
