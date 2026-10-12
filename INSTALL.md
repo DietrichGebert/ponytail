@@ -126,6 +126,13 @@ Installs the six skills, and Antigravity turns the `/ponytail` commands into ski
 hermes plugins install DietrichGebert/ponytail --enable
 ```
 
+If that stops with `plugin.json declares an unsupported or missing Agent Plugins schema`, it is Hermes' install check (fix pending in [NousResearch/hermes-agent#125937](https://github.com/NousResearch/hermes-agent/pull/125937)). Until it lands, clone the plugin in by hand; Hermes loads it from `plugin.yaml` as usual (verified with Hermes Agent v0.21.7):
+
+```bash
+git clone https://github.com/DietrichGebert/ponytail.git ~/.hermes/plugins/ponytail
+hermes plugins enable ponytail
+```
+
 Restart Hermes after installing. The plugin injects the active Ponytail mode before each LLM turn, registers the bundled skills as `ponytail:<skill>`, and adds `/ponytail`, `/ponytail-review`, `/ponytail-audit`, `/ponytail-debt`, `/ponytail-gain`, and `/ponytail-help`. In shared gateways, restrict `/ponytail` to trusted users with Hermes slash-command access controls; runtime mode is process-local.
 
 ## CodeWhale
