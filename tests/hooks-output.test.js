@@ -44,7 +44,8 @@ function run(t, script, options = {}) {
   `;
   const start = Date.now();
   const child = spawn(process.execPath, ['-e', code], {
-    env, ...(options.ready ? { stdio: ['pipe', 'pipe', 'pipe', 'ipc'] } : {}),
+    // SessionStart maps cwd; keep the output fixture independent of the checkout.
+    cwd: home, env, ...(options.ready ? { stdio: ['pipe', 'pipe', 'pipe', 'ipc'] } : {}),
   });
   let stdout = '', stderr = '';
   child.stdout.setEncoding('utf8');
