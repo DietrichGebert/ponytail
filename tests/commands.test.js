@@ -78,11 +78,11 @@ test('every ponytail-debt copy greps #, // and /* markers but not prose', (t) =>
   }
 });
 
-// The full documented command must skip dependency and build dirs (#948).
-test('the ponytail-debt scan skips .git, node_modules, dist and build', (t) => {
+// The full documented command must skip dependency and build dirs (#948, #1100).
+test('the ponytail-debt scan skips .git, node_modules, dist, build and .next', (t) => {
   const cmd = fs.readFileSync(path.join(root, 'skills/ponytail-debt/SKILL.md'), 'utf8').match(/`(grep -rnE [^`]+)`/)[1];
   const dir = fs.mkdtempSync(path.join(require('os').tmpdir(), 'ponytail-debt-'));
-  for (const sub of ['src', '.git', 'node_modules/pkg', 'dist', 'build']) {
+  for (const sub of ['src', '.git', 'node_modules/pkg', 'dist', 'build', '.next']) {
     fs.mkdirSync(path.join(dir, sub), { recursive: true });
     fs.writeFileSync(path.join(dir, sub, 'a.js'), '// ponytail: marker\n');
   }
