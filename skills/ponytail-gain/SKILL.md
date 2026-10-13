@@ -50,4 +50,3 @@ this card points there instead of inventing one.
 ## Boundaries
 
 One-shot display. Edits nothing, changes no mode.
-"stop ponytail" or "normal mode": revert.
