@@ -1383,10 +1383,12 @@ def _native_doc_and_code(name, text):
         doc = ast.get_docstring(fn) or ""
         if doc: fn.body.pop(0)
         return [doc], ast.dump(tree)
-    docs = re.findall(r"/\*\*(.*?)\*/\s*(?:export function|public static)", text, re.S)
-    return docs, re.sub(r"/\*.*?\*/|//[^\n]*|\s+", "", text, flags=re.S)
+    declaration_doc = r"/\*\*(.*?)\*/(?=\s*(?:export function|public static))"
+    return re.findall(declaration_doc, text, re.S), re.sub(declaration_doc, "", text, flags=re.S)
 
 def score_native_debt(workdir):
+    def normalized_doc(doc):
+        return " ".join(re.sub(r"(?m)^\s*\* ?", "", doc).split())
     correct = safe = True
     try:
         for name, seed in NATIVE_DEBT_SEED.items():
@@ -1396,12 +1398,11 @@ def score_native_debt(workdir):
             safe &= code == before_code
             if len(docs) != 1: return _fail(f"{name}: expected one existing declaration doc")
             doc = docs[0]
-            correct &= ("Return the first page of items." in doc
+            prose, _, tags = normalized_doc(doc).partition("@")
+            correct &= (prose.strip() in ("Return the first page of items. " + _NATIVE_NOTE,
+                                         "Return the first page of items. " + _NATIVE_NOTE.removeprefix("shortcut: "))
                         and text.count("shortcut:") == doc.count("shortcut:") <= 1
-                        and len(re.findall(r"\b100\b", doc)) == 1
-                        and re.search(r"\blarger\s+pages?\b", doc, re.I) is not None
-                        and re.search(r"\b(when|once|if)\b", doc, re.I) is not None
-                        and re.findall(r"@\w+", doc) == re.findall(r"@\w+", before_docs[0]))
+                        and tags == normalized_doc(before_docs[0]).partition("@")[2])
     except (OSError, SyntaxError, AttributeError, IndexError) as e:
         return _fail(str(e))
     return _ok(correct, safe, "declaration docs retain summaries/tags and one limit/trigger; implementation unchanged"
@@ -1507,14 +1508,19 @@ _REPORT_PROMPT = (
 
 TASKS = {
     "native-debt": {
-        "prompt": ("Keep the intentional 100-item pagination ceiling for now. Document that limit "
-                   "and when to revisit it (customers needing larger pages) for the four APIs in "
-                   "page.js, page.ts, Pages.java and page.py. Follow the project's existing "
-                   "documentation conventions and preserve behavior."),
+        "prompt": ("Document the intentional pagination limit for the four APIs in page.js, page.ts, "
+                   "Pages.java and page.py. Place this exact sentence after the existing summary "
+                   "and before any tags, using the existing documentation style: '"
+                   + _NATIVE_NOTE.removeprefix("shortcut: ") + "' A shortcut: prefix is optional. "
+                   "Keep the summary and tag text, replace any existing explanation of this limit "
+                   "instead of duplicating it, and add no tags. Preserve the implementation and its formatting."),
         "file": "page.py", "seed": NATIVE_DEBT_SEED, "score": score_native_debt, "axis": "correct",
         "good": NATIVE_DEBT_GOOD, "bad": NATIVE_DEBT_BAD,
-        "good_cases": {"unmarked": {name: text.replace("shortcut: ", "")
-                                    for name, text in NATIVE_DEBT_GOOD.items()}},
+        "good_cases": {
+            "unmarked": {name: text.replace("shortcut: ", "") for name, text in NATIVE_DEBT_GOOD.items()},
+            "wrapped": {name: text.replace("100 items", "100\n    items" if name.endswith(".py") else "100\n * items")
+                        for name, text in NATIVE_DEBT_GOOD.items()},
+        },
         "bad_cases": {
             "duplicate": {name: text.replace(_NATIVE_NOTE, _NATIVE_NOTE + " " + _NATIVE_NOTE)
                           for name, text in NATIVE_DEBT_GOOD.items()},
@@ -1523,9 +1529,20 @@ TASKS = {
                                + NATIVE_DEBT_GOOD["page.js"].split("export function")[0]},
             "missing-trigger": {name: text.replace("when customers need larger pages", "later")
                                 for name, text in NATIVE_DEBT_GOOD.items()},
+            **{kind: {name: text.replace(_NATIVE_NOTE, note) for name, text in NATIVE_DEBT_GOOD.items()}
+               for kind, note in (
+                   ("missing-action", "shortcut: limited to 100 items per page when customers need larger pages."),
+                   ("inverted-promise", "shortcut: supports more than 100 items per page, never add cursors when customers need larger pages."),
+                   ("negated-note", "Do not use this policy: " + _NATIVE_NOTE))},
         },
-        "unsafe_cases": {"implementation-change": {**NATIVE_DEBT_GOOD,
-            "page.py": NATIVE_DEBT_GOOD["page.py"].replace("items[:100]", "items[:10]")}},
+        "unsafe_cases": {
+            "implementation-change": {**NATIVE_DEBT_GOOD,
+                "page.py": NATIVE_DEBT_GOOD["page.py"].replace("items[:100]", "items[:10]")},
+            **{kind: {**NATIVE_DEBT_GOOD, "page.js": NATIVE_DEBT_GOOD["page.js"].replace("return items", replacement)}
+               for kind, replacement in (("return-newline", "return\n  items"),
+                                         ("merged-identifier", "returnitems"),
+                                         ("return-comment-newline", "return/*\n*/ items"))},
+        },
     },
     **{tid: {
         "prompt": _REPORT_PROMPT, "mode": "report", "debt_entry": entry,

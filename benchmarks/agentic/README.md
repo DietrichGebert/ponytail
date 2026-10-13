@@ -74,7 +74,7 @@ path, unsafe on the adversarial input. That is exactly the code a binary correct
 
 | task | measured behavior |
 |---|---|
-| `native-debt` | Extend existing JSDoc, TSDoc, Javadoc and Python declaration documentation with a limit and revisit trigger. Preserve summaries, tags and implementation; do not duplicate an existing explanation or invent a tag. |
+| `native-debt` | Place the supplied complete limit/revisit sentence in existing JSDoc, TSDoc, Javadoc and Python declaration documentation. Preserve summaries, tags and implementation; do not duplicate an existing explanation or invent a tag. |
 | `debt-report` | Load the selected arm's `skills/ponytail-debt/SKILL.md`; inspect continuation lines, a docstring, legacy notes and an unread linked ticket. |
 | `debt-report-command` | Run the same report case using the `prompt` from that arm's `commands/ponytail-debt.toml`. |
 
@@ -97,9 +97,18 @@ trigger, unread metadata counted as missing, source edits, an unsolicited ledger
 fabricated ticket success. Authoring references also exercise detached comments, duplicated
 limits, invented tags, missing triggers and a changed implementation. Valid native documentation
 passes with or without a `shortcut:` marker; the baseline is not required to adopt the plugin's
-marker convention. Runner checks cover both
+marker convention. All arms receive the same exact affirmative sentence, so this measures native
+format and placement rather than open-ended prose semantics. Only documentation wrapping and
+comment decoration are normalized. The safety check preserves implementation text, including
+whitespace and implementation comments, for JavaScript, TypeScript and Java; Python keeps its AST
+comparison after removing the docstring. Negative references include absent/negated revisit
+actions, newline-after-return and merged identifiers.
+
+Runner checks cover both
 entry points, baseline isolation, different current/candidate instructions, unchanged coding
-prompts, tool isolation and report metrics. These checks do not make API calls.
+prompts, tool isolation and report metrics. Seeds are written as exact UTF-8 bytes. A writer/scorer
+check simulates Windows default CRLF translation and verifies the real seed writer avoids it;
+this is not an actual Windows host run. These checks do not make API calls.
 
 ## Metrics
 

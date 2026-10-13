@@ -24,13 +24,21 @@ check generated and compact rule copies. These checks establish command behavior
 they do not measure a model's choice of documentation style or report accuracy.
 
 After the benchmark and documentation changes, the full suite again passed all 187 tests.
-`python run.py --selftest` passed every existing calibration and 30 new references: eight native
+`python run.py --selftest` passed every existing calibration and 37 new references: fifteen native
 authoring cases, eleven canonical report cases and eleven condensed report cases. A valid native
 doc passes with or without a marker. Invalid references exercise detached/duplicate explanations,
 invented tags, missing triggers, changed behavior, false debt candidates, unauthorized source writes
 and fabricated ticket results. Runner checks also verify per-arm instruction loading, baseline
 isolation, unchanged coding prompts, tool restrictions and report metrics. Rule-copy, generated
 OpenClaw, seven-file version parity and whitespace checks passed.
+
+Eight local code-review lenses identified three benchmark defects, all corrected: erased JavaScript
+whitespace could hide a behavior change, keyword matching could accept a contradictory debt note,
+and platform newline conversion could change seeded bytes. Seven targeted checks failed before
+the fixes and passed afterwards. The authoring task now supplies the same complete sentence to
+every arm and measures its native placement, while preserving implementation text. The writer check
+simulates Windows newline translation; no Windows host was exercised. Cross-model review was
+unavailable because of the same Claude quota limit.
 
 ## Isolated host exercises
 
