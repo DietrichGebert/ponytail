@@ -2,7 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const { createHash } = require('crypto');
-const { getClaudeDir, getConfigDir } = require('./ponytail-config');
+const { getClaudeDir, getQoderDir } = require('./ponytail-config');
 
 const STATE_FILE = '.ponytail-active';
 
@@ -37,7 +37,7 @@ if (isCodex) stateDir = process.env.PLUGIN_DATA;
 // COPILOT_PLUGIN_DATA is unset under VS Code Copilot, so fall back to
 // getClaudeDir() rather than building a path from undefined.
 if (isCopilot) stateDir = process.env.COPILOT_PLUGIN_DATA || getClaudeDir();
-if (isQoder) stateDir = path.join(os.homedir(), '.qoder');
+if (isQoder) stateDir = getQoderDir();
 if (isCodeBuddy) stateDir = process.env.CODEBUDDY_CONFIG_DIR || path.join(os.homedir(), '.codebuddy');
 if (isCursor) stateDir = path.join(os.homedir(), '.cursor');
 
@@ -101,10 +101,16 @@ function cursorRuleNotice(rule) {
     'delete that rule so hooks.json can manage the level.';
 }
 
+// Synchronous: every hook calls process.exit() right after this, and on macOS a pipe
+// write is async, so a pending write died with the process (#1043).
+function writeOut(text) {
+  fs.writeSync(1, text);
+}
+
 function writeHookOutput(event, mode, context = '') {
   if (isCopilot) {
     // Copilot reads additionalContext on SessionStart; ignores output elsewhere.
-    process.stdout.write(JSON.stringify(
+    writeOut(JSON.stringify(
       event === 'SessionStart' && context ? { additionalContext: context } : {}));
     return;
   }
@@ -122,7 +128,7 @@ function writeHookOutput(event, mode, context = '') {
         additionalContext: context,
       };
     }
-    process.stdout.write(JSON.stringify(output));
+    writeOut(JSON.stringify(output));
     return;
   }
   if (isQoder || isCodeBuddy) {
@@ -136,7 +142,7 @@ function writeHookOutput(event, mode, context = '') {
         additionalContext: context,
       };
     }
-    process.stdout.write(JSON.stringify(output));
+    writeOut(JSON.stringify(output));
     return;
   }
   if (isCursor) {
@@ -148,17 +154,17 @@ function writeHookOutput(event, mode, context = '') {
     if (!context) return;
     const output = { additional_context: context };
     if (event === 'UserPromptSubmit') output.continue = true;
-    process.stdout.write(JSON.stringify(output));
+    writeOut(JSON.stringify(output));
     return;
   }
   // Native Claude: SessionStart accepts raw stdout, but SubagentStart needs the
   // hookSpecificOutput JSON form or the context is dropped.
   if (event === 'SubagentStart') {
-    process.stdout.write(JSON.stringify(
+    writeOut(JSON.stringify(
       { hookSpecificOutput: { hookEventName: event, additionalContext: context } }));
     return;
   }
-  process.stdout.write(context);
+  writeOut(context);
 }
 
 module.exports = {

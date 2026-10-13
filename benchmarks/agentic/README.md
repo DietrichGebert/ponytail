@@ -107,6 +107,12 @@ behavior missing), `2` mostly complete (a stated requirement missing), `3` fully
 task. Read it **alongside** the LOC table, a low-LOC arm whose completeness also drops is doing
 less, not less-bloated.
 
+It judges only the tasks scored on size alone (`vibe-*`, `open-*`, `tmpl-*`). On the repo tasks the
+judge sees the agent's diff, not the whole seeded repo; an answer given only in chat is judged from
+the chat; `ponytail:` markers are neutralized so the judge stays blind; runs killed at the timeout are
+counted apart instead of scored 0. Without an API key it runs through the `claude` CLI login (no
+temperature setting there; the self-test gates it the same way).
+
 Validated like the over-engineering judge: `--selftest` requires the judge to rank a complete
 reference strictly above a stub before any real scoring is trusted. `--selftest-offline` checks
 the gate logic with no API call (no key needed).
@@ -115,6 +121,7 @@ the gate logic with no API call (no key needed).
 python complete.py --selftest-offline  # validate the gate logic, no API
 python complete.py --selftest          # validate the judge (small spend)
 python complete.py --run runs/<stamp>  # completeness-score every workspace
+python complete.py --run runs/<stamp> --model claude-opus-5-5 --arms baseline,ponytail2 --workers 6
 ```
 
 ## Reproduce
