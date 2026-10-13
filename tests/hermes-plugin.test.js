@@ -257,6 +257,40 @@ print(json.dumps({'first': first, 'second': second, 'switched': switched, 'after
   assert.equal(data.after_switch, null);
 });
 
+test('Hermes /ponytail off reaches the model once, and a later level re-injects the ruleset', () => {
+  // The ruleset from the first turn is replayed from api_content on every later
+  // turn, and the command's reply goes to the user only, so off must be injected.
+  const output = python(String.raw`
+import importlib.util, json
+spec = importlib.util.spec_from_file_location('ponytail_hermes_plugin', '__init__.py')
+mod = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(mod)
+first = mod._pre_llm_call(conversation_history=[])
+history = [{
+    'role': 'user',
+    'content': 'first task',
+    'api_content': 'first task\\n\\n' + first['context'],
+}]
+mod._handle_mode_command('off')
+nothing_persisted = mod._pre_llm_call(conversation_history=[])
+off = mod._pre_llm_call(conversation_history=history)
+history.append({
+    'role': 'user',
+    'content': 'second task',
+    'api_content': 'second task\\n\\nPONYTAIL MODE OFF',
+})
+still_off = mod._pre_llm_call(conversation_history=history)
+mod._handle_mode_command('full')
+back_on = mod._pre_llm_call(conversation_history=history)
+print(json.dumps({'nothing_persisted': nothing_persisted, 'off': off, 'still_off': still_off, 'back_on': back_on}))
+`);
+  const data = JSON.parse(output);
+  assert.equal(data.nothing_persisted, null);
+  assert.deepEqual(data.off, { context: 'PONYTAIL MODE OFF' });
+  assert.equal(data.still_off, null);
+  assert.match(data.back_on.context, /PONYTAIL MODE ACTIVE — level: full/);
+});
+
 test('Hermes gateway rewrite respects slash access denial', () => {
   const output = python(String.raw`
 import importlib.util, json

@@ -115,24 +115,24 @@ def _pre_llm_call(
     session_id: str = "", conversation_history: Any = None, **_: Any
 ) -> dict[str, str] | None:
     mode = _current_mode or _default_mode()
-    context = build_injected_context(mode)
-    if not context:
-        return None
+    # Off is injected too: the ruleset from an earlier turn is replayed every turn,
+    # and the /ponytail off reply goes to the user, never to the model.
+    context = build_injected_context(mode) or "PONYTAIL MODE OFF"
 
     # Hermes persists hook context in api_content for cache-stable replay.
     # Re-inject only when the active mode changed or compaction removed it.
-    marker = "PONYTAIL MODE ACTIVE — level: "
     for message in reversed(conversation_history or []):
         if not isinstance(message, dict):
             continue
         api_content = message.get("api_content")
         if not isinstance(api_content, str):
             continue
-        matches = re.findall(rf"{re.escape(marker)}([a-z]+)", api_content)
+        matches = re.findall(r"PONYTAIL MODE (?:ACTIVE — level: ([a-z]+)|OFF)", api_content)
         if matches:
-            return None if matches[-1] == mode else {"context": context}
+            return None if (matches[-1] or "off") == mode else {"context": context}
 
-    return {"context": context}
+    # Nothing persisted, so off has nothing to switch off.
+    return None if mode == "off" else {"context": context}
 
 
 def _skill_prompt(command: str, args: str = "") -> str:
