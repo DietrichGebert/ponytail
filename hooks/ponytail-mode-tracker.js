@@ -42,6 +42,7 @@ function finish() {
     // Match /ponytail commands
     let modeSwitched = false;
     let deactivated = false;
+    let defaultNotice = '';
     if (/^[/@$]ponytail/.test(prompt)) {
       const parts = prompt.split(/\s+/);
       const cmd = parts[0].replace(/^[@$]/, '/');
@@ -62,9 +63,12 @@ function finish() {
           const dmode = parts[2];
           if (dmode === 'off' || dmode === 'lite' || dmode === 'full' || dmode === 'ultra') {
             writeDefaultMode(dmode);
-            writeHookOutput('UserPromptSubmit', dmode, 'PONYTAIL DEFAULT SET — new sessions start in ' + dmode + '.');
+            defaultNotice = 'PONYTAIL DEFAULT SET — new sessions start in ' + dmode + '.';
+            if (!isQoder) writeHookOutput('UserPromptSubmit', dmode, defaultNotice);
           }
-          return; // don't fall through to the session-mode switch
+          // Qoder still needs this turn's ruleset: the block below folds the
+          // notice into it. mode stays null, so the session level is untouched.
+          if (!isQoder) return; // don't fall through to the session-mode switch
         }
         if (arg === 'lite') mode = 'lite';
         else if (arg === 'full') mode = 'full';
@@ -146,10 +150,12 @@ function finish() {
       if (currentMode && currentMode !== 'off') {
         // ponytail: one JSON per invocation — mode-switch confirmation is
         // folded into the ruleset header so Qoder gets both in one write.
-        const header = modeSwitched
+        const header = (defaultNotice ? defaultNotice + '\n\n' : '') + (modeSwitched
           ? 'PONYTAIL MODE CHANGED — level: ' + currentMode + '\n\n'
-          : '';
+          : '');
         writeHookOutput('UserPromptSubmit', currentMode, header + getPonytailInstructions(currentMode));
+      } else if (defaultNotice) {
+        writeHookOutput('UserPromptSubmit', currentMode, defaultNotice);
       }
     }
   } catch (e) {

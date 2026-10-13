@@ -636,6 +636,16 @@ assert.match(
   /PONYTAIL MODE CHANGED — level: ultra/,
 );
 
+// `/ponytail default lite` on Qoder: the turn still gets the live ruleset, with
+// the confirmation folded into the same JSON, and the live level stays ultra.
+const qoderDefaultEnv = { ...qoderEnv, XDG_CONFIG_HOME: path.join(qoderHome, '.config') };
+result = run('ponytail-mode-tracker.js', qoderDefaultEnv, JSON.stringify({ prompt: '/ponytail default lite' }));
+assert.equal(result.status, 0, result.stderr);
+assert.equal(fs.readFileSync(qoderState, 'utf8'), 'ultra');
+output = JSON.parse(result.stdout);
+assert.match(output.hookSpecificOutput.additionalContext, /^PONYTAIL DEFAULT SET — new sessions start in lite\./);
+assert.match(output.hookSpecificOutput.additionalContext, /PONYTAIL MODE ACTIVE — level: ultra/);
+
 // "stop ponytail": deactivates and persists off so a later prompt does
 // not mistake the missing flag for first-run initialization.
 result = run(
@@ -655,6 +665,12 @@ result = run(
 );
 assert.equal(result.status, 0, result.stderr);
 assert.equal(result.stdout, '', 'Qoder must stay off on later prompts');
+assert.equal(fs.readFileSync(qoderState, 'utf8'), 'off');
+
+// While off, `/ponytail default` only confirms; it must not switch ponytail on.
+result = run('ponytail-mode-tracker.js', qoderDefaultEnv, JSON.stringify({ prompt: '/ponytail default full' }));
+assert.equal(result.status, 0, result.stderr);
+assert.equal(JSON.parse(result.stdout).hookSpecificOutput.additionalContext, 'PONYTAIL DEFAULT SET — new sessions start in full.');
 assert.equal(fs.readFileSync(qoderState, 'utf8'), 'off');
 
 // Subagent injection via PreToolUse (task|Task matcher): when ponytail is
