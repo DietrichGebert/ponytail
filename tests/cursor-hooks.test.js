@@ -19,6 +19,7 @@ const { spawnSync } = require('child_process');
 const root = path.join(__dirname, '..');
 const rootFwd = root.replace(/\\/g, '/');
 const TEMPLATE = 'hooks/cursor-hooks.json';
+const { isPonytailHook } = require('../scripts/cursor-hooks');
 
 // Keep host detection and config resolution deterministic whatever shell the
 // suite runs in (a Cursor hook env, a Codex shell, a machine-wide default mode).
@@ -106,6 +107,12 @@ test('cursor hooks template is a valid hooks.json with the two events that can i
   }
 });
 
+test('hook detection ignores later lookalike arguments after a real ponytail hook', () => {
+  assert.equal(isPonytailHook({
+    command: 'node "/opt/p/hooks/ponytail-activate.js" --log /tmp/hooks/ponytail-x/',
+  }), true);
+});
+
 test('isCursor is off outside a Cursor hook process', () => {
   const { isCursor } = require('../hooks/ponytail-runtime');
   assert.equal(isCursor, false);
@@ -121,8 +128,8 @@ test('sessionStart injects the default-level ruleset as additional_context and k
   const output = parse(run('ponytail-activate.js', c.env, input));
   assert.deepEqual(Object.keys(output), ['additional_context']);
   assert.match(output.additional_context, /^PONYTAIL MODE ACTIVE — level: ultra/);
-  assert.match(output.additional_context, /YAGNI extremist/, 'ultra row must survive the level filter');
-  assert.doesNotMatch(output.additional_context, /Build what's asked/, 'lite row must be filtered out');
+  assert.match(output.additional_context, /Also question the request/, 'ultra row must survive the level filter');
+  assert.doesNotMatch(output.additional_context, /Build what was asked/, 'lite row must be filtered out');
   assert.doesNotMatch(output.additional_context, /STATUSLINE SETUP NEEDED/, 'Cursor has no Claude statusline to nudge about');
   assert.equal(fs.readFileSync(c.flag, 'utf8'), 'ultra');
   assert.equal(fs.existsSync(path.join(c.home, '.claude')), false, 'Cursor state must not land in ~/.claude');
@@ -157,8 +164,8 @@ test('beforeSubmitPrompt tracks /ponytail commands and delivers the new level ru
   assert.equal(sw.continue, true, 'must never block the prompt');
   assert.equal(sw.user_message, undefined, 'Cursor shows user_message only for blocked prompts');
   assert.match(sw.additional_context, /^PONYTAIL MODE CHANGED — level: lite/);
-  assert.match(sw.additional_context, /Build what's asked/, 'Cursor has no /ponytail command, so the level ruleset rides along');
-  assert.doesNotMatch(sw.additional_context, /YAGNI extremist/);
+  assert.match(sw.additional_context, /Build what was asked/, 'Cursor has no /ponytail command, so the level ruleset rides along');
+  assert.doesNotMatch(sw.additional_context, /Also question the request/);
   assert.equal(fs.readFileSync(c.flag, 'utf8'), 'lite');
 
   // Bare /ponytail reports the live level without resetting it.
@@ -231,6 +238,7 @@ test('installer merges into an existing ~/.cursor/hooks.json and leaves unrelate
     hooks: {
       sessionStart: [{ command: './hooks/their-session.sh' }],
       afterFileEdit: [{ command: './hooks/format.sh', matcher: 'Write' }],
+      stop: [{ command: 'node "./hooks/my-ponytail-logger.js"' }],
     },
   };
   fs.writeFileSync(file, JSON.stringify(theirs));
@@ -241,6 +249,7 @@ test('installer merges into an existing ~/.cursor/hooks.json and leaves unrelate
   let config = JSON.parse(fs.readFileSync(file, 'utf8'));
   assert.equal(config.version, 1);
   assert.deepEqual(config.hooks.afterFileEdit, theirs.hooks.afterFileEdit);
+  assert.deepEqual(config.hooks.stop, theirs.hooks.stop, 'similarly named user hook must survive install');
   assert.equal(config.hooks.sessionStart[0].command, './hooks/their-session.sh', 'their sessionStart hook stays first and intact');
   assert.equal(config.hooks.sessionStart.length, 2);
   assert.deepEqual(config.hooks.sessionStart[1], { command: `node "${rootFwd}/hooks/ponytail-activate.js"`, timeout: 5 });
@@ -315,3 +324,20 @@ test('installer refuses to touch a malformed hooks.json', () => {
     assert.equal(fs.readFileSync(file, 'utf8'), broken, 'malformed file must be left byte-for-byte intact');
   }
 });
+
+for (const [name, config] of Object.entries({
+  'root-array': [{ command: 'keep me' }],
+  'hooks-array': { hooks: [{ command: 'keep me' }] },
+  'event-string': { hooks: { sessionStart: 'node custom-hook.js' } },
+})) {
+  test(`installer refuses ${name} without overwriting hooks.json`, () => {
+    const c = cursorEnv(`invalid-${name}`);
+    const file = path.join(c.home, '.cursor', 'hooks.json');
+    fs.mkdirSync(path.dirname(file), { recursive: true });
+    const original = JSON.stringify(config, null, 2) + '\n';
+    fs.writeFileSync(file, original);
+    const result = cli(['install'], c.env);
+    assert.notEqual(result.status, 0, 'invalid config must not be silently rewritten');
+    assert.equal(fs.readFileSync(file, 'utf8'), original);
+  });
+}

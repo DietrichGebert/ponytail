@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 
-import ponytailExtension from "../index.js";
+import ponytailExtension, { parsePonytailCommand } from "../index.js";
 
 function createPiHarness() {
   const events = new Map();
@@ -327,3 +327,22 @@ test("PONYTAIL_HIDE_STATUS=0 does not hide the indicator", async () => withTempC
 
   assert.ok(statusWrites.length > 0, "0 must be treated as 'do not hide'");
 }));
+
+test("/ponytail autocompletes modes, commands and default <mode>", () => {
+  const { commands } = createPiHarness();
+  const complete = (prefix) => commands.get("ponytail").getArgumentCompletions(prefix);
+
+  assert.deepEqual(complete("").map((item) => item.value),
+    ["off", "lite", "full", "ultra", "status", "default off", "default lite", "default full", "default ultra"]);
+  assert.deepEqual(complete("fu").map((item) => item.value), ["full"]);
+  assert.deepEqual(complete("default ").map((item) => item.value), ["default off", "default lite", "default full", "default ultra"]);
+  assert.deepEqual(complete("default l").map((item) => item.value), ["default lite"]);
+  assert.deepEqual(complete("default").map((item) => item.value),
+    ["default off", "default lite", "default full", "default ultra"], "never a bare default: Enter would submit it without a mode");
+  assert.equal(complete("status x"), null, "no command takes a second word after status");
+  assert.equal(complete("lite x"), null);
+  assert.equal(complete("bogus"), null, "nothing matches an unknown prefix");
+  for (const { value } of complete("")) {
+    assert.notEqual(parsePonytailCommand(value).type, "invalid", `Enter on "${value}" must run a valid command`);
+  }
+});

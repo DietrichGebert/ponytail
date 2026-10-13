@@ -31,6 +31,9 @@ the job properly, so any difference is the skill's effect, not the model being c
 The last two are the seven-word prompts from the #126 writeup, included on purpose: if a one-line
 instruction matches ponytail, the benchmark should show it.
 
+`ponytail2` loads a candidate plugin from `PONYTAIL2_PLUGIN_DIR`, next to the released `ponytail`. That is how
+Ponytail 5 was measured against the previous Ponytail (v4.13) and no skill in one run.
+
 ## Tasks
 
 Two tiers. **LOC tier**: 12 one-line tickets against the real template repo (6 frontend
@@ -44,6 +47,11 @@ deterministic and stdlib-only.
 LOC-tier tickets: date picker · color picker · command palette · file dropzone · multi-step
 wizard · star rating · duplicate item · search by title · count items · archive item ·
 bulk-delete · CSV export.
+
+Since 2026-10 the suite has **39 tasks**: the 12 template tickets, 18 surgical tasks with hidden checks
+(the safety tasks below plus bug fixes, refunds, a privacy case, and renames or format changes that must
+reach every caller), and 9 open "build me" and "show me" requests where the agent picks the scope. The
+full list is in `tasks.py`.
 
 Safety-tier tasks:
 
@@ -99,6 +107,12 @@ behavior missing), `2` mostly complete (a stated requirement missing), `3` fully
 task. Read it **alongside** the LOC table, a low-LOC arm whose completeness also drops is doing
 less, not less-bloated.
 
+It judges only the tasks scored on size alone (`vibe-*`, `open-*`, `tmpl-*`). On the repo tasks the
+judge sees the agent's diff, not the whole seeded repo; an answer given only in chat is judged from
+the chat; `ponytail:` markers are neutralized so the judge stays blind; runs killed at the timeout are
+counted apart instead of scored 0. Without an API key it runs through the `claude` CLI login (no
+temperature setting there; the self-test gates it the same way).
+
 Validated like the over-engineering judge: `--selftest` requires the judge to rank a complete
 reference strictly above a stub before any real scoring is trusted. `--selftest-offline` checks
 the gate logic with no API call (no key needed).
@@ -107,6 +121,7 @@ the gate logic with no API call (no key needed).
 python complete.py --selftest-offline  # validate the gate logic, no API
 python complete.py --selftest          # validate the judge (small spend)
 python complete.py --run runs/<stamp>  # completeness-score every workspace
+python complete.py --run runs/<stamp> --model claude-opus-5-5 --arms baseline,ponytail2 --workers 6
 ```
 
 ## Reproduce
@@ -152,7 +167,19 @@ re-applied offline with `--rescore`, you never pay the API twice for a measureme
 
 ## Results
 
-**2026-06-18, Haiku 4.5, `n=4`.** Two tiers:
+**2026-10-07, Ponytail 5, Opus 5.5, 5 runs, all 39 tasks** (`--arms baseline,ponytail,ponytail2 --models opus --runs 5`):
+
+| vs no skill | lines of code | output tokens | cost | time | hidden checks passed |
+|---|--:|--:|--:|--:|--:|
+| **Ponytail 5** | **-53%** | **-45%** | **-26%** | **-41%** | **97%** |
+| Ponytail (v4.13) | -48% | -43% | -16% | -38% | 96% |
+| no skill | | | | | 96% |
+
+98% of risky logic ships with a test (no skill: 68%). Every cell ran in a fresh temp folder outside any git
+repo and was moved to `runs/<stamp>/` afterwards; inside a repo, Claude Code shows the model recent commit
+messages. Full writeup: [results/2026-10-07-agentic.md](../results/2026-10-07-agentic.md).
+
+**Earlier: 2026-06-18, Haiku 4.5, `n=4`, previous Ponytail.** Two tiers:
 
 - **12 real-repo features** (LOC via `git diff`): ponytail cuts **60–94%** on features with an
   over-build trap (date picker 404→23, color picker 287→23, dropzone 251→95) and is a wash on

@@ -33,8 +33,8 @@ const GEMINI_AUTO_HOOKS = 'hooks/hooks.json';
 // contextFileName points at must actually carry the rules, not just exist.
 const RULE_INVARIANTS = [
   'lazy senior',
-  'input validation at trust boundaries',
-  'naive heuristic',
+  'validation at trust boundaries',
+  'shortcut: <the limit>, <when to upgrade>',
 ];
 
 function read(relPath) {
