@@ -163,7 +163,7 @@ ponytail은 GitHub의 `DietrichGebert/ponytail`이나 npm의 `@dietrichgebert/po
 | `/ponytail-gain` | 벤치마크에서 측정한 효과(코드 감소, 비용 감소, 속도 향상)를 점수판으로 보여 준다. |
 | `/ponytail-help` | 위 명령어들의 빠른 참고. |
 
-명령어는 스킬을 지원하는 호스트가 있어야 한다 (Claude Code, Codex, Devin CLI, OpenCode, Gemini, pi, Hermes Agent, Qoder, Grok Build). Codex CLI와 IDE 확장에서는 플러그인 네임스페이스 아래의 스킬이므로 `$ponytail:ponytail-review`처럼 부른다. [훅](../INSTALL.md#cursor)을 쓰는 Cursor는 `/ponytail` 레벨 전환만 되고, 일반 메시지로 입력한다. 지시문만 쓰는 어댑터(Cursor 규칙 파일, Windsurf, Cline, Copilot, Kiro, Antigravity)는 명령어 없이 항상 켜진 규칙만 불러온다.
+명령어는 스킬을 지원하는 호스트가 있어야 한다 (Claude Code, Codex, Devin CLI, OpenCode, Gemini, Antigravity CLI, pi, Hermes Agent, Qoder, Grok Build). Codex CLI와 IDE 확장에서는 플러그인 네임스페이스 아래의 스킬이므로 `$ponytail:ponytail-review`처럼 부른다. [훅](../INSTALL.md#cursor)을 쓰는 Cursor는 `/ponytail` 레벨 전환만 되고, 일반 메시지로 입력한다. 지시문만 쓰는 어댑터(Cursor 규칙 파일, Windsurf, Cline, Copilot, Kiro, Antigravity의 `AGENTS.md` 대체 모드)는 명령어 없이 항상 켜진 규칙만 불러온다.
 
 ## 자주 묻는 질문
 

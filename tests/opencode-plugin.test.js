@@ -118,6 +118,35 @@ test('V2 /ponytail ultra persists the level and sends the template with the args
   assert.ok(!prompts[0].text.includes('$ARGUMENTS'), 'template placeholder substituted');
 });
 
+test('V2 commands keep attachments without offsets into the replaced prompt text', async () => {
+  const { added, prompts } = await setupV2();
+  const prompt = {
+    text: '@src/a.ts',
+    files: [{ path: 'src/a.ts', mention: { start: 0, end: 9 } }],
+    agents: [{ name: 'reviewer', mention: { start: 0, end: 9 } }],
+    skills: [{ name: 'test', mention: { start: 0, end: 9 } }],
+  };
+  await added.commands['ponytail-review'].execute({ sessionID: 's', prompt, delivery: 'steer' });
+  assert.notEqual(prompts[0].text, prompt.text);
+  assert.deepEqual(prompts[0].files, [{ path: 'src/a.ts' }]);
+  assert.deepEqual(prompts[0].agents, [{ name: 'reviewer' }]);
+  assert.deepEqual(prompts[0].skills, [{ name: 'test' }]);
+  assert.deepEqual(prompt.files[0].mention, { start: 0, end: 9 }, 'original input is unchanged');
+});
+
+test('V2 command without $ARGUMENTS appends the typed input instead of dropping it (#1087)', async () => {
+  const { added, prompts } = await setupV2();
+  assert.ok(added.commands['ponytail-review'], 'ponytail-review is registered');
+  await added.commands['ponytail-review'].execute({ sessionID: 's', prompt: { text: ' feature/login ' }, delivery: 'steer' });
+  await added.commands['ponytail-review'].execute({ sessionID: 's', prompt: { text: '  ' }, delivery: 'steer' });
+  await added.commands['ponytail-review'].execute({ sessionID: 's', prompt: {}, delivery: 'steer' });
+  const [withInput, blank, missing] = prompts.map((p) => p.text);
+  assert.ok(withInput.endsWith('\n\nfeature/login'), 'input appended, trimmed');
+  assert.equal(withInput.slice(0, -'\n\nfeature/login'.length), blank, 'blank input leaves the template unchanged');
+  assert.equal(missing, blank);
+  assert.ok(!blank.includes('$ARGUMENTS'));
+});
+
 test('V2 context hook injects the ruleset, and stays silent when off', async () => {
   try { fs.unlinkSync(statePath); } catch (e) {}
   let { hooks } = await setupV2();
@@ -133,6 +162,23 @@ test('V2 context hook injects the ruleset, and stays silent when off', async () 
   ({ hooks } = await setupV2());
   const quiet = { system: [] };
   await hooks.context(quiet);
+  assert.deepEqual(quiet.system, []);
+});
+
+test('V2 compaction hook injects the same ruleset as context, and stays silent when off (#1086)', async () => {
+  try { fs.unlinkSync(statePath); } catch (e) {}
+  let { hooks } = await setupV2();
+  const fromContext = { system: [] };
+  const fromCompaction = { system: [] };
+  await hooks.context(fromContext);
+  await hooks.compaction(fromCompaction);
+  assert.equal(fromCompaction.system.length, 1);
+  assert.deepEqual(fromCompaction.system, fromContext.system);
+
+  fs.writeFileSync(statePath, 'off');
+  ({ hooks } = await setupV2());
+  const quiet = { system: [] };
+  await hooks.compaction(quiet);
   assert.deepEqual(quiet.system, []);
 });
 
@@ -217,6 +263,25 @@ test('unsupported /ponytail arguments do not reset the current mode', async () =
   fs.writeFileSync(statePath, 'ultra');
   await hooks['command.execute.before']({ command: 'ponytail', arguments: 'status', sessionID: 's' });
   assert.equal(fs.readFileSync(statePath, 'utf8'), 'ultra');
+});
+
+test('/ponytail review is not a level: the flag keeps the current mode (#736)', async () => {
+  const hooks = await loadPlugin.server({});
+  fs.writeFileSync(statePath, 'ultra');
+  await hooks['command.execute.before']({ command: 'ponytail', arguments: 'review', sessionID: 's' });
+  assert.equal(fs.readFileSync(statePath, 'utf8'), 'ultra');
+  // A review saved by an older version falls back to the default instead of latching.
+  fs.writeFileSync(statePath, 'review');
+  assert.match((await transform(hooks))[0], /PONYTAIL MODE ACTIVE — level: full/);
+});
+
+test('/ponytail default lite saves the default and leaves the session level alone', async () => {
+  const hooks = await loadPlugin.server({});
+  fs.writeFileSync(statePath, 'ultra');
+  await hooks['command.execute.before']({ command: 'ponytail', arguments: 'default lite', sessionID: 's' });
+  assert.equal(JSON.parse(fs.readFileSync(path.join(tmp, 'ponytail', 'config.json'), 'utf8')).defaultMode, 'lite');
+  assert.equal(fs.readFileSync(statePath, 'utf8'), 'ultra');
+  fs.rmSync(path.join(tmp, 'ponytail'), { recursive: true, force: true });
 });
 
 test('unrelated commands do not touch the flag', async () => {
