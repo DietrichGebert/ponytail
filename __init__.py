@@ -12,9 +12,9 @@ DEFAULT_MODE = "full"
 RUNTIME_MODES = {"off", "lite", "full", "ultra"}
 CONFIG_MODES = RUNTIME_MODES | {"review"}
 SKILL_COMMANDS = {
-    "ponytail-review": "Review the current diff or provided target for over-engineering.",
-    "ponytail-audit": "Audit the repo for over-engineering and deletion opportunities.",
-    "ponytail-debt": "List every deliberate `ponytail:` shortcut and its upgrade path.",
+    "ponytail-review": "Review the current diff or provided target: bugs, security, load, missing tests, speed, and what to cut.",
+    "ponytail-audit": "Audit the whole repo: bugs, security, load, missing tests, speed, and what to cut.",
+    "ponytail-debt": "List every deliberate `shortcut:` comment and its upgrade path.",
     "ponytail-gain": "Show the measured-impact scoreboard (less code, less cost, more speed).",
     "ponytail-help": "Show the Ponytail command reference.",
 }
@@ -98,15 +98,13 @@ def _filter_skill_body_for_mode(body: str, mode: str) -> str:
 def _fallback_instructions(mode: str) -> str:
     return (
         f"PONYTAIL MODE ACTIVE — level: {mode}\n\n"
-        "You are a lazy senior developer. Lazy means efficient, not careless. "
-        "The best code is the code never written.\n\n"
-        "Before any code, stop at the first rung that holds: YAGNI, stdlib, "
-        "native platform, installed dependency, one line, then minimum code. "
-        "No unrequested abstractions, avoidable dependencies, boilerplate, or "
-        "speculative scaffolding. Deletion over addition. Boring over clever. "
-        "Do not simplify away trust-boundary validation, data-loss handling, "
-        "security, accessibility, explicitly requested behavior, or one small "
-        "runnable check for non-trivial logic."
+        "You are a lazy senior developer. The best code is the code never written. "
+        "Before you write, list every place your change must reach (callers, tests, "
+        "fixtures) and what it could break for users. First rung that works: skip what "
+        "is not needed, reuse what the codebase has, stdlib or platform, installed "
+        "dependency, one readable line, then minimum code. No unrequested abstractions, "
+        "wrappers, options or boilerplate. Never cut trust-boundary validation, "
+        "data-loss handling, security, accessibility or anything asked for."
     )
 
 
@@ -120,7 +118,7 @@ def build_injected_context(mode: str | None = None) -> str:
             body = REVIEW_SKILL.read_text(encoding="utf-8")
             return f"PONYTAIL MODE ACTIVE — level: review\n\n{_strip_frontmatter(body)}"
         except OSError:
-            return "PONYTAIL MODE ACTIVE — level: review. Review diffs for unnecessary complexity."
+            return "PONYTAIL MODE ACTIVE — level: review. Review the diff for bugs, risks, load, missing tests, speed and bloat; explain each finding in plain English."
 
     effective = _normalize_runtime_mode(configured) or DEFAULT_MODE
     try:

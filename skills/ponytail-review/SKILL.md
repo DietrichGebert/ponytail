@@ -1,62 +1,101 @@
 ---
 name: ponytail-review
 description: >
-  Code review focused exclusively on over-engineering. Finds what to delete:
-  reinvented standard library, unneeded dependencies, speculative abstractions,
-  dead flexibility. One line per finding: location, what to cut, what replaces
-  it. Use when the user says "review for over-engineering", "what can we
-  delete", "is this over-engineered", "simplify review", or invokes
-  /ponytail-review. Complements correctness-focused review, this one only
-  hunts complexity.
+  Quality review of a change: is the logic right, is it safe, does it hold
+  under real load, is risky code tested, is it fast enough, and is every line
+  needed. Reads the connected code, not only the diff. Each finding is
+  explained in plain English. Use for "review this", "code review", "review
+  the last commit", "review my PR", "is this over-engineered", /ponytail-review.
 ---
 
-Review diffs for unnecessary complexity. One line per finding: location, what
-to cut, what replaces it. The diff's best outcome is getting shorter.
+Review a change like the senior developer who will be paged when it breaks.
+Order of importance: correct, safe, holds under load, tested, fast, lean.
+Lean still matters: every extra line must be read, tested and fixed later.
+This is a report the user asked for, so give it in full.
 
-## Format
+## 1. Understand first
 
-`<N>. L<line>: <tag> <what>. <replacement>.`, or `<N>. <file>:L<line>: ...` for
-multi-file diffs. Number findings `1.`, `2.`, ... across the whole report, so the
-user can say "fix 2 and 5".
+- Review what the user names: uncommitted or staged changes, a branch, a PR
+  link, or files. Nothing named: the uncommitted changes, or the last commit
+  if there are none.
+- Read the diff, then the code it touches: callers of every changed function,
+  the functions it calls, the tests, the README.
+- Trace the real flow: where data comes in, what is stored, what goes out.
+- A change can break code it does not touch. When a signature, return value
+  or behavior changes, grep every caller.
+- Find the expected load in the repo (README, deploy config): one person
+  running a script, or many users and processes at once. Judge scale against
+  that, and say which load you assumed.
 
-Tags:
+## 2. Look for
 
-- `delete:` dead code, unused flexibility, speculative feature. Replacement: nothing.
-- `stdlib:` hand-rolled thing the standard library ships. Name the function.
-- `native:` dependency or code doing what the platform already does. Name the feature.
-- `reuse:` equivalent helper, util, or pattern already in this repo. Name the path.
-- `yagni:` abstraction with one implementation, config nobody sets, layer with one caller.
-- `shrink:` same logic, fewer lines. Show the shorter form.
+1. **Bug:** wrong result, crash, missed edge case (empty, zero, last item,
+   rounding, time zones), a caller broken by the change, a fix applied in one
+   caller while the shared function stays broken.
+2. **Risk:** security holes (injection, weak randomness, secrets, missing
+   checks on input from users), data loss (errors swallowed, writes in the
+   wrong order, no transaction).
+3. **Scale:** fine for one user, wrong for many: check-then-write races, the
+   same work done by every process, memory or lists that only grow, a query
+   per item, O(n^2) on big input, per-process state that must be shared.
+4. **Missing test:** risky new logic (a branch, a parser, money, security,
+   data writes, a bug fix) with no test that fails when it breaks. One good
+   test, not coverage.
+5. **Speed:** big slowdowns are problems. Small wins (work repeated in a hot
+   loop) are suggestions; some software counts every millisecond.
+6. **Lean:** code that should not exist or should be smaller.
+   - delete: dead code, unused options, speculative features
+   - reuse: the repo already has this helper (name the path)
+   - stdlib / native: the standard library or platform already does it; a
+     new dependency for a few lines
+   - yagni: abstraction with one implementation, config nobody sets
+   - merge: near-copies that must change together
+   - split: one function doing several unrelated jobs, so it is hard to read
+     or test. Split by job, never by line count, and never into helpers that
+     exist only to make a function shorter.
 
+## 3. Check before you report
 
-## Examples
+- Every finding needs a concrete case: "this input or situation leads to this
+  wrong result". No case, no finding.
+- Re-read the lines and confirm: the caller exists, the value can really be
+  empty, the code really is unused.
+- A shortcut marked with a `shortcut:` (or older `ponytail:`) comment that names its limit is a
+  decision, not a finding, unless the expected load already crosses it.
+- Propose the smallest fix that works. Prefer fixes that delete code. Never
+  add layers, frameworks or config the problem does not need.
+- No style taste, no "consider", no vague worries.
 
-❌ "This EmailValidator class might be more complex than necessary, have you
-considered whether all these validation rules are needed at this stage?"
+## 4. Output
 
-✅ `1. L12-38: stdlib: 27-line validator class. "@" in email, 1 line, real validation is the confirmation mail.`
+Very simple English: short sentences, everyday words. Explain a technical
+term the first time you use it. The reader may never have seen this code.
 
-✅ `2. L4: native: moment.js imported for one format call. Intl.DateTimeFormat, 0 deps.`
+Start with `What this change does:` in two or three sentences.
 
-✅ `3. L18-29: reuse: slugify helper duplicates src/lib/slug.ts slugify. Delete it, import the existing one.`
+Then the findings in three groups, skip empty groups:
+- **Must fix:** bug, security, data loss, breaks at the expected load.
+- **Should fix:** risky code without a test, real slowness, duplication, a
+  function that mixes jobs, code that should not exist.
+- **Nice to have:** small speed-ups, shorter forms.
 
-✅ `4. repo.py:L88: yagni: AbstractRepository with one implementation. Inline it until a second one exists.`
+Number findings across all groups, so the user can say "fix 2 and 5".
+Every finding has all four parts, each one or two short sentences:
 
-✅ `5. L52-71: delete: retry wrapper around an idempotent local call. Nothing replaces it.`
+2. **Orders land on the wrong day** (`billing/close_day.py:L40-52`)
+   - **What this is:** At midnight this job closes the day and bills all orders of that day.
+   - **Problem:** It takes "today" from the server clock, which runs in UTC. An order placed
+     at 00:30 in Berlin is billed on the day before.
+   - **Fix:** Compute the day once in the shop's time zone:
+     `datetime.now(ZoneInfo("Europe/Berlin")).date()`. One line, nothing else changes.
+   - **If we skip it:** Late orders show the wrong date, and accounting fixes them by hand.
 
-✅ `6. L30-44: shrink: manual loop builds dict. dict(zip(keys, values)), 1 line.`
+End with:
+- `Verdict: Ship.` or `Verdict: fix 1 and 3 first.`
+- `Lean: -<N> lines possible.` when lean findings exist.
+- `Not checked:` one line, if something mattered and you could not check it.
 
-## Scoring
+Nothing found: `What this change does:`, then `Looks good. Ship.` and one line
+on what you checked.
 
-End with the only metric that matters: `net: -<N> lines possible.`
-
-If there is nothing to cut, say `Lean already. Ship.` and stop.
-
-## Boundaries
-
-Scope: over-engineering and complexity only. Correctness bugs, security holes,
-and performance are explicitly out of scope. Route them to a normal review
-pass, not this one. A single smoke test or `assert`-based
-self-check is the ponytail minimum, not bloat, never flag it for deletion.
-Does not apply the fixes, only lists them.
-"stop ponytail-review" or "normal mode": revert to verbose review style.
+Lists findings, changes no code.
