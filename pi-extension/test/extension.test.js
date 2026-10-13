@@ -332,9 +332,10 @@ test("/ponytail autocompletes modes, commands and default <mode>", () => {
   const { commands } = createPiHarness();
   const complete = (prefix) => commands.get("ponytail").getArgumentCompletions(prefix);
 
-  assert.deepEqual(complete("").map((item) => item.value), ["lite", "full", "ultra", "off", "status", "default "]);
+  assert.deepEqual(complete("").map((item) => item.value), ["off", "lite", "full", "ultra", "status", "default "]);
   assert.deepEqual(complete("fu").map((item) => item.value), ["full"]);
-  assert.deepEqual(complete("default ").map((item) => item.value), ["default lite", "default full", "default ultra", "default off"]);
+  assert.deepEqual(complete("default ").map((item) => item.value), ["default off", "default lite", "default full", "default ultra"]);
+  assert.deepEqual(complete("default l").map((item) => item.label), ["lite"]);
   assert.deepEqual(complete("default l").map((item) => item.value), ["default lite"]);
   assert.deepEqual(complete("default").map((item) => item.value), ["default "], "no trailing space yet: offer the command itself");
   assert.equal(complete("status x"), null, "no command takes a second word after status");

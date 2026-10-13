@@ -21,36 +21,15 @@ export const readQuietStartup = getQuietStartup;
 const RUNTIME_MODE_LIST = RUNTIME_MODES.join("|");
 const PONYTAIL_COMMAND_DESCRIPTION = `Set mode: ${RUNTIME_MODE_LIST}. Commands: status, default <mode>`;
 
-const PONYTAIL_ARG_COMPLETIONS = [
-  { value: "lite", description: "build what was asked, name the smaller option" },
-  { value: "full", description: "smallest complete change that fully works" },
-  { value: "ultra", description: "maximum minimalism" },
-  { value: "off", description: "turn ponytail off" },
-  { value: "status", description: "show current and default mode" },
-  { value: "default", description: "save default mode for future sessions" },
-];
-
-export function completePonytailArgs(prefix, argCompletions = PONYTAIL_ARG_COMPLETIONS) {
+// Values only: per-level descriptions would be a second copy of the Levels table in SKILL.md.
+export function completePonytailArgs(prefix) {
   const [first, second, ...rest] = String(prefix || "").trimStart().split(/\s+/);
   if (rest.length > 0) return null;
-
-  const complete = (items) => (items.length > 0 ? items : null);
-
-  if (second === undefined) {
-    return complete(argCompletions
-      .filter((item) => item.value.startsWith(first ?? ""))
-      .map((item) => ({
-        value: item.value === "default" ? "default " : item.value,
-        label: item.value,
-        description: item.description,
-      })));
-  }
-
   // Only "default" takes a second word; it accepts any runtime level (#377).
-  if (first !== "default") return null;
-  return complete(argCompletions
-    .filter((item) => RUNTIME_MODES.includes(item.value) && item.value.startsWith(second))
-    .map((item) => ({ value: `default ${item.value}`, label: item.value, description: item.description })));
+  const values = second === undefined
+    ? [...RUNTIME_MODES, "status", "default "].filter((v) => v.startsWith(first))
+    : first === "default" ? RUNTIME_MODES.filter((m) => m.startsWith(second)).map((m) => `default ${m}`) : [];
+  return values.length ? values.map((value) => ({ value, label: value.trim().split(" ").pop() })) : null;
 }
 
 export function resolveSessionMode(entries, fallbackMode = DEFAULT_MODE) {
