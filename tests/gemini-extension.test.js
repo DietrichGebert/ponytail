@@ -35,6 +35,7 @@ const RULE_INVARIANTS = [
   'lazy senior',
   'validation at trust boundaries',
   'shortcut: <the limit>, <when to upgrade>',
+  "Use the project's documentation style",
 ];
 
 function read(relPath) {

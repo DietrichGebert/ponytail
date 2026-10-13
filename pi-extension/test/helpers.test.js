@@ -173,6 +173,7 @@ test("filterSkillBodyForMode keeps rule bullets that contain a colon", () => {
   assert.ok(filtered.includes("Bug fix: before you edit, grep every caller"));
   assert.ok(filtered.includes("Never cut: validation at trust boundaries"));
   assert.ok(filtered.includes("code comment in this form: `shortcut: <the limit>, <when to upgrade>`"));
+  assert.ok(filtered.includes("Use the project's documentation style"));
   // The level rows are still filtered down to the active mode.
   assert.ok(filtered.includes("| **full** |"));
   assert.ok(!filtered.includes("| **lite** |"));
