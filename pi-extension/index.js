@@ -21,6 +21,14 @@ export const readQuietStartup = getQuietStartup;
 const RUNTIME_MODE_LIST = RUNTIME_MODES.join("|");
 const PONYTAIL_COMMAND_DESCRIPTION = `Set mode: ${RUNTIME_MODE_LIST}. Commands: status, default <mode>`;
 
+// Every item is a complete command: pi submits on Enter, so a bare "default" would run without a mode.
+// Values only: per-level descriptions would be a second copy of the Levels table in SKILL.md.
+export function completePonytailArgs(prefix) {
+  const typed = String(prefix || "").trimStart();
+  const values = [...RUNTIME_MODES, "status", ...RUNTIME_MODES.map((m) => `default ${m}`)].filter((v) => v.startsWith(typed));
+  return values.length ? values.map((value) => ({ value, label: value })) : null;
+}
+
 export function resolveSessionMode(entries, fallbackMode = DEFAULT_MODE) {
   const fallback = normalizePersistedMode(fallbackMode) || DEFAULT_MODE;
   if (!Array.isArray(entries)) return fallback;
@@ -118,6 +126,7 @@ export default function ponytailExtension(pi) {
 
   pi.registerCommand("ponytail", {
     description: PONYTAIL_COMMAND_DESCRIPTION,
+    getArgumentCompletions: (prefix) => completePonytailArgs(prefix),
     handler: async (args, ctx) => {
       const parsed = parsePonytailCommand(args, configuredDefaultMode, currentMode);
 
@@ -200,9 +209,13 @@ export default function ponytailExtension(pi) {
     }
   });
 
-  pi.on("session_tree", async (_event, ctx) => {
-    restoreSessionMode(ctx);
-  });
+  // Both hosts emit session_tree. Pi re-emits session_start on /new, /resume and
+  // /fork; OMP emits session_switch and session_branch instead.
+  for (const eventName of ["session_tree", "session_switch", "session_branch"]) {
+    pi.on(eventName, async (_event, ctx) => {
+      restoreSessionMode(ctx);
+    });
+  }
 
   pi.on("agent_start", async (_event, ctx) => {
     isActive = true;

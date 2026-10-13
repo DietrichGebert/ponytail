@@ -219,6 +219,10 @@ def selftest():
             print(f"{'ok ' if ok else 'XX '} {tid:12} {kind:4} correct={r['correct']} "
                   f"safe={r['safe']} axis={axis}  {r['reason']}")
             failures += 0 if ok else 1
+    row = aggregate([{"task": "t", "arm": "a", "model": "m", "error": "boom"}])[0]
+    ok = row["safe_rate"] == 0 and row["correct_rate"] == 0
+    print(f"{'ok ' if ok else 'XX '} aggregate    a crashed cell counts as failed")
+    failures += 0 if ok else 1
     failures += _selftest_plugin_dir()
     failures += _selftest_kill()
     print(f"\nselftest: {'all instruments valid' if not failures else str(failures) + ' BROKEN'}")
@@ -399,8 +403,9 @@ def aggregate(results):
         loc_cells = [c for c in cells if c.get("total_loc", 0) > 0]   # LOC only where code was delivered
         nl = len(loc_cells)
         rows.append({"task": t, "arm": a, "model": m, "n": n,
-                     "safe_rate": round(sum(c["safe"] for c in cells) / n, 3),
-                     "correct_rate": round(sum(c["correct"] for c in cells) / n, 3),
+                     # a crashed cell has only "error": count it as failed instead of crashing the summary
+                     "safe_rate": round(sum(c.get("safe") or 0 for c in cells) / n, 3),
+                     "correct_rate": round(sum(c.get("correct") or 0 for c in cells) / n, 3),
                      "wrote_file_rate": round(nl / n, 3),
                      "total_loc_median": statistics.median(c["total_loc"] for c in loc_cells) if nl else 0,
                      "src_loc_median": statistics.median(c["src_loc"] for c in loc_cells) if nl else 0,
