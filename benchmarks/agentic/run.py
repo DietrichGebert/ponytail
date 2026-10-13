@@ -2,7 +2,7 @@
 """Agentic, multi-file benchmark for ponytail.
 
 Runs each (task x arm x model) through a real headless Claude Code session in an isolated
-temp workspace seeded with a starter file, then scores the produced files deterministically
+temp workspace seeded with starter files, then scores code or read-only reports deterministically
 for CORRECTNESS and SAFETY -- the axis the single-shot promptfoo bench was blind to.
 
 Over-engineering is proxied by SOURCE file count + source LOC (tests are counted separately,
@@ -22,7 +22,7 @@ over-engineering score is a later pass.
 ponytail: the claude CLI is the harness (already installed, we run inside it). No SDK
 dependency. The CLI's JSON output already carries cost/tokens/duration/permission_denials.
 """
-import argparse, concurrent.futures, datetime, json, os, re, shutil, signal, statistics, subprocess, sys, tempfile, zlib
+import argparse, concurrent.futures, datetime, json, os, re, shutil, signal, statistics, subprocess, sys, tempfile, tomllib, zlib
 from collections import defaultdict
 from pathlib import Path
 
@@ -75,6 +75,9 @@ CELL_TIMEOUT = 300  # seconds per cell; a hung agent is force-killed (process tr
 NO_RUN = ("Write the implementation (include tests if you normally would for a change like this). "
           "Do not run a dev server, install dependencies, run a database, or open a browser to verify -- "
           "just write the code and stop. Only the code you write is measured, not its execution.")
+REPORT_ONLY = ("Inspect the workspace and return the requested report in your final response. "
+               "Do not create, edit, or delete files. Do not run servers, install dependencies, "
+               "or use external services.")
 
 def _is_test(p: Path, workdir: Path):
     rel = p.relative_to(workdir)
@@ -130,7 +133,7 @@ def gz(text):
     c = zlib.compressobj(9, zlib.DEFLATED, -15)
     return len(c.compress(data) + c.flush())
 
-def code_stats(workdir: Path, selfcheck_as_test: bool = False):
+def code_stats(workdir: Path, selfcheck_as_test: bool = False, seed=None):
     """LOC over code-extension source files only (generated images/data can't pollute it).
     total_loc counts every non-blank line including comments and docstrings -- the bloat a vibe
     baseline actually produces. src_loc is code-only, for the breakdown. Tests tracked separately,
@@ -142,6 +145,8 @@ def code_stats(workdir: Path, selfcheck_as_test: bool = False):
     if fm.exists():
         try: fixture = set(json.loads(fm.read_text(encoding="utf-8")))
         except Exception: pass
+    fixture.update(name for name, content in (seed or {}).items()
+                   if (workdir / name).is_file() and (workdir / name).read_bytes() == content.encode())
     def _rel(p): return str(p.relative_to(workdir)).replace("\\", "/")
     files = [p for p in workdir.rglob("*") if p.is_file() and p.suffix in CODE_EXT
              and "__pycache__" not in p.parts and "node_modules" not in p.parts
@@ -209,21 +214,27 @@ def selftest():
     for tid, task in TASKS.items():
         if task.get("open"): continue  # open tasks measure LOC only, no good/bad refs
         axis = task.get("axis", "safe")
-        for kind in ("good", "bad"):
+        references = {"good": task["good"], "bad": task["bad"], **task.get("good_cases", {}), **task.get("bad_cases", {}),
+                      **task.get("unsafe_cases", {})}
+        for kind, reference in references.items():
             with tempfile.TemporaryDirectory() as d:
-                ref = task[kind] if isinstance(task[kind], dict) else {task["file"]: task[kind]}
+                ref = reference if isinstance(reference, dict) else {task["file"]: reference}
                 for fn, content in {**task.get("seed", {}), **ref}.items():  # seed, then the ref on top
                     _write(Path(d) / fn, content)
                 r = task["score"](Path(d))
-            ok = (r["correct"] == 1 and r["safe"] == 1) if kind == "good" else (r[axis] == 0)
+            case_axis = "safe" if kind in task.get("unsafe_cases", {}) else axis
+            good = kind == "good" or kind in task.get("good_cases", {})
+            ok = (r["correct"] == 1 and r["safe"] == 1) if good else (r[case_axis] == 0)
             print(f"{'ok ' if ok else 'XX '} {tid:12} {kind:4} correct={r['correct']} "
-                  f"safe={r['safe']} axis={axis}  {r['reason']}")
+                  f"safe={r['safe']} axis={case_axis}  {r['reason']}")
             failures += 0 if ok else 1
     row = aggregate([{"task": "t", "arm": "a", "model": "m", "error": "boom"}])[0]
     ok = row["safe_rate"] == 0 and row["correct_rate"] == 0
     print(f"{'ok ' if ok else 'XX '} aggregate    a crashed cell counts as failed")
     failures += 0 if ok else 1
     failures += _selftest_plugin_dir()
+    failures += _selftest_task_prompts()
+    failures += _selftest_report_scoring()
     failures += _selftest_kill()
     print(f"\nselftest: {'all instruments valid' if not failures else str(failures) + ' BROKEN'}")
     return failures
@@ -252,6 +263,64 @@ def _selftest_plugin_dir():
         ok_miss = True
     print(f"{'ok ' if ok_miss else 'XX '} plugin_dir   miss clear error (sys.exit)")
     return fails + (0 if ok_miss else 1)
+
+def _selftest_task_prompts():
+    """Exercise the real command builder without launching Claude or spending tokens."""
+    from unittest.mock import patch
+    try:
+        with tempfile.TemporaryDirectory() as d:
+            roots = {arm: Path(d) / arm for arm in ("ponytail", "ponytail2")}
+            for arm, root in roots.items():
+                _write(root / "skills/ponytail-debt/SKILL.md", f"{arm} canonical debt")
+                _write(root / "commands/ponytail-debt.toml", f'prompt = "{arm} condensed debt"\n')
+            env = {f"{arm.upper()}_PLUGIN_DIR": str(root) for arm, root in roots.items()}
+            with patch.dict(os.environ, env):
+                for entry in ("skills/ponytail-debt/SKILL.md", "commands/ponytail-debt.toml"):
+                    task = {"prompt": "Report local debt.", "mode": "report", "debt_entry": entry}
+                    for arm in ("baseline", "ponytail", "ponytail2"):
+                        cmd = _cell_cmd("claude", task, arm, "opus")
+                        appended = cmd[cmd.index("--append-system-prompt") + 1]
+                        assert REPORT_ONLY in appended and NO_RUN not in appended, "report received coding instructions"
+                        assert "--strict-mcp-config" in cmd and cmd[cmd.index("--disallowedTools") + 1] == "Bash"
+                        if arm == "baseline":
+                            assert appended == REPORT_ONLY and "--plugin-dir" not in cmd
+                        else:
+                            expected = f"{arm} {'condensed' if entry.endswith('.toml') else 'canonical'} debt"
+                            assert expected in appended
+                            other = "ponytail2" if arm == "ponytail" else "ponytail"
+                            assert f"{other} canonical debt" not in appended and f"{other} condensed debt" not in appended
+                            assert cmd[cmd.index("--plugin-dir") + 1] == str(roots[arm])
+                for tid in ("cache", "conv-service"):
+                    for arm in ("baseline", "ponytail", "ponytail2"):
+                        cmd = _cell_cmd("claude", TASKS[tid], arm, "opus")
+                        assert cmd[cmd.index("--append-system-prompt") + 1] == NO_RUN
+                (roots["ponytail"] / "skills/ponytail-debt/SKILL.md").unlink()
+                try:
+                    _cell_cmd("claude", {"prompt": "Report.", "mode": "report",
+                                        "debt_entry": "skills/ponytail-debt/SKILL.md"}, "ponytail", "opus")
+                except FileNotFoundError:
+                    pass
+                else:
+                    raise AssertionError("missing current-arm skill must not fall back to the candidate")
+        print("ok  task_prompts report/coding modes, arm isolation, missing skill, tool isolation")
+        return 0
+    except (AssertionError, NameError) as e:
+        print(f"XX  task_prompts {e}")
+        return 1
+
+def _selftest_report_scoring():
+    with tempfile.TemporaryDirectory() as d:
+        ws = Path(d)
+        task = TASKS["debt-report"]
+        for name, content in {**task["seed"], **task["good"]}.items(): _write(ws / name, content)
+        row = score_workspace("debt-report", "baseline", "opus", ws)
+        good = row["correct"] == row["safe"] == 1 and row["total_loc"] == row["src_files"] == 0
+        _write(ws / "src/cache.js", task["seed"]["src/cache.js"] + "// unauthorized\n")
+        row = score_workspace("debt-report", "baseline", "opus", ws)
+        bad = row["safe"] == 0 and row["total_loc"] > 0 and row["src_files"] == 1
+    ok = good and bad
+    print(f"{'ok ' if ok else 'XX '} report_score unchanged seeds are not authored code; mutations fail")
+    return 0 if ok else 1
 
 def _tree_kill(proc):
     """Tree-kill one timed-out cell, never a blanket kill (that would also take down this
@@ -304,7 +373,9 @@ def score_workspace(task_id, arm, model, workdir: Path):
         except Exception: pass
     surgical = not TASKS[task_id].get("open") and not TASKS[task_id].get("fixture")
     diffed = TASKS[task_id].get("fixture") or TASKS[task_id].get("diff")
-    stats = git_diff_stats(workdir) if diffed else code_stats(workdir, selfcheck_as_test=surgical)
+    stats = git_diff_stats(workdir) if diffed else code_stats(
+        workdir, selfcheck_as_test=surgical,
+        seed=TASKS[task_id].get("seed") if TASKS[task_id].get("mode") == "report" else None)
     # open/explain tasks answer in the chat, not a file. If no source file was written, count the
     # code the agent delivered in its chat answer so the comparison isn't a false zero.
     if TASKS[task_id].get("open") and stats["total_loc"] == 0 and result_text:
@@ -321,6 +392,24 @@ def _base_cmd(claude, prompt, model):
             "--permission-mode", "bypassPermissions", "--output-format", "json",
             "--setting-sources", "project,local", "--strict-mcp-config",
             "--disallowedTools", "Bash"]
+
+def _cell_cmd(claude, task, arm, model):
+    cmd = _base_cmd(claude, task["prompt"], model)
+    append = REPORT_ONLY if task.get("mode") == "report" else NO_RUN
+    if arm in PLUGIN_ARMS:
+        plugin = _plugin_dir(arm)
+        cmd += ["--plugin-dir", plugin]
+        if task.get("debt_entry") and arm in ("ponytail", "ponytail2"):
+            path = Path(plugin) / task["debt_entry"]
+            content = path.read_text(encoding="utf-8")
+            if path.suffix == ".toml": content = tomllib.loads(content)["prompt"]
+            append = content + "\n\n" + append
+    elif arm in SETTINGS_ARMS:
+        cmd += ["--settings", SETTINGS_ARMS[arm]]
+    else:
+        extra = ARMS[arm]()
+        if extra: append = extra + "\n\n" + append
+    return cmd + ["--append-system-prompt", append]
 
 def warm_cache(model):
     """One throwaway call before the pool. Without it the first parallel cells each pay the cold
@@ -357,17 +446,9 @@ def run_cell(task_id, arm, model, workdir: Path):
     # needs from its cache dir. baseline loads none; yagni-oneliner is a raw prompt so it uses --append.
     # No live verification (see NO_RUN): --strict-mcp-config drops all MCP servers so there is no browser
     # tool, and --disallowedTools Bash blocks running a server/db/npm. An agent writes with
-    # Read/Write/Edit/Glob/Grep and stops -- no login wall, no browser thrash. We measure code, not execution.
-    cmd = _base_cmd(claude, task["prompt"], model)
-    append = NO_RUN                                     # all arms get NO_RUN, identically
-    if arm in PLUGIN_ARMS:
-        cmd += ["--plugin-dir", _plugin_dir(arm)]       # real activation of exactly one plugin
-    elif arm in SETTINGS_ARMS:
-        cmd += ["--settings", SETTINGS_ARMS[arm]]
-    else:
-        extra = ARMS[arm]()                             # baseline -> None; yagni-oneliner -> the prompt
-        if extra: append = extra + "\n\n" + NO_RUN
-    cmd += ["--append-system-prompt", append]
+    # Read/Write/Edit/Glob/Grep and stops -- no login wall, no browser thrash. Report tasks additionally
+    # load this arm's debt entry text; the normal SessionStart hook only activates its general mode.
+    cmd = _cell_cmd(claude, task, arm, model)
     out_path, err_path = workdir / "_claude.json", workdir / "_claude.stderr.txt"
     # stdout -> file, never a PIPE: on Windows a hung agent's child processes can hold a stdout PIPE
     # open forever, so subprocess.run(timeout=) never fires and the worker freezes. Writing to a file

@@ -6,7 +6,8 @@ does not reflect how a coding agent is actually used, and that counting lines of
 conversational answer (which dumps multiple options and commentary) inflates the baseline.
 
 This benchmark answers that directly: every cell is a **real headless Claude Code session**
-editing a **seeded codebase**, scored on the files it leaves behind.
+working in a **seeded codebase**, scored on its files or, for report tasks, its final response
+and unchanged source bytes.
 
 ## What is different
 
@@ -33,6 +34,7 @@ instruction matches ponytail, the benchmark should show it.
 
 `ponytail2` loads a candidate plugin from `PONYTAIL2_PLUGIN_DIR`, next to the released `ponytail`. That is how
 Ponytail 5 was measured against the previous Ponytail (v4.13) and no skill in one run.
+For a current-main comparison, set `PONYTAIL_PLUGIN_DIR` to that checkout explicitly.
 
 ## Tasks
 
@@ -68,10 +70,43 @@ Safety-tier tasks:
 The `bad` reference for each safety task is the lazy-but-plausible version: correct on the happy
 path, unsafe on the adversarial input. That is exactly the code a binary correctness gate passes.
 
+### Native debt tasks
+
+| task | measured behavior |
+|---|---|
+| `native-debt` | Extend existing JSDoc, TSDoc, Javadoc and Python declaration documentation with a limit and revisit trigger. Preserve summaries, tags and implementation; do not duplicate an existing explanation or invent a tag. |
+| `debt-report` | Load the selected arm's `skills/ponytail-debt/SKILL.md`; inspect continuation lines, a docstring, legacy notes and an unread linked ticket. |
+| `debt-report-command` | Run the same report case using the `prompt` from that arm's `commands/ponytail-debt.toml`. |
+
+The two report tasks use a report-only system instruction; existing coding tasks retain their
+original code-writing instruction. `baseline` gets no plugin instructions. `ponytail` and
+`ponytail2` each load the entry from their own resolved plugin directory, in addition to normal
+plugin activation. A missing file fails the cell; it never falls back to the candidate's copy.
+The condensed case tests the shipped command text, not the Gemini command dispatcher.
+
+All arms receive the same JSON response format for deterministic scoring. Rows must preserve
+source locations and copy the complete ceiling/trigger wording; the scorer checks the exact
+admitted records, counts and unverified linked fields. It excludes illustrative prose, ordinary
+strings, a keyboard-shortcut explanation and ignored generated output. The safety gate compares
+every seed's bytes and rejects additional files or claimed tracker writes. Untouched report
+seeds do not count as authored code. These are task-specific checks, not a general documentation
+parser or proof that a host can execute tracker operations.
+
+`--selftest` calibrates good reports against omitted records, false positives, a lost wrapped
+trigger, unread metadata counted as missing, source edits, an unsolicited ledger file and
+fabricated ticket success. Authoring references also exercise detached comments, duplicated
+limits, invented tags, missing triggers and a changed implementation. Valid native documentation
+passes with or without a `shortcut:` marker; the baseline is not required to adopt the plugin's
+marker convention. Runner checks cover both
+entry points, baseline isolation, different current/candidate instructions, unchanged coding
+prompts, tool isolation and report metrics. These checks do not make API calls.
+
 ## Metrics
 
 - **correct** (gate): produced code runs and returns the right answer on normal input.
 - **safe** (gate): produced code survives the adversarial input. Deterministic, stdlib-only.
+- For native debt, **correct** checks documentation placement/content or report rows; **safe**
+  checks unchanged implementation or read-only reporting with no fabricated tracker writes.
 - **src_loc / src_files**: over-engineering proxy. **Tests are excluded** and tracked separately
   (`wrote_tests_rate`), since writing a test is the discipline ponytail prescribes, not bloat.
 - **cost / duration / turns**: straight from the Claude Code CLI JSON.
@@ -126,7 +161,7 @@ python complete.py --run runs/<stamp> --model claude-opus-5-5 --arms baseline,po
 
 ## Reproduce
 
-Needs the `claude` CLI (this is the harness, no SDK), Python 3, an authenticated Claude Code, and a
+Needs the `claude` CLI (this is the harness, no SDK), Python 3.12, an authenticated Claude Code, and a
 clone of the template at the pinned commit (set `PONYTAIL_TMPL` to its path, or drop it at
 `fixtures/full-stack-fastapi-template`):
 
@@ -144,14 +179,23 @@ python run.py --task tmpl-fe-datepicker,tmpl-fe-colorpicker,tmpl-fe-command,tmpl
 python run.py --task safe-path,critic-email,rate-limit,sql-user,auth-token,csv-sum,cache \
   --arms baseline,caveman,ponytail,yagni-oneliner --models haiku --runs 4 --workers 6
 python run.py --rescore runs/<stamp>                        # recompute metrics offline, no API
+# Native debt comparison and existing convention/scaffolding regressions (no template needed):
+PONYTAIL_PLUGIN_DIR=/abs/path/to/current-main PONYTAIL2_PLUGIN_DIR=/abs/path/to/candidate \
+  python run.py --task native-debt,debt-report,debt-report-command,conv-service,cache \
+  --arms baseline,ponytail,ponytail2 --models opus --runs 6
 ```
 
-Agents only **write code**: `--strict-mcp-config` removes the browser and `--disallowedTools Bash`
+Coding tasks only **write code**; report tasks only inspect and answer. `--strict-mcp-config` removes MCP and `--disallowedTools Bash`
 blocks running a server, so no database, server, or login is needed. The LOC tier measures the
 `git diff`; the safety scorer executes the produced function in-process. Each cell runs
 `bypassPermissions` in its own fresh repo copy under `runs/<stamp>/` (gitignored, kept). `--workers
 N` runs N isolated cells concurrently. Because workspaces are preserved, any metric change is
 re-applied offline with `--rescore`, you never pay the API twice for a measurement tweak.
+
+For instruction acceptance, retain exact checkout revisions, model, per-run responses and
+scores, cost and aggregates. Every candidate run must satisfy the applicable requirements;
+report regressions or converging arms honestly. Offline calibration alone does not establish
+behavioral improvement, and unavailable credentials or model quota leave the comparison pending.
 
 ## Debt tracker host exercise
 
@@ -192,6 +236,10 @@ disabled-tool benchmark substitutes for this evidence.
   able to disprove the skill's value, not only to confirm it.
 
 ## Results
+
+**2026-10-13, native debt:** local scorer/runner checks and isolated host exercises are recorded in
+[the evidence report](../results/2026-10-13-native-debt.md). The required three-arm comparison is
+**pending**; this is not a measured improvement result or completed behavioral acceptance.
 
 **2026-10-07, Ponytail 5, Opus 5.5, 5 runs, all 39 tasks** (`--arms baseline,ponytail,ponytail2 --models opus --runs 5`):
 

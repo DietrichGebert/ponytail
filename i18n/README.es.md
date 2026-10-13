@@ -159,7 +159,7 @@ Instala ponytail solo desde `DietrichGebert/ponytail` en GitHub o `@dietrichgebe
 | `/ponytail [lite \| full \| ultra \| off]` | Ajusta la intensidad o lo apaga. Sin argumento enciende ponytail en el nivel por defecto si está apagado; si no, muestra el nivel actual. |
 | `/ponytail-review` | Revisa el diff actual como el dev senior al que llaman cuando algo se rompe: bugs, seguridad, carga real, código arriesgado sin test, partes lentas y lo que sobra. Cada hallazgo dice qué hace el código, qué falla, cómo arreglarlo y qué pasa si no se arregla. Indica un objetivo con palabras normales para acotarlo o ampliarlo: `uncommitted`, `staged`, `branch` o un enlace a un PR. |
 | `/ponytail-audit` | La misma revisión para todo el repo, lo más importante primero. |
-| `/ponytail-debt` | Reúne los atajos `shortcut:` que dejaste para después en un registro, para que "luego" no se convierta en "nunca". |
+| `/ponytail-debt` | Lista las notas `shortcut:` de atajos deliberados; opcionalmente redacta o registra los seguimientos seleccionados en tu gestor de incidencias. |
 | `/ponytail-gain` | Muestra el marcador de impacto medido (menos código, menos coste, más velocidad) del benchmark. |
 | `/ponytail-help` | Referencia rápida de los comandos anteriores. |
 
@@ -171,7 +171,29 @@ Los comandos necesitan un host con soporte de skills (Claude Code, Codex, Devin 
 No. Un `~/.config/ponytail/config.json` opcional o la variable de entorno `PONYTAIL_DEFAULT_MODE` pueden fijar el nivel por defecto, pero no hace falta nada.
 
 **¿Por qué escribe comentarios `shortcut:`?**
-Marcan un atajo deliberado y cuándo revisarlo, y `/ponytail-debt` los reúne en un registro. ¿Quieres otra palabra, o ninguna? Dilo en el `CLAUDE.md` o `AGENTS.md` de tu proyecto y luego ejecuta `/ponytail-debt <tu palabra>`.
+Marcan el límite de un atajo deliberado y cuándo revisarlo. Usa el estilo de documentación del proyecto: JSDoc, TSDoc, Javadoc, docstrings o comentarios normales. Amplía la documentación de la declaración cuando el límite pertenezca a la API; deja los detalles internos en comentarios locales. Sin etiquetas inventadas ni explicaciones duplicadas.
+
+```js
+/**
+ * Fetch the first page.
+ * shortcut: returns at most 100 items, add cursors when larger pages are needed.
+ */
+```
+
+```python
+def export_rows(rows):
+    """Export rows.
+    shortcut: keeps rows in memory, stream when exports exceed 10000 rows.
+    """
+    return list(rows)
+```
+
+`/ponytail-debt` lee el código circundante, incluidas las notas que ocupan varias líneas, y excluye ejemplos, cadenas normales y archivos ignorados. También encuentra las notas antiguas `ponytail:`. ¿Quieres otra palabra, ningún marcador o registros solo en el gestor? Dilo en el `CLAUDE.md` o `AGENTS.md` del proyecto; para otra palabra, ejecuta `/ponytail-debt <tu palabra>`. Una búsqueda vacía significa que no se encontraron marcadores locales, no que el proyecto no tenga deuda.
+
+**¿Puede usar nuestro gestor de incidencias?**
+Sí, mediante las herramientas que ya tenga tu entorno para GitHub Issues, Jira u otro gestor. Pedir un registro es una operación de solo lectura. Pide redactar, crear o actualizar los elementos seleccionados en un destino concreto; una petición explícita de creación autoriza esos elementos. Incluye ubicaciones de código, límites y condiciones de revisión, reutiliza incidencias enlazadas y conserva el contenido ajeno. Editar enlaces en el código requiere autorización propia.
+
+Sin acceso de escritura, devuelve borradores listos para registrar. Los detalles enlazados que no se hayan podido leer quedan sin verificar y no cuentan como condiciones de revisión ausentes. Informa por separado de escrituras confirmadas, fallidas e inciertas; comprueba las inciertas antes de reintentar. No incluye adaptadores ni credenciales del gestor.
 
 **¿Y si de verdad necesito la clase de caché de 120 líneas?**
 No la necesitas. Insiste de todos modos y te la construye. Despacio. Correctamente. Mirándote.

@@ -159,7 +159,7 @@ ponytail은 GitHub의 `DietrichGebert/ponytail`이나 npm의 `@dietrichgebert/po
 | `/ponytail [lite \| full \| ultra \| off]` | 강도를 정하거나 끈다. 인자 없이 쓰면, 꺼져 있을 때는 기본 레벨로 켜고, 켜져 있을 때는 현재 레벨을 알려 준다. |
 | `/ponytail-review` | 장애가 나면 호출되는 시니어 개발자처럼 현재 diff를 리뷰한다: 버그, 보안, 실제 부하, 테스트 없는 위험한 코드, 느린 부분, 지울 수 있는 것. 지적마다 그 코드가 하는 일, 무엇이 잘못되는지, 고치는 방법, 고치지 않으면 생기는 일을 적는다. 범위를 좁히거나 넓히려면 대상을 평범한 말로 적는다: `uncommitted`, `staged`, `branch`, 또는 PR 링크. |
 | `/ponytail-audit` | 같은 점검을 저장소 전체에 하고, 중요한 것부터 보여 준다. |
-| `/ponytail-debt` | 미뤄 둔 `shortcut:` 지름길을 목록으로 모아, "나중에"가 "절대 안 함"이 되지 않게 한다. |
+| `/ponytail-debt` | 의도한 지름길의 `shortcut:` 소스 기록을 모은다. 원하면 선택한 후속 작업을 이슈 트래커용 초안으로 만들거나 등록한다. |
 | `/ponytail-gain` | 벤치마크에서 측정한 효과(코드 감소, 비용 감소, 속도 향상)를 점수판으로 보여 준다. |
 | `/ponytail-help` | 위 명령어들의 빠른 참고. |
 
@@ -171,7 +171,29 @@ ponytail은 GitHub의 `DietrichGebert/ponytail`이나 npm의 `@dietrichgebert/po
 아니다. 선택 사항인 `~/.config/ponytail/config.json`이나 `PONYTAIL_DEFAULT_MODE` 환경 변수로 기본 레벨을 정할 수 있지만, 필요한 것은 없다.
 
 **왜 `shortcut:` 주석을 쓰나?**
-의도한 지름길과 언제 다시 볼지를 표시하고, `/ponytail-debt`가 이를 목록으로 모은다. 다른 단어를 쓰거나 아예 빼고 싶다면? 프로젝트의 `CLAUDE.md`나 `AGENTS.md`에 그렇게 적고, `/ponytail-debt <원하는 단어>`를 실행하면 된다.
+의도한 지름길의 한계와 언제 다시 볼지를 표시한다. JSDoc, TSDoc, Javadoc, 독스트링, 일반 주석 등 프로젝트의 문서 형식을 따른다. API에 해당하는 한계는 기존 선언 문서에 추가하고, 내부 구현의 세부 사항은 해당 코드의 주석에 남긴다. 새 태그를 만들어 내거나 설명을 중복하지 않는다.
+
+```js
+/**
+ * Fetch the first page.
+ * shortcut: returns at most 100 items, add cursors when larger pages are needed.
+ */
+```
+
+```python
+def export_rows(rows):
+    """Export rows.
+    shortcut: keeps rows in memory, stream when exports exceed 10000 rows.
+    """
+    return list(rows)
+```
+
+`/ponytail-debt`는 여러 줄에 걸친 기록까지 주변 소스를 읽고, 예제·일반 문자열·무시된 파일을 제외한다. 기존 `ponytail:` 기록도 찾는다. 다른 단어, 표시 없음, 트래커에만 기록하는 방식을 원하면 프로젝트의 `CLAUDE.md`나 `AGENTS.md`에 적는다. 다른 단어는 `/ponytail-debt <원하는 단어>`로 검색한다. 검색 결과가 없다는 것은 로컬 표시가 없다는 뜻이지, 프로젝트 전체에 부채가 없다는 뜻은 아니다.
+
+**기존 이슈 트래커를 사용할 수 있나?**
+가능하다. 호스트에 이미 있는 GitHub Issues, Jira 등의 도구를 사용한다. 목록만 요청하면 읽기 전용이다. 대상 항목과 목적지를 지정해 초안 작성·생성·수정을 요청한다. 명시적인 생성 요청은 해당 항목에 대한 권한을 포함한다. 소스 위치, 한계, 재검토 조건을 옮기고, 연결된 이슈를 재사용하며, 관련 없는 내용은 보존한다. 소스의 링크를 수정하려면 그 수정에 대한 권한도 필요하다.
+
+쓰기 권한이 없으면 바로 등록할 수 있는 초안을 반환한다. 읽지 못한 연결 정보는 미확인으로 남기며 재검토 조건 누락으로 세지 않는다. 성공·실패·결과 불명인 쓰기를 구분해 보고하고, 결과가 불명확하면 다시 시도하기 전에 확인한다. 트래커 어댑터나 자격 증명은 포함하지 않는다.
 
 **120줄짜리 캐시 클래스가 정말 필요하면?**
 필요 없다. 그래도 고집하면 만들어 준다. 천천히. 정확하게. 당신을 쳐다보면서.

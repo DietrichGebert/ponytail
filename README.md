@@ -160,7 +160,7 @@ Only install ponytail from `DietrichGebert/ponytail` on GitHub or `@dietrichgebe
 | `/ponytail [lite \| full \| ultra \| off]` | Set the intensity, or turn it off. No argument switches ponytail on at the default level if it is off, and otherwise reports the current level. |
 | `/ponytail-review` | Review the current diff like the senior dev who gets paged when it breaks: bugs, security, real load, risky code without a test, slow paths, and what to cut. Each finding says what the code does, what goes wrong, how to fix it, and what happens if you don't. Name a target in plain words to narrow or widen it: `uncommitted`, `staged`, `branch`, or a PR link. |
 | `/ponytail-audit` | The same check for the whole repo, most important first. |
-| `/ponytail-debt` | Harvest the `shortcut:` comments you've deferred into a ledger, so "later" doesn't become "never". |
+| `/ponytail-debt` | List deliberate `shortcut:` source notes; optionally draft or file selected follow-ups in your tracker. |
 | `/ponytail-gain` | Show the measured impact scoreboard (less code, less cost, more speed) from the benchmark. |
 | `/ponytail-help` | Quick reference for the commands above. |
 
@@ -172,7 +172,29 @@ Commands need a skill-capable host (Claude Code, Codex, Devin CLI, OpenCode, Gem
 No. An optional `~/.config/ponytail/config.json` or `PONYTAIL_DEFAULT_MODE` env var can set the default level, but nothing is required.
 
 **Why does it write `shortcut:` comments?**
-They mark a deliberate shortcut and when to revisit it, and `/ponytail-debt` collects them into a ledger. Want another word, or none? Say so in your project's `CLAUDE.md` or `AGENTS.md`, then run `/ponytail-debt <your word>`.
+They mark a deliberate shortcut's limit and when to revisit it. Use the project's documentation style: JSDoc, TSDoc, Javadoc, docstrings, or ordinary comments. Extend existing declaration docs when the limit belongs to the API; keep internal details in local comments. No invented tags or duplicate explanations.
+
+```js
+/**
+ * Fetch the first page.
+ * shortcut: returns at most 100 items, add cursors when larger pages are needed.
+ */
+```
+
+```python
+def export_rows(rows):
+    """Export rows.
+    shortcut: keeps rows in memory, stream when exports exceed 10000 rows.
+    """
+    return list(rows)
+```
+
+`/ponytail-debt` reads the surrounding source, including wrapped notes, and excludes examples, ordinary strings and ignored files. It also finds older `ponytail:` notes. Want another word, no markers, or tracker-only records? Say so in your project's `CLAUDE.md` or `AGENTS.md`; for another word, run `/ponytail-debt <your word>`. An empty scan means no local markers found, not no project debt.
+
+**Can it use our issue tracker?**
+Yes, through your host's existing tools for GitHub Issues, Jira or another tracker. A ledger request is read-only. Ask to draft, create or update selected items in a named destination; an explicit creation request supplies authorization for those items. It carries source locations, limits and revisit triggers, reuses linked tickets and preserves unrelated content. Source-link edits need their own authorization.
+
+Without write access, it returns ready-to-file drafts. Unread linked details stay unverified rather than counting as missing triggers. Confirmed, failed and uncertain writes are reported separately; an uncertain write is checked before retrying. No tracker adapter or credentials are bundled.
 
 **What if I really need the 120-line cache class?**
 You don't. Insist anyway and he'll build it. Slowly. Correctly. While looking at you.

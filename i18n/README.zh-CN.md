@@ -159,7 +159,7 @@ codex plugin add ponytail@ponytail
 | `/ponytail [lite \| full \| ultra \| off]` | 设置强度或关闭。不带参数时：如果已关闭，就以默认级别打开；否则显示当前级别。 |
 | `/ponytail-review` | 像出了故障会被叫醒的资深开发者那样审查当前 diff：bug、安全、真实负载、没有测试的高风险代码、慢的地方，以及可以删掉的东西。每条发现都写清这段代码做什么、哪里出错、怎么修、不修会怎样。用普通的话指定目标来缩小或扩大范围：`uncommitted`、`staged`、`branch`，或一个 PR 链接。 |
 | `/ponytail-audit` | 对整个仓库做同样的检查，最重要的排在前面。 |
-| `/ponytail-debt` | 把你推迟处理的 `shortcut:` 捷径收集成一份清单，免得"以后再说"变成"永远不做"。 |
+| `/ponytail-debt` | 列出源码中有意采用的 `shortcut:` 捷径记录；可为选定的后续工作起草或创建跟踪事项。 |
 | `/ponytail-gain` | 以计分板形式显示基准测试测得的效果（更少代码、更低成本、更快速度）。 |
 | `/ponytail-help` | 上述命令的速查表。 |
 
@@ -171,7 +171,29 @@ codex plugin add ponytail@ponytail
 不需要。可选的 `~/.config/ponytail/config.json` 或环境变量 `PONYTAIL_DEFAULT_MODE` 可以设置默认级别，但什么都不是必需的。
 
 **为什么它会写 `shortcut:` 注释？**
-它标记一个有意的捷径以及何时该回头处理，`/ponytail-debt` 会把它们收集成一份清单。想换个词，或者完全不要？在项目的 `CLAUDE.md` 或 `AGENTS.md` 里写明，然后运行 `/ponytail-debt <你的词>`。
+它标记有意采用的捷径的限制，以及何时需要重新处理。沿用项目的文档风格：JSDoc、TSDoc、Javadoc、文档字符串或普通注释。限制属于 API 时，补充现有声明文档；内部实现细节留在局部注释中。不发明标签，不重复已有说明。
+
+```js
+/**
+ * Fetch the first page.
+ * shortcut: returns at most 100 items, add cursors when larger pages are needed.
+ */
+```
+
+```python
+def export_rows(rows):
+    """Export rows.
+    shortcut: keeps rows in memory, stream when exports exceed 10000 rows.
+    """
+    return list(rows)
+```
+
+`/ponytail-debt` 会读取周围源码，包括跨行的记录，并排除示例、普通字符串和被忽略的文件，也能找到旧的 `ponytail:` 记录。想换个词、不使用标记，或只在跟踪工具中记录？在项目的 `CLAUDE.md` 或 `AGENTS.md` 中说明；换词后使用 `/ponytail-debt <你的词>`。空结果只表示未找到本地标记，不表示整个项目没有技术债。
+
+**能使用现有的事项跟踪工具吗？**
+可以，通过宿主已有的 GitHub Issues、Jira 等工具操作。只请求清单时不会写入。指定事项和目标位置后，可以请求起草、创建或更新；明确的创建请求已授权这些事项。它会带上源码位置、限制和重新处理的触发条件，复用已链接的事项，并保留无关内容。修改源码中的链接还需要覆盖该修改的授权。
+
+没有写入权限时，会返回可直接提交的草稿。无法读取的链接详情保持未验证状态，不计入缺少触发条件的数量。已确认、失败和结果不明的写入分别报告；结果不明时先核实再重试。不附带跟踪工具适配器或凭据。
 
 **如果我真的需要那个 120 行的缓存类呢？**
 你不需要。非要的话，他也会写。慢慢地。正确地。一边看着你。
