@@ -591,6 +591,19 @@ assert.match(
   /PONYTAIL MODE ACTIVE — level: full/,
 );
 
+// Qoder's QODER_CONFIG_DIR relocates its user state. Mode switches and
+// subagent injection must use that location instead of creating ~/.qoder.
+const qoderCustomDir = path.join(temp, 'qoder-custom-config');
+const qoderCustomEnv = { ...qoderEnv, QODER_CONFIG_DIR: qoderCustomDir };
+const qoderCustomState = path.join(qoderCustomDir, '.ponytail-active');
+result = run('ponytail-mode-tracker.js', qoderCustomEnv, JSON.stringify({ prompt: '/ponytail ultra' }));
+assert.equal(result.status, 0, result.stderr);
+assert.equal(fs.readFileSync(qoderCustomState, 'utf8'), 'ultra');
+assert.equal(fs.readFileSync(qoderState, 'utf8'), 'full', 'custom Qoder mode must not change ~/.qoder');
+result = run('ponytail-subagent.js', qoderCustomEnv);
+assert.equal(result.status, 0, result.stderr);
+assert.match(JSON.parse(result.stdout).hookSpecificOutput.additionalContext, /PONYTAIL MODE ACTIVE — level: ultra/);
+
 // Bare `/ponytail` on Qoder is report-only: there's no SessionStart, so the
 // double-duty block below emits the full ruleset as the report. A second
 // confirmation here would push two JSON objects to stdout. The point is that
@@ -920,6 +933,30 @@ assert.equal(
   fs.unlinkSync(bareFlag);
   bare({ ...bareEnv, PONYTAIL_DEFAULT_MODE: 'off' });
   assert.equal(fs.readFileSync(bareFlag, 'utf8'), 'full', 'an off default still switches on at full');
+}
+
+// Compaction re-runs SessionStart inside the same conversation: it must keep the
+// live level, and keep ponytail off after "stop ponytail", not reset to the default.
+{
+  const compactHome = path.join(temp, 'compact-home');
+  const compactFlag = path.join(compactHome, '.claude', '.ponytail-active');
+  const compactEnv = { HOME: compactHome, USERPROFILE: compactHome };
+  const start = (source) => run('ponytail-activate.js', compactEnv, JSON.stringify({ source }));
+  const compact = () => start('compact');
+
+  start('startup');
+  run('ponytail-mode-tracker.js', compactEnv, JSON.stringify({ prompt: '/ponytail ultra' }));
+  assert.match(compact().stdout, /PONYTAIL MODE ACTIVE — level: ultra/);
+  assert.equal(fs.readFileSync(compactFlag, 'utf8'), 'ultra', 'compaction must keep the live level');
+
+  run('ponytail-mode-tracker.js', compactEnv, JSON.stringify({ prompt: 'stop ponytail' }));
+  assert.equal(compact().stdout, '', 'compaction must not switch a stopped session back on');
+  assert.equal(fs.existsSync(compactFlag), false);
+
+  // Every other source still starts at the default level.
+  for (const source of ['startup', 'resume', 'clear']) {
+    assert.match(start(source).stdout, /PONYTAIL MODE ACTIVE — level: full/, `${source} must start at the default level`);
+  }
 }
 
 console.log('hook compatibility checks passed');

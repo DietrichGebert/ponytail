@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 
-import ponytailExtension from "../index.js";
+import ponytailExtension, { parsePonytailCommand } from "../index.js";
 
 function createPiHarness() {
   const events = new Map();
@@ -181,6 +181,25 @@ test("session_tree restores the selected branch's mode without persisting it", a
   assert.equal(notifications.length, notificationCount, "navigation must not repeat the startup toast");
 }));
 
+test("OMP session_switch and session_branch restore the target session's mode", async () => withTempConfig(async () => {
+  // OMP keeps the legacy Pi events instead of re-emitting session_start on /new, /resume, /fork and /branch.
+  const { events, appendedEntries } = createPiHarness();
+  const lite = { type: "custom", customType: "ponytail-mode", data: { mode: "lite" } };
+  const off = { type: "custom", customType: "ponytail-mode", data: { mode: "off" } };
+  let branch = [off];
+  const ctx = createCommandContext({ sessionManager: { getBranch: () => branch } });
+
+  await events.get("session_start")({ type: "session_start" }, ctx);
+  for (const [type, entries, mode] of [["session_switch", [lite], "lite"], ["session_branch", [off], "off"], ["session_switch", [], "full"]]) {
+    branch = entries;
+    await events.get(type)?.({ type }, ctx);
+    const result = await events.get("before_agent_start")({ systemPrompt: ["BASE"] }, ctx);
+    if (mode === "off") assert.equal(result, undefined, `${type} should restore off`);
+    else assert.ok(result?.systemPrompt.at(-1).startsWith(`PONYTAIL MODE ACTIVE — level: ${mode}\n`), `${type} should restore ${mode}`);
+  }
+  assert.deepEqual(appendedEntries, [], "restoring must not append a new mode entry");
+}));
+
 test("skill alias commands delegate to Pi skill commands", async () => {
   const { commands, sentUserMessages } = createPiHarness();
   const ctx = createCommandContext();
@@ -327,3 +346,22 @@ test("PONYTAIL_HIDE_STATUS=0 does not hide the indicator", async () => withTempC
 
   assert.ok(statusWrites.length > 0, "0 must be treated as 'do not hide'");
 }));
+
+test("/ponytail autocompletes modes, commands and default <mode>", () => {
+  const { commands } = createPiHarness();
+  const complete = (prefix) => commands.get("ponytail").getArgumentCompletions(prefix);
+
+  assert.deepEqual(complete("").map((item) => item.value),
+    ["off", "lite", "full", "ultra", "status", "default off", "default lite", "default full", "default ultra"]);
+  assert.deepEqual(complete("fu").map((item) => item.value), ["full"]);
+  assert.deepEqual(complete("default ").map((item) => item.value), ["default off", "default lite", "default full", "default ultra"]);
+  assert.deepEqual(complete("default l").map((item) => item.value), ["default lite"]);
+  assert.deepEqual(complete("default").map((item) => item.value),
+    ["default off", "default lite", "default full", "default ultra"], "never a bare default: Enter would submit it without a mode");
+  assert.equal(complete("status x"), null, "no command takes a second word after status");
+  assert.equal(complete("lite x"), null);
+  assert.equal(complete("bogus"), null, "nothing matches an unknown prefix");
+  for (const { value } of complete("")) {
+    assert.notEqual(parsePonytailCommand(value).type, "invalid", `Enter on "${value}" must run a valid command`);
+  }
+});
