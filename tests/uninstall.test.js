@@ -32,6 +32,10 @@ fs.writeFileSync(flagPath, 'full');
 const qoderFlagPath = path.join(home, '.qoder', '.ponytail-active');
 fs.mkdirSync(path.dirname(qoderFlagPath), { recursive: true });
 fs.writeFileSync(qoderFlagPath, 'ultra');
+const qoderCustomDir = path.join(temp, 'qoder-custom-config');
+const qoderCustomFlagPath = path.join(qoderCustomDir, '.ponytail-active');
+fs.mkdirSync(qoderCustomDir, { recursive: true });
+fs.writeFileSync(qoderCustomFlagPath, 'lite');
 
 const nudgeFlagPath = path.join(claudeDir, '.ponytail-statusline-nudged');
 fs.writeFileSync(nudgeFlagPath, '');
@@ -80,6 +84,7 @@ let result = runUninstall(env);
 assert.equal(result.status, 0, result.stderr);
 assert.equal(fs.existsSync(flagPath), false, 'mode flag must be removed');
 assert.equal(fs.existsSync(qoderFlagPath), false, 'Qoder mode flag must be removed');
+assert.equal(fs.existsSync(qoderCustomFlagPath), true, 'default Qoder uninstall must not touch a separate custom config');
 assert.equal(fs.existsSync(nudgeFlagPath), false, 'statusline nudge flag must be removed');
 assert.equal(fs.existsSync(configPath), false, 'config file must be removed');
 assert.equal(fs.existsSync(cursorFlagPath), false, 'Cursor mode flag must be removed');
@@ -140,6 +145,10 @@ assert.equal(
   'bash ~/caveman-statusline.sh',
   'a combined statusLine must keep the non-ponytail command',
 );
+
+result = runUninstall({ ...env, QODER_CONFIG_DIR: qoderCustomDir });
+assert.equal(result.status, 0, result.stderr);
+assert.equal(fs.existsSync(qoderCustomFlagPath), false, 'Qoder custom config mode flag must be removed');
 
 // #434: a malformed settings.json must not crash the script mid-cleanup. It
 // can't be safely edited, so uninstall warns and leaves the file byte-for-byte

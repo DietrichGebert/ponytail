@@ -109,6 +109,14 @@ function readSkills() {
   }
 }
 
+// Templates without $ARGUMENTS would drop what the user typed after the
+// command (/ponytail-review feature/login), so append it instead.
+function withArguments(template, input) {
+  const text = String(input == null ? '' : input);
+  if (template.includes('$ARGUMENTS')) return template.replaceAll('$ARGUMENTS', text);
+  return text.trim() ? template + '\n\n' + text.trim() : template;
+}
+
 export default {
   id: 'ponytail',
 
@@ -127,10 +135,14 @@ export default {
           description: command.description,
           execute: async ({ sessionID, prompt, delivery }) => {
             if (command.name === 'ponytail') persistMode(prompt.text);
+            const withoutMentions = (items) => items?.map(({ mention, ...item }) => item);
             await ctx.session.prompt({
               ...prompt,
               sessionID,
-              text: command.template.replaceAll('$ARGUMENTS', prompt.text || ''),
+              text: withArguments(command.template, prompt.text),
+              files: withoutMentions(prompt.files),
+              agents: withoutMentions(prompt.agents),
+              skills: withoutMentions(prompt.skills),
               delivery,
             });
           },
@@ -140,11 +152,15 @@ export default {
 
     // Append the ruleset to the system prompt every turn. V2 hands over owned
     // system parts, so push one instead of rewriting the tail of another.
-    await ctx.session.hook('context', (event) => {
+    // Summary compaction runs its own hook with the same event shape; without
+    // it the compaction request misses the ruleset and the provider prompt cache.
+    const addRuleset = (event) => {
       const mode = readMode();
       if (mode === 'off') return;
       event.system.push({ type: 'text', text: getPonytailInstructions(mode) });
-    });
+    };
+    await ctx.session.hook('context', addRuleset);
+    await ctx.session.hook('compaction', addRuleset);
   },
 
   // OpenCode V1: same three behaviors, as hooks on the V1 hook names.
