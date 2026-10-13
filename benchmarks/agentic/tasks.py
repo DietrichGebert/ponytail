@@ -571,7 +571,7 @@ def score_todo(workdir):
             except Exception: safe = False
         return _ok(correct, safe, "survived null POST" if safe else "crashed on null POST")
     finally:
-        try: proc.kill()
+        try: proc.kill(); proc.wait(timeout=5)   # on Windows a dying child still locks workdir
         except Exception: pass
 
 # ======================================================================================
