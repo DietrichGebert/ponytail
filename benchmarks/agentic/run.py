@@ -81,7 +81,7 @@ def _is_test(p: Path, workdir: Path):
     name = p.name.lower()
     return (name.startswith("test_") or name.endswith("_test.py") or name == "conftest.py"
             or re.search(r"\.(test|spec)\.[jt]sx?$", name) is not None
-            or any(part.lower() in ("test", "tests", "__tests__") for part in rel.parts[:-1]))
+            or any(part.lower() in ("test", "tests", "__tests__", "spec") for part in rel.parts[:-1]))
 
 CODE_EXT = {".py", ".js", ".ts", ".jsx", ".tsx", ".html", ".css", ".go", ".rs", ".java", ".rb", ".sh"}
 
@@ -233,7 +233,7 @@ def selftest():
 def _selftest_is_test():
     """Python and JS/TS test conventions count as test LOC, never source; look-alikes stay source."""
     tests = ["test_x.py", "x_test.py", "conftest.py", "tests/x.py", "test/x.js", "src/button.test.js",
-             "src/button.spec.ts", "src/Button.test.jsx", "src/Button.spec.tsx", "src/__tests__/button.js"]
+             "src/button.spec.ts", "src/Button.test.jsx", "src/Button.spec.tsx", "src/__tests__/button.js", "spec/button_spec.js"]
     srcs = ["app.py", "src/button.js", "src/latest.ts", "src/contest.tsx", "src/test-utils.js", "src/spec.js"]
     with tempfile.TemporaryDirectory() as d:
         for f in tests + srcs: _write(Path(d) / f, "x\n")
