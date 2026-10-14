@@ -80,10 +80,10 @@ def _is_test(p: Path, workdir: Path):
     rel = p.relative_to(workdir)
     name = p.name.lower()
     return (name.startswith("test_") or name.endswith("_test.py") or name == "conftest.py"
-            or re.search(r"\.(test|spec)\.[jt]sx?$", name) is not None
+            or re.search(r"\.(test|spec)\.([cm]?[jt]s|[jt]sx)$", name) is not None
             or any(part.lower() in ("test", "tests", "__tests__", "spec") for part in rel.parts[:-1]))
 
-CODE_EXT = {".py", ".js", ".ts", ".jsx", ".tsx", ".html", ".css", ".go", ".rs", ".java", ".rb", ".sh"}
+CODE_EXT = {".py", ".js", ".ts", ".jsx", ".tsx", ".mjs", ".cjs", ".mts", ".cts", ".html", ".css", ".go", ".rs", ".java", ".rb", ".sh"}
 
 def _count(p: Path, with_comments: bool):
     try: lines = p.read_text(encoding="utf-8", errors="ignore").splitlines()
@@ -233,8 +233,9 @@ def selftest():
 def _selftest_is_test():
     """Python and JS/TS test conventions count as test LOC, never source; look-alikes stay source."""
     tests = ["test_x.py", "x_test.py", "conftest.py", "tests/x.py", "test/x.js", "src/button.test.js",
-             "src/button.spec.ts", "src/Button.test.jsx", "src/Button.spec.tsx", "src/__tests__/button.js", "spec/button_spec.js"]
-    srcs = ["app.py", "src/button.js", "src/latest.ts", "src/contest.tsx", "src/test-utils.js", "src/spec.js"]
+             "src/button.spec.ts", "src/Button.test.jsx", "src/Button.spec.tsx", "src/__tests__/button.js", "spec/button_spec.js", "src/button.test.mjs", "src/util.spec.cts"]
+    srcs = ["app.py", "src/button.js", "src/latest.ts", "src/contest.tsx", "src/test-utils.js", "src/spec.js",
+            "src/server.mjs", "src/config.cts"]
     with tempfile.TemporaryDirectory() as d:
         for f in tests + srcs: _write(Path(d) / f, "x\n")
         wrong = ([f for f in tests if not _is_test(Path(d) / f, Path(d))]
