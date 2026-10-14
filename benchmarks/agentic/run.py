@@ -226,6 +226,7 @@ def selftest():
     failures += 0 if ok else 1
     failures += _selftest_is_test()
     failures += _selftest_plugin_dir()
+    failures += _selftest_judge_source()
     failures += _selftest_kill()
     print(f"\nselftest: {'all instruments valid' if not failures else str(failures) + ' BROKEN'}")
     return failures
@@ -270,6 +271,17 @@ def _selftest_plugin_dir():
         ok_miss = True
     print(f"{'ok ' if ok_miss else 'XX '} plugin_dir   miss clear error (sys.exit)")
     return fails + (0 if ok_miss else 1)
+
+def _selftest_judge_source():
+    """The over-engineering judge must see the agent's files, not the .git/ that _git_snapshot adds."""
+    import judge  # lazy: judge is only needed here
+    with tempfile.TemporaryDirectory() as d:
+        _write(Path(d) / "src/app.js", "export const x = 1;\n")
+        _git_snapshot(d)
+        heads = re.findall(r"^# === (.+) ===$", judge.source_text(Path(d)), re.M)
+        ok = (Path(d) / ".git").is_dir() and heads == [str(Path("src/app.js"))]
+    print(f"{'ok ' if ok else 'XX '} judge_source skips .git/ ({len(heads)} files sent)")
+    return 0 if ok else 1
 
 def _tree_kill(proc):
     """Tree-kill one timed-out cell, never a blanket kill (that would also take down this
