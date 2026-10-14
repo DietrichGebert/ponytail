@@ -80,7 +80,8 @@ def _is_test(p: Path, workdir: Path):
     rel = p.relative_to(workdir)
     name = p.name.lower()
     return (name.startswith("test_") or name.endswith("_test.py") or name == "conftest.py"
-            or any(part.lower() in ("test", "tests") for part in rel.parts[:-1]))
+            or re.search(r"\.(test|spec)\.[jt]sx?$", name) is not None
+            or any(part.lower() in ("test", "tests", "__tests__") for part in rel.parts[:-1]))
 
 CODE_EXT = {".py", ".js", ".ts", ".jsx", ".tsx", ".html", ".css", ".go", ".rs", ".java", ".rb", ".sh"}
 
@@ -223,10 +224,26 @@ def selftest():
     ok = row["safe_rate"] == 0 and row["correct_rate"] == 0
     print(f"{'ok ' if ok else 'XX '} aggregate    a crashed cell counts as failed")
     failures += 0 if ok else 1
+    failures += _selftest_is_test()
     failures += _selftest_plugin_dir()
     failures += _selftest_kill()
     print(f"\nselftest: {'all instruments valid' if not failures else str(failures) + ' BROKEN'}")
     return failures
+
+def _selftest_is_test():
+    """Python and JS/TS test conventions count as test LOC, never source; look-alikes stay source."""
+    tests = ["test_x.py", "x_test.py", "conftest.py", "tests/x.py", "test/x.js", "src/button.test.js",
+             "src/button.spec.ts", "src/Button.test.jsx", "src/Button.spec.tsx", "src/__tests__/button.js"]
+    srcs = ["app.py", "src/button.js", "src/latest.ts", "src/contest.tsx", "src/test-utils.js", "src/spec.js"]
+    with tempfile.TemporaryDirectory() as d:
+        for f in tests + srcs: _write(Path(d) / f, "x\n")
+        wrong = ([f for f in tests if not _is_test(Path(d) / f, Path(d))]
+                 + [f for f in srcs if _is_test(Path(d) / f, Path(d))])
+        s = code_stats(Path(d))
+    ok = not wrong and (s["src_files"], s["src_loc"], s["test_files"], s["test_loc"]) == (len(srcs), len(srcs), len(tests), len(tests))
+    print(f"{'ok ' if ok else 'XX '} is_test      test/spec files excluded from source LOC"
+          + (f"  misclassified={wrong}" if wrong else ""))
+    return 0 if ok else 1
 
 def _selftest_plugin_dir():
     """Plugin-dir resolution must be portable: env override wins, and a missing install
