@@ -55,6 +55,7 @@ def source_text(workdir: Path):
     """Concatenate the agent's source files (tests + artifacts excluded), with name headers."""
     out = []
     for p in sorted(workdir.rglob("*")):
+        if any(s.startswith(".") for s in p.relative_to(workdir).parts): continue  # .git/ of diff/fixture workspaces
         if not p.is_file() or "__pycache__" in p.parts or p.suffix == ".pyc": continue
         if p.name.startswith((".", "_")) or _is_test(p.name): continue
         try: out.append(f"# === {p.relative_to(workdir)} ===\n{p.read_text(encoding='utf-8', errors='ignore')}")
