@@ -19,6 +19,7 @@ import argparse, json, os, re, shutil, subprocess, sys, tempfile, time, urllib.r
 from collections import defaultdict
 from pathlib import Path
 
+from run import _is_test   # one test convention for LOC and the judge's source view
 from tasks import TASKS
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -47,16 +48,12 @@ def load_key():
         pass
     return os.environ.get("ANTHROPIC_API_KEY")
 
-def _is_test(name):
-    n = name.lower()
-    return n.startswith("test_") or n.endswith("_test.py") or n == "conftest.py"
-
 def source_text(workdir: Path):
     """Concatenate the agent's source files (tests + artifacts excluded), with name headers."""
     out = []
     for p in sorted(workdir.rglob("*")):
         if not p.is_file() or "__pycache__" in p.parts or p.suffix == ".pyc": continue
-        if p.name.startswith((".", "_")) or _is_test(p.name): continue
+        if p.name.startswith((".", "_")) or _is_test(p, workdir): continue
         try: out.append(f"# === {p.relative_to(workdir)} ===\n{p.read_text(encoding='utf-8', errors='ignore')}")
         except Exception: continue
     return "\n\n".join(out)
