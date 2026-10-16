@@ -258,6 +258,26 @@ test('after /ponytail band the band draws nothing', async ($, on) => {
   await ui.unmount()
 })
 
+test('without HOME (Windows) the band reads its flags under USERPROFILE', async ($, on) => {
+  mock.clock(on)
+  mock.store(on)
+  on('env.get', ($, e) => ({ value: e.name === 'USERPROFILE' ? 'C:\\Users\\u' : undefined }))
+  // The engine may hand the path on with either separator.
+  const reads: string[] = []
+  on('fs.read', ($, e, next) => {
+    reads.push(e.path.replaceAll('\\', '/'))
+    return reads.at(-1) === 'C:/Users/u/.claude/.ponytail-band' ? { value: 'off' } : next(e)
+  })
+  on('ui.render', ($, e) => {
+    const { Text } = $.ui.resolve(e)
+    return <Text>prompt only</Text>
+  })
+  const ui = await $.ui.mount({ plugin: 'ponytail', surface: 'terminal', ...BAND })
+  expect(reads).toContain('C:/Users/u/.claude/.ponytail-band')
+  expect(await ui.find({ key: 'level' })).toBeUndefined()
+  await ui.unmount()
+})
+
 test('review and audit run the same commands a person types', async ($, on) => {
   mock.clock(on)
   mock.store(on)
