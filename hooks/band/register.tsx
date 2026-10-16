@@ -130,7 +130,7 @@ async function record($: EngineInterface, b: Band, options: Options) {
     const dir = await ledgerDir($)
     const file = ledgerFile(dir, b.project)
     const existing = await $.fs.read(file).catch(() => '')
-    if (existing === '') await $.process.run(['mkdir', '-p', dir])
+    // $.fs.write creates the directory: no mkdir, which Windows does not have.
     await $.fs.write(file, upsertCsv(existing, row))
     // The board is a plain file a refresh rereads, so it is rebuilt with every row.
     await writeBoard($, dir)
@@ -162,9 +162,7 @@ async function writeBoard($: EngineInterface, dir: string) {
 
 // Builds the board fresh and opens it in the browser.
 async function openBoard($: EngineInterface) {
-  const dir = await ledgerDir($)
-  await $.process.run(['mkdir', '-p', dir])
-  const file = await writeBoard($, dir)
+  const file = await writeBoard($, await ledgerDir($))
   const windows = (await $.env.get('OS')) === 'Windows_NT'
   const mac = !windows && (await $.process.run(['uname'])).stdout.trim() === 'Darwin'
   await $.process.run(windows ? ['cmd', '/c', 'start', '', file] : [mac ? 'open' : 'xdg-open', file])
