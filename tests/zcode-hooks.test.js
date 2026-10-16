@@ -99,3 +99,65 @@ test('ZCode restores once per completed persisted compaction, without a startup 
     fs.rmSync(home, { recursive: true, force: true });
   }
 });
+
+for (const failure of ['missing schema', 'corrupt database']) {
+  test(`ZCode keeps basic commands usable with ${failure} and recovers afterward`, () => {
+    const { DatabaseSync } = require('node:sqlite');
+    const { createHash } = require('node:crypto');
+    const { getPonytailInstructions } = require('../hooks/ponytail-instructions');
+    const home = fs.mkdtempSync(path.join(os.tmpdir(), 'ponytail-zcode-db-error-'));
+    const file = path.join(home, '.zcode/cli/db/db.sqlite');
+    const plugin = path.resolve(__dirname, '..');
+    const data = path.join(home, 'plugin-data');
+    const checkpoint = path.join(data, 'sessions', createHash('sha256').update('a').digest('hex'), 'context-boundary');
+    const env = { ...process.env, HOME: home, USERPROFILE: home,
+      ZCODE_PLUGIN_DATA: data, PONYTAIL_DEFAULT_MODE: 'full', PONYTAIL_MAP: '0' };
+    const invoke = (event, prompt, degraded = false) => {
+      const r = spawnSync(process.execPath, ['--disable-warning=ExperimentalWarning', path.join(plugin, 'hooks/zcode-hook.js')], {
+        env, input: JSON.stringify({ hook_event_name: event, session_id: 'a', source: 'startup', prompt }), encoding: 'utf8' });
+      assert.equal(r.status, 0, r.stderr);
+      if (degraded) assert.match(r.stderr, /compaction recovery unavailable/i);
+      else assert.equal(r.stderr, '');
+      return r.stdout.trim() ? JSON.parse(r.stdout).hookSpecificOutput?.additionalContext || '' : '';
+    };
+    const healthy = id => {
+      const db = new DatabaseSync(file);
+      try {
+        db.exec('CREATE TABLE message (id TEXT, session_id TEXT, data TEXT); CREATE TABLE part (id TEXT, session_id TEXT, sequence INTEGER, time_created INTEGER, data TEXT);');
+        db.prepare('INSERT INTO message VALUES (?, ?, ?)').run('summary', 'a', JSON.stringify({ summary: { body: 'Completed summary' } }));
+        db.prepare('INSERT INTO part VALUES (?, ?, ?, ?, ?)').run(id, 'a', 1, 1,
+          JSON.stringify({ type: 'compaction', compactBoundary: { boundaryId: id, summaryMessageIds: ['summary'] } }));
+      } finally { db.close(); }
+    };
+    try {
+      fs.mkdirSync(path.dirname(file), { recursive: true });
+      healthy('before-error');
+      invoke('SessionStart');
+      const saved = fs.readFileSync(checkpoint, 'utf8');
+      fs.unlinkSync(file);
+      if (failure === 'missing schema') new DatabaseSync(file).close();
+      else fs.writeFileSync(file, 'not a SQLite database');
+      const broken = fs.readFileSync(file);
+      assert.ok(invoke('SessionStart', undefined, true).includes(getPonytailInstructions('full')));
+      assert.ok(invoke('UserPromptSubmit', '/ponytail ultra', true).includes(getPonytailInstructions('ultra')));
+      assert.equal(invoke('UserPromptSubmit', 'ordinary turn', true), '');
+      assert.match(invoke('UserPromptSubmit', 'stop ponytail', true), /MODE OFF/);
+      assert.equal(invoke('UserPromptSubmit', 'stay off', true), '');
+      assert.equal(fs.readFileSync(checkpoint, 'utf8'), saved, 'failed reads must not advance or erase the checkpoint');
+      assert.deepEqual(fs.readFileSync(file), broken, 'degraded hooks must not write the host database');
+      fs.unlinkSync(file);
+      healthy('after-error');
+      assert.equal(invoke('UserPromptSubmit', 'still off after repair'), '');
+      invoke('UserPromptSubmit', '/ponytail ultra');
+      // Simulate another successful compact after repair without a SessionStart.
+      const db = new DatabaseSync(file);
+      db.prepare("UPDATE part SET data = json_set(data, '$.compactBoundary.boundaryId', 'next-compact')").run();
+      db.close();
+      const restored = invoke('UserPromptSubmit', 'ordinary turn after compact');
+      const rules = getPonytailInstructions('ultra');
+      assert.equal(restored.split(rules).length - 1, 1);
+      assert.match(restored, /RESTORED AFTER COMPACTION/);
+      assert.equal(invoke('UserPromptSubmit', 'next ordinary turn'), '');
+    } finally { fs.rmSync(home, { recursive: true, force: true }); }
+  });
+}

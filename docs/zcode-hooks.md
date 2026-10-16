@@ -34,8 +34,9 @@ installed.
 
 The wrapper limits the child to five seconds and 256 KiB output; the manifest
 allows seven seconds for wrapper overhead. Diagnostics stay on stderr, and
-nonempty stdout must be valid JSON. Failure is visible to ZCode rather than
-silently reporting activation.
+nonempty stdout must be valid JSON. Invalid hook input and child-process failures
+remain fatal. Compaction-store failures are reported on stderr but do not block
+activation, mode switches, or deactivation.
 
 ## Install and verify
 
@@ -86,8 +87,11 @@ silent. A simultaneous level switch emits only that switch's rules; off stays
 off. Checkpoints use atomic rename and live only in plugin data.
 
 This is a version-specific storage integration, not a new public ZCode lifecycle
-event. Missing tables/columns and read failures are reported as hook failures.
-Changes to JSON metadata semantics require revalidation after host upgrades. With no session database, basic
+event. Missing tables/columns, corrupt databases, and read failures produce a
+compaction-recovery warning on stderr. Basic commands still run successfully;
+a failed read never advances or erases the boundary checkpoint. Recovery resumes
+after the store is repaired, and off remains off. Changes to JSON metadata
+semantics require revalidation after host upgrades. With no session database, basic
 activation still works but automatic recovery is unavailable. It restores on the
 next user submission; it does not intervene in a model's in-flight tool loop.
 

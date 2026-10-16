@@ -45,7 +45,12 @@ try {
   const session = createHash('sha256').update(input.session_id).digest('hex');
   const state = path.join(data, 'sessions', session);
   const checkpoint = path.join(state, 'context-boundary');
-  const boundary = completedBoundary(input.session_id);
+  let boundary = null;
+  try { boundary = completedBoundary(input.session_id); }
+  catch (error) {
+    // Recovery metadata must not block activation, mode switches, or off.
+    process.stderr.write(`Ponytail ZCode hook: compaction recovery unavailable: ${error.message}\n`);
+  }
   const previous = fs.existsSync(checkpoint) ? fs.readFileSync(checkpoint, 'utf8').trim() : null;
   const result = spawnSync(process.execPath, [path.join(__dirname, script)], {
     input: raw, encoding: 'utf8', timeout: 5000, maxBuffer: 256 * 1024,
@@ -71,7 +76,7 @@ try {
     output.hookSpecificOutput = { hookEventName: input.hook_event_name, additionalContext: context };
     injected = true;
   }
-  if ((input.hook_event_name === 'SessionStart' || injected || !rules) && boundary !== previous) {
+  if (boundary !== null && (input.hook_event_name === 'SessionStart' || injected || !rules) && boundary !== previous) {
     fs.mkdirSync(state, { recursive: true });
     const temporary = checkpoint + '.' + process.pid + '.tmp';
     fs.writeFileSync(temporary, boundary + '\n');
