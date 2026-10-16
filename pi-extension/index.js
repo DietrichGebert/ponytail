@@ -7,6 +7,7 @@ const {
   getDefaultMode,
   getQuietStartup,
   getHideStatus,
+  getStatusEmojis,
   normalizeMode,
   normalizePersistedMode,
   isDeactivationCommand,
@@ -74,6 +75,7 @@ export default function ponytailExtension(pi) {
   let currentMode = DEFAULT_MODE;
   let configuredDefaultMode = getDefaultMode();
   let hideStatus = getHideStatus();
+  let emojis = getStatusEmojis();
   let isActive = false;
   let lastCtx = null;
 
@@ -91,11 +93,11 @@ export default function ponytailExtension(pi) {
       c.ui.setStatus("ponytail", undefined);
       return;
     }
-    const levelIcons = { lite: "🌿", full: "⚡", ultra: "🔥" };
-    const icon = levelIcons[currentMode] || "";
+    const icon = emojis[currentMode] ? emojis[currentMode] + " " : "";
+    const logo = emojis.logo ? emojis.logo + " " : "";
     const label = currentMode.toUpperCase();
     const indicator = isActive ? theme.fg("accent", "●") : theme.fg("dim", "○");
-    c.ui.setStatus("ponytail", indicator + " 🐴 " + theme.fg("muted", "ponytail: ") + theme.fg("text", icon + " " + label));
+    c.ui.setStatus("ponytail", indicator + " " + logo + theme.fg("muted", "ponytail: ") + theme.fg("text", icon + label));
   }
 
   const setMode = (mode, ctx) => {
@@ -203,6 +205,7 @@ export default function ponytailExtension(pi) {
   pi.on("session_start", async (_event, ctx) => {
     configuredDefaultMode = getDefaultMode();
     hideStatus = getHideStatus();
+    emojis = getStatusEmojis();
     restoreSessionMode(ctx);
     if (!getQuietStartup()) {
       ctx?.ui?.notify?.(`Ponytail loaded: ${currentMode}`, "info");
