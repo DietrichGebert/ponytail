@@ -6,5 +6,35 @@
     "name": "Dietrich Gebert",
     "url": "https://github.com/DietrichGebert"
   },
-  "hooks": "./hooks/claude-codex-hooks.json"
+  "hooks": [
+    "./hooks/claude-codex-hooks.json",
+    "./hooks/claude-band.json"
+  ],
+  "types": "./hooks/band/types.d.ts",
+  "userConfig": {
+    "ledger": {
+      "type": "boolean",
+      "title": "Task board",
+      "description": "After every turn, write this task's row (cost, turns, agent time, tokens, reuse, tests) to ~/.config/ponytail/band/<project>.csv for the board.",
+      "default": true
+    },
+    "webhookUrl": {
+      "type": "string",
+      "title": "Webhook URL",
+      "description": "Optional: an https address that gets this task's row as JSON after every turn (a team board, n8n, a sheet script). Empty: nothing leaves this machine.",
+      "default": ""
+    },
+    "webhookToken": {
+      "type": "string",
+      "title": "Webhook token",
+      "sensitive": true,
+      "description": "Optional: sent to the webhook as a Bearer token. Kept in the system keychain, never in a settings file or a repo."
+    },
+    "sendNames": {
+      "type": "boolean",
+      "title": "Send task names",
+      "default": true,
+      "description": "Send each task's name (its name in the Claude Code sidebar, or its first prompt) to the webhook. Off: the board shows the task without a name."
+    }
+  }
 }

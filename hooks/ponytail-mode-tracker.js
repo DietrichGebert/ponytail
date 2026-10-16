@@ -2,12 +2,16 @@
 // ponytail — UserPromptSubmit hook to track which ponytail mode is active
 // Inspects user input for /ponytail commands and writes mode to flag file
 
-const { getDefaultMode, isDeactivationCommand, writeDefaultMode } = require('./ponytail-config');
+const fs = require('fs');
+const path = require('path');
+const { getClaudeDir, getDefaultMode, isDeactivationCommand, writeDefaultMode } = require('./ponytail-config');
 const {
   clearMode,
   cursorRuleNotice,
   cursorRulePath,
+  isCodeBuddy,
   isCodex,
+  isCopilot,
   isCursor,
   isQoder,
   readMode,
@@ -69,6 +73,25 @@ function finish() {
           // Qoder still needs this turn's ruleset: the block below folds the
           // notice into it. mode stays null, so the session level is untouched.
           if (!isQoder) return; // don't fall through to the session-mode switch
+        }
+        // `/ponytail band [on|off]` shows or hides the band above the Claude Code
+        // prompt (hooks/band reads this flag). It outlives the session; absent = shown.
+        // Other hosts have no band, so there the word stays an unknown argument.
+        if (arg === 'band' && !isCopilot && !isCodex && !isQoder && !isCodeBuddy && !isCursor) {
+          const flag = path.join(getClaudeDir(), '.ponytail-band');
+          let hidden = false;
+          try { hidden = fs.readFileSync(flag, 'utf8').trim() === 'off'; } catch (e) {}
+          const show = parts[2] === 'on' ? true : parts[2] === 'off' ? false : hidden;
+          if (show) {
+            try { fs.unlinkSync(flag); } catch (e) {}
+          } else {
+            fs.mkdirSync(path.dirname(flag), { recursive: true });
+            fs.writeFileSync(flag, 'off');
+          }
+          writeHookOutput('UserPromptSubmit', readMode() || 'off', show
+            ? 'PONYTAIL BAND ON: the band shows above the prompt again. The ponytail level is unchanged. Confirm in one short line.'
+            : 'PONYTAIL BAND OFF: the band above the prompt is hidden, `/ponytail band` brings it back. The ponytail level is unchanged. Confirm in one short line.');
+          return;
         }
         if (arg === 'lite') mode = 'lite';
         else if (arg === 'full') mode = 'full';

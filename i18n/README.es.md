@@ -107,6 +107,20 @@ Más supervivientes en [examples/](../examples/).
 
 `/ponytail-audit` hace las mismas comprobaciones en todo el repo. Primero hace un mapa del código: puntos de entrada, cómo se mueven los datos, qué carga espera el proyecto. Después ordena lo que encuentra por prioridad y te dice qué arreglar primero. La auditoría anterior solo listaba lo que había que borrar.
 
+## Nuevo en 5.3: la barra
+
+<p align="center">
+  <img src="../assets/band/band.png" width="880" alt="La barra de ponytail en Claude Code, encima del prompt. Modo detalle: coste $23.80, último turno $1.14, media $0.72 por turno; 56.7M tokens, 168k de salida, 33 turnos; tiempo de agente 52m 14s; reutilización 71%, 5 usados, 2 nuevos; tests pasados después del último cambio. El modo compacto muestra lo mismo en una línea.">
+</p>
+
+En Claude Code, ponytail ahora muestra una barra encima del prompt: cuánto cuesta la tarea actual, cuántos tokens y cuánto tiempo de agente ha usado, cuántas veces reutilizó código existente en lugar de escribir código nuevo y si los tests pasaron después del último cambio. Sus botones cambian el nivel, lanzan `/ponytail-review` o `/ponytail-audit`, copian la tarea como Markdown y pliegan la barra en una sola línea. ¿No la quieres? `/ponytail band` la oculta, y el mismo comando la vuelve a mostrar. Necesita Claude Code 2.1.290 o posterior, en la terminal o en la app de escritorio. No aparece en el panel de chat de VS Code, en sesiones en la nube ni con `claude -p`.
+
+<p align="center">
+  <img src="../assets/band/board.png" width="880" alt="El board de ponytail, una página local: 61 sesiones, 20h 13m de tiempo de agente, $285.30 y 492.5M tokens en los últimos 30 días; tiempo de agente por proyecto a lo largo del tiempo; las últimas sesiones con sus tests; días activos y racha.">
+</p>
+
+**Board** abre una página local con todas las tareas de tus proyectos: coste, tiempo de agente y tokens a lo largo del tiempo, cada sesión con sus tests y los días que trabajaste. Por defecto, todo se queda en tu máquina, en `~/.config/ponytail/band/`.
+
 ## Cómo funciona
 
 <p align="center">
@@ -157,6 +171,7 @@ Instala ponytail solo desde `DietrichGebert/ponytail` en GitHub o `@dietrichgebe
 | Comando | Qué hace |
 |---------|----------|
 | `/ponytail [lite \| full \| ultra \| off]` | Ajusta la intensidad o lo apaga. Sin argumento enciende ponytail en el nivel por defecto si está apagado; si no, muestra el nivel actual. |
+| `/ponytail band [on \| off]` | Solo en Claude Code: oculta o muestra la barra encima del prompt. Sin argumento la alterna. El nivel no cambia. |
 | `/ponytail-review` | Revisa el diff actual como el dev senior al que llaman cuando algo se rompe: bugs, seguridad, carga real, código arriesgado sin test, partes lentas y lo que sobra. Cada hallazgo dice qué hace el código, qué falla, cómo arreglarlo y qué pasa si no se arregla. Indica un objetivo con palabras normales para acotarlo o ampliarlo: `uncommitted`, `staged`, `branch` o un enlace a un PR. |
 | `/ponytail-audit` | La misma revisión para todo el repo, lo más importante primero. |
 | `/ponytail-debt` | Reúne los atajos `shortcut:` que dejaste para después en un registro, para que "luego" no se convierta en "nunca". |

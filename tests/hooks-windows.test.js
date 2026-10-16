@@ -133,9 +133,14 @@ for (const script of ['ponytail-mode-tracker.js', 'ponytail-activate.js']) {
 }
 
 test('Claude and Codex manifests point at the shared host-specific hook config', () => {
+  // Claude Code also loads the band's hooks module, from a file of its own the other hosts never read.
+  const expected = {
+    '.claude-plugin/plugin.json': [`./${HOOKS_JSON}`, './hooks/claude-band.json'],
+    '.codex-plugin/plugin.json': `./${HOOKS_JSON}`,
+  };
   for (const rel of HOST_PLUGIN_MANIFESTS) {
     const manifest = JSON.parse(fs.readFileSync(path.join(root, rel), 'utf8'));
-    assert.equal(manifest.hooks, `./${HOOKS_JSON}`, `${rel} must not rely on root hooks auto-discovery`);
+    assert.deepEqual(manifest.hooks, expected[rel], `${rel} must not rely on root hooks auto-discovery`);
   }
 });
 

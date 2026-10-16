@@ -40,6 +40,11 @@ slash-command forms above (OpenCode ships all six as slash commands).
 Say "stop ponytail" or "normal mode". Resume anytime with `/ponytail`.
 `/ponytail off` also works.
 
+## Band (Claude Code)
+
+`/ponytail band` hides the band above the prompt, the same command brings it back.
+`/ponytail band on` and `/ponytail band off` set it directly. The level stays.
+
 ## Configure Default Mode
 
 Default mode = `full`, auto-active every session. Change it:
