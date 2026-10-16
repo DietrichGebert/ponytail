@@ -251,6 +251,7 @@ Send `/ponytail lite`, `/ponytail full`, `/ponytail ultra`, or `/ponytail off` a
 prompt text. `/ponytail default lite` changes defaults for future ZCode sessions
 only. The adapter does not modify Codex or Claude state.
 
-On ZCode 3.15.3 / CLI 0.16.9, manual compact does not replay SessionStart. Send
-an explicit level command after compacting; automatic restoration is not yet
-accepted on that host version. See the known limitation in the integration guide.
+For automatic compaction recovery on ZCode 3.15.3 / CLI 0.16.9, use Node 22.13
+or later. The adapter reads completed session-boundary metadata without modifying
+ZCode storage, restores once on the next prompt, and stays silent on ordinary
+turns. See the version-specific storage contract in the integration guide.

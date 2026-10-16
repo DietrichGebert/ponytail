@@ -46,3 +46,56 @@ test('ZCode hooks deliver JSON, retain compacted modes and isolate same-repo ses
     }
   } finally { fs.rmSync(home, { recursive: true, force: true }); }
 });
+
+// Catch the real-host gap: manual compaction does not replay SessionStart.
+test('ZCode restores once per completed persisted compaction, without a startup event', () => {
+  const { DatabaseSync } = require('node:sqlite');
+  const home = fs.mkdtempSync(path.join(os.tmpdir(), 'ponytail-zcode-boundary-'));
+  const file = path.join(home, '.zcode/cli/db/db.sqlite');
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  const db = new DatabaseSync(file);
+  try {
+    db.exec('CREATE TABLE message (id TEXT, session_id TEXT, data TEXT); CREATE TABLE part (id TEXT, session_id TEXT, sequence INTEGER, time_created INTEGER, data TEXT);');
+    const plugin = path.resolve(__dirname, '..');
+    const env = { ...process.env, HOME: home, USERPROFILE: home,
+      ZCODE_PLUGIN_DATA: path.join(home, 'plugin-data'), PONYTAIL_DEFAULT_MODE: 'full', PONYTAIL_MAP: '0' };
+    const invoke = (event, sid, prompt) => {
+      const r = spawnSync(process.execPath, ['--disable-warning=ExperimentalWarning', path.join(plugin, 'hooks/zcode-hook.js')], {
+        env, input: JSON.stringify({ hook_event_name: event, session_id: sid, source: 'startup', prompt }), encoding: 'utf8' });
+      assert.equal(r.status, 0, r.stderr);
+      return r.stdout.trim() ? JSON.parse(r.stdout).hookSpecificOutput.additionalContext : '';
+    };
+    let seq = 0;
+    const boundary = (sid, id, complete = true) => {
+      const summary = 'summary-' + id;
+      db.prepare('INSERT INTO part VALUES (?, ?, ?, ?, ?)').run(id, sid, ++seq, seq,
+        JSON.stringify({ type: 'compaction', compactBoundary: { boundaryId: id, summaryMessageIds: [summary] } }));
+      if (complete) db.prepare('INSERT INTO message VALUES (?, ?, ?)').run(summary, sid, JSON.stringify({ summary: { title: 'Compact summary', body: 'Completed test summary', diffs: [] } }));
+    };
+    assert.match(invoke('SessionStart', 'a'), /level: full/);
+    assert.match(invoke('UserPromptSubmit', 'a', '/ponytail ultra'), /level: ultra/);
+    assert.equal(invoke('UserPromptSubmit', 'a', 'normal turn'), '');
+    boundary('b', 'other-session');
+    boundary('a', 'pending', false);
+    assert.equal(invoke('UserPromptSubmit', 'a', 'no completed compact'), '');
+    boundary('a', 'compact-one');
+    const before = fs.readFileSync(file);
+    const restored = invoke('UserPromptSubmit', 'a', 'ordinary turn after compact');
+    assert.match(restored, /level: ultra/);
+    assert.match(restored, /The smallest complete change/);
+    assert.deepEqual(fs.readFileSync(file), before, 'the adapter must never write ZCode session data');
+    assert.equal(invoke('UserPromptSubmit', 'a', 'another ordinary turn'), '');
+    boundary('a', 'compact-two');
+    const switched = invoke('UserPromptSubmit', 'a', '/ponytail lite');
+    assert.equal(switched.split('# Ponytail').length - 1, 1, 'mode switch and recovery must not double-inject');
+    assert.equal(invoke('UserPromptSubmit', 'a', 'after switch'), '');
+    assert.match(invoke('UserPromptSubmit', 'a', 'stop ponytail'), /MODE OFF/);
+    boundary('a', 'compact-three');
+    assert.equal(invoke('UserPromptSubmit', 'a', 'stay off'), '');
+    assert.match(invoke('SessionStart', 'b'), /level: full/);
+    assert.equal(invoke('UserPromptSubmit', 'b', 'already injected at startup'), '');
+  } finally {
+    db.close();
+    fs.rmSync(home, { recursive: true, force: true });
+  }
+});

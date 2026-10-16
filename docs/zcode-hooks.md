@@ -12,8 +12,9 @@ parser is duplicated.
 
 - `SessionStart`: startup/clear initialize the configured default; compact keeps
   the live mode, including off.
-- `UserPromptSubmit`: ordinary requests are silent; mode commands inject the new
-  rules, and `stop ponytail` / `normal mode` turn injection off.
+- `UserPromptSubmit`: ordinary requests are silent unless a newly completed
+  compaction boundary requires one restoration. Mode commands inject the new
+  rules; `stop ponytail` / `normal mode` keep restoration off.
 - ZCode's documented events do not include `SubagentStart`. This adapter does not
   claim automatic subagent inheritance.
 
@@ -64,17 +65,34 @@ same workspace. Treat the compacted summary's historical mention of a mode
 separately from new hook injection. Compare Codex config and installed-hook
 hashes before and after.
 
-## Known host limitation: ZCode 3.15.3 / CLI 0.16.9
+## Compaction recovery on ZCode 3.15.3 / CLI 0.16.9
 
-Real desktop GLM-5.3 verification showed that manual `/compact` succeeds but does
-not fire SessionStart again. The mode file stays correct and the summary can
-remember the level, while the next model request lacks the full ruleset. A model
-saying it is still in ultra is not proof of rule restoration.
+This host does not replay SessionStart after manual `/compact`. Its temporary
+hook transcript also contains only the current prompt, so it cannot establish
+whether prior rules survived compaction.
 
-Automatic restoration therefore requires the host to emit the documented compact
-lifecycle event. On this version, explicitly send `/ponytail ultra` (or the
-intended level) after compacting to inject that level again. The adapter does not
-append the full rules on every ordinary turn merely to hide this limitation.
+The adapter queries ZCode's persisted session store at
+`~/.zcode/cli/db/db.sqlite` in read-only mode, using Node's built-in `node:sqlite`
+(Node 22.13 or later). It selects only a boundary ID for the exact session and
+requires its associated summary message to exist with a completed summary body.
+Pending
+operations and other sessions cannot trigger restoration. No conversation text
+is selected and the database is never modified.
+
+Each session's `context-boundary` file records the boundary at which its complete
+rules were last injected. A new boundary causes the next UserPromptSubmit to
+emit the current level's complete rules once. The following ordinary turns stay
+silent. A simultaneous level switch emits only that switch's rules; off stays
+off. Checkpoints use atomic rename and live only in plugin data.
+
+This is a version-specific storage integration, not a new public ZCode lifecycle
+event. Missing tables/columns and read failures are reported as hook failures.
+Changes to JSON metadata semantics require revalidation after host upgrades. With no session database, basic
+activation still works but automatic recovery is unavailable. It restores on the
+next user submission; it does not intervene in a model's in-flight tool loop.
+
+The hook process suppresses Node's known experimental SQLite notice, not hook or
+database errors. No changes are made to other hosts' hooks or defaults.
 
 When validating the desktop OAuth route, use the desktop host or faithfully
 synchronize its account-provider snapshot. An independent app-server without that
