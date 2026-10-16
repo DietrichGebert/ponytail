@@ -238,3 +238,19 @@ Jules (Google) reads `AGENTS.md` from the repository root, which this repo ships
 | Cursor rule / Windsurf / Cline / Qoder / etc. | Delete the copied rule file |
 
 These remove the plugin's own files. They leave behind a small amount of state ponytail writes outside the plugin folder: the mode flag (`~/.claude/.ponytail-active`, or `~/.cursor/.ponytail-active` for Cursor), `~/.config/ponytail/config.json`, the statusline script copy (`~/.claude/ponytail-statusline.sh` or `.ps1`), ponytail's entries in `~/.cursor/hooks.json`, and (if you accepted the setup nudge) a `statusLine` entry in `~/.claude/settings.json`. Until they are removed, the statusline badge keeps showing the last mode. Run `node scripts/uninstall.js` to clean those up too. **Run it before the host remove command above**: the script is itself a plugin file, so removing the plugin first deletes it (or run it from a separate clone of this repo). It only removes the statusLine entry if it points at ponytail's own script, so a statusline you set up yourself is left untouched.
+
+## ZCode
+
+Install this repository as a plugin from a local or Git marketplace, then enable
+`hooks.enabled` in `~/.zcode/cli/config.json` and start a new session. In the
+settings UI, verify Ponytail has one SessionStart and one UserPromptSubmit hook.
+Do not also register the same scripts in user hooks or add an always-on copy of
+the rules. See [ZCode hooks](docs/zcode-hooks.md) for the protocol and limits.
+
+Send `/ponytail lite`, `/ponytail full`, `/ponytail ultra`, or `/ponytail off` as
+prompt text. `/ponytail default lite` changes defaults for future ZCode sessions
+only. The adapter does not modify Codex or Claude state.
+
+On ZCode 3.15.3 / CLI 0.16.9, manual compact does not replay SessionStart. Send
+an explicit level command after compacting; automatic restoration is not yet
+accepted on that host version. See the known limitation in the integration guide.

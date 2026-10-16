@@ -1,0 +1,11 @@
+{
+  "hooks": {
+    "SessionStart": [{
+      "matcher": "startup|resume|clear|compact",
+      "hooks": [{ "type": "process", "command": "node", "args": ["${ZCODE_PLUGIN_ROOT}/hooks/zcode-hook.js"], "timeoutMs": 7000 }]
+    }],
+    "UserPromptSubmit": [{
+      "hooks": [{ "type": "process", "command": "node", "args": ["${ZCODE_PLUGIN_ROOT}/hooks/zcode-hook.js"], "timeoutMs": 7000 }]
+    }]
+  }
+}
