@@ -1,0 +1,9 @@
+{
+  "name": "ponytail",
+  "version": "5.2.0",
+  "description": "Ponytail coding rules with session-isolated ZCode lifecycle hooks.",
+  "author": { "name": "Dietrich Gebert" },
+  "license": "MIT",
+  "skills": "./skills/",
+  "hooks": "./hooks/zcode-hooks.json"
+}

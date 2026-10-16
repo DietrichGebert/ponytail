@@ -28,6 +28,7 @@
     ".opencode/",
     ".qoder/",
     ".qoder-plugin/",
+    ".zcode-plugin/",
     "pi-extension/",
     "!pi-extension/test/",
     "scripts/uninstall.js",
