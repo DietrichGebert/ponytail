@@ -5,7 +5,7 @@
 // Runs on every session start:
 //   1. Writes flag file at $CLAUDE_CONFIG_DIR/.crewcut-active (defaults to ~/.claude; statusline reads this)
 //   2. Emits crewcut ruleset as hidden SessionStart context
-//   3. Detects missing statusline config and emits setup nudge
+//   3. Offers the statusline setup once
 
 const fs = require('fs');
 const path = require('path');
@@ -66,76 +66,45 @@ if (mode !== 'review' && process.env.CREWCUT_MAP !== '0') try {
   if (map) output += '\n\n' + map;
 } catch (e) { /* no map */ }
 
-// 3. Detect missing statusline config — nudge Claude to help set it up
+// 3. Offer the statusline once. settings.json is never read: the flag file alone
+// decides, and the model checks the user's settings when it makes the offer.
 if (!isCodex && !isCopilot && !isCursor && !isCodeBuddy) try {
   const isWindows = process.platform === 'win32';
-  let statusCommand = null;
-  if (fs.existsSync(settingsPath)) {
-    // Strip UTF-8 BOM some editors prepend on Windows (breaks JSON.parse)
-    const raw = fs.readFileSync(settingsPath, 'utf8').replace(/^\uFEFF/, '');
-    const settings = JSON.parse(raw);
-    if (settings.statusLine) {
-      statusCommand = String(settings.statusLine.command || '');
-    }
-  }
-
-  // A statusLine already set up before #1032 can still run a script from a
-  // plugin version that has since been deleted. Only absolute paths are checked,
-  // so ~ or $HOME forms are never mistaken for missing files.
-  const ref = statusCommand &&
-    statusCommand.match(/"([^"]*crewcut-statusline\.(?:sh|ps1))"|(\S*crewcut-statusline\.(?:sh|ps1))/);
-  const refPath = ref ? (ref[1] || ref[2]) : null;
-  // isShellSafe keeps quotes, newlines and shell metacharacters from
-  // settings.json out of the model context.
-  // On Windows only drive-letter or UNC paths count: a Git Bash path such as
-  // /c/Users/... is absolute to Node but does not resolve, so it would be
-  // flagged as broken while it works.
-  const checkable = refPath && isShellSafe(refPath) && path.isAbsolute(refPath) &&
-    (!isWindows || /^([A-Za-z]:[\\/]|\\\\)/.test(refPath));
-  const stalePath = checkable && !fs.existsSync(refPath) ? refPath : null;
-
-  // The plugin root is a versioned cache dir (.../crewcut/4.12.0/) that Claude
-  // Code deletes on update, so a statusLine pointing into it goes blank after the
-  // next update (#1032). Point it at a copy in the config dir instead. A statusLine
-  // that already runs crewcut keeps its script type, so its copy stays fresh.
-  const usePs1 = refPath ? refPath.endsWith('.ps1') : isWindows;
-  const scriptName = usePs1 ? 'crewcut-statusline.ps1' : 'crewcut-statusline.sh';
+  const scriptName = isWindows ? 'crewcut-statusline.ps1' : 'crewcut-statusline.sh';
   const scriptPath = path.join(claudeDir, scriptName);
 
   // Nudge at most once — the flag file marks that the user has already seen
   // (and implicitly declined) the statusline setup offer. Repeating it every
-  // session start turns a helpful hint into a nag. A broken path is nudged once
-  // per path: the flag records it.
+  // session start turns a helpful hint into a nag.
   const nudgeFlagPath = path.join(claudeDir, '.crewcut-statusline-nudged');
-  let nudged = null;
-  try { nudged = fs.readFileSync(nudgeFlagPath, 'utf8'); } catch (e) { /* not nudged yet */ }
-  const nudge = stalePath ? nudged !== stalePath : statusCommand === null && nudged === null;
+  const nudge = !fs.existsSync(nudgeFlagPath);
 
-  // Refresh the copy every session so script fixes ship with plugin updates.
-  // Copy to a new temp file, then rename: the rename replaces a symlink at
-  // scriptPath instead of writing through it, and a concurrent session never
-  // runs a half-written script.
-  if (nudge || fs.existsSync(scriptPath)) {
-    const tmpPath = scriptPath + '.' + process.pid + '.tmp';
+  // The plugin root is a versioned cache dir (.../crewcut/4.12.0/) that Claude
+  // Code deletes on update, so a statusLine pointing into it goes blank after the
+  // next update (#1032). The offer points at a copy in the config dir instead.
+  // Refresh every copy each session so script fixes ship with plugin updates.
+  // Copy to a new temp file, then rename: the rename replaces a symlink at the
+  // copy instead of writing through it, and a concurrent session never runs a
+  // half-written script.
+  for (const name of ['crewcut-statusline.ps1', 'crewcut-statusline.sh']) {
+    const copyPath = path.join(claudeDir, name);
+    if (!(nudge && name === scriptName) && !fs.existsSync(copyPath)) continue;
+    const tmpPath = copyPath + '.' + process.pid + '.tmp';
     try {
-      fs.copyFileSync(path.join(__dirname, scriptName), tmpPath, fs.constants.COPYFILE_EXCL);
+      fs.copyFileSync(path.join(__dirname, name), tmpPath, fs.constants.COPYFILE_EXCL);
       fs.chmodSync(tmpPath, 0o644);
-      fs.renameSync(tmpPath, scriptPath);
+      fs.renameSync(tmpPath, copyPath);
     } finally {
       try { fs.unlinkSync(tmpPath); } catch (e) { /* renamed */ }
     }
   }
 
   if (nudge) {
-    try { fs.writeFileSync(nudgeFlagPath, stalePath || ''); } catch (e) { /* best-effort */ }
-    if (stalePath) {
-      output += "\n\n" +
-        "STATUSLINE BROKEN: The statusLine in " + settingsPath + " runs " + stalePath +
-        ", which no longer exists (the crewcut plugin was updated and its old version removed), " +
-        "so the crewcut badge is blank. Replace that path with " + scriptPath + ", which survives updates, " +
-        "quoting it for your shell. Keep the rest of the command. " +
-        "Proactively offer to fix this for the user on first interaction.";
-    } else if (isShellSafe(scriptPath)) {
+    try { fs.writeFileSync(nudgeFlagPath, ''); } catch (e) { /* best-effort */ }
+    const offer = "If " + settingsPath + " has a statusLine that runs crewcut-statusline from another path, " +
+      "offer to point it at " + scriptPath + ". If it has no statusLine, proactively offer to set this up " +
+      "for the user on first interaction. Leave any other statusLine alone.";
+    if (isShellSafe(scriptPath)) {
       const command = isWindows
         ? `powershell -ExecutionPolicy Bypass -File "${scriptPath}"`
         : `bash "${scriptPath}"`;
@@ -143,10 +112,9 @@ if (!isCodex && !isCopilot && !isCursor && !isCodeBuddy) try {
         '"statusLine": { "type": "command", "command": ' + JSON.stringify(command) + ' }';
       output += "\n\n" +
         "STATUSLINE SETUP NEEDED: The crewcut plugin includes a statusline badge showing active mode " +
-        "(e.g. [CREWCUT], [CREWCUT:ULTRA]). It is not configured yet. " +
+        "(e.g. [CREWCUT], [CREWCUT:ULTRA]). " +
         "To enable, add this to " + settingsPath + ": " +
-        statusLineSnippet + " " +
-        "Proactively offer to set this up for the user on first interaction.";
+        statusLineSnippet + " " + offer;
     } else {
       // crewcut: config dir path has shell metacharacters; don't embed it in a
       // command snippet; have the agent wire it up by hand instead.
@@ -154,12 +122,11 @@ if (!isCodex && !isCopilot && !isCursor && !isCodeBuddy) try {
         "STATUSLINE SETUP NEEDED: The crewcut plugin includes a statusline badge showing active mode. " +
         "Its path contains characters unsafe to embed in a shell command, so configure it manually: " +
         "add a statusLine command of type \"command\" that runs " + scriptName +
-        " from " + claudeDir + " to " + settingsPath + ", quoting/escaping the path for your shell. " +
-        "Proactively offer to set this up for the user on first interaction.";
+        " from " + claudeDir + " to " + settingsPath + ", quoting/escaping the path for your shell. " + offer;
     }
   }
 } catch (e) {
-  // Silent fail — don't block session start over statusline detection
+  // Silent fail — don't block session start over statusline setup
 }
 
 try {
