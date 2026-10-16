@@ -258,6 +258,28 @@ test('after /ponytail band the band draws nothing', async ($, on) => {
   await ui.unmount()
 })
 
+test('another mod drawing above the prompt shows below the band, in compact and in details', async ($, on) => {
+  mock.clock(on)
+  mock.store(on)
+  // Another mod in the same slot, beneath ponytail in the chain.
+  on('ui.render', ($, e) => {
+    const { Text } = $.ui.resolve(e)
+    return <Text>other band</Text>
+  })
+  for (const surface of ['terminal', 'desktop'] as const) {
+    const ui = await $.ui.mount({ plugin: 'ponytail', surface, ...BAND })
+    expect(await ui.find({ key: 'level' })).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: /other band/ })).toBeDefined()
+
+    await ui.press({ key: 'details' })
+    expect(await ui.find({ key: 'level-ultra' })).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: /other band/ })).toBeDefined()
+    // back to compact for the next surface
+    await ui.press({ key: 'details' })
+    await ui.unmount()
+  }
+})
+
 test('review and audit run the same commands a person types', async ($, on) => {
   mock.clock(on)
   mock.store(on)
