@@ -77,7 +77,9 @@ const load = async ($: EngineInterface): Promise<Band> => ({ ...EMPTY, ...(await
 const union = (a: string[], b: string[]) => [...new Set([...a, ...b])]
 const base = (path: string) => path.replace(/\/+$/, '').split('/').pop() ?? path
 
-const claudeDir = async ($: EngineInterface) => (await $.env.get('CLAUDE_CONFIG_DIR')) ?? `${await $.env.get('HOME')}/.claude`
+// Windows sets USERPROFILE, not HOME.
+const home = async ($: EngineInterface) => (await $.env.get('HOME')) ?? (await $.env.get('USERPROFILE'))
+const claudeDir = async ($: EngineInterface) => (await $.env.get('CLAUDE_CONFIG_DIR')) ?? `${await home($)}/.claude`
 
 // `/ponytail band` (the mode tracker) leaves "off" here to hide the band. Absent flag = shown.
 async function bandHidden($: EngineInterface): Promise<boolean> {
@@ -117,7 +119,7 @@ async function readTitle($: EngineInterface, transcript: string): Promise<string
 // Where the task ledgers and the board live.
 // shortcut: ~/.config only (XDG respected); Windows would want %APPDATA%.
 async function ledgerDir($: EngineInterface) {
-  return `${(await $.env.get('XDG_CONFIG_HOME')) ?? `${await $.env.get('HOME')}/.config`}/ponytail/band`
+  return `${(await $.env.get('XDG_CONFIG_HOME')) ?? `${await home($)}/.config`}/ponytail/band`
 }
 
 const ledgerFile = (dir: string, project: string) => `${dir}/${project.replace(/[^\w.-]/g, '_')}.csv`

@@ -292,6 +292,27 @@ test('the ledger is written on Windows, where there is no mkdir', async ($, on) 
   expect(written[1]?.endsWith('C:/Users/u/.config/ponytail/band/board.html')).toBe(true)
 })
 
+test('without HOME (Windows) the band reads its flags under USERPROFILE', async ($, on) => {
+  mock.clock(on)
+  mock.store(on)
+  on('env.get', ($, e) => ({ value: e.name === 'USERPROFILE' ? 'C:\\Users\\u' : undefined }))
+  // The engine may hand the path on with either separator, and off Windows a C: path is relative,
+  // so the working dir comes in front of it: compare the end.
+  const reads: string[] = []
+  on('fs.read', ($, e, next) => {
+    reads.push(e.path.replaceAll('\\', '/'))
+    return reads.at(-1)?.endsWith('C:/Users/u/.claude/.ponytail-band') ? { value: 'off' } : next(e)
+  })
+  on('ui.render', ($, e) => {
+    const { Text } = $.ui.resolve(e)
+    return <Text>prompt only</Text>
+  })
+  const ui = await $.ui.mount({ plugin: 'ponytail', surface: 'terminal', ...BAND })
+  expect(reads.some(path => path.endsWith('C:/Users/u/.claude/.ponytail-band'))).toBe(true)
+  expect(await ui.find({ key: 'level' })).toBeUndefined()
+  await ui.unmount()
+})
+
 test('another mod drawing above the prompt shows below the band, in compact and in details', async ($, on) => {
   mock.clock(on)
   mock.store(on)
