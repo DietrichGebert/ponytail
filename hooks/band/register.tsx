@@ -308,6 +308,9 @@ export const register: Register = (on, options) => {
 
   on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
     if (e.props.hasSurvey || (await bandHidden($))) return next(e)
+    // Other mods share this slot: draw theirs below ours instead of replacing it.
+    // next(e) rejects only when nothing answers beneath (the test harness): the band still draws.
+    const below = await next(e).catch(() => undefined)
 
     const b = await load($)
     const now = await $.clock.now()
@@ -333,6 +336,7 @@ export const register: Register = (on, options) => {
     }
 
     const { Box, Text, Button } = $.ui.resolve(e)
+    const stack = (mine: NonNullable<typeof below>) => (below ? <Box flexDirection="column">{mine}{below}</Box> : mine)
 
     const testsText =
       b.tests.state === 'pass'
@@ -348,7 +352,7 @@ export const register: Register = (on, options) => {
     const hasOpen = b.openCallers.length > 0
 
     if (!b.details) {
-      return (
+      return stack(
         <Box flexDirection="row" alignItems="center" gap={2} width={e.props.bodyColumns}>
           {/* A click opens the four levels: one click, one turn, no stops on levels nobody wanted. */}
           <Button key="level" plain onPress={toggle}>
@@ -428,7 +432,7 @@ export const register: Register = (on, options) => {
       metrics = <Svg source={metricsSvg(cols, b.turnCosts)} alt={cols.map(c => `${c.label} ${c.value}`).join(', ')} />
     }
 
-    return (
+    return stack(
       <Box flexDirection="column" gap={1} width={e.props.bodyColumns}>
         <Box flexDirection="row" alignItems="center" gap={1}>
           {LEVELS.map(level => (
