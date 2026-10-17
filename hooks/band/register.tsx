@@ -206,13 +206,14 @@ export const register: Register = (on, options) => {
     return next(e)
   }).catch(($, e, next) => next(e))
 
-  // /clear goes on under a new session id with an empty band and no session.start, so the band showed "off"
-  // until the first turn ended. Set it up again once /clear has run.
-  // shortcut: ponytail-activate.js may reset the flag to the default level after this, so a level switched before /clear
-  // can show until the first turn ends; a session skips a plugin's classic.SessionStart hook, the one later point.
-  on('command.run', { command: 'clear' }, async ($, e, next) => {
+  // /clear and /resume go on under another session id with an empty band and no session.start, so the band showed
+  // "off" until the first turn ended. Set it up again once a command has moved the session.
+  // shortcut: after /clear, ponytail-activate.js may reset the flag to the default level after this, so a level switched
+  // before /clear can show until the first turn ends; a session skips a plugin's classic.SessionStart hook, the one later point.
+  on('command.run', async ($, e, next) => {
+    const session = await $.session.id()
     const result = await next(e)
-    known = await start($).catch(() => known)
+    if ((await $.session.id()) !== session) known = await start($).catch(() => known)
     return result
   }).catch(($, e, next) => next(e))
 
