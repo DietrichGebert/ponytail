@@ -271,6 +271,21 @@ test('after /ponytail band the band draws nothing', async ($, on) => {
   await ui.unmount()
 })
 
+test('after /clear the band shows the level again, with no session.start', async ($, on) => {
+  mock.clock(on)
+  mock.store(on)
+  on('env.get', ($, e) => ({ value: e.name === 'HOME' ? '/home/u' : undefined }))
+  on('fs.read', ($, e, next) => (e.path === '/home/u/.claude/.ponytail-active' ? { value: 'full' } : next(e)))
+  on('session.repo', () => ({ value: { root: '/repo/shop' } }) as never)
+  on('session.id', () => ({ value: 's2' }))
+  on('command.run', () => ({ text: '' }))
+  const ui = await $.ui.mount({ plugin: 'ponytail', surface: 'terminal', ...BAND })
+  expect(await ui.find({ key: 'level', text: /full/ })).toBeUndefined()
+  await $.command.run({ command: 'clear', args: '' })
+  expect(await ui.find({ key: 'level', text: /full/ })).toBeDefined()
+  await ui.unmount()
+})
+
 test('the ledger is written on Windows, where there is no mkdir', async ($, on) => {
   mock.clock(on)
   mock.store(on)

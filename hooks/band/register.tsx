@@ -181,25 +181,39 @@ async function openBoard($: EngineInterface) {
   await $.process.run(windows ? ['cmd', '/c', 'start', '', file] : [mac ? 'open' : 'xdg-open', file])
 }
 
+// Sets the band up for a session (level, project, task row, cost baseline); returns the definitions that exist now.
+async function start($: EngineInterface): Promise<Map<string, string>> {
+  const grep = await $.process.run(['git', 'grep', '--untracked', '-nE', GREP_DEFS]).catch(() => undefined)
+  const level = await readLevel($)
+  const details = (await $.store.get('details')) === true
+  const repo = await $.session.repo().catch(() => null)
+  const project = base(repo?.root ?? (await $.session.cwd()))
+  const session = await $.session.id()
+  // The cost so far is the baseline for the last turn's own cost.
+  const usage = await $.session.usage().catch(() => undefined)
+  const csv = usage ? await $.fs.read(ledgerFile(await ledgerDir($), project)).catch(() => '') : ''
+  const key = usage ? taskKey(session, usage.startedAt) : ''
+  await update($, band, b => resume({ ...EMPTY, ...b, level, details, project, session, cost: usage?.cost?.usd ?? b.cost }, csv, key))
+  return grep?.exitCode === 0 ? parseDefs(grep.stdout) : new Map()
+}
+
 export const register: Register = (on, options) => {
   // Definitions that existed when the session started: what new code can reuse.
   let known = new Map<string, string>()
 
   on('session.start', async ($, e, next) => {
-    const grep = await $.process.run(['git', 'grep', '--untracked', '-nE', GREP_DEFS]).catch(() => undefined)
-    known = grep?.exitCode === 0 ? parseDefs(grep.stdout) : new Map()
-    const level = await readLevel($)
-    const details = (await $.store.get('details')) === true
-    const repo = await $.session.repo().catch(() => null)
-    const project = base(repo?.root ?? (await $.session.cwd()))
-    const session = await $.session.id()
-    // The cost so far is the baseline for the last turn's own cost.
-    const usage = await $.session.usage().catch(() => undefined)
-    const csv = usage ? await $.fs.read(ledgerFile(await ledgerDir($), project)).catch(() => '') : ''
-    const key = usage ? taskKey(session, usage.startedAt) : ''
-    await update($, band, b => resume({ ...EMPTY, ...b, level, details, project, session, cost: usage?.cost?.usd ?? b.cost }, csv, key))
-
+    known = await start($)
     return next(e)
+  }).catch(($, e, next) => next(e))
+
+  // /clear goes on under a new session id with an empty band and no session.start, so the band showed "off"
+  // until the first turn ended. Set it up again once /clear has run.
+  // shortcut: ponytail-activate.js may reset the flag to the default level after this, so a level switched before /clear
+  // can show until the first turn ends; a session skips a plugin's classic.SessionStart hook, the one later point.
+  on('command.run', { command: 'clear' }, async ($, e, next) => {
+    const result = await next(e)
+    known = await start($).catch(() => known)
+    return result
   }).catch(($, e, next) => next(e))
 
   // /clear starts a new task: the counters start over, the cost baseline stays.
