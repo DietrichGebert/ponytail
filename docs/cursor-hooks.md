@@ -10,7 +10,7 @@ install script and a small output branch in `hooks/ponytail-runtime.js`.
 | `scripts/cursor-hooks.js` | `install` / `uninstall`, merges into `~/.cursor/hooks.json` (or `.cursor/hooks.json` with `--project`). |
 | `hooks/ponytail-activate.js` | `sessionStart`: injects the default-level ruleset. |
 | `hooks/ponytail-mode-tracker.js` | `beforeSubmitPrompt`: tracks `/ponytail` commands, injects the new level's ruleset. |
-| `hooks/ponytail-runtime.js` | Detects Cursor (`CURSOR_VERSION`), keeps state in `~/.cursor/.ponytail-active`, emits Cursor-shaped JSON. |
+| `hooks/ponytail-runtime.js` | Detects Cursor (`CURSOR_VERSION`), keeps per-project mode state and a shared compatibility flag, emits Cursor-shaped JSON. |
 
 ## Install and uninstall
 
@@ -79,8 +79,8 @@ Execution environment (client, 3.20.17):
 
 ## Behavior
 
-- New conversation: `sessionStart` writes `~/.cursor/.ponytail-active` with the
-  default level (`PONYTAIL_DEFAULT_MODE`, then `config.json`, then `full`) and
+- New conversation: `sessionStart` sets the live mode to the default level
+  (`PONYTAIL_DEFAULT_MODE`, then `config.json`, then `full`) and
   injects `PONYTAIL MODE ACTIVE — level: <level>` followed by the ruleset filtered
   to that level. Default `off`: no flag, no output.
 - `/ponytail lite|full|ultra` sent as a plain message: the flag changes and the
@@ -131,8 +131,12 @@ for teammates without hooks stays on the rule's fixed behavior for everyone.
   (measured 1.05 to 1.3 s on 3.20.17). `beforeSubmitPrompt` is awaited, so each
   prompt submission waits that long. macOS and Linux spawn the command directly
   and pay only node startup.
-- Mode state is one flag per user, shared by every open Cursor conversation, the
-  same as the Claude Code adapter.
+- With `CLAUDE_PROJECT_DIR`, mode state is per project, stored in
+  `~/.cursor/ponytail-modes/<sha256(normalized project dir)>`. Conversations in
+  the same project share that flag; different projects keep separate modes.
+  Without a project directory, the runtime uses `~/.cursor/.ponytail-active`.
+  That shared flag is also maintained as a compatibility/statusline mirror
+  and follows the last mode change.
 - The `beforeSubmitPrompt` injection field is not on the docs page. If a future
   Cursor build drops it, level switches would still update the flag but nothing
   would reach the model; only the startup injection would remain.
