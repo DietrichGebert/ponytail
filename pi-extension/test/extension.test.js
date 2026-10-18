@@ -347,6 +347,21 @@ test("PONYTAIL_HIDE_STATUS=0 does not hide the indicator", async () => withTempC
   assert.ok(statusWrites.length > 0, "0 must be treated as 'do not hide'");
 }));
 
+test("config.statusEmojis overrides status line emojis; empty string drops one", async () => withTempConfig(async () => {
+  mkdirSync(join(process.env.XDG_CONFIG_HOME, "ponytail"), { recursive: true });
+  writeFileSync(join(process.env.XDG_CONFIG_HOME, "ponytail", "config.json"), JSON.stringify({ statusEmojis: { logo: "", ultra: "X", full: 5 } }));
+  const { events } = createPiHarness();
+  const statusWrites = [];
+  const ctx = createCommandContext({
+    sessionManager: { getEntries: () => [{ type: "custom", customType: "ponytail-mode", data: { mode: "ultra" } }] },
+    ui: { notify() {}, setStatus: (key, text) => statusWrites.push({ key, text }), theme: { fg: (_c, t) => t } },
+  });
+
+  await events.get("session_start")({ reason: "resume" }, ctx);
+
+  assert.equal(statusWrites.at(-1).text, "○ ponytail: X ULTRA");
+}));
+
 test("/ponytail autocompletes modes, commands and default <mode>", () => {
   const { commands } = createPiHarness();
   const complete = (prefix) => commands.get("ponytail").getArgumentCompletions(prefix);
