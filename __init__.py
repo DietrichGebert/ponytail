@@ -32,6 +32,13 @@ def _normalize_runtime_mode(mode: str | None) -> str | None:
     return mode if mode in RUNTIME_MODES else None
 
 
+def _is_deactivation(text: Any) -> bool:
+    # Same rule as isDeactivationCommand in hooks/ponytail-config.js: only the whole message counts.
+    if not isinstance(text, str):
+        return False
+    return re.sub(r"[.!?\s]+$", "", text.strip().lower()) in ("stop ponytail", "normal mode")
+
+
 def _config_dir() -> Path:
     if os.environ.get("XDG_CONFIG_HOME"):
         return Path(os.environ["XDG_CONFIG_HOME"]) / "ponytail"
@@ -112,8 +119,12 @@ def build_injected_context(mode: str | None = None) -> str:
 
 
 def _pre_llm_call(
-    session_id: str = "", conversation_history: Any = None, **_: Any
+    session_id: str = "", conversation_history: Any = None, user_message: Any = None, **_: Any
 ) -> dict[str, str] | None:
+    global _current_mode
+    # A typed "stop ponytail" works like /ponytail off; a gateway has already rewritten it to that command.
+    if _is_deactivation(user_message):
+        _current_mode = "off"
     mode = _current_mode or _default_mode()
     # Off is injected too: the ruleset from an earlier turn is replayed every turn,
     # and the /ponytail off reply goes to the user, never to the model.
@@ -158,8 +169,11 @@ def _slash_access_denied(event: Any, gateway: Any, command: str) -> bool:
 
 
 def rewrite_gateway_command(event: Any = None, gateway: Any = None, **_: Any) -> dict[str, str] | None:
-    """Rewrite authorized gateway /ponytail-* commands into normal agent prompts."""
+    """Rewrite authorized gateway /ponytail-* commands into normal agent prompts, and a typed "stop ponytail" into /ponytail off."""
     text = str(getattr(event, "text", "") or "").strip()
+    # Plain chat is never slash-gated, so a typed "stop ponytail" runs as /ponytail off behind the same access control.
+    if _is_deactivation(text):
+        return {"action": "rewrite", "text": "/ponytail off"}
     if not text.startswith("/"):
         return None
     head, _, rest = text[1:].partition(" ")
