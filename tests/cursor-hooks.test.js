@@ -252,8 +252,8 @@ test('installer merges into an existing ~/.cursor/hooks.json and leaves unrelate
   assert.deepEqual(config.hooks.stop, theirs.hooks.stop, 'similarly named user hook must survive install');
   assert.equal(config.hooks.sessionStart[0].command, './hooks/their-session.sh', 'their sessionStart hook stays first and intact');
   assert.equal(config.hooks.sessionStart.length, 2);
-  assert.deepEqual(config.hooks.sessionStart[1], { command: `node "${rootFwd}/hooks/ponytail-activate.js"`, timeout: 5 });
-  assert.deepEqual(config.hooks.beforeSubmitPrompt, [{ command: `node "${rootFwd}/hooks/ponytail-mode-tracker.js"`, timeout: 5 }]);
+  assert.deepEqual(config.hooks.sessionStart[1], { command: `node "${rootFwd}/hooks/ponytail-activate.js"`, timeout: 15 });
+  assert.deepEqual(config.hooks.beforeSubmitPrompt, [{ command: `node "${rootFwd}/hooks/ponytail-mode-tracker.js"`, timeout: 15 }]);
 
   // Idempotent: a second install replaces ponytail's entries, never duplicates them.
   result = cli(['install'], env);

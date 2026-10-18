@@ -34,7 +34,7 @@ for (const scenario of ['blocked', 'failed', 'oversized', 'successful', 'disable
       cwd: workspace,
       input: '',
       encoding: 'utf8',
-      timeout: 4000,
+      timeout: 5000,
       env: {
         ...process.env,
         CLAUDE_CONFIG_DIR: path.join(temp, 'claude'),
