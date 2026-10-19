@@ -79,7 +79,8 @@ const band = atom({ plugin: 'ponytail', key: 'band' } as const, EMPTY)
 const load = async ($: EngineInterface): Promise<Band> => ({ ...EMPTY, ...(await read($, band)) })
 
 const union = (a: string[], b: string[]) => [...new Set([...a, ...b])]
-const base = (path: string) => path.replace(/\/+$/, '').split('/').pop() ?? path
+// Windows roots come with backslashes.
+const base = (path: string) => path.replace(/[\\/]+$/, '').split(/[\\/]/).pop() ?? path
 
 // Windows sets USERPROFILE, not HOME.
 const home = async ($: EngineInterface) => (await $.env.get('HOME')) ?? (await $.env.get('USERPROFILE'))
@@ -121,10 +122,12 @@ async function readTitle($: EngineInterface, transcript: string): Promise<string
 }
 
 // The model that wrote most of the session's replies, so the board can tell models apart.
+// shortcut: without grep (Windows) only a transcript under 4 MiB is read, like readTitle; findstr would lift that.
 async function readModel($: EngineInterface, transcript: string): Promise<string> {
   if (transcript === '') return ''
   const grep = await $.process.run(['grep', '-o', MODEL_PATTERN, transcript]).catch(() => undefined)
-  return grep?.exitCode === 0 ? mainModel(grep.stdout) : ''
+  const text = grep !== undefined && grep.exitCode <= 1 ? grep.stdout : await $.fs.read(transcript).catch(() => '')
+  return mainModel(text)
 }
 
 // Where the task ledgers and the board live.
