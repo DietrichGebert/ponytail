@@ -232,8 +232,6 @@ function run() {
       if (!m) continue;
       const cwd = JSON.parse(`"${m[1]}"`);
       if (TEMP.some(t => cwd.startsWith(t)) || cwd === '/tmp') continue;
-      // A session's first prompt is typed by a person; automated runs (benchmarks, `claude -p`) never are.
-      if (head.includes('"type":"user"') && !/"turnOrigin":"human"|"origin":\{"kind":"human"/.test(head)) continue;
       const id = file.slice(0, -'.jsonl'.length);
       let records;
       try { records = readRecords(p); } catch (e) { continue; }
