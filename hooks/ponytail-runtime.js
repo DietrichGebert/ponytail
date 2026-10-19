@@ -109,7 +109,8 @@ function writeOut(text) {
 
 function writeHookOutput(event, mode, context = '') {
   if (isCopilot) {
-    // Copilot reads additionalContext on SessionStart; ignores output elsewhere.
+    // Copilot reads additionalContext on SessionStart; drops userPromptSubmitted
+    // and other hook outputs, so active-session instructions cannot be replaced mid-session (#1133).
     writeOut(JSON.stringify(
       event === 'SessionStart' && context ? { additionalContext: context } : {}));
     return;
