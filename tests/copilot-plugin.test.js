@@ -33,3 +33,38 @@ test('copilot plugin command directory includes ponytail-debt', () => {
     );
   }
 });
+
+test('copilot hooks manifest registers sessionStart and userPromptSubmitted', () => {
+  const manifest = readJSON('.github/plugin/plugin.json');
+  assert.equal(manifest.hooks, 'hooks/copilot-hooks.json');
+  const hooksConfig = readJSON(manifest.hooks);
+  assert.equal(hooksConfig.version, 1);
+  assert.ok(Array.isArray(hooksConfig.hooks.sessionStart), 'expected sessionStart hook array');
+  assert.ok(Array.isArray(hooksConfig.hooks.userPromptSubmitted), 'expected userPromptSubmitted hook array');
+});
+
+test('copilot runtime emits additionalContext on SessionStart and suppresses non-SessionStart output', () => {
+  const { spawnSync } = require('child_process');
+  const res = spawnSync(process.execPath, ['-e', `
+    const fs = require('fs');
+    const { writeHookOutput } = require('./hooks/ponytail-runtime');
+    let out = '';
+    const orig = fs.writeSync;
+    fs.writeSync = (fd, data) => { if (fd === 1) out += data; return data.length; };
+    writeHookOutput('SessionStart', 'full', 'PONYTAIL RULES');
+    const startObj = JSON.parse(out);
+    out = '';
+    writeHookOutput('UserPromptSubmit', 'lite', 'MODE SWITCH');
+    const promptObj = JSON.parse(out);
+    console.log(JSON.stringify({ startObj, promptObj }));
+  `], {
+    cwd: root,
+    env: { ...process.env, COPILOT_PLUGIN_DATA: '/tmp/copilot-test' },
+    encoding: 'utf8',
+  });
+  assert.equal(res.status, 0, res.stderr);
+  const data = JSON.parse(res.stdout.trim());
+  assert.deepEqual(data.startObj, { additionalContext: 'PONYTAIL RULES' });
+  assert.deepEqual(data.promptObj, {});
+});
+
