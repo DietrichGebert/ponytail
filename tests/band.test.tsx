@@ -328,6 +328,37 @@ test('the ledger is written on Windows, where there is no mkdir', async ($, on) 
   expect(written[1]?.endsWith('C:/Users/u/.config/ponytail/band/board.html')).toBe(true)
 })
 
+test('on Windows the ledger names the project by its folder and reads the model without grep', async ($, on) => {
+  mock.clock(on)
+  mock.store(on)
+  const env: Record<string, string> = { OS: 'Windows_NT', HOME: 'C:\\Users\\u', USERPROFILE: 'C:\\Users\\u', CLAUDE_CONFIG_DIR: 'C:\\Users\\u\\.claude', XDG_CONFIG_HOME: 'C:/Users/u/.config' }
+  on('env.get', ($, e) => ({ value: env[e.name] }))
+  on('session.repo', () => ({ value: { root: 'C:\\Development\\GitHub\\shop\\' } }) as never)
+  on('session.id', () => ({ value: 's1' }))
+  on('session.turns', () => ({ value: 1 }))
+  on('session.usage', () => ({ value: { startedAt: 0, cost: { usd: 0.5 } } }) as never)
+  // No grep (or git) on this machine.
+  on('process.run', () => ({ deny: 'not found' }) as never)
+  const transcript = '{"message":{"model":"claude-opus-5-5"}}\n{"message":{"model":"claude-haiku-5-5"}}\n{"message":{"model":"claude-opus-5-5"}}\n'
+  // The engine may hand the path on with either separator: compare the end.
+  on('fs.read', ($, e) => (e.path.replaceAll('\\', '/').endsWith('/t/s1.jsonl') ? { value: transcript } : ({ deny: 'missing' } as never)))
+  on('fs.list', () => ({ value: [] }))
+  const written: { path: string; text: string }[] = []
+  on('fs.write', ($, e) => {
+    written.push({ path: e.path.replaceAll('\\', '/'), text: e.text })
+    return { value: undefined }
+  })
+  on('session.start', ($, e) => ({ cwd: e.cwd }))
+  on('classic.UserPromptSubmit', () => ({}) as never)
+  on('turn.complete', () => ({ text: '' }))
+  await $.session.start({ cwd: 'C:\\Development\\GitHub\\shop', surface: null } as never)
+  await $.classic.UserPromptSubmit({ transcript_path: 'C:\\t\\s1.jsonl' } as never)
+  await $.turn.complete({ answer: '', durationMs: 1000 } as never)
+  const ledger = written.find(w => w.path.endsWith('.csv'))
+  expect(ledger?.path.endsWith('C:/Users/u/.config/ponytail/band/shop.csv')).toBe(true)
+  expect(tasksFrom(ledger?.text ?? '')).toMatchObject([{ project: 'shop', model: 'claude-opus-5-5' }])
+})
+
 test('without HOME (Windows) the band reads its flags under USERPROFILE', async ($, on) => {
   mock.clock(on)
   mock.store(on)
