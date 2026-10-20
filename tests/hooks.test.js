@@ -788,6 +788,12 @@ assert.match(result.stdout, /PONYTAIL BAND ON/);
 assert.equal(fs.existsSync(bandFlag), false, 'a second /ponytail band must show it again');
 band('on');
 assert.equal(fs.existsSync(bandFlag), false, '/ponytail band on must keep a shown band shown');
+// A typo'd third word must not toggle the band, same as /ponytail ulta for modes.
+result = band('banana');
+assert.equal(result.status, 0, result.stderr);
+assert.equal(result.stdout, '');
+assert.equal(fs.existsSync(bandFlag), false, '/ponytail band <typo> must not hide the band');
+assert.equal(fs.readFileSync(defFlag, 'utf8'), 'ultra', '/ponytail band <typo> must not change the level');
 // Codex has no band, so there the word stays an unknown argument.
 result = run('ponytail-mode-tracker.js', { ...defEnv, PLUGIN_DATA: path.join(defHome, 'codex') }, JSON.stringify({ prompt: '/ponytail band' }));
 assert.equal(result.stdout, '');

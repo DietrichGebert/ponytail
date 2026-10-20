@@ -25,6 +25,7 @@ function removeIfExists(filePath, label) {
 
 removeIfExists(path.join(getClaudeDir(), '.ponytail-active'), 'mode flag');
 removeIfExists(path.join(getClaudeDir(), '.ponytail-statusline-nudged'), 'statusline nudge flag');
+removeIfExists(path.join(getClaudeDir(), '.ponytail-band'), 'band flag');
 removeIfExists(path.join(os.homedir(), '.cursor', '.ponytail-active'), 'Cursor mode flag');
 removeIfExists(path.join(getQoderDir(), '.ponytail-active'), 'Qoder mode flag');
 for (const dir of [path.join(getClaudeDir(), 'ponytail-modes'), path.join(os.homedir(), '.cursor', 'ponytail-modes'), path.join(process.env.CODEBUDDY_CONFIG_DIR || path.join(os.homedir(), '.codebuddy'), 'ponytail-modes')]) {
@@ -56,6 +57,12 @@ try {
 }
 
 const settingsPath = path.join(getClaudeDir(), 'settings.json');
+// Write-then-rename so an interrupted write cannot truncate the user's settings.json.
+function writeSettings(settings) {
+  const tmp = settingsPath + '.tmp';
+  fs.writeFileSync(tmp, JSON.stringify(settings, null, 2), 'utf8');
+  fs.renameSync(tmp, settingsPath);
+}
 try {
   const raw = fs.readFileSync(settingsPath, 'utf8').replace(/^\uFEFF/, '');
   const settings = JSON.parse(raw);
@@ -72,11 +79,11 @@ try {
     const others = parts.filter((s) => !STATUSLINE_SCRIPT.test(s));
     if (others.length === 0) {
       delete settings.statusLine;
-      fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2), 'utf8');
+      writeSettings(settings);
       console.log(`Removed ponytail statusLine entry from ${settingsPath}`);
     } else {
       settings.statusLine.command = others.join(' && ');
-      fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2), 'utf8');
+      writeSettings(settings);
       console.log(`Removed ponytail statusLine segment from ${settingsPath}`);
     }
   }

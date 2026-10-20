@@ -53,7 +53,10 @@ function readConfig(file) {
 
 function writeConfig(file, config) {
   fs.mkdirSync(path.dirname(file), { recursive: true });
-  fs.writeFileSync(file, JSON.stringify(config, null, 2) + '\n', 'utf8');
+  // Write-then-rename so an interrupted write cannot leave a truncated hooks.json.
+  const tmp = file + '.tmp';
+  fs.writeFileSync(tmp, JSON.stringify(config, null, 2) + '\n', 'utf8');
+  fs.renameSync(tmp, file);
 }
 
 // The template's PONYTAIL_DIR placeholder becomes this checkout's absolute
@@ -78,6 +81,7 @@ function stripPonytail(config) {
   for (const [event, entries] of Object.entries(config.hooks)) {
     if (!Array.isArray(entries)) continue;
     const kept = entries.filter((entry) => !isPonytailHook(entry));
+    if (kept.length === entries.length) continue; // nothing of ours in this event
     if (kept.length) config.hooks[event] = kept;
     else delete config.hooks[event];
   }

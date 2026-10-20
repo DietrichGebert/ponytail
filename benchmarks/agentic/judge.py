@@ -52,12 +52,19 @@ def _is_test(name):
     return n.startswith("test_") or n.endswith("_test.py") or n == "conftest.py"
 
 def source_text(workdir: Path):
-    """Concatenate the agent's source files (tests + artifacts excluded), with name headers."""
+    """Concatenate the agent's source files (tests, artifacts and seeded fixture files excluded)."""
+    seeded = set()
+    try:
+        seeded = set(json.loads((workdir / "_fixture_files.json").read_text(encoding="utf-8")))
+    except Exception:
+        pass
     out = []
     for p in sorted(workdir.rglob("*")):
         if not p.is_file() or "__pycache__" in p.parts or p.suffix == ".pyc": continue
         if p.name.startswith((".", "_")) or _is_test(p.name): continue
-        try: out.append(f"# === {p.relative_to(workdir)} ===\n{p.read_text(encoding='utf-8', errors='ignore')}")
+        rel = str(p.relative_to(workdir)).replace("\\", "/")
+        if rel in seeded: continue
+        try: out.append(f"# === {rel} ===\n{p.read_text(encoding='utf-8', errors='ignore')}")
         except Exception: continue
     return "\n\n".join(out)
 
@@ -171,9 +178,9 @@ def run(run_dir, key):
         if isinstance(r["over_engineering"], int): by_arm[r["arm"]].append(r["over_engineering"])
     print(f"\n=== over-engineering by arm (judge: {JUDGE_MODEL}, 0=minimal .. 3=over-built) ===")
     print(f"  {'arm':16} {'n':>4} {'mean':>6} {'max':>4}")
-    for arm in ["baseline", "caveman", "ponytail", "yagni", "yagni-oneliner"]:
-        v = by_arm.get(arm, [])
-        if v: print(f"  {arm:16} {len(v):>4} {sum(v)/len(v):>6.2f} {max(v):>4}")
+    for arm in sorted(by_arm):
+        v = by_arm[arm]
+        print(f"  {arm:16} {len(v):>4} {sum(v)/len(v):>6.2f} {max(v):>4}")
     worst = sorted([r for r in scored if isinstance(r["over_engineering"], int) and r["over_engineering"] >= 2],
                    key=lambda r: -r["over_engineering"])
     print(f"\n=== flagged over-engineered (score >= 2): {len(worst)} cells ===")

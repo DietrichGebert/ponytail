@@ -38,6 +38,16 @@ if (slugs.length === 0) {
   process.exit(1);
 }
 
+// Directory names land in a shell:true command line; refuse anything but a
+// plain slug so a PR cannot smuggle $(...) into the publish run. Checked for
+// every skill before any publish, so a bad name never leaves a half-done run.
+for (const slug of slugs) {
+  if (!/^[a-z0-9-]+$/.test(slug)) {
+    console.error(`Refusing to publish skill with unsafe directory name: ${slug} (letters, digits, dashes only)`);
+    process.exit(1);
+  }
+}
+
 // "ponytail-review" -> "Ponytail Review"
 const displayName = (slug) =>
   slug.split('-').map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');

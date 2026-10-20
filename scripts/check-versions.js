@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-// Version-consistency guard. Ponytail declares its version in seven files across
-// five host ecosystems, and every release bumps all of them by hand.
+// Version-consistency guard. Ponytail declares its version in several manifest
+// files across host ecosystems, and every release bumps all of them by hand.
 //
 // tests/gemini-extension.test.js already checks the four plugin manifests agree
 // with each other, but that can't catch the failure mode that shipped in v4.8.0:
@@ -25,6 +25,7 @@ const VERSION_FILES = [
   '.github/plugin/plugin.json',  // Copilot plugin
   '.qoder-plugin/plugin.json',   // Qoder plugin
   'gemini-extension.json',       // Gemini CLI extension
+  'plugin.yaml',                 // Hermes plugin
   'package.json',                // pi-package / repo root
 ];
 
@@ -32,6 +33,10 @@ function readVersion(relPath) {
   try {
     // Strip a UTF-8 BOM some Windows editors prepend (breaks JSON.parse).
     const raw = fs.readFileSync(path.join(root, relPath), 'utf8').replace(/^\uFEFF/, '');
+    if (relPath.endsWith('.yaml')) {
+      const match = /^version:\s*['"]?([^'"\s]+)['"]?\s*$/m.exec(raw);
+      return match && match[1];
+    }
     return JSON.parse(raw).version;
   } catch (e) {
     throw new Error(`${relPath}: ${e.message}`);
@@ -63,7 +68,7 @@ const shared = distinct.length === 1 ? distinct[0] : null;
 if (shared && process.env.GITHUB_REF_TYPE === 'tag') {
   const tag = process.env.GITHUB_REF_NAME || '';
   const tagVersion = tag.replace(/^v/, '');
-  if (PINNED_SEMVER.test(tagVersion) && tagVersion !== shared) {
+  if (!PINNED_SEMVER.test(tagVersion) || tagVersion !== shared) {
     console.error(`release tag ${tag} does not match version ${shared}; bump the version files before tagging`);
     failed = true;
   }
