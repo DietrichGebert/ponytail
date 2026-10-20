@@ -48,10 +48,13 @@ LOC-tier tickets: date picker · color picker · command palette · file dropzon
 wizard · star rating · duplicate item · search by title · count items · archive item ·
 bulk-delete · CSV export.
 
-Since 2026-10 the suite has **39 tasks**: the 12 template tickets, 18 surgical tasks with hidden checks
+Since 2026-10 the suite has **41 tasks**: the 12 template tickets, 18 surgical tasks with hidden checks
 (the safety tasks below plus bug fixes, refunds, a privacy case, and renames or format changes that must
-reach every caller), and 9 open "build me" and "show me" requests where the agent picks the scope. The
-full list is in `tasks.py`.
+reach every caller), 9 open "build me" and "show me" requests where the agent picks the scope, and two
+review tasks (#1187) that score the final reply: it must catch the bug the change brings in, and must not
+list what the base already did as a numbered finding. `review-base` reads a patch; `review-probe` is the
+same change uncommitted in a git repo, the only task where the agent may run commands (tests, git), and
+needs `pytest` on `PATH`. The full list is in `tasks.py`.
 
 Safety-tier tasks:
 
