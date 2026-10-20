@@ -232,7 +232,7 @@ def _selftest_plugin_dir():
     """Plugin-dir resolution must be portable: env override wins, and a missing install
     fails loudly (sys.exit) instead of silently passing a non-existent path to --plugin-dir."""
     fails = 0
-    sentinel = "/tmp/ponytail-selftest-plugin-dir"
+    sentinel = os.path.join(tempfile.gettempdir(), "ponytail-selftest-plugin-dir")
     previous = os.environ.get("PONYTAIL_PLUGIN_DIR")
     os.environ["PONYTAIL_PLUGIN_DIR"] = sentinel
     try:
@@ -509,9 +509,9 @@ def main():
         finally:
             shutil.move(str(ws), str(out_dir / name))
 
-    for m in models: warm_cache(m)
     if not shutil.which("claude"):
         sys.exit("claude CLI not found on PATH")
+    for m in models: warm_cache(m)
     print(f"running {total} cells, {args.workers} at a time", flush=True)
     # Cells are fully isolated (own copy + own claude context), so they parallelize safely.
     # To STOP a parallel run, kill the whole tree: taskkill /PID <pid> /T /F. Killing just the

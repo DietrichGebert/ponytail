@@ -95,7 +95,7 @@ fs.writeFileSync(path.join(projects, 'abcd1234-0000.jsonl'), records.map(withCwd
 fs.writeFileSync(path.join(projects, 'abcd1234-0000', 'subagents', 'agent-1.jsonl'), sub.map(r => JSON.stringify(r)).join('\n'));
 fs.writeFileSync(path.join(projects, 'beef0000-1111.jsonl'), records.filter(r => !r.origin).map(withCwd).map(r => JSON.stringify(r)).join('\n'));
 // A project whose path merely shares a temp-dir prefix (/tmpfoo, not /tmp/…) is real.
-const notTemp = os.tmpdir().replace(/[\\/]+$/, '') + 'extra-shop';
+const notTemp = (process.platform === 'win32' ? os.tmpdir() : '/tmp').replace(/[\\/]+$/, '') + 'extra-shop';
 fs.writeFileSync(path.join(projects, 'cafe0000-2222.jsonl'),
   records.map(r => ({ ...r, cwd: notTemp })).map(r => JSON.stringify(r)).join('\n') + '\n');
 // A corrupt cwd escape must not abort the whole import.
