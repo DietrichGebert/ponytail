@@ -18,6 +18,8 @@ export const fmtTokens = (n: number) =>
   n < 1000 ? `${n}` : n < 1e6 ? `${+(n / 1e3).toFixed(1)}k` : `${+(n / 1e6).toFixed(1)}M`
 
 export type Task = {
+  // The ledger key without its @day suffix: the rows of one session resumed on several days share it.
+  session: string
   started: string
   project: string
   name: string
@@ -68,6 +70,7 @@ export function tasksFrom(text: string): Task[] {
   const at = (row: string[], col: string) => row[head.indexOf(col)] ?? ''
   const num = (row: string[], col: string) => Number(at(row, col)) || 0
   return rows.map(row => ({
+    session: at(row, 'key').split('@')[0] ?? '',
     started: at(row, 'started'),
     project: at(row, 'project'),
     name: at(row, 'name'),
@@ -164,6 +167,7 @@ td.name{white-space:normal;min-width:140px;width:100%;max-width:0}.task{overflow
 .pill i{width:6px;height:6px;border-radius:50%;background:currentColor}
 .pill.ok{background:var(--okbg);color:var(--ok)}.pill.bad{background:var(--badbg);color:var(--bad)}.pill.warn{background:var(--warnbg);color:var(--warn)}
 td.empty{text-align:center;color:var(--faint);padding:32px}
+tr.day-row td{border-top:0;padding-top:2px;padding-bottom:6px}tr.day-row td.name .sub{padding-left:14px}
 .heat{padding:20px 22px}.heat .sub{margin:2px 0 14px}
 #heat{display:block;width:100%;height:auto}.cell-empty{fill:var(--empty)}.glow-cell{opacity:calc(var(--glow) * .45)}.day{fill:var(--faint);font:12px ${MONO_CSS}}
 .heroes{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:20px}.hero-label{display:flex;align-items:center;gap:7px;color:var(--muted);font-size:12px}.hero-label i{font-style:normal;font-size:11px}.hero-value{font-size:30px;margin-top:4px;white-space:nowrap}.hero-sub{font-size:12px;color:var(--faint);margin-top:2px}.hero-sub b{color:var(--ok);font-weight:500;margin-right:6px}
@@ -205,12 +209,24 @@ const APP = `(function () {
   function plural(n, word) { return n + ' ' + word + (n === 1 ? '' : 's') }
   function add(a, b) { return a + b }
   var METRICS = {
-    sessions: { label: 'Sessions', pick: function () { return 1 }, fmt: String },
+    sessions: { label: 'Sessions', pick: function () { return 1 }, whole: count, fmt: String },
     time: { label: 'Agent time', pick: function (t) { return t.agentMinutes * 60000 }, fmt: time },
     cost: { label: 'Cost', pick: function (t) { return t.cost }, fmt: money },
     tokens: { label: 'Tokens', pick: function (t) { return t.tokens }, fmt: tok }
   }
   function total(list, pick) { return list.map(pick).reduce(add, 0) }
+  // A session resumed on later days has a row per day: the charts use the rows, the counts and the table the whole session.
+  function count(list) { return new Set(list.map(function (t) { return t.session })).size }
+  function merge(list) {
+    var by = {}, out = []
+    list.slice().sort(function (a, b) { return a.started.localeCompare(b.started) }).forEach(function (t) {
+      var s = by[t.session]
+      if (!s) { s = by[t.session] = Object.assign({}, t, { cost: 0, turns: 0, agentMinutes: 0, tokens: 0, days: [] }); out.push(s) }
+      s.cost += t.cost; s.turns += t.turns; s.agentMinutes += t.agentMinutes; s.tokens += t.tokens
+      s.tests = t.tests; s.reuse = t.reuse; s.level = t.level; s.model = t.model || s.model; s.last = t.started; s.days.push(t)
+    })
+    return out
+  }
   function latest(name) { return tasks.filter(function (t) { return t.project === name }).reduce(function (m, t) { return t.started > m ? t.started : m }, '') }
   var names = Array.from(new Set(tasks.map(function (t) { return t.project }))).sort(function (a, b) { return latest(b).localeCompare(latest(a)) })
   function colorOf(name) { return PALETTE[names.indexOf(name) % PALETTE.length] }
@@ -250,7 +266,7 @@ const APP = `(function () {
 
   function sidebar() {
     var nav = byId('projects'); nav.textContent = ''
-    ;[['', 'All projects', tasks.length]].concat(names.map(function (n) { return [n, n, tasks.filter(function (t) { return t.project === n }).length] })).forEach(function (p) {
+    ;[['', 'All projects', count(tasks)]].concat(names.map(function (n) { return [n, n, count(tasks.filter(function (t) { return t.project === n }))] })).forEach(function (p) {
       var b = h('button', 'nav-item' + (state.project === p[0] ? ' on' : '')); b.type = 'button'; b.title = p[1]
       if (p[0]) { var d = h('span', 'dot'); d.style.setProperty('--c', colorOf(p[0])); b.append(d) }
       b.append(h('span', 'name', p[1]), h('span', 'n', String(p[2])))
@@ -263,7 +279,7 @@ const APP = `(function () {
     var list = scope(), name = state.project || 'All projects', f = first(list)
     byId('crumb').textContent = name
     byId('title').textContent = name
-    byId('subtitle').textContent = plural(list.length, 'session') + (f ? ' since ' + shortDate(f.slice(0, 10)) + ', ' + f.slice(0, 4) : '')
+    byId('subtitle').textContent = plural(count(list), 'session') + (f ? ' since ' + shortDate(f.slice(0, 10)) + ', ' + f.slice(0, 4) : '')
   }
 
   function sparkline(values, i, k) {
@@ -285,7 +301,7 @@ const APP = `(function () {
     var list = scope(), n = span(), keys = days(n), wrap = byId('kpis'); wrap.textContent = ''
     var cur = inDays(list, keys), prev = state.period ? inDays(list, days(2 * n).slice(0, n)) : []
     KPI.forEach(function (k, i) {
-      var M = METRICS[k[0]], v = total(cur, M.pick), p = total(prev, M.pick)
+      var M = METRICS[k[0]], v = M.whole ? M.whole(cur) : total(cur, M.pick), p = M.whole ? M.whole(prev) : total(prev, M.pick)
       var card = h('div', 'card kpi'), value = h('div', 'kpi-value num', M.fmt(v)); card.style.setProperty('--k', k[2])
       if (p > 0) { var pct = Math.round((v - p) / p * 100); value.append(h('span', 'delta ' + (pct >= 0 ? 'up' : 'down'), (pct >= 0 ? '↑' : '↓') + Math.abs(pct) + '%')) }
       var note = !state.period ? 'all time' : p > 0 ? 'vs previous ' + n + ' days' : 'last ' + n + ' days'
@@ -359,7 +375,7 @@ const APP = `(function () {
   function table() {
     var body = byId('rows'), q = state.q.trim().toLowerCase(); body.textContent = ''
     var list = inDays(scope(), days(span())).filter(function (t) { return !q || (t.name + ' ' + t.project + ' ' + modelName(t.model)).toLowerCase().indexOf(q) >= 0 })
-      .sort(function (a, b) { return b.started.localeCompare(a.started) })
+    list = merge(list).sort(function (a, b) { return b.last.localeCompare(a.last) })
     byId('count').textContent = String(list.length)
     if (!list.length) {
       var tr = h('tr'), td = h('td', 'empty', q ? 'No session matches.' : tasks.length ? 'No sessions in this period.' : 'No sessions yet. The band records a session after its first turn.')
@@ -369,11 +385,19 @@ const APP = `(function () {
     list.forEach(function (t) {
       var tr = h('tr'), name = h('td', 'name'), task = h('div', 'task', t.name || 'Untitled session'), bar = h('div', 'bar'), tests = h('td')
       task.title = t.name; bar.style.setProperty('--c', colorOf(t.project)); bar.style.width = Math.max(4, t.agentMinutes / max * 100) + '%'
-      name.append(task, h('div', 'sub', (state.project ? '' : t.project + ' · ') + shortDate(t.started.slice(0, 10)) + ', ' + t.started.slice(11) + (t.model ? ' · ' + modelName(t.model) : '')), bar)
+      var span = t.days.length > 1 ? ' · ' + plural(t.days.length, 'day') : ''
+      name.append(task, h('div', 'sub', (state.project ? '' : t.project + ' · ') + shortDate(t.started.slice(0, 10)) + ', ' + t.started.slice(11) + span + (t.model ? ' · ' + modelName(t.model) : '')), bar)
       // An imported session has no test record: a dash, not "not run".
       tests.append(t.tests || t.level !== 'import' ? pill(t.tests) : h('span', 'sub', '–'))
       tr.append(name, h('td', 'r num', time(t.agentMinutes * 60000)), h('td', 'r num', money(t.cost)), h('td', 'r num', tok(t.tokens)), h('td', 'r num', String(t.turns)), tests)
       body.append(tr)
+      // A session worked on several days lists each day's share under it.
+      if (t.days.length > 1) t.days.forEach(function (d) {
+        var dr = h('tr', 'day-row'), dn = h('td', 'name')
+        dn.append(h('div', 'sub', '↳ ' + shortDate(d.started.slice(0, 10)) + ', ' + d.started.slice(11)))
+        dr.append(dn, h('td', 'r num sub', time(d.agentMinutes * 60000)), h('td', 'r num sub', money(d.cost)), h('td', 'r num sub', tok(d.tokens)), h('td', 'r num sub', String(d.turns)), h('td'))
+        body.append(dr)
+      })
     })
   }
 
@@ -423,12 +447,13 @@ const APP = `(function () {
     byId('h-streak').textContent = plural(streak, 'day')
     byId('h-streak-sub').textContent = 'longest ' + plural(longest, 'day')
     var cur = inDays(list, days(span())), byDay = {}, best = null
-    cur.forEach(function (t) { var k = t.started.slice(0, 10); byDay[k] = (byDay[k] || 0) + t.agentMinutes; if (!best || t.agentMinutes > best.agentMinutes) best = t })
+    cur.forEach(function (t) { var k = t.started.slice(0, 10); byDay[k] = (byDay[k] || 0) + t.agentMinutes })
+    merge(cur).forEach(function (t) { if (!best || t.agentMinutes > best.agentMinutes) best = t })
     var busiest = Object.keys(byDay).sort(function (a, b) { return byDay[b] - byDay[a] })[0], facts = byId('facts'); facts.textContent = ''
     ;[['Busiest day', busiest ? shortDate(busiest) + ' · ' + time(byDay[busiest] * 60000) : '–'],
       ['Longest session', best ? time(best.agentMinutes * 60000) : '–'],
-      ['Average per session', cur.length ? time(total(cur, METRICS.time.pick) / cur.length) : '–'],
-      ['Average cost per session', cur.length ? money(total(cur, METRICS.cost.pick) / cur.length) : '–']].forEach(function (f) {
+      ['Average per session', cur.length ? time(total(cur, METRICS.time.pick) / count(cur)) : '–'],
+      ['Average cost per session', cur.length ? money(total(cur, METRICS.cost.pick) / count(cur)) : '–']].forEach(function (f) {
       var r = h('div', 'fact'); r.append(h('span', '', f[0]), h('span', 'num', f[1])); facts.append(r)
     })
   }
@@ -441,7 +466,7 @@ const APP = `(function () {
     byId('c-time').textContent = time(total(cur, METRICS.time.pick))
     byId('c-cost').textContent = money(total(cur, METRICS.cost.pick))
     byId('c-tokens').textContent = tok(total(cur, METRICS.tokens.pick))
-    byId('c-sessions').textContent = String(cur.length)
+    byId('c-sessions').textContent = String(count(cur))
     var g = byId('c-stream'), W = 1200, base = 600, topY = 380; g.textContent = ''
     var layers = projects.map(function (p) { return perDay(cur.filter(function (t) { return t.project === p }), keys, METRICS.time.pick) })
     var totals = keys.map(function (_, i) { return layers.reduce(function (a, r) { return a + r[i] }, 0) }), max = Math.max.apply(null, totals.concat([0]))
