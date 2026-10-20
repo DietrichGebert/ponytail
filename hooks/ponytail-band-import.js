@@ -196,8 +196,7 @@ function mergeRows(existing, rows, have = new Set()) {
 
 // Temp roots without a trailing separator; a project only counts as scratch when
 // the cwd equals one or sits under it behind a real separator (/tmpfoo is not /tmp).
-const TEMP = [os.tmpdir(), '/tmp', '/private/tmp', '/var/folders', '/private/var/folders']
-  .map((t) => t.replace(/[\\/]+$/, ''));
+const TEMP = [os.tmpdir().replace(/[\\/]+$/, ''), '/tmp', '/private/tmp', '/var/folders', '/private/var/folders'];
 // A worktree counts for its main repo: the desktop app's <repo>/.claude/worktrees/<name> even
 // after it is gone, and any git worktree through its common .git dir.
 function projectOf(cwd, cache) {
@@ -230,7 +229,16 @@ function run() {
       const p = path.join(root, dir, file);
       // The working dir sits in the first records; scratch and temp dirs are never real projects.
       let head = '';
-      try { const fd = fs.openSync(p, 'r'); const b = Buffer.alloc(65536); head = b.toString('utf8', 0, fs.readSync(fd, b, 0, b.length, 0)); fs.closeSync(fd); } catch (e) { continue; }
+      let fd = -1;
+      try {
+        fd = fs.openSync(p, 'r');
+        const b = Buffer.alloc(65536);
+        head = b.toString('utf8', 0, fs.readSync(fd, b, 0, b.length, 0));
+      } catch (e) {
+        continue;
+      } finally {
+        if (fd >= 0) try { fs.closeSync(fd); } catch (e) {}
+      }
       const m = /"cwd":"((?:[^"\\]|\\.)*)"/.exec(head);
       if (!m) continue;
       let cwd;
