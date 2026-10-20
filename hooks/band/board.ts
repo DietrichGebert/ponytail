@@ -142,7 +142,7 @@ h1{margin:2px 0 0;font-size:26px;font-weight:650;letter-spacing:-.02em}.top p{ma
 .glow{opacity:calc(var(--glow) * .14)}.top-line{stroke:var(--text);stroke-opacity:.35;fill:none}
 .hover-line{stroke:var(--text);stroke-opacity:.5}
 .tip{position:absolute;pointer-events:none;background:var(--tip);color:var(--tipText);border:1px solid var(--line2);border-radius:12px;padding:7px 11px;font-size:12px;transform:translate(-50%,calc(-100% - 12px));white-space:nowrap;box-shadow:0 10px 30px rgba(0,0,0,.35)}
-.tip-date{opacity:.65}.tip-value{font:600 13px ${MONO_CSS}}
+.tip-date{opacity:.65}.tip-value{font:600 13px ${MONO_CSS}}.heat-tip{position:fixed;z-index:5}
 .legend{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
 .chip{display:inline-flex;align-items:center;gap:8px;padding:6px 10px;border-radius:10px;background:var(--track);border:1px solid var(--line);color:var(--text);font:inherit;font-size:13px;cursor:pointer}
 .chip .x{color:var(--faint)}.chip[aria-pressed=false]{opacity:.45}
@@ -402,9 +402,19 @@ const APP = `(function () {
       return { k: k, v: vals[i], a: max ? vals[i] / max : 0, cx: left + Math.floor(pos / 7) * w + (row % 2 ? w / 2 : 0), cy: top + row * r * 1.5 }
     })
     cells.forEach(function (c) { if (c.a > .6) svg('path', { d: hex(c.cx, c.cy, r), fill: heatColor(c.a), filter: 'url(#hglow)', 'class': 'glow-cell' }, s) })
+    var tip = byId('heat-tip'); tip.hidden = true
     cells.forEach(function (c) {
       var p = svg('path', c.v ? { d: hex(c.cx, c.cy, r - 2), fill: heatColor(c.a) } : { d: hex(c.cx, c.cy, r - 2), 'class': 'cell-empty' }, s)
-      svg('title', {}, p).textContent = shortDate(c.k) + ': ' + (c.v ? time(c.v) : 'no session')
+      p.onmouseenter = function () {
+        var day = list.filter(function (t) { return t.started.slice(0, 10) === c.k })
+        tip.textContent = ''
+        tip.append(h('div', 'tip-date', new Date(c.k + 'T00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })), h('div', 'tip-value', day.length ? time(c.v) : 'No sessions'))
+        if (day.length) tip.append(h('div', 'tip-date', plural(day.length, 'session') + ' · ' + money(total(day, METRICS.cost.pick)) + ' · ' + tok(total(day, METRICS.tokens.pick)) + ' tokens'))
+        tip.hidden = false
+      }
+      // Kept inside the window: the card sits at the right edge, the tip centres on the cursor.
+      p.onmousemove = function (e) { tip.style.left = Math.min(e.clientX, innerWidth - tip.offsetWidth / 2 - 8) + 'px'; tip.style.top = e.clientY + 'px' }
+      p.onmouseleave = function () { tip.hidden = true }
     })
     ;['Mon', 'Wed', 'Fri'].forEach(function (d, i) { svg('text', { x: 0, y: top + (1 + 2 * i) * r * 1.5 + 4, 'class': 'day' }, s).textContent = d })
     // Legend: the ramp from less to more, under the right edge.
@@ -548,7 +558,7 @@ export function boardHtml(tasks: Task[], now: number): string {
 <div class="grid2">
 <section class="card list"><div class="list-head"><h3>Sessions<span class="n" id="count"></span></h3><label class="search">${SEARCH_ICON}<input id="q" type="search" placeholder="Search sessions" aria-label="Search sessions"></label></div>
 <div class="table-wrap"><table><thead><tr><th>Session</th><th class="r">Agent time</th><th class="r">Cost</th><th class="r">Tokens</th><th class="r">Turns</th><th>Tests</th></tr></thead><tbody id="rows"></tbody></table></div></section>
-<section class="card heat"><h3>Activity</h3><div class="sub">Agent time per day, last 12 weeks</div><svg id="heat" role="img" aria-label="Agent time per day, last 12 weeks"></svg>
+<section class="card heat"><h3>Activity</h3><div class="sub">Agent time per day, last 12 weeks</div><svg id="heat" role="img" aria-label="Agent time per day, last 12 weeks"></svg><div class="tip heat-tip" id="heat-tip" hidden></div>
 <div class="heroes"><div><div class="hero-label"><i style="color:#5fe08a">✦</i>Active days</div><div class="hero-value num" id="h-active"></div><div class="hero-sub" id="h-active-sub"></div></div>
 <div><div class="hero-label"><i style="color:#ffd166">◆</i>Streak</div><div class="hero-value num" id="h-streak"></div><div class="hero-sub" id="h-streak-sub"></div></div></div><div id="facts"></div></section>
 </div>
