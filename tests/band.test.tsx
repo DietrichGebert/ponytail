@@ -328,6 +328,30 @@ test('the ledger is written on Windows, where there is no mkdir', async ($, on) 
   expect(written[1]?.endsWith('C:/Users/u/.config/ponytail/band/board.html')).toBe(true)
 })
 
+test('the transcript path still arrives when classic.UserPromptSubmit is skipped', async ($, on) => {
+  mock.clock(on)
+  mock.store(on)
+  on('env.get', ($, e) => ({ value: e.name === 'HOME' ? '/home/u' : undefined }))
+  on('session.repo', () => ({ value: { root: '/repo/shop' } }) as never)
+  on('session.id', () => ({ value: 's1' }))
+  on('session.turns', () => ({ value: 1 }))
+  on('session.usage', () => ({ value: { startedAt: 0, cost: { usd: 0 } } }) as never)
+  on('fs.read', () => ({ deny: 'missing' }) as never)
+  on('fs.list', () => ({ value: [] }))
+  on('fs.write', () => ({ value: undefined }))
+  const greps: string[][] = []
+  on('process.run', ($, e) => {
+    if (e.argv[0] === 'grep') greps.push([...e.argv])
+    return { value: { exitCode: 1, stdout: '', stderr: '' } } as never
+  })
+  on('classic.Stop', () => ({}) as never)
+  on('turn.complete', () => ({ text: '' }))
+  // Only Stop fires, as when a plugin above continues past UserPromptSubmit.
+  await $.classic.Stop({ stop_hook_active: false, transcript_path: '/t/s1.jsonl' } as never)
+  await $.turn.complete({ answer: '', durationMs: 1000 } as never)
+  expect(greps.some(argv => argv.at(-1) === '/t/s1.jsonl')).toBe(true)
+})
+
 test('without HOME (Windows) the band reads its flags under USERPROFILE', async ($, on) => {
   mock.clock(on)
   mock.store(on)

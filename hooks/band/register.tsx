@@ -77,6 +77,8 @@ const TASK = {
 const band = atom({ plugin: 'ponytail', key: 'band' } as const, EMPTY)
 // State kept from an older version of the band lacks newer fields.
 const load = async ($: EngineInterface): Promise<Band> => ({ ...EMPTY, ...(await read($, band)) })
+const saveTranscript = ($: EngineInterface, path: string) =>
+  update($, band, b => (b.transcript === path ? b : { ...EMPTY, ...b, transcript: path }))
 
 const union = (a: string[], b: string[]) => [...new Set([...a, ...b])]
 const base = (path: string) => path.replace(/\/+$/, '').split('/').pop() ?? path
@@ -224,8 +226,13 @@ export const register: Register = (on, options) => {
   }).catch(($, e, next) => next(e))
 
   // Only the classic hook input carries the transcript path, which holds the sidebar name.
+  // Stop too: a plugin above may continue past one of them (Claude Code's own cc-plugin-sec-default skips UserPromptSubmit).
   on('classic.UserPromptSubmit', async ($, e, next) => {
-    await update($, band, b => (b.transcript === e.transcript_path ? b : { ...EMPTY, ...b, transcript: e.transcript_path }))
+    await saveTranscript($, e.transcript_path)
+    return next(e)
+  }).catch(($, e, next) => next(e))
+  on('classic.Stop', async ($, e, next) => {
+    await saveTranscript($, e.transcript_path)
     return next(e)
   }).catch(($, e, next) => next(e))
 
