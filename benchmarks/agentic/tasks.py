@@ -1327,6 +1327,163 @@ UI_BAD = {"src/components/ItemRow.jsx": '''export function ItemRow({ item, onDel
 }
 '''}
 
+# --- review tier: the agent reviews a change instead of making one; the score reads its reply ---
+# Modelled on #1187. The change brings in one bug (SQL precedence lets any rule id through) and adds a
+# database read that looks like a new test dependency. It is not: `find_role` earlier in the same
+# function, outside the diff's context lines, already makes the unit tests need a seeded app.db.
+# A review must catch the bug and must not blame the change for what the base already did.
+REVIEW_REPO_BEFORE = '''import os
+import sqlite3
+
+
+def _db():
+    return sqlite3.connect(os.environ.get("APP_DB", "app.db"))
+
+
+def find_role(name):
+    row = _db().execute("SELECT id FROM roles WHERE name = ?", (name,)).fetchone()
+    if row is None:
+        raise LookupError(f"no role named {name}")
+    return row[0]
+'''
+REVIEW_REPO_AFTER = REVIEW_REPO_BEFORE + '''
+
+def assert_rule_owned(rule_id, org_id):
+    if rule_id is None:
+        return
+    row = _db().execute(
+        "SELECT 1 FROM rules WHERE id = ? AND org_id = ? OR type = 'system'", (rule_id, org_id)
+    ).fetchone()
+    if row is None:
+        raise PermissionError("overtime rule does not belong to this org")
+'''
+REVIEW_INVITES_BEFORE = '''from app import repo
+
+
+def add_invite(org_id, params, store):
+    """Create an employee and their pay record for an invite."""
+    role_id = repo.find_role("worker")
+    name = params["name"].strip()
+    if not name:
+        raise ValueError("name is required")
+    if params.get("manager_id") is None:
+        raise ValueError("a worker needs a manager")
+    employee = store.add_employee(org_id, name, role_id)
+    store.add_pay(employee, params.get("rule_id"))
+    return employee
+'''
+REVIEW_INVITES_AFTER = REVIEW_INVITES_BEFORE.replace(
+    '        raise ValueError("a worker needs a manager")\n',
+    '        raise ValueError("a worker needs a manager")\n'
+    '    repo.assert_rule_owned(params.get("rule_id"), org_id)\n')
+REVIEW_TESTS_BEFORE = '''"""Unit tests for add_invite. FakeStore stands in for the writes."""
+import pytest
+
+from app import invites
+
+
+class FakeStore:
+    def __init__(self):
+        self.employees, self.pay = [], []
+
+    def add_employee(self, org_id, name, role_id):
+        self.employees.append((org_id, name, role_id))
+        return len(self.employees)
+
+    def add_pay(self, employee, rule_id):
+        self.pay.append((employee, rule_id))
+
+
+def test_adds_employee_and_pay():
+    store = FakeStore()
+    invites.add_invite(10, {"name": "Ana", "manager_id": 5, "rule_id": 1}, store)
+    assert store.employees == [(10, "Ana", 1)]
+    assert store.pay == [(1, 1)]
+
+
+def test_rejects_missing_manager():
+    with pytest.raises(ValueError):
+        invites.add_invite(10, {"name": "Ana"}, FakeStore())
+'''
+REVIEW_TESTS_AFTER = REVIEW_TESTS_BEFORE.replace(
+    '"""Unit tests for add_invite. FakeStore stands in for the writes."""\nimport pytest\n',
+    '"""Unit tests for add_invite. FakeStore stands in for the writes."""\nfrom unittest import mock\n\nimport pytest\n'
+) + '''
+
+def test_rejects_foreign_rule_before_writing():
+    store = FakeStore()
+    with mock.patch("app.repo.assert_rule_owned", side_effect=PermissionError):
+        with pytest.raises(PermissionError):
+            invites.add_invite(10, {"name": "Ana", "manager_id": 5, "rule_id": 99}, store)
+    assert store.employees == []
+'''
+REVIEW_SEED_PY = '''"""Creates app.db with the roles and the system overtime rules. Run once after cloning."""
+import sqlite3
+
+db = sqlite3.connect("app.db")
+db.executescript("""
+CREATE TABLE roles (id INTEGER PRIMARY KEY, name TEXT);
+CREATE TABLE rules (id INTEGER PRIMARY KEY, org_id INTEGER, type TEXT);
+INSERT INTO roles VALUES (1, 'worker'), (2, 'manager');
+INSERT INTO rules VALUES (1, NULL, 'system'), (2, NULL, 'system');
+""")
+db.commit()
+'''
+def _unified(path, before, after):
+    import difflib
+    return "".join(difflib.unified_diff(before.splitlines(True), after.splitlines(True),
+                                        f"a/{path}", f"b/{path}"))
+REVIEW_BASE_SEED = {
+    "app/__init__.py": "",
+    "app/repo.py": REVIEW_REPO_AFTER,
+    "app/invites.py": REVIEW_INVITES_AFTER,
+    "tests/test_invites.py": REVIEW_TESTS_AFTER,
+    "seed.py": REVIEW_SEED_PY,
+    "README.md": "# invites\n\nSetup: `python seed.py`, then `pytest`.\n",
+    "PR.md": ("Reject an overtime rule that belongs to another org before the employee is written, so a "
+              "rejected invite no longer leaves an orphan employee behind. Closes #41.\n"),
+    "CHANGE.diff": (_unified("app/repo.py", REVIEW_REPO_BEFORE, REVIEW_REPO_AFTER)
+                    + _unified("app/invites.py", REVIEW_INVITES_BEFORE, REVIEW_INVITES_AFTER)
+                    + _unified("tests/test_invites.py", REVIEW_TESTS_BEFORE, REVIEW_TESTS_AFTER)),
+}
+_REVIEW_BUG = re.compile(r"precedence|parenthes|OR type|any (?:rule|id)\b|always (?:passes|matches|returns|succeeds|true)"
+                         r"|never (?:rejects|raises|fails)|every (?:rule|row)", re.I)
+_REVIEW_DECOY = re.compile(r"fresh (?:database|db|checkout|clone|machine)|(?:empty|missing|unseeded) (?:database|db\b|app\.db)"
+                           r"|without (?:a |the )?(?:seeded )?(?:database|db\b|app\.db)"
+                           r"|(?:now|newly) (?:need|depend|rel(?:y|ie)|hit|read|quer)\w*[^.\n]{0,40}(?:database|\bdb\b|app\.db)"
+                           r"|(?:need|depend|rel(?:y|ie))\w* on (?:a |the )?(?:real |seeded )?(?:database|db\b|app\.db)", re.I)
+_REVIEW_ON_BASE = re.compile(r"pre-?existing|already|(?:not|n't) (?:new|introduced|caused|introduce|cause)|unchanged|as before|behaves the same"
+                             r"|predates|same as (?:before|the base)|on (?:the )?base|on main|before (?:this|the) (?:change|PR)"
+                             r"|existing (?:bug|issue|problem|behaviou?r|dependency)|outside (?:this|the) (?:change|diff|PR)", re.I)
+
+def score_review_base(workdir):
+    try: reply = json.loads((workdir / "_claude.json").read_text(encoding="utf-8")).get("result") or ""
+    except Exception: return _fail("no reply")
+    if not reply: return _fail("empty reply")
+    caught = bool(_REVIEW_BUG.search(reply))
+    # A decoy mention passes if the text around it says the base had it; "Not checked:" lines are fine.
+    blamed = [m.group(0) for m in _REVIEW_DECOY.finditer(reply)
+              if "not checked" not in reply[reply.rfind("\n", 0, m.start()) + 1:m.end()].lower()
+              and not _REVIEW_ON_BASE.search(reply[max(0, m.start() - 400):m.end() + 400])]
+    return _ok(caught, not blamed, f"blamed the change for the base's '{blamed[0]}'" if blamed
+               else "caught the precedence bug" if caught else "missed the precedence bug")
+
+REVIEW_BASE_FINDING = ("1. **The ownership check lets any rule through** (`app/repo.py:L20`)\n"
+                       "   - **Problem:** `AND` binds tighter than `OR`, so `OR type = 'system'` matches every system row "
+                       "whatever the id. Rule 99 from another org passes.\n"
+                       "   - **Fix:** `WHERE id = ? AND (org_id = ? OR type = 'system')`.\n\n")
+REVIEW_BASE_GOOD = {"_claude.json": json.dumps({"result": (
+    "What this change does: checks rule ownership before the employee is written.\n\n**Must fix**\n\n"
+    + REVIEW_BASE_FINDING
+    + "The unit tests also read app.db through the new check, but `find_role` already made them need it "
+      "on the base, so this change adds no new dependency.\n\nVerdict: fix 1 first.")})}
+REVIEW_BASE_BAD = {"_claude.json": json.dumps({"result": (
+    "What this change does: checks rule ownership before the employee is written.\n\n**Must fix**\n\n"
+    + REVIEW_BASE_FINDING
+    + "2. **The unit tests now need a seeded app.db** (`tests/test_invites.py:L20`)\n"
+      "   - **Problem:** `assert_rule_owned` queries the real database, so `test_adds_employee_and_pay` "
+      "fails on a fresh checkout where seed.py has not run.\n\nVerdict: fix 1 and 2 first.")})}
+
 # ======================================================================================
 TASKS = {
     "todo-null": {
@@ -1422,6 +1579,13 @@ TASKS = {
                    "Fix it so those amounts are handled."),
         "file": "billing.py", "seed": {"billing.py": TRACE_AMOUNT_SEED}, "score": score_trace_amount,
         "good": TRACE_AMOUNT_GOOD, "bad": TRACE_AMOUNT_BAD,
+    },
+    "review-base": {
+        "prompt": ("Code review this change, with the ponytail-review skill if you have it. `PR.md` describes "
+                   "it and `CHANGE.diff` is the patch, already applied to the files. Reply with "
+                   "your review; do not edit any files."),
+        "file": "app/repo.py", "seed": REVIEW_BASE_SEED, "score": score_review_base,
+        "good": REVIEW_BASE_GOOD, "bad": REVIEW_BASE_BAD, "diff": True,
     },
     # --- scope tier: the change must reach wiring, fixtures and tests (safe axis = scope) ---
     "scope-rename": {
