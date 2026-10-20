@@ -69,6 +69,30 @@ omp plugin install ponytail@ponytail
 
 omp runs ponytail's Pi extension unchanged, so the ruleset is injected every turn as in Pi (verified with omp 18.6.1). Start a new session after installing.
 
+## DeepSeek Harness (dsh)
+
+The dsh bundle adds a per-step system section, the `/ponytail` command, the six skills, and a small composer mark that shows the active level and cycles it on click.
+
+**Web UI.** Open **Plugins** → **Add plugin**, enter `github:DietrichGebert/ponytail#path:/dsh-plugin`, and click **Install**. The wizard reads the `dsh-plugin/` subdirectory as `dsh-ponytail` and enables the bundle.
+
+**CLI.** The same Git address works from the CLI:
+
+```bash
+dsh plugin --profile web add "github:DietrichGebert/ponytail#path:/dsh-plugin"
+```
+
+Then `dsh web` (or keep the running UI and refresh). `dsh plugin add` selects the bundle package; no separate enable step is needed.
+
+**From a local checkout.** Use the `name@link:` form; pnpm 12 rejects a bare local path:
+
+```bash
+dsh plugin --profile web add "@dietrichgebert/ponytail@link:/absolute/path/to/ponytail"
+```
+
+**Update.** Re-run the Git add command. A local link updates with `git pull`; restart or refresh if the Host or client module changed.
+
+Verified with dsh 0.2.1-rc.2: the composer mark shows `FULL`/`ULTRA`/`LITE`/`OFF`, clicking cycles the active level, `/ponytail off` dims it, and the `/` menu lists the five user-invocable skills (`/ponytail-review`, `-audit`, `-debt`, `-gain`, `-help`). Step-by-step verification and limits: [dsh-plugin/README.md](dsh-plugin/README.md).
+
 ## OpenCode
 
 ```bash
@@ -233,6 +257,7 @@ Jules (Google) reads `AGENTS.md` from the repository root, which this repo ships
 | Kimi Code | `/plugins` in Kimi Code, then remove ponytail |
 | Skills CLI | `npx skills remove ponytail ponytail-audit ponytail-debt ponytail-gain ponytail-help ponytail-review` (same `--agent` / `--global` flags as the install) |
 | Oh My Pi (omp) | `omp plugin uninstall ponytail@ponytail`, then `omp plugin marketplace remove ponytail` |
+| DeepSeek Harness (dsh) | Deselect `@dietrichgebert/ponytail` in Web **Plugins**, or `plugin_manager` `remove_bundle` with that target; `dsh plugin --profile web remove @dietrichgebert/ponytail` removes only the package. |
 | OpenCode | `opencode plugin remove @dietrichgebert/ponytail` |
 | Cursor hooks | `node scripts/cursor-hooks.js uninstall` (add `--project` for a project-level install); removes only ponytail's entries from `hooks.json` |
 | Cursor rule / Windsurf / Cline / Qoder / etc. | Delete the copied rule file |

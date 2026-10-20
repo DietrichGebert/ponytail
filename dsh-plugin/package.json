@@ -1,0 +1,43 @@
+{
+  "name": "dsh-ponytail",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Ponytail for DeepSeek Harness: per-step ruleset, /ponytail modes, skills, and a composer status mark.",
+  "keywords": ["dsh-plugin", "deepseek-harness", "ponytail", "agent-skills"],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/DietrichGebert/ponytail.git",
+    "directory": "dsh-plugin"
+  },
+  "homepage": "https://github.com/DietrichGebert/ponytail/tree/main/dsh-plugin",
+  "type": "module",
+  "exports": {
+    ".": "./index.mjs",
+    "./client": "./client.js",
+    "./locale/*.json": "./locale/*.json",
+    "./icon": "./icon.svg",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "index.mjs",
+    "client.js",
+    "cordis.patch.yml",
+    "locale/*.json",
+    "icon.svg",
+    "README.md"
+  ],
+  "dependencies": {
+    "@dietrichgebert/ponytail": "^5.3.2"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "immediately": true,
+      "inject": ["@deepseek-ai/dsh-client-ui-conversation"]
+    }
+  }
+}
