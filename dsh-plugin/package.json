@@ -1,9 +1,14 @@
 {
   "name": "dsh-ponytail",
-  "version": "0.1.0",
+  "version": "5.3.2",
   "private": true,
   "description": "Ponytail for DeepSeek Harness: per-step ruleset, /ponytail modes, skills, and a composer status mark.",
-  "keywords": ["dsh-plugin", "deepseek-harness", "ponytail", "agent-skills"],
+  "keywords": [
+    "dsh-plugin",
+    "deepseek-harness",
+    "ponytail",
+    "agent-skills"
+  ],
   "license": "MIT",
   "repository": {
     "type": "git",
@@ -37,7 +42,9 @@
     "client": {
       "platform": "web",
       "immediately": true,
-      "inject": ["@deepseek-ai/dsh-client-ui-conversation"]
+      "inject": [
+        "@deepseek-ai/dsh-client-ui-conversation"
+      ]
     }
   }
 }
