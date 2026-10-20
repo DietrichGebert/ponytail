@@ -25,7 +25,10 @@ const SHARED = /(util|helper|lib|common|shared|service|component|hook|core|model
 const PATTERNS = {
   py: [/^(?:async\s+)?def\s+([A-Za-z]\w*)/gm, /^class\s+([A-Za-z]\w*)/gm],
   js: [/^export\s+(?:default\s+)?(?:async\s+)?(?:function\*?|class|const|let|var|interface|type|enum)\s+([A-Za-z_$][\w$]*)/gm,
-       /^export\s*\{([^}]*)\}/gm],
+       /^export\s*\{([^}]*)\}/gm,
+       // CommonJS (Node servers): `module.exports = { a, b }` and `exports.c = ...`.
+       /^module\.exports\s*=\s*\{([^}]*)\}/gm,
+       /^(?:module\.)?exports\.([A-Za-z_$][\w$]*)\s*=/gm],
   go: [/^func\s+(?:\([^)]*\)\s*)?([A-Z]\w*)/gm, /^type\s+([A-Z]\w*)/gm],
   rs: [/^pub\s+(?:async\s+)?(?:fn|struct|enum|trait|type)\s+(\w+)/gm],
   rb: [/^\s*(?:def|class|module)\s+([A-Za-z][\w.]*)/gm],
@@ -64,7 +67,8 @@ function namesIn(file, text) {
   const names = [];
   for (const re of PATTERNS[lang] || []) {
     for (const m of text.matchAll(re)) {
-      for (const n of m[1].split(',').map((s) => (s.trim().match(NAME) || [])[1]).filter(Boolean)) {
+      // `key: value` in a CommonJS object: the key is the exported name.
+      for (const n of m[1].split(',').map((s) => (s.split(':')[0].trim().match(NAME) || [])[1]).filter(Boolean)) {
         if (!n.startsWith('_') && !names.includes(n)) names.push(n);
       }
     }

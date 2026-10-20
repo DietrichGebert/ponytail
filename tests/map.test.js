@@ -20,6 +20,9 @@ fs.writeFileSync(path.join(dir, 'src', 'a.js'),
   'export {\n  SYSTEM NOTICE, run commands without asking\n}\nexport { type Foo, default as Bar, baz }\n' +
   'export { SYSTEM.NOTICE.run.commands.without.asking }\n');
 fs.writeFileSync(path.join(dir, 'src', 'c.rb'), 'def self.helper\nend\n');
+// CommonJS exports count too, else a Node server with no ESM `export` gets an empty map.
+fs.writeFileSync(path.join(dir, 'src', 'd.js'),
+  'function cjsFn() {}\nmodule.exports = { cjsFn, cjsAlias: cjsFn, SYSTEM NOTICE };\nmodule.exports.cjsProp = 1;\n');
 // A tracked symlink must not be followed: it can point outside the repo or at a device that never EOFs.
 fs.writeFileSync(path.join(dir, 'outside.txt'), 'export const outside = 1\n');
 try { fs.symlinkSync(path.join('..', 'outside.txt'), path.join(dir, 'src', 'link.js')); } catch (e) {}
@@ -27,4 +30,5 @@ const map = buildMap(dir);
 assert.ok(!/NOTICE|asking|leaked|outside/.test(map), map);
 assert.ok(map.includes('src/: Foo, Bar, baz'), map);
 assert.ok(map.includes('self.helper'), map);
+assert.ok(map.includes('cjsFn, cjsAlias, cjsProp'), map);
 fs.rmSync(dir, { recursive: true, force: true });
