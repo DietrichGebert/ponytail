@@ -257,7 +257,7 @@ Jules (Google) reads `AGENTS.md` from the repository root, which this repo ships
 | Kimi Code | `/plugins` in Kimi Code, then remove ponytail |
 | Skills CLI | `npx skills remove ponytail ponytail-audit ponytail-debt ponytail-gain ponytail-help ponytail-review` (same `--agent` / `--global` flags as the install) |
 | Oh My Pi (omp) | `omp plugin uninstall ponytail@ponytail`, then `omp plugin marketplace remove ponytail` |
-| DeepSeek Harness (dsh) | Deselect `@dietrichgebert/ponytail` in Web **Plugins**, or `plugin_manager` `remove_bundle` with that target; `dsh plugin --profile web remove @dietrichgebert/ponytail` removes only the package. |
+| DeepSeek Harness (dsh) | Deselect `dsh-ponytail` in Web **Plugins**, or `plugin_manager` `remove_bundle` with that target; `dsh plugin --profile web remove dsh-ponytail` removes the package and its bundle selection. |
 | OpenCode | `opencode plugin remove @dietrichgebert/ponytail` |
 | Cursor hooks | `node scripts/cursor-hooks.js uninstall` (add `--project` for a project-level install); removes only ponytail's entries from `hooks.json` |
 | Cursor rule / Windsurf / Cline / Qoder / etc. | Delete the copied rule file |

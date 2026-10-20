@@ -105,8 +105,8 @@ node --test tests/dsh-plugin.test.js
 Use the Web **Plugins** page, or:
 
 ```text
-plugin_manager({ action: "remove_bundle", target: "@dietrichgebert/ponytail" })
+plugin_manager({ action: "remove_bundle", target: "dsh-ponytail" })
 ```
 
-With the CLI, `dsh plugin --profile web remove @dietrichgebert/ponytail`
-removes the package; deselecting the bundle is a separate Plugins action.
+With the CLI, `dsh plugin --profile web remove dsh-ponytail` removes the
+package and its bundle selection.
