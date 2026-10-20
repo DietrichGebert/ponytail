@@ -127,6 +127,13 @@ async function readModel($: EngineInterface, transcript: string): Promise<string
   return grep?.exitCode === 0 ? mainModel(grep.stdout) : ''
 }
 
+// Where Claude Code keeps the session's transcript, by its folder rule: on managed, Team and Enterprise machines its cc-plugin-sec-default skips every classic.* hook, so no hook hands the path over.
+// shortcut: Claude Code hashes a folder name past 200 characters, so that session keeps no title; read the path from the engine once it offers one.
+async function transcriptOf($: EngineInterface, session: string): Promise<string> {
+  const root = await $.session.root().catch(() => '')
+  return root === '' ? '' : `${await claudeDir($)}/projects/${root.replace(/[^a-zA-Z0-9]/g, '-')}/${session}.jsonl`
+}
+
 // Where the task ledgers and the board live.
 // shortcut: ~/.config only (XDG respected); Windows would want %APPDATA%.
 async function ledgerDir($: EngineInterface) {
@@ -189,11 +196,12 @@ async function start($: EngineInterface): Promise<Map<string, string>> {
   const repo = await $.session.repo().catch(() => null)
   const project = base(repo?.root ?? (await $.session.cwd()))
   const session = await $.session.id()
+  const transcript = await transcriptOf($, session)
   // The cost so far is the baseline for the last turn's own cost.
   const usage = await $.session.usage().catch(() => undefined)
   const csv = usage ? await $.fs.read(ledgerFile(await ledgerDir($), project)).catch(() => '') : ''
   const key = usage ? taskKey(session, usage.startedAt) : ''
-  await update($, band, b => resume({ ...EMPTY, ...b, level, details, project, session, cost: usage?.cost?.usd ?? b.cost }, csv, key))
+  await update($, band, b => resume({ ...EMPTY, ...b, level, details, project, session, transcript, cost: usage?.cost?.usd ?? b.cost }, csv, key))
   return grep?.exitCode === 0 ? parseDefs(grep.stdout) : new Map()
 }
 
@@ -220,12 +228,6 @@ export const register: Register = (on, options) => {
   // /clear starts a new task: the counters start over, the cost baseline stays.
   on('session.end', async ($, e, next) => {
     if (e.reason === 'clear') await update($, band, b => ({ ...EMPTY, ...b, ...TASK }))
-    return next(e)
-  }).catch(($, e, next) => next(e))
-
-  // Only the classic hook input carries the transcript path, which holds the sidebar name.
-  on('classic.UserPromptSubmit', async ($, e, next) => {
-    await update($, band, b => (b.transcript === e.transcript_path ? b : { ...EMPTY, ...b, transcript: e.transcript_path }))
     return next(e)
   }).catch(($, e, next) => next(e))
 
