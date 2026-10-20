@@ -9,8 +9,14 @@ const { spawnSync } = require('child_process');
 const root = path.join(__dirname, '..');
 
 function runUninstall(env) {
+  // Scrub host config dirs the spawned uninstall resolves from the environment,
+  // so a developer's real Qoder/OpenCode/CodeBuddy state is never deleted by tests.
+  const scrubbed = { ...process.env };
+  for (const k of ['CLAUDE_CONFIG_DIR', 'XDG_CONFIG_HOME', 'QODER_CONFIG_DIR', 'CODEBUDDY_CONFIG_DIR']) {
+    delete scrubbed[k];
+  }
   return spawnSync(process.execPath, [path.join(root, 'scripts', 'uninstall.js')], {
-    env: { ...process.env, ...env },
+    env: { ...scrubbed, ...env },
     encoding: 'utf8',
   });
 }
@@ -45,6 +51,9 @@ fs.writeFileSync(opencodeFlagPath, 'off');
 
 const nudgeFlagPath = path.join(claudeDir, '.ponytail-statusline-nudged');
 fs.writeFileSync(nudgeFlagPath, '');
+
+const bandFlagPath = path.join(claudeDir, '.ponytail-band');
+fs.writeFileSync(bandFlagPath, 'off');
 
 const configDir = path.join(temp, 'config-home', 'ponytail');
 fs.mkdirSync(configDir, { recursive: true });
@@ -93,6 +102,7 @@ assert.equal(fs.existsSync(qoderFlagPath), false, 'Qoder mode flag must be remov
 assert.equal(fs.existsSync(opencodeFlagPath), false, 'OpenCode mode flag must be removed');
 assert.equal(fs.existsSync(qoderCustomFlagPath), true, 'default Qoder uninstall must not touch a separate custom config');
 assert.equal(fs.existsSync(nudgeFlagPath), false, 'statusline nudge flag must be removed');
+assert.equal(fs.existsSync(bandFlagPath), false, 'band flag must be removed');
 assert.equal(fs.existsSync(configPath), false, 'config file must be removed');
 assert.equal(fs.existsSync(cursorFlagPath), false, 'Cursor mode flag must be removed');
 assert.equal(fs.existsSync(statuslineCopyPath), false, 'statusline script copy must be removed (#1032)');

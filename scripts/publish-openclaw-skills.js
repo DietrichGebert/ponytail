@@ -51,6 +51,12 @@ const extra = passthrough.length ? ` (${passthrough.join(' ')})` : '';
 console.log(`Publishing ${slugs.length} skills to ClawHub at version ${version}${extra}:`);
 
 for (const slug of slugs) {
+  // Directory names land in a shell:true command line; refuse anything but a
+  // plain slug so a PR cannot smuggle $(...) into the publish run.
+  if (!/^[a-z0-9-]+$/.test(slug)) {
+    console.error(`Refusing to publish skill with unsafe directory name: ${slug} (letters, digits, dashes only)`);
+    process.exit(1);
+  }
   const args = [
     'clawhub', 'skill', 'publish', `.openclaw/skills/${slug}`,
     '--slug', slug,

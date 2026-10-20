@@ -510,6 +510,8 @@ def main():
             shutil.move(str(ws), str(out_dir / name))
 
     for m in models: warm_cache(m)
+    if not shutil.which("claude"):
+        sys.exit("claude CLI not found on PATH")
     print(f"running {total} cells, {args.workers} at a time", flush=True)
     # Cells are fully isolated (own copy + own claude context), so they parallelize safely.
     # To STOP a parallel run, kill the whole tree: taskkill /PID <pid> /T /F. Killing just the
@@ -520,7 +522,7 @@ def main():
             tid, arm, model, r = futs[fut]
             try:
                 res = fut.result()
-            except Exception as e:
+            except BaseException as e:  # SystemExit from a worker must not abort the pool drain
                 res = {"task": tid, "arm": arm, "model": model, "error": str(e)[:200]}
             results.append(res)
             done += 1
