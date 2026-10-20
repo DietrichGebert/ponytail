@@ -219,15 +219,15 @@ export const taskKey = (session: string, startedAt: number) => `${session.slice(
 // shortcut: the ledger keeps only the token total and output, so a resumed band books the rest as input.
 export function resume(b: Band, csv: string, key: string): Band {
   const [head, ...rows] = parseCsv(csv)
-  const row = head ? rows.find(r => r[head.indexOf('key')] === key) : undefined
-  if (!head || !row) return b
-  const at = (col: string) => row[head.indexOf(col)] ?? ''
-  const total = Number(at('tokens_total')) || 0
-  const output = Number(at('tokens_output')) || 0
+  const mine = head ? taskRows(rows, head.indexOf('key'), key) : []
+  if (!head || mine.length === 0) return b
+  const sum = sumOf(mine, head)
+  const total = sum('tokens_total')
+  const output = sum('tokens_output')
   return {
     ...b,
-    name: b.name || at('name'),
-    busyMs: Math.max(b.busyMs, (Number(at('agent_minutes')) || 0) * 60000),
+    name: b.name || (mine[0]?.[head.indexOf('name')] ?? ''),
+    busyMs: Math.max(b.busyMs, sum('agent_minutes') * 60000),
     tokens: total > totalTokens(b.tokens) ? { input: total - output, output, cacheRead: 0, cacheWrite: 0 } : b.tokens,
   }
 }
@@ -289,10 +289,35 @@ export const csvRow = (s: Snapshot) =>
     .map(csvField)
     .join(',')
 
-// One row per session, replaced on every turn, so the file stays a table of tasks.
-export function upsertCsv(existing: string, s: Snapshot): string {
-  const rows = existing.split('\n').filter(line => line !== '' && !line.startsWith('key,') && !line.startsWith(`${s.key},`))
-  return [CSV_HEADER, ...rows, csvRow(s)].join('\n') + '\n'
+// A task's rows: the one for its first day (key) and one per later day (key@YYYY-MM-DD).
+const taskRows = (rows: string[][], keyCol: number, key: string) =>
+  rows.filter(r => r[keyCol] === key || r[keyCol]?.startsWith(`${key}@`))
+
+const sumOf = (rows: string[][], head: string[]) => (col: string) =>
+  rows.reduce((n, r) => n + (Number(r[head.indexOf(col)]) || 0), 0)
+
+// One row per task and day, replaced on every turn. The snapshot holds session totals, so a task
+// resumed on a later day books only that day's share there; the board then charts work on the day it was done.
+export function upsertCsv(existing: string, s: Snapshot, now?: number): string {
+  const today = now === undefined ? s.started.slice(0, 10) : stamp(now).slice(0, 10)
+  const id = s.started.startsWith(today) ? s.key : `${s.key}@${today}`
+  const head = CSV_HEADER.split(',')
+  const rows = parseCsv(existing).filter(r => r[0] !== 'key')
+  const own = rows.find(r => r[0] === id)
+  const sum = sumOf(taskRows(rows, 0, s.key).filter(r => r[0] !== id), head)
+  const left = (v: number) => Math.max(0, v)
+  const output = left(s.tokens.output - sum('tokens_output'))
+  const day: Snapshot = {
+    ...s,
+    key: id,
+    started: own?.[1] || (id === s.key || now === undefined ? s.started : stamp(now)),
+    cost: left(s.cost - sum('cost_usd')),
+    turns: left(s.turns - sum('turns')),
+    agentMs: left(s.agentMs - sum('agent_minutes') * 60000),
+    tokens: { input: left(totalTokens(s.tokens) - sum('tokens_total') - output), output, cacheRead: 0, cacheWrite: 0 },
+  }
+  const kept = rows.filter(r => r[0] !== id).map(r => r.map(csvField).join(','))
+  return [CSV_HEADER, ...kept, csvRow(day)].join('\n') + '\n'
 }
 
 // shortcut: no share below 3 functions, where one new helper would read as "0% reuse"; tune the 3 if it shows too late.

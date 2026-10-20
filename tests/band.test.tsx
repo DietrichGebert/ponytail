@@ -38,7 +38,7 @@ describe('board', () => {
     expect(rows.length).toBe(3)
     expect(rows[1]?.[3]).toBe('Fix "cart", totals\nand tax')
     const tasks = tasksFrom(CSV)
-    expect(tasks[0]).toEqual({ started: '2026-10-15 12:00', project: 'shop', name: 'Fix "cart", totals\nand tax', cost: 3.1, turns: 6, agentMinutes: 26, tokens: 1_200_000, reuse: 83, tests: '14 passed', level: 'full', model: '' })
+    expect(tasks[0]).toEqual({ session: 'a-1', started: '2026-10-15 12:00', project: 'shop', name: 'Fix "cart", totals\nand tax', cost: 3.1, turns: 6, agentMinutes: 26, tokens: 1_200_000, reuse: 83, tests: '14 passed', level: 'full', model: '' })
     expect(tasks[1]?.reuse).toBeNull()
     expect(tasksFrom('not,a,ledger\n1,2,3')).toEqual([])
   })
@@ -171,6 +171,23 @@ describe('metrics', () => {
     expect(other.trim().split('\n').length).toBe(3)
   })
 
+  test('a task resumed on a later day books only the new work on that day', () => {
+    const at = new Date(2026, 9, 19, 16, 0).getTime()
+    const monday = upsertCsv('', snapshot(BASE, at), at)
+    const nextDay = new Date(2026, 9, 20, 9, 30).getTime()
+    const later = { ...BASE, spent: 5.1, turns: 10, busyMs: BASE.busyMs + 600_000, tokens: addTokens(BASE.tokens, { input_tokens: 0, output_tokens: 1000, cache_read_input_tokens: 0, cache_creation_input_tokens: 0 }) }
+    const csv = upsertCsv(upsertCsv(monday, snapshot(later, at), nextDay), snapshot(later, at), nextDay)
+    const tasks = tasksFrom(csv)
+    expect(tasks.map(t => t.started)).toEqual(['2026-10-19 16:00', '2026-10-20 09:30'])
+    // Both days belong to one session, which the board shows as one row with its days under it.
+    expect(new Set(tasks.map(t => t.session)).size).toBe(1)
+    expect(tasks.map(t => [t.cost, t.turns, t.agentMinutes, t.tokens])).toEqual([[3.1, 6, 26, 1_200_000], [2, 4, 10, 1000]])
+    // A band that starts again picks up the sum of the task's days.
+    const b = resume({ ...BASE, busyMs: 0, tokens: NO_TOKENS }, csv, snapshot(BASE, at).key)
+    expect(b.busyMs).toBe(36 * 60000)
+    expect(totalTokens(b.tokens)).toBe(1_201_000)
+  })
+
   test('the desktop row is one SVG with real dividers, escaped and cut to fit', () => {
     const svg = metricsSvg(
       [
@@ -293,6 +310,23 @@ for (const command of ['clear', 'resume']) {
     await ui.unmount()
   })
 }
+
+test('a resumed session shows its cost so far before its first turn', async ($, on) => {
+  mock.clock(on)
+  mock.store(on)
+  on('session.id', () => ({ value: 's1' }))
+  on('session.turns', () => ({ value: 9 }))
+  on('session.usage', () => ({ value: { startedAt: 0, cost: { usd: 12.34 } } }) as never)
+  on('env.get', ($, e) => ({ value: e.name === 'HOME' ? '/home/u' : undefined }))
+  on('session.repo', () => ({ value: { root: '/repo/shop' } }) as never)
+  on('process.run', () => ({ value: { exitCode: 1, stdout: '', stderr: '' } }) as never)
+  on('fs.read', () => ({ deny: 'missing' }) as never)
+  on('session.start', ($, e) => ({ cwd: e.cwd }))
+  await $.session.start({ cwd: '/repo/shop', surface: null } as never)
+  const ui = await $.ui.mount({ plugin: 'ponytail', surface: 'terminal', ...BAND })
+  expect(await ui.find({ type: 'Text', text: /12\.34/ })).toBeDefined()
+  await ui.unmount()
+})
 
 test('the ledger is written on Windows, where there is no mkdir', async ($, on) => {
   mock.clock(on)
