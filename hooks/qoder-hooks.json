@@ -11,9 +11,8 @@
         ]
       }
     ],
-    "PreToolUse": [
+    "SubagentStart": [
       {
-        "matcher": "task|Task",
         "hooks": [
           {
             "type": "command",
