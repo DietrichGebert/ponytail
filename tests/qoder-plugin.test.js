@@ -78,7 +78,8 @@ test('qoder rules match AGENTS.md canonical body', () => {
 test('qoder runtime detects QODER_SESSION_ID and writes hookSpecificOutput JSON', () => {
   const { isQoder } = require('../hooks/ponytail-runtime');
   // isQoder is resolved at module load time from process.env; in the test
-  // process QODER_SESSION_ID is unset, so isQoder must be false here.
+  // process QODER_SESSION_ID and QODER_PROJECT_DIR are unset, so isQoder must
+  // be false here.
   // The positive path is exercised in hooks.test.js via spawnSync.
   assert.equal(isQoder, false, 'isQoder must be false without QODER_SESSION_ID');
 });
