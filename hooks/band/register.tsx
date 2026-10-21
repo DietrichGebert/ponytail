@@ -32,6 +32,7 @@ import {
   testsLabel,
   TITLE_RECORD,
   totalTokens,
+  transcriptPath,
   upsertCsv,
   webhookRequest,
 } from './metrics'
@@ -193,7 +194,9 @@ async function start($: EngineInterface): Promise<Map<string, string>> {
   const usage = await $.session.usage().catch(() => undefined)
   const csv = usage ? await $.fs.read(ledgerFile(await ledgerDir($), project)).catch(() => '') : ''
   const key = usage ? taskKey(session, usage.startedAt) : ''
-  await update($, band, b => resume({ ...EMPTY, ...b, level, details, project, session, cost: usage?.cost?.usd ?? b.cost }, csv, key))
+  // Team and Enterprise sessions skip a plugin's classic.UserPromptSubmit hook, so the band derives the path too.
+  const transcript = transcriptPath(await claudeDir($), await $.session.root(), session)
+  await update($, band, b => resume({ ...EMPTY, ...b, level, details, project, session, transcript, cost: usage?.cost?.usd ?? b.cost }, csv, key))
   return grep?.exitCode === 0 ? parseDefs(grep.stdout) : new Map()
 }
 
@@ -223,7 +226,7 @@ export const register: Register = (on, options) => {
     return next(e)
   }).catch(($, e, next) => next(e))
 
-  // Only the classic hook input carries the transcript path, which holds the sidebar name.
+  // The classic hook input carries the exact transcript path, which holds the sidebar name, where a session runs it.
   on('classic.UserPromptSubmit', async ($, e, next) => {
     await update($, band, b => (b.transcript === e.transcript_path ? b : { ...EMPTY, ...b, transcript: e.transcript_path }))
     return next(e)

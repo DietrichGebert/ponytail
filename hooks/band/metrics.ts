@@ -164,6 +164,10 @@ export const testsLabel = (t: Band['tests']) =>
 
 // Claude Code writes the session's sidebar name into its transcript on every rename.
 export const TITLE_RECORD = '"type":"custom-title"'
+// Where Claude Code keeps a session's transcript: its start directory with every non-alphanumeric character as "-".
+// shortcut: Claude Code shortens a folder name past 200 characters with a hash; such a session finds no transcript.
+export const transcriptPath = (claudeDir: string, root: string, session: string) =>
+  session === '' ? '' : `${claudeDir}/projects/${root.replace(/[^a-zA-Z0-9]/g, '-')}/${session}.jsonl`
 // grep -o pattern for the model of every reply in a transcript.
 export const MODEL_PATTERN = '"model":"claude-[^"]*"'
 
