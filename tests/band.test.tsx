@@ -233,6 +233,26 @@ const BAND = {
   props: { hasSurvey: false, isWorking: false, maxRows: 12, bodyColumns: 100, scroll: { offset: 0, bodyRows: 12 }, view: {} },
 } as const
 
+test('the compact row stays one line at a narrow and a wide width', async ($, on) => {
+  mock.clock(on)
+  mock.store(on)
+  for (const surface of ['terminal', 'desktop'] as const) {
+    for (const bodyColumns of [36, 100]) {
+      const ui = await $.ui.mount({ plugin: 'ponytail', surface, ...BAND, props: { ...BAND.props, bodyColumns } })
+      const row = await ui.find({ key: 'compact' })
+      expect(row).toBeDefined()
+      expect(row?.props.flexWrap).toBe('nowrap')
+      expect(row?.props.width).toBe(bodyColumns)
+      expect(JSON.stringify(row)).not.toMatch(/flexGrow/)
+      expect(await ui.find({ key: 'level' })).toBeDefined()
+      expect(await ui.find({ key: 'board' })).toBeDefined()
+      expect(await ui.find({ key: 'details' })).toBeDefined()
+      expect(JSON.stringify(row)).toContain('truncate-end')
+      await ui.unmount()
+    }
+  }
+})
+
 test('the band switches between compact and details on terminal and desktop', async ($, on) => {
   mock.clock(on)
   mock.store(on)
