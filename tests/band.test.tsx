@@ -23,6 +23,7 @@ import {
   snapshot,
   testCounts,
   totalTokens,
+  transcriptPath,
   upsertCsv,
   CSV_HEADER,
   webhookRequest,
@@ -133,6 +134,12 @@ describe('metrics', () => {
 
   test('agent time reads in seconds, minutes, hours', () => {
     expect([elapsed(45_000), elapsed(130_000), elapsed(4_320_000)]).toEqual(['45s', '2m 10s', '1h 12m'])
+  })
+
+  test('the transcript path is derived from the start directory and session id', () => {
+    expect(transcriptPath('/home/a/.claude', '/home/a/my.repo', 's1')).toBe('/home/a/.claude/projects/-home-a-my-repo/s1.jsonl')
+    expect(transcriptPath('C:\\Users\\a/.claude', 'C:\\Users\\a\\Dev\\shop', 's2')).toBe('C:\\Users\\a/.claude/projects/C--Users-a-Dev-shop/s2.jsonl')
+    expect(transcriptPath('/home/a/.claude', '/home/a', '')).toBe('')
   })
 
   test('the sidebar name is the last custom-title record of the transcript', () => {
