@@ -13,6 +13,14 @@ const { CSV_HEADER, replyCost, sessionStats, csvRow, mergeRows, run } = require(
 const metrics = fs.readFileSync(path.join(root, 'hooks', 'band', 'metrics.ts'), 'utf8');
 assert.equal(CSV_HEADER, /export const CSV_HEADER = '([^']+)'/.exec(metrics)[1], 'import and band must write the same CSV columns');
 
+// The band and this import must name a project the same way on every platform, so the band
+// has to split a Windows path on its backslash too (issue #1191).
+const register = fs.readFileSync(path.join(root, 'hooks', 'band', 'register.tsx'), 'utf8');
+const base = new Function('path', `return ${/const base = \(path: string\) => (.+)/.exec(register)[1]}`);
+assert.equal(base('C:\\work\\my-app'), 'my-app', 'a Windows path must name the folder, not the whole path');
+assert.equal(base('C:/work/my-app/'), 'my-app');
+assert.equal(base('/work/shop/'), 'shop');
+
 // Prices per reply: the official table, Haiku 5.5's long-prompt tier, unknown and fast replies left out.
 assert.equal(replyCost('claude-opus-5-5', { input_tokens: 1e6, output_tokens: 1e6 }), 24);
 assert.equal(replyCost('claude-opus-5-5', { cache_read_input_tokens: 1e6, cache_creation: { ephemeral_5m_input_tokens: 1e6, ephemeral_1h_input_tokens: 1e6 } }), 0.2 + 5 + 8);
