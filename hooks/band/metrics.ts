@@ -1,5 +1,7 @@
 // Pure helpers for the band: no `$`, so the tests call them directly.
 
+import { createHash } from 'node:crypto'
+
 import { duration, elapsed, fmtTokens, parseCsv } from './board'
 import type { Band, Tokens } from './types'
 
@@ -278,6 +280,14 @@ export function markdown(s: Snapshot): string {
 }
 
 export const CSV_HEADER = 'key,started,project,name,cost_usd,turns,agent_minutes,tokens_total,tokens_output,reuse_pct,reused,new,callers_open,tests,level,model'
+
+// A name that is already a filename keeps that file, so myapp.csv still loads.
+// A name that had to be rewritten gets a short hash of the root so api@shop and api_shop do not share a ledger.
+export function ledgerFile(dir: string, project: string, root: string): string {
+  const slug = project.replace(/[^\w.-]/g, '_')
+  const id = slug === project ? slug : `${slug}_${createHash('sha256').update(root.replace(/\\/g, '/').replace(/\/+$/, '')).digest('hex').slice(0, 8)}`
+  return `${dir}/${id}.csv`
+}
 
 const csvField = (v: string | number | null) => {
   const s = v === null ? '' : String(v)

@@ -18,6 +18,7 @@ import {
   isCode,
   isSource,
   isTestCommand,
+  ledgerFile,
   mainModel,
   markdown,
   metricsSvg,
@@ -133,15 +134,14 @@ async function ledgerDir($: EngineInterface) {
   return `${(await $.env.get('XDG_CONFIG_HOME')) ?? `${await home($)}/.config`}/ponytail/band`
 }
 
-const ledgerFile = (dir: string, project: string) => `${dir}/${project.replace(/[^\w.-]/g, '_')}.csv`
-
 // After every turn: the task's row in a CSV per project, and the same row to a webhook if one is set.
 async function record($: EngineInterface, b: Band, options: Options) {
   const startedAt = (await $.session.usage()).startedAt
   const row = snapshot(b, startedAt)
   if (options.ledger !== false && b.project !== '') {
     const dir = await ledgerDir($)
-    const file = ledgerFile(dir, b.project)
+    const root = (await $.session.repo().catch(() => null))?.root ?? (await $.session.cwd())
+    const file = ledgerFile(dir, b.project, root)
     const existing = await $.fs.read(file).catch(() => '')
     // $.fs.write creates the directory: no mkdir, which Windows does not have.
     await $.fs.write(file, upsertCsv(existing, row))
@@ -187,11 +187,12 @@ async function start($: EngineInterface): Promise<Map<string, string>> {
   const level = await readLevel($)
   const details = (await $.store.get('details')) === true
   const repo = await $.session.repo().catch(() => null)
-  const project = base(repo?.root ?? (await $.session.cwd()))
+  const root = repo?.root ?? (await $.session.cwd())
+  const project = base(root)
   const session = await $.session.id()
   // The cost so far is the baseline for the last turn's own cost.
   const usage = await $.session.usage().catch(() => undefined)
-  const csv = usage ? await $.fs.read(ledgerFile(await ledgerDir($), project)).catch(() => '') : ''
+  const csv = usage ? await $.fs.read(ledgerFile(await ledgerDir($), project, root)).catch(() => '') : ''
   const key = usage ? taskKey(session, usage.startedAt) : ''
   await update($, band, b => resume({ ...EMPTY, ...b, level, details, project, session, cost: usage?.cost?.usd ?? b.cost }, csv, key))
   return grep?.exitCode === 0 ? parseDefs(grep.stdout) : new Map()
