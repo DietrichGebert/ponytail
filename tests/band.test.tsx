@@ -13,6 +13,7 @@ import {
   elapsed,
   fmtTokens,
   isTestCommand,
+  ledgerFile,
   mainModel,
   markdown,
   metricsSvg,
@@ -158,6 +159,15 @@ describe('metrics', () => {
     expect(md).toContain('| Tests | 14 passed |')
   })
 
+  test('two project names that sanitize to the same filename keep separate ledgers', () => {
+    expect(ledgerFile('/band', 'myapp', '/work/myapp')).toBe('/band/myapp.csv')
+    expect(ledgerFile('/band', 'api_shop', '/work/api_shop')).toBe('/band/api_shop.csv')
+    expect(ledgerFile('/band', 'api@shop', '/work/api@shop')).toBe('/band/api_shop_ad0ec4e8.csv')
+    expect(ledgerFile('/band', 'api@shop', '/work/api@shop/')).toBe('/band/api_shop_ad0ec4e8.csv')
+    expect(ledgerFile('/band', 'api@shop', '/a/api@shop')).not.toBe(ledgerFile('/band', 'api@shop', '/b/api@shop'))
+    expect(ledgerFile('/band', 'api@shop', '/work/api@shop')).not.toBe(ledgerFile('/band', 'api_shop', '/work/api_shop'))
+  })
+
   test('the CSV keeps one row per task and replaces it on every turn', () => {
     const at = Date.UTC(2026, 9, 15, 12, 0)
     const first = upsertCsv('', snapshot(BASE, at))
@@ -293,6 +303,52 @@ for (const command of ['clear', 'resume']) {
     await ui.unmount()
   })
 }
+
+test('two project names that sanitize to the same filename write separate ledgers', async ($, on) => {
+  mock.clock(on)
+  mock.store(on)
+  let root = '/work/api@shop'
+  const files: Record<string, string> = {}
+  on('env.get', ($, e) => ({ value: e.name === 'HOME' ? '/home/u' : e.name === 'XDG_CONFIG_HOME' ? '/home/u/.config' : undefined }))
+  on('session.repo', () => ({ value: { root } }) as never)
+  on('session.cwd', () => ({ value: root }))
+  on('session.id', () => ({ value: 's1' }))
+  on('session.turns', () => ({ value: 1 }))
+  on('session.usage', () => ({ value: { startedAt: 0, cost: { usd: 0.5 } } }) as never)
+  on('process.run', () => ({ value: { exitCode: 1, stdout: '', stderr: '' } }) as never)
+  on('fs.read', ($, e) => {
+    const path = e.path.replace(/\\/g, '/')
+    return path in files ? { value: files[path] } : ({ deny: 'missing' } as never)
+  })
+  on('fs.list', ($, e) => {
+    const dir = e.path.replace(/\\/g, '/')
+    return {
+      value: Object.keys(files)
+        .filter(p => p.startsWith(`${dir}/`) && p.endsWith('.csv'))
+        .map(p => ({ kind: 'file' as const, name: p.slice(dir.length + 1) })),
+    }
+  })
+  on('fs.write', ($, e) => {
+    files[e.path.replace(/\\/g, '/')] = String(e.content ?? e.data ?? e.text ?? '')
+    return { value: undefined }
+  })
+  on('session.start', ($, e) => ({ cwd: e.cwd }))
+  on('turn.complete', () => ({ text: '' }))
+
+  await $.session.start({ cwd: root, surface: null } as never)
+  await $.turn.complete({ answer: '', durationMs: 1000 } as never)
+  root = '/work/api_shop'
+  await $.session.start({ cwd: root, surface: null } as never)
+  await $.turn.complete({ answer: '', durationMs: 1000 } as never)
+
+  const csvs = Object.keys(files).filter(p => p.endsWith('.csv')).sort()
+  expect(csvs.some(p => p.endsWith('/api_shop.csv'))).toBe(true)
+  expect(csvs.some(p => p.endsWith('/api_shop_ad0ec4e8.csv'))).toBe(true)
+  expect(csvs.length).toBe(2)
+  const board = Object.values(files).find(t => t.includes('id="board-data"')) ?? ''
+  expect(board).toContain('api@shop')
+  expect(board).toContain('api_shop')
+})
 
 test('the ledger is written on Windows, where there is no mkdir', async ($, on) => {
   mock.clock(on)

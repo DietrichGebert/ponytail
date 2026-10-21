@@ -279,6 +279,24 @@ export function markdown(s: Snapshot): string {
 
 export const CSV_HEADER = 'key,started,project,name,cost_usd,turns,agent_minutes,tokens_total,tokens_output,reuse_pct,reused,new,callers_open,tests,level,model'
 
+// shortcut: 32-bit FNV-1a (hooks modules cannot import crypto), hash the root with sha256 if two rewritten names share a file
+function shortHash(text: string): string {
+  let h = 0x811c9dc5
+  for (let i = 0; i < text.length; i++) {
+    h ^= text.charCodeAt(i)
+    h = Math.imul(h, 0x01000193)
+  }
+  return (h >>> 0).toString(16).padStart(8, '0')
+}
+
+// A name that is already a filename keeps that file, so myapp.csv still loads.
+// A name that had to be rewritten gets a short hash of the root so api@shop and api_shop do not share a ledger.
+export function ledgerFile(dir: string, project: string, root: string): string {
+  const slug = project.replace(/[^\w.-]/g, '_')
+  const id = slug === project ? slug : `${slug}_${shortHash(root.replace(/\\/g, '/').replace(/\/+$/, ''))}`
+  return `${dir}/${id}.csv`
+}
+
 const csvField = (v: string | number | null) => {
   const s = v === null ? '' : String(v)
   return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s
