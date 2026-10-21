@@ -673,7 +673,8 @@ assert.equal(result.status, 0, result.stderr);
 assert.equal(JSON.parse(result.stdout).hookSpecificOutput.additionalContext, 'PONYTAIL DEFAULT SET — new sessions start in full.');
 assert.equal(fs.readFileSync(qoderState, 'utf8'), 'off');
 
-// Subagent injection via PreToolUse (task|Task matcher): when ponytail is
+// Subagent injection via SubagentStart (Qoder matches its matcher on the agent
+// type): when ponytail is
 // active, the subagent hook injects the ruleset. Qoder shares the same
 // ponytail-subagent.js script; the isQoder branch outputs hookSpecificOutput
 // JSON instead of raw stdout.
