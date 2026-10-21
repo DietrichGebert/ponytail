@@ -162,8 +162,8 @@ describe('metrics', () => {
   test('two project names that sanitize to the same filename keep separate ledgers', () => {
     expect(ledgerFile('/band', 'myapp', '/work/myapp')).toBe('/band/myapp.csv')
     expect(ledgerFile('/band', 'api_shop', '/work/api_shop')).toBe('/band/api_shop.csv')
-    expect(ledgerFile('/band', 'api@shop', '/work/api@shop')).toBe('/band/api_shop_2bcfad35.csv')
-    expect(ledgerFile('/band', 'api@shop', '/work/api@shop/')).toBe('/band/api_shop_2bcfad35.csv')
+    expect(ledgerFile('/band', 'api@shop', '/work/api@shop')).toBe('/band/api_shop_ad0ec4e8.csv')
+    expect(ledgerFile('/band', 'api@shop', '/work/api@shop/')).toBe('/band/api_shop_ad0ec4e8.csv')
     expect(ledgerFile('/band', 'api@shop', '/a/api@shop')).not.toBe(ledgerFile('/band', 'api@shop', '/b/api@shop'))
     expect(ledgerFile('/band', 'api@shop', '/work/api@shop')).not.toBe(ledgerFile('/band', 'api_shop', '/work/api_shop'))
   })
@@ -343,7 +343,7 @@ test('two project names that sanitize to the same filename write separate ledger
 
   const csvs = Object.keys(files).filter(p => p.endsWith('.csv')).sort()
   expect(csvs.some(p => p.endsWith('/api_shop.csv'))).toBe(true)
-  expect(csvs.some(p => p.endsWith('/api_shop_2bcfad35.csv'))).toBe(true)
+  expect(csvs.some(p => p.endsWith('/api_shop_ad0ec4e8.csv'))).toBe(true)
   expect(csvs.length).toBe(2)
   const board = Object.values(files).find(t => t.includes('id="board-data"')) ?? ''
   expect(board).toContain('api@shop')
