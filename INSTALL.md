@@ -56,6 +56,8 @@ Copilot CLI namespaces plugin commands by plugin name. For example:
 pi install git:github.com/DietrichGebert/ponytail
 ```
 
+Two display settings, each as an env var or a field in `~/.config/ponytail/config.json`: `PONYTAIL_HIDE_STATUS=1` (or `"hideStatus": true`) hides the status-bar indicator while ponytail stays active, and `PONYTAIL_QUIET_STARTUP=1` (or `"quietStartup": true`) drops the `Ponytail loaded` notice. The env var wins over the config file, and `0` or `false` turns a setting off.
+
 ## Kimi Code
 
 In Kimi Code, run `/plugins install https://github.com/DietrichGebert/ponytail`, then `/reload` or start a new session. The plugin puts [`AGENTS.md`](AGENTS.md) into the system prompt every turn and adds the six skills, which Kimi also offers as `/ponytail`, `/ponytail-review`, `/ponytail-audit`, `/ponytail-debt`, `/ponytail-gain` and `/ponytail-help`. Level switching (`/ponytail lite`) loads the skill for that turn; there is no persistent mode flag in Kimi.
@@ -191,7 +193,9 @@ Merges two native hooks into `~/.cursor/hooks.json` (add `--project` to write `<
 
 ## Settings
 
-Set the level for every new session with the `PONYTAIL_DEFAULT_MODE` env var (`lite`/`full`/`ultra`/`off`), or a `defaultMode` field in `~/.config/ponytail/config.json` (`%APPDATA%\ponytail\config.json` on Windows). The default is `full`.
+Set the level for every new session with the `PONYTAIL_DEFAULT_MODE` env var (`lite`/`full`/`ultra`/`off`), or a `defaultMode` field in `~/.config/ponytail/config.json` (`%APPDATA%\ponytail\config.json` on Windows). `/ponytail default <level>` in chat writes that same field. The default is `full`.
+
+Claude Code, Codex, Copilot CLI and Cursor also get a codebase map at session start: the project's existing functions, classes and exports, so the agent reuses them instead of searching. It is capped at 2000 characters; `PONYTAIL_MAP_CHARS` sets the size and `PONYTAIL_MAP=0` turns it off.
 
 While active, the ruleset is also injected into every subagent spawned via the Agent tool. To scope that to specific agent types (say, keep it off read-only search agents), set the `PONYTAIL_SUBAGENT_MATCHER` env var to a regex tested against the subagent's `agent_type`. It is unanchored and case-insensitive: `explore|general` matches either, `^general$` is exact, and plugin agent types look like `plugin:name`. Unset means inject into every subagent (the default); an invalid regex, or a subagent whose type the platform doesn't report, also falls back to injecting.
 

@@ -65,6 +65,8 @@ with `/ponytail` when wanted.
 
 Resolution: env var > config file > `full`.
 
+`/ponytail default <level>` writes the same config file from chat (`off`, `lite`, `full` or `ultra`).
+
 ## Update
 
 Enable auto-update once: open `/plugin`, go to Marketplaces, pick ponytail, Enable auto-update. Claude Code then pulls new versions at startup (run `/reload-plugins` when it prompts). Manual refresh: `/plugin marketplace update ponytail` then `/reload-plugins`.
