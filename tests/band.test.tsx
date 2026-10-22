@@ -13,6 +13,7 @@ import {
   elapsed,
   fmtTokens,
   isTestCommand,
+  isSource,
   mainModel,
   markdown,
   metricsSvg,
@@ -202,10 +203,20 @@ describe('metrics', () => {
     expect(callsIn(added, known, ['parse_price'])).toEqual(['to_cents'])
   })
 
+  test('Windows paths keep tests and generated files out of source metrics', () => {
+    expect(isSource('C:\\repo\\tests\\cart.js')).toBe(false)
+    expect(isSource('C:\\repo\\node_modules\\lib\\cart.js')).toBe(false)
+    expect(isSource('C:\\repo\\src\\test_cart.py')).toBe(false)
+    expect(isSource('C:\\repo\\src\\cart.py')).toBe(true)
+    expect([...parseDefs('C:\\repo\\tests\\test_cart.py:1:def helper():')]).toEqual([])
+  })
+
   test('flags a new helper whose name exists in another file', () => {
     const known = new Map([['format_price', 'utils/money.py:9']])
     expect(duplicateOf('formatPrice', '/repo/cart.py', known)).toBe('format_price (utils/money.py:9)')
     expect(duplicateOf('format_price', '/repo/utils/money.py', known)).toBeUndefined()
+    expect(duplicateOf('format_price', 'C:\\repo\\utils\\money.py', known)).toBeUndefined()
+    expect(duplicateOf('formatPrice', 'C:\\repo\\cart.py', known)).toBe('format_price (utils/money.py:9)')
     // Names only: a helper rewritten under another name is not found.
     expect(duplicateOf('parse_price', '/repo/cart.py', known)).toBeUndefined()
   })

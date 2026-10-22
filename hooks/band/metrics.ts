@@ -30,7 +30,10 @@ const GENERIC = new Set(['main', 'init', 'run', 'get', 'set', 'test', 'setup', '
 
 export const isCode = (file: string) => DEFS.some(([ext]) => ext.test(file))
 
-export const isSource = (file: string) => isCode(file) && !SKIP_DIR.test(file) && !SKIP_FILE.test(file)
+export const isSource = (file: string) => {
+  file = file.replace(/\\/g, '/')
+  return isCode(file) && !SKIP_DIR.test(file) && !SKIP_FILE.test(file)
+}
 
 export function defsIn(file: string, text: string): string[] {
   const rules = DEFS.find(([ext]) => ext.test(file))?.[1] ?? []
@@ -81,6 +84,7 @@ const norm = (name: string) => name.toLowerCase().replace(/[_-]/g, '')
 // A new definition whose name an existing one already has, ignoring case and _ (format_price vs formatPrice).
 // shortcut: names only; a helper rewritten under another name (parse_price vs to_cents) is not found.
 export function duplicateOf(name: string, file: string, known: Map<string, string>): string | undefined {
+  file = file.replace(/\\/g, '/')
   for (const [other, where] of known) {
     const at = where.slice(0, where.lastIndexOf(':'))
     const sameFile = file === at || file.endsWith(`/${at}`)
