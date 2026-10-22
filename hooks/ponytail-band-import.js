@@ -185,11 +185,27 @@ function csvRow(sessionId, project, s) {
     (s.agentMs / 60000).toFixed(1), s.tokens, s.output, '', '', '', '', '', 'import', s.model].map(field).join(',');
 }
 
+// Keep quoted newlines inside their record, including empty lines and header-like task names.
+function csvRecords(text) {
+  const records = [];
+  let start = 0;
+  let quoted = false;
+  for (let i = 0; i <= text.length; i++) {
+    if (text[i] === '"') quoted = !quoted;
+    if (i === text.length || (text[i] === '\n' && !quoted)) {
+      const row = text.slice(start, i);
+      if (row !== '') records.push(row);
+      start = i + 1;
+    }
+  }
+  return records;
+}
+
 // New rows go in after the ledger's own: a newer header replaces an older one, and a session
 // already recorded anywhere in the ledger (same session id prefix) is never imported twice.
 const sessionOf = row => row.slice(0, 9);
 function mergeRows(existing, rows, have = new Set()) {
-  const kept = existing.split('\n').filter(l => l !== '' && !l.startsWith('key,'));
+  const kept = csvRecords(existing).filter(l => !l.startsWith('key,'));
   const added = rows.filter(r => !have.has(sessionOf(r)) && !kept.some(l => sessionOf(l) === sessionOf(r)));
   return { text: [CSV_HEADER, ...kept, ...added].join('\n') + '\n', added: added.length };
 }
@@ -252,7 +268,7 @@ function run() {
   fs.mkdirSync(dir, { recursive: true });
   const have = new Set();
   for (const f of fs.readdirSync(dir).filter(f => f.endsWith('.csv'))) {
-    try { fs.readFileSync(path.join(dir, f), 'utf8').split('\n').forEach(l => l && !l.startsWith('key,') && have.add(sessionOf(l))); } catch (e) {}
+    try { csvRecords(fs.readFileSync(path.join(dir, f), 'utf8')).forEach(l => l && !l.startsWith('key,') && have.add(sessionOf(l))); } catch (e) {}
   }
   let added = 0;
   for (const [project, rows] of byProject) {
