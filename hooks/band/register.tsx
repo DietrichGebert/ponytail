@@ -127,11 +127,22 @@ async function readModel($: EngineInterface, transcript: string): Promise<string
   return grep?.exitCode === 0 ? mainModel(grep.stdout) : ''
 }
 
-// Where Claude Code keeps the session's transcript, by its folder rule: on managed, Team and Enterprise machines its cc-plugin-sec-default skips every classic.* hook, so no hook hands the path over.
-// shortcut: Claude Code hashes a folder name past 200 characters, so that session keeps no title; read the path from the engine once it offers one.
-async function transcriptOf($: EngineInterface, session: string): Promise<string> {
+// Where Claude Code keeps the session's transcript: on managed, Team and Enterprise machines its cc-plugin-sec-default skips every classic.* hook, so no hook hands the path over.
+// First the folder its rule names, then every project folder: it hashes names past 200 characters, and /cd, worktrees and /resume can put the file elsewhere.
+// shortcut: with persistence off there is no file, so every turn checks every folder, read the path from the engine once it offers one.
+async function findTranscript($: EngineInterface, session: string): Promise<string> {
+  const projects = `${await claudeDir($)}/projects`
+  const exists = (file: string) => $.fs.exists(file).catch(() => false)
   const root = await $.session.root().catch(() => '')
-  return root === '' ? '' : `${await claudeDir($)}/projects/${root.replace(/[^a-zA-Z0-9]/g, '-')}/${session}.jsonl`
+  const named = `${projects}/${root.replace(/[^a-zA-Z0-9]/g, '-')}/${session}.jsonl`
+  if (root !== '' && (await exists(named))) return named
+  const dirs = (await $.fs.list(projects).catch(() => [])).filter(d => d.kind === 'dir')
+  // One at a time: thousands of checks in flight at once are slower than in turn.
+  for (const dir of dirs) {
+    const file = `${projects}/${dir.name}/${session}.jsonl`
+    if (await exists(file)) return file
+  }
+  return ''
 }
 
 // Where the task ledgers and the board live.
@@ -196,12 +207,11 @@ async function start($: EngineInterface): Promise<Map<string, string>> {
   const repo = await $.session.repo().catch(() => null)
   const project = base(repo?.root ?? (await $.session.cwd()))
   const session = await $.session.id()
-  const transcript = await transcriptOf($, session)
   // The cost so far is the baseline for the last turn's own cost.
   const usage = await $.session.usage().catch(() => undefined)
   const csv = usage ? await $.fs.read(ledgerFile(await ledgerDir($), project)).catch(() => '') : ''
   const key = usage ? taskKey(session, usage.startedAt) : ''
-  await update($, band, b => resume({ ...EMPTY, ...b, level, details, project, session, transcript, cost: usage?.cost?.usd ?? b.cost }, csv, key))
+  await update($, band, b => resume({ ...EMPTY, ...b, level, details, project, session, cost: usage?.cost?.usd ?? b.cost }, csv, key))
   return grep?.exitCode === 0 ? parseDefs(grep.stdout) : new Map()
 }
 
@@ -292,7 +302,11 @@ export const register: Register = (on, options) => {
     const usage = await $.session.usage()
     const turns = await $.session.turns()
     const level = await readLevel($)
-    const { removed, transcript } = await load($)
+    const { removed, transcript: saved } = await load($)
+    const session = await $.session.id()
+    // Here, not at start: the first turn writes the file, and a new id (/clear, /resume) or a move (/cd, a worktree) changes it.
+    const kept = base(saved) === `${session}.jsonl` && (await $.fs.exists(saved).catch(() => false))
+    const transcript = kept ? saved : await findTranscript($, session)
     const title = await readTitle($, transcript)
     const model = await readModel($, transcript)
 
@@ -320,6 +334,7 @@ export const register: Register = (on, options) => {
       return {
         ...b,
         level,
+        transcript,
         cost,
         // Cost and turns are the session's own totals, so a reload or a second band never starts them over.
         spent: usage.cost?.usd ?? b.spent + turn,
