@@ -328,6 +328,40 @@ test('the ledger is written on Windows, where there is no mkdir', async ($, on) 
   expect(written[1]?.endsWith('C:/Users/u/.config/ponytail/band/board.html')).toBe(true)
 })
 
+test('the sidebar name comes from the transcript named by the session id, with no classic hook', async ($, on) => {
+  mock.clock(on)
+  mock.store(on)
+  let session = 's1'
+  const projects = '/home/u/.claude/projects'
+  const titles: Record<string, string> = { [`${projects}/-repo-shop/s1.jsonl`]: 'Cart totals', [`${projects}/-repo-shop/s2.jsonl`]: 'Refunds' }
+  on('env.get', ($, e) => ({ value: e.name === 'HOME' ? '/home/u' : undefined }))
+  on('session.repo', () => ({ value: { root: '/repo/shop' } }) as never)
+  on('session.id', () => ({ value: session }))
+  on('session.turns', () => ({ value: 1 }))
+  on('session.usage', () => ({ value: { startedAt: 0, cost: { usd: 0.5 } } }) as never)
+  on('fs.list', ($, e) => ({ value: e.path === projects ? [{ name: '-other', kind: 'dir' }, { name: 'notes.txt', kind: 'file' }, { name: '-repo-shop', kind: 'dir' }] : [] }) as never)
+  on('fs.exists', ($, e) => ({ value: e.path in titles }))
+  on('process.run', ($, e) => {
+    const title = e.argv[0] === 'grep' && e.argv[1] === '-F' ? titles[e.argv.at(-1) ?? ''] : undefined
+    return { value: { exitCode: title ? 0 : 1, stdout: title ? `${JSON.stringify({ type: 'custom-title', customTitle: title })}\n` : '', stderr: '' } } as never
+  })
+  on('fs.read', () => ({ deny: 'missing' }) as never)
+  const rows: string[] = []
+  on('fs.write', ($, e) => {
+    if (e.path.endsWith('shop.csv')) rows.push(e.text)
+    return { value: undefined }
+  })
+  on('session.start', ($, e) => ({ cwd: e.cwd }))
+  on('turn.complete', () => ({ text: '' }))
+  await $.session.start({ cwd: '/repo/shop', surface: null } as never)
+  await $.turn.complete({ answer: '', durationMs: 1000 } as never)
+  expect(rows.at(-1)).toContain('Cart totals')
+  // /clear goes on under another id, so another transcript.
+  session = 's2'
+  await $.turn.complete({ answer: '', durationMs: 1000 } as never)
+  expect(rows.at(-1)).toContain('Refunds')
+})
+
 test('without HOME (Windows) the band reads its flags under USERPROFILE', async ($, on) => {
   mock.clock(on)
   mock.store(on)

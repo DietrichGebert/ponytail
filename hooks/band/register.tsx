@@ -111,6 +111,15 @@ const run = ($: EngineInterface, command: string, args = '') => $.command.run({ 
 
 type Options = { readonly [field: string]: unknown }
 
+// Not transcript_path from a classic hook: where sec-default runs first (Team, Enterprise, managed settings), a session skips a plugin's classic hooks.
+async function findTranscript($: EngineInterface, session: string): Promise<string> {
+  const projects = `${await claudeDir($)}/projects`
+  const dirs = (await $.fs.list(projects).catch(() => [])).filter(d => d.kind === 'dir')
+  const files = dirs.map(d => `${projects}/${d.name}/${session}.jsonl`)
+  const found = await Promise.all(files.map(f => $.fs.exists(f).catch(() => false)))
+  return files.find((_, i) => found[i]) ?? ''
+}
+
 // The session's sidebar name. grep, because $.fs.read refuses files over 4 MiB and transcripts grow past that.
 // shortcut: without grep (Windows) only a transcript under 4 MiB is read; findstr would lift that.
 async function readTitle($: EngineInterface, transcript: string): Promise<string | undefined> {
@@ -223,12 +232,6 @@ export const register: Register = (on, options) => {
     return next(e)
   }).catch(($, e, next) => next(e))
 
-  // Only the classic hook input carries the transcript path, which holds the sidebar name.
-  on('classic.UserPromptSubmit', async ($, e, next) => {
-    await update($, band, b => (b.transcript === e.transcript_path ? b : { ...EMPTY, ...b, transcript: e.transcript_path }))
-    return next(e)
-  }).catch(($, e, next) => next(e))
-
   // The first prompt names the task until the session has a sidebar name.
   on('prompt.submit', async ($, e, next) => {
     const text = e.text.trim()
@@ -290,7 +293,10 @@ export const register: Register = (on, options) => {
     const usage = await $.session.usage()
     const turns = await $.session.turns()
     const level = await readLevel($)
-    const { removed, transcript } = await load($)
+    const { removed, transcript: saved } = await load($)
+    const session = await $.session.id()
+    // Looked up once per session id: /clear and /resume go on under another one.
+    const transcript = base(saved) === `${session}.jsonl` ? saved : await findTranscript($, session)
     const title = await readTitle($, transcript)
     const model = await readModel($, transcript)
 
@@ -318,6 +324,7 @@ export const register: Register = (on, options) => {
       return {
         ...b,
         level,
+        transcript,
         cost,
         // Cost and turns are the session's own totals, so a reload or a second band never starts them over.
         spent: usage.cost?.usd ?? b.spent + turn,
