@@ -5,9 +5,9 @@ import type { Band, Tokens } from './types'
 
 export { duration, elapsed, fmtTokens }
 
-// Same skip rules as ponytail-map.js: tests, vendored and generated code are not "reuse".
-const SKIP_DIR = /(^|\/)(node_modules|\.git|dist|build|out|vendor|venv|\.venv|__pycache__|coverage|\.next|target|migrations|fixtures|tests?|__tests__|spec)(\/|$)/
-const SKIP_FILE = /(^|\/)(test_[^/]*|[^/]*(_test|\.test|\.spec|\.gen|\.min|\.d)\.[a-z]+)$/
+// ponytail-map.js's skip rules plus Swift test folders and files: tests, vendored and generated code are not "reuse".
+const SKIP_DIR = /(^|\/)(node_modules|\.git|dist|build|out|vendor|venv|\.venv|__pycache__|coverage|\.next|target|migrations|fixtures|tests?|[^/]*Tests|__tests__|spec)(\/|$)/
+const SKIP_FILE = /(^|\/)(test_[^/]*|[^/]*(_test|\.test|\.spec|\.gen|\.min|\.d)\.[a-z]+|[^/]*Tests\.swift)$/
 
 // Top-level definitions per language, close to ponytail-map.js, plus plain JS functions.
 // shortcut: regex, not a parser; nested and dynamic definitions are missed. Use tree-sitter if it matters.
@@ -20,6 +20,7 @@ const DEFS: [RegExp, RegExp[]][] = [
   [/\.go$/, [/^func\s+(?:\([^)]*\)\s*)?([A-Za-z]\w*)/gm]],
   [/\.rs$/, [/^(?:pub\s+)?(?:async\s+)?fn\s+(\w+)/gm]],
   [/\.rb$/, [/^\s*def\s+(?:self\.)?([A-Za-z]\w*[?!]?)/gm]],
+  [/\.swift$/, [/^(?:(?:public|package|internal|fileprivate|private|open|final|static|nonisolated)\s+)*(?:func|struct|class|enum|actor|protocol)\s+([A-Za-z_]\w*)/gm]],
 ]
 
 // Lines worth a closer look; the per-language regexes above decide.
@@ -89,19 +90,49 @@ export function duplicateOf(name: string, file: string, known: Map<string, strin
   return undefined
 }
 
-const TEST_CMD = /\b(npm (run )?test|pnpm (run )?test|yarn test|bun test|npx (jest|vitest)|jest|vitest|pytest|python3? -m pytest|go test|cargo test|mvn test|gradle test|rspec|phpunit|dotnet test|node --test|deno test|make test)\b/
+const TEST_CMD = /\b(npm (run )?test|pnpm (run )?test|yarn test|bun test|npx (jest|vitest)|jest|vitest|pytest|python3? -m pytest|go test|cargo test|mvn test|gradle test|rspec|phpunit|dotnet test|node --test|deno test|make test|swift test(?![^|;&]*(?:\slist\b|--list-tests))|xcodebuild\b[^|;&]*\stest)\b/
 
 export const isTestCommand = (command: string) => TEST_CMD.test(command)
 
-// Pass and fail counts from common runners: pytest, jest/vitest, cargo, node --test, TAP.
+// Xcode's MCP server runs tests as tools, not commands. A failing test is not a tool error there.
+// The server name is whatever the user registered it as.
+const TEST_TOOL = /^mcp__.+__Run(All|Some)Tests$/
+
+export const isTestTool = (tool: string) => TEST_TOOL.test(tool)
+
+// Of the tool's errors only a failed build says something about the code; a mistyped test or an
+// unfinished run says nothing, so the last result stands.
+// shortcut: matches Xcode's English text; if Apple rewords it, failed builds stop turning red. Match an error code if Xcode adds one.
+export const isBuildFailure = (text: string) => text.includes('Build action failed')
+
+// Pass and fail counts from the tool's JSON answer; undefined when it has none.
+export function toolTestCounts(text: string): { passed: number; failed: number } | undefined {
+  try {
+    const c = JSON.parse(text)?.counts
+    return typeof c?.passed === 'number' && typeof c?.failed === 'number' ? { passed: c.passed, failed: c.failed } : undefined
+  } catch {
+    return undefined
+  }
+}
+
+// Pass and fail counts from common runners: pytest, jest/vitest, cargo, node --test, TAP, Swift Testing, XCTest.
 export function testCounts(output: string): { passed?: number; failed?: number } {
   const num = (re: RegExp) => {
     const m = re.exec(output)
     return m ? Number(m[1]) : undefined
   }
+  // XCTest prints an "Executed" line per suite and the total last; swift test prints "Executed 0 tests" when only Swift Testing ran.
+  const xc = [...output.matchAll(/Executed (\d+) tests?, with (\d+) failures?/g)].at(-1)
+  const xcTotal = Number(xc?.[1] ?? 0)
+  const xcFailed = xcTotal > 0 ? Number(xc?.[2] ?? 0) : undefined
+  const xcPassed = xcFailed === undefined ? undefined : xcTotal - xcFailed
+  // A package mid-migration runs both; Swift Testing's failure line counts issues, not tests.
+  const stPassed = num(/Test run with (\d+) tests?(?: in \d+ suites?)? passed/)
+  const stFailed = /Test run with \d+ tests?(?: in \d+ suites?)? failed/.test(output)
+  const swiftPassed = stPassed === undefined && xcPassed === undefined ? undefined : (stPassed ?? 0) + (xcPassed ?? 0)
   return {
-    passed: num(/(\d+) (?:passed|passing)\b/) ?? num(/(?:ℹ |# )pass (\d+)/),
-    failed: num(/(\d+) (?:failed|failing)\b/) ?? num(/(?:ℹ |# )fail (\d+)/),
+    passed: num(/(\d+) (?:passed|passing)\b/) ?? num(/(?:ℹ |# )pass (\d+)/) ?? swiftPassed,
+    failed: num(/(\d+) (?:failed|failing)\b/) ?? num(/(?:ℹ |# )fail (\d+)/) ?? (stFailed ? undefined : xcFailed),
   }
 }
 
