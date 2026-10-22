@@ -56,6 +56,18 @@ Copilot CLI namespaces plugin commands by plugin name. For example:
 pi install git:github.com/DietrichGebert/ponytail
 ```
 
+Hide the status badge without turning ponytail off: add this to `~/.pi/agent/settings.json` (or `$PI_CODING_AGENT_DIR/settings.json`), then run `/reload`.
+
+```json
+{
+  "ponytail": {
+    "hideStatus": true
+  }
+}
+```
+
+`PONYTAIL_HIDE_STATUS` overrides this setting. This setting overrides `hideStatus` in the ponytail config, even when set to `false`. Missing or invalid values fall back to the ponytail config. This reads user settings only, not project `.pi/settings.json`; `quietStartup` and `defaultMode` still use the ponytail config and environment variables.
+
 ## Kimi Code
 
 In Kimi Code, run `/plugins install https://github.com/DietrichGebert/ponytail`, then `/reload` or start a new session. The plugin puts [`AGENTS.md`](AGENTS.md) into the system prompt every turn and adds the six skills, which Kimi also offers as `/ponytail`, `/ponytail-review`, `/ponytail-audit`, `/ponytail-debt`, `/ponytail-gain` and `/ponytail-help`. Level switching (`/ponytail lite`) loads the skill for that turn; there is no persistent mode flag in Kimi.
