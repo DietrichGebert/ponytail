@@ -5,6 +5,7 @@ import { boardHtml, tasksFrom } from './board'
 import type { Band } from './types'
 import type { Col } from './metrics'
 import {
+  CWD_PATTERN,
   GREP_DEFS,
   NO_TOKENS,
   addTokens,
@@ -13,6 +14,7 @@ import {
   defsIn,
   duplicateOf,
   elapsed,
+  firstCwd,
   fmtTokens,
   hits,
   isCode,
@@ -24,6 +26,7 @@ import {
   MODEL_PATTERN,
   parseDefs,
   percent,
+  projectName,
   resume,
   snapshot,
   testCounts,
@@ -32,8 +35,10 @@ import {
   testsLabel,
   TITLE_RECORD,
   totalTokens,
+  typedByPerson,
   upsertCsv,
   webhookRequest,
+  withoutTask,
 } from './metrics'
 
 const LEVELS = ['off', 'lite', 'full', 'ultra']
@@ -135,8 +140,22 @@ async function ledgerDir($: EngineInterface) {
 
 const ledgerFile = (dir: string, project: string) => `${dir}/${project.replace(/[^\w.-]/g, '_')}.csv`
 
+// The project of the folder the session started in, as the import has it: the shell may have moved
+// since, into a nested repo, and the start of the band only sees where it is then.
+async function startProject($: EngineInterface, b: Band): Promise<string> {
+  if (b.transcript === '') return b.project
+  const grep = await $.process.run(['grep', '-m1', '-o', CWD_PATTERN, b.transcript]).catch(() => undefined)
+  const cwd = grep?.exitCode === 0 ? firstCwd(grep.stdout) : undefined
+  if (cwd === undefined) return b.project
+  const git = await $.process.run(['git', '-C', cwd.split('/.claude/worktrees/')[0] ?? cwd, 'rev-parse', '--path-format=absolute', '--git-common-dir']).catch(() => undefined)
+  return projectName(cwd, git?.exitCode === 0 ? git.stdout.trim() : '')
+}
+
 // After every turn: the task's row in a CSV per project, and the same row to a webhook if one is set.
-async function record($: EngineInterface, b: Band, options: Options) {
+async function record($: EngineInterface, given: Band, options: Options) {
+  const project = await startProject($, given)
+  if (project !== given.project) await update($, band, x => ({ ...EMPTY, ...x, project }))
+  const b = { ...given, project }
   const startedAt = (await $.session.usage()).startedAt
   const row = snapshot(b, startedAt)
   if (options.ledger !== false && b.project !== '') {
@@ -145,6 +164,12 @@ async function record($: EngineInterface, b: Band, options: Options) {
     const existing = await $.fs.read(file).catch(() => '')
     // $.fs.write creates the directory: no mkdir, which Windows does not have.
     await $.fs.write(file, upsertCsv(existing, row))
+    // The task filed before under another project (where the shell was) leaves that ledger.
+    for (const f of await $.fs.list(dir).catch(() => [])) {
+      if (f.kind !== 'file' || !f.name.endsWith('.csv') || `${dir}/${f.name}` === file) continue
+      const kept = withoutTask(await $.fs.read(`${dir}/${f.name}`).catch(() => ''), row.key)
+      if (kept !== undefined) await $.fs.write(`${dir}/${f.name}`, kept)
+    }
     // The board is a plain file a refresh rereads, so it is rebuilt with every row.
     await writeBoard($, dir)
   }
@@ -232,7 +257,7 @@ export const register: Register = (on, options) => {
   // The first prompt names the task until the session has a sidebar name.
   on('prompt.submit', async ($, e, next) => {
     const text = e.text.trim()
-    if (e.origin.kind !== 'plugin' && text !== '' && !text.startsWith('/')) {
+    if (e.origin.kind !== 'plugin' && typedByPerson(text)) {
       const name = (text.split('\n')[0] ?? '').slice(0, 60)
       await update($, band, b => (b.name === '' ? { ...EMPTY, ...b, name } : b))
     }

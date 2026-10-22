@@ -174,6 +174,38 @@ export function mainModel(grepOut: string): string {
   return [...count].sort((a, b) => b[1] - a[1])[0]?.[0] ?? ''
 }
 
+// The session's first working dir: `grep -m1 -o CWD_PATTERN` over its transcript.
+export const CWD_PATTERN = '"cwd":"[^"]*"'
+
+// The folder a session started in, from that grep's output; undefined when there is none.
+export function firstCwd(grepOut: string): string | undefined {
+  const line = grepOut.split('\n')[0] ?? ''
+  try {
+    const cwd = (JSON.parse(`{${line}}`) as { cwd?: unknown }).cwd
+    return typeof cwd === 'string' && cwd !== '' ? cwd : undefined
+  } catch {
+    return undefined
+  }
+}
+
+// A project's name, as the import names it: a git repo's main folder (worktrees included, through git's
+// common dir or the desktop app's .claude/worktrees), else the folder itself.
+export function projectName(cwd: string, gitCommonDir: string): string {
+  const repo = /\/\.git\/?$/.test(gitCommonDir) ? gitCommonDir.replace(/\/\.git\/?$/, '') : undefined
+  const dir = (repo ?? cwd.split('/.claude/worktrees/')[0] ?? cwd).replace(/\/+$/, '')
+  return dir.split('/').pop() || dir
+}
+
+// What the person typed: not a /command, and not a <tag> the app sends, such as a background task's notification.
+export const typedByPerson = (text: string) => text !== '' && !text.startsWith('/') && !text.startsWith('<')
+
+// A ledger without the task's row, or undefined when it had none.
+export function withoutTask(csv: string, key: string): string | undefined {
+  const lines = csv.split('\n')
+  const kept = lines.filter(line => !line.startsWith(`${key},`))
+  return kept.length === lines.length ? undefined : kept.join('\n')
+}
+
 // The newest sidebar name in transcript lines, or undefined when the session has none.
 export function sessionTitle(jsonl: string): string | undefined {
   for (const line of jsonl.split('\n').reverse()) {
