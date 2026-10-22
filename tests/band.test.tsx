@@ -11,6 +11,7 @@ import {
   duplicateOf,
   duration,
   elapsed,
+  firstCwd,
   fmtTokens,
   isTestCommand,
   mainModel,
@@ -18,14 +19,17 @@ import {
   metricsSvg,
   parseDefs,
   percent,
+  projectName,
   resume,
   sessionTitle,
   snapshot,
   testCounts,
   totalTokens,
+  typedByPerson,
   upsertCsv,
   CSV_HEADER,
   webhookRequest,
+  withoutTask,
 } from '../hooks/band/metrics'
 
 describe('board', () => {
@@ -147,6 +151,31 @@ describe('metrics', () => {
     expect(sessionTitle(JSON.stringify({ type: 'custom-title', customTitle: ' ' }))).toBeUndefined()
     expect(sessionTitle(JSON.stringify({ type: 'user', message: { content: 'no title yet' } }))).toBeUndefined()
     expect(sessionTitle(JSON.stringify({ type: 'custom-title', customTitle: 'x'.repeat(80) }))?.length).toBe(60)
+  })
+
+  test('the project is the folder the session started in, a nested repo or a worktree its main repo', () => {
+    expect(firstCwd('"cwd":"/home/me/shop"\n"cwd":"/home/me/shop/api"')).toBe('/home/me/shop')
+    expect(firstCwd('"cwd":"/home/me/caf\\u00e9"')).toBe('/home/me/café')
+    expect(firstCwd('')).toBeUndefined()
+    expect(firstCwd('"cwd":"broken')).toBeUndefined()
+    // A folder that holds repos without being one: the folder, not the repo the shell moved into.
+    expect(projectName('/home/me/shop', '')).toBe('shop')
+    expect(projectName('/home/me/shop/api/src', '/home/me/shop/api/.git')).toBe('api')
+    expect(projectName('/home/me/shop/.claude/worktrees/fix-cart', '')).toBe('shop')
+    expect(projectName('/home/me/wt/fix-cart', '/home/me/shop/.git')).toBe('shop')
+  })
+
+  test('a notice the app sends is not the task name, a /command neither', () => {
+    expect(typedByPerson('Fix the cart totals')).toBe(true)
+    expect(typedByPerson('<task-notification> done')).toBe(false)
+    expect(typedByPerson('/ponytail full')).toBe(false)
+    expect(typedByPerson('')).toBe(false)
+  })
+
+  test('a task filed under another project leaves that ledger, and nothing else does', () => {
+    const csv = `${CSV_HEADER}\n69a0e8d9-17,2026-10-14 14:47,android,x\nb75736e2-17,2026-10-20 14:17,android,y\n`
+    expect(withoutTask(csv, '69a0e8d9-17')).toBe(`${CSV_HEADER}\nb75736e2-17,2026-10-20 14:17,android,y\n`)
+    expect(withoutTask(csv, 'ffffffff-17')).toBeUndefined()
   })
 
   test('the Markdown export holds every value and the task name', () => {
