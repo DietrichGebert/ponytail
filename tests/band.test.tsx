@@ -328,6 +328,53 @@ test('the ledger is written on Windows, where there is no mkdir', async ($, on) 
   expect(written[1]?.endsWith('C:/Users/u/.config/ponytail/band/board.html')).toBe(true)
 })
 
+test('the transcript is found with no classic hook, in its named folder or any other', async ($, on) => {
+  mock.clock(on)
+  mock.store(on)
+  let session = 's1'
+  const projects = '/home/u/.claude/projects'
+  let titles: Record<string, string> = { [`${projects}/-repo-shop-v2/s1.jsonl`]: 'Cart totals' }
+  on('env.get', ($, e) => ({ value: e.name === 'HOME' ? '/home/u' : undefined }))
+  on('session.repo', () => ({ value: { root: '/repo/shop' } }) as never)
+  on('session.root', () => ({ value: '/repo/shop.v2' }))
+  on('session.id', () => ({ value: session }))
+  on('session.turns', () => ({ value: 1 }))
+  on('session.usage', () => ({ value: { startedAt: 0, cost: { usd: 0.5 } } }) as never)
+  const listed: string[] = []
+  on('fs.list', ($, e) => {
+    listed.push(e.path)
+    return { value: e.path === projects ? [{ name: '-repo-shop-v2', kind: 'dir' }, { name: 'notes.txt', kind: 'file' }, { name: '-wt', kind: 'dir' }] : [] } as never
+  })
+  on('fs.exists', ($, e) => ({ value: e.path in titles }))
+  on('process.run', ($, e) => {
+    const title = e.argv[0] === 'grep' && e.argv[1] === '-F' ? titles[e.argv.at(-1) ?? ''] : undefined
+    return { value: { exitCode: title ? 0 : 1, stdout: title ? `${JSON.stringify({ type: 'custom-title', customTitle: title })}\n` : '', stderr: '' } } as never
+  })
+  on('fs.read', () => ({ deny: 'missing' }) as never)
+  const rows: string[] = []
+  on('fs.write', ($, e) => {
+    if (e.path.endsWith('shop.csv')) rows.push(e.text)
+    return { value: undefined }
+  })
+  on('session.start', ($, e) => ({ cwd: e.cwd }))
+  on('turn.complete', () => ({ text: '' }))
+  // Only non-classic events fire, as when cc-plugin-sec-default skips every classic.* hook.
+  await $.session.start({ cwd: '/repo/shop.v2', surface: null } as never)
+  await $.turn.complete({ answer: '', durationMs: 1000 } as never)
+  expect(rows.at(-1)).toContain('Cart totals')
+  // The folder its rule names held the file, so no folder was listed.
+  expect(listed).not.toContain(projects)
+  // A worktree moves the file under the same id, and the session is renamed there.
+  titles = { [`${projects}/-wt/s1.jsonl`]: 'Cart totals, split' }
+  await $.turn.complete({ answer: '', durationMs: 1000 } as never)
+  expect(rows.at(-1)).toContain('Cart totals, split')
+  // /clear goes on under another id, in a folder the rule does not name (a hashed long name, say).
+  session = 's2'
+  titles = { ...titles, [`${projects}/-wt/s2.jsonl`]: 'Refunds' }
+  await $.turn.complete({ answer: '', durationMs: 1000 } as never)
+  expect(rows.at(-1)).toContain('Refunds')
+})
+
 test('without HOME (Windows) the band reads its flags under USERPROFILE', async ($, on) => {
   mock.clock(on)
   mock.store(on)

@@ -127,6 +127,24 @@ async function readModel($: EngineInterface, transcript: string): Promise<string
   return grep?.exitCode === 0 ? mainModel(grep.stdout) : ''
 }
 
+// Where Claude Code keeps the session's transcript: on managed, Team and Enterprise machines its cc-plugin-sec-default skips every classic.* hook, so no hook hands the path over.
+// First the folder its rule names, then every project folder: it hashes names past 200 characters, and /cd, worktrees and /resume can put the file elsewhere.
+// shortcut: with persistence off there is no file, so every turn checks every folder, read the path from the engine once it offers one.
+async function findTranscript($: EngineInterface, session: string): Promise<string> {
+  const projects = `${await claudeDir($)}/projects`
+  const exists = (file: string) => $.fs.exists(file).catch(() => false)
+  const root = await $.session.root().catch(() => '')
+  const named = `${projects}/${root.replace(/[^a-zA-Z0-9]/g, '-')}/${session}.jsonl`
+  if (root !== '' && (await exists(named))) return named
+  const dirs = (await $.fs.list(projects).catch(() => [])).filter(d => d.kind === 'dir')
+  // One at a time: thousands of checks in flight at once are slower than in turn.
+  for (const dir of dirs) {
+    const file = `${projects}/${dir.name}/${session}.jsonl`
+    if (await exists(file)) return file
+  }
+  return ''
+}
+
 // Where the task ledgers and the board live.
 // shortcut: ~/.config only (XDG respected); Windows would want %APPDATA%.
 async function ledgerDir($: EngineInterface) {
@@ -223,12 +241,6 @@ export const register: Register = (on, options) => {
     return next(e)
   }).catch(($, e, next) => next(e))
 
-  // Only the classic hook input carries the transcript path, which holds the sidebar name.
-  on('classic.UserPromptSubmit', async ($, e, next) => {
-    await update($, band, b => (b.transcript === e.transcript_path ? b : { ...EMPTY, ...b, transcript: e.transcript_path }))
-    return next(e)
-  }).catch(($, e, next) => next(e))
-
   // The first prompt names the task until the session has a sidebar name.
   on('prompt.submit', async ($, e, next) => {
     const text = e.text.trim()
@@ -290,7 +302,11 @@ export const register: Register = (on, options) => {
     const usage = await $.session.usage()
     const turns = await $.session.turns()
     const level = await readLevel($)
-    const { removed, transcript } = await load($)
+    const { removed, transcript: saved } = await load($)
+    const session = await $.session.id()
+    // Here, not at start: the first turn writes the file, and a new id (/clear, /resume) or a move (/cd, a worktree) changes it.
+    const kept = base(saved) === `${session}.jsonl` && (await $.fs.exists(saved).catch(() => false))
+    const transcript = kept ? saved : await findTranscript($, session)
     const title = await readTitle($, transcript)
     const model = await readModel($, transcript)
 
@@ -318,6 +334,7 @@ export const register: Register = (on, options) => {
       return {
         ...b,
         level,
+        transcript,
         cost,
         // Cost and turns are the session's own totals, so a reload or a second band never starts them over.
         spent: usage.cost?.usd ?? b.spent + turn,
