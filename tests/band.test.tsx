@@ -1,6 +1,6 @@
 import { describe, expect, mock, test } from 'claude-code/testing'
 
-import { boardHtml, parseCsv, tasksFrom } from '../hooks/band/board'
+import { boardHtml, parseCsv, parseLedger, tasksFrom } from '../hooks/band/board'
 import type { Band } from '../hooks/band/types'
 import {
   NO_TOKENS,
@@ -41,6 +41,30 @@ describe('board', () => {
     expect(tasks[0]).toEqual({ started: '2026-10-15 12:00', project: 'shop', name: 'Fix "cart", totals\nand tax', cost: 3.1, turns: 6, agentMinutes: 26, tokens: 1_200_000, reuse: 83, tests: '14 passed', level: 'full', model: '' })
     expect(tasks[1]?.reuse).toBeNull()
     expect(tasksFrom('not,a,ledger\n1,2,3')).toEqual([])
+  })
+
+  test('malformed and missing numbers are skipped and reported, never read as zero', () => {
+    const head = 'key,started,project,name,cost_usd,turns,agent_minutes,tokens_total,tokens_output,reuse_pct,reused,new,callers_open,tests,level\n'
+    const parsed = parseLedger(head +
+      'a-1,2026-10-15 12:00,shop,Free,0,0,0,0,0,,0,0,0,not run,full\n' +
+      'b-2,2026-10-15 12:00,shop,Broken,oops,2,1.5,40000,900,,0,0,0,not run,lite\n' +
+      'c-3,2026-10-15 12:00,shop,Truncated\n' +
+      'd-4,2026-10-15 12:00,shop,Bad reuse,1.00,2,3.0,500,50,abc,0,0,0,not run,full')
+    // The legitimate zero-cost session survives untouched.
+    expect(parsed.tasks.length).toBe(1)
+    expect(parsed.tasks[0]?.cost).toBe(0)
+    expect(parsed.warnings).toEqual([
+      'line 3: invalid cost_usd',
+      'line 4: invalid cost_usd, turns, agent_minutes, tokens_total',
+      'line 5: invalid reuse_pct',
+    ])
+  })
+
+  test('a ledger without a numeric column reports its rows instead of zeroing them', () => {
+    const parsed = parseLedger('key,started,project,name,cost_usd,turns,agent_minutes\n' +
+      'a-1,2026-10-15 12:00,shop,Old,1.00,2,3.0')
+    expect(parsed.tasks).toEqual([])
+    expect(parsed.warnings).toEqual(['line 2: invalid tokens_total'])
   })
 
   const dataOf = (html: string) => JSON.parse(/<script type="application\/json" id="board-data">([\s\S]*?)<\/script>/.exec(html)?.[1] ?? 'null')

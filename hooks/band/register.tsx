@@ -1,7 +1,7 @@
 import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register } from 'claude-code'
 
-import { boardHtml, tasksFrom } from './board'
+import { boardHtml, parseLedger } from './board'
 import type { Band } from './types'
 import type { Col } from './metrics'
 import {
@@ -168,8 +168,11 @@ async function record($: EngineInterface, b: Band, options: Options) {
 async function writeBoard($: EngineInterface, dir: string) {
   const entries = await $.fs.list(dir).catch(() => [])
   const texts = await Promise.all(entries.filter(f => f.kind === 'file' && f.name.endsWith('.csv')).map(f => $.fs.read(`${dir}/${f.name}`).catch(() => '')))
+  const parsed = texts.map(parseLedger)
+  const skipped = parsed.reduce((n, p) => n + p.warnings.length, 0)
+  if (skipped) $.ui.status(`ponytail band: skipped ${skipped} invalid ledger row${skipped === 1 ? '' : 's'} (${parsed.flatMap(p => p.warnings).join('; ')})`)
   const file = `${dir}/board.html`
-  await $.fs.write(file, boardHtml(texts.flatMap(tasksFrom), await $.clock.now()))
+  await $.fs.write(file, boardHtml(parsed.flatMap(p => p.tasks), await $.clock.now()))
   return file
 }
 
