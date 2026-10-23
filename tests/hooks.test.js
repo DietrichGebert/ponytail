@@ -799,6 +799,16 @@ assert.match(result.stdout, /PONYTAIL BAND IMPORT/);
 assert.equal(fs.existsSync(bandFlag), false, '/ponytail band import must not hide the band');
 assert.equal(fs.readFileSync(defFlag, 'utf8'), 'ultra', '/ponytail band import must not change the level');
 
+// An unparseable config.json must survive `/ponytail default`: the hook says it did not save.
+const badRaw = '{\n  "hideStatus": true,\n}\n';
+fs.writeFileSync(defConfig, badRaw);
+result = run('ponytail-mode-tracker.js', defEnv, JSON.stringify({ prompt: '/ponytail default full' }));
+assert.equal(result.status, 0, result.stderr);
+assert.equal(fs.readFileSync(defConfig, 'utf8'), badRaw, '/ponytail default must not overwrite an unparseable config');
+assert.match(result.stdout, /DEFAULT NOT SAVED/);
+assert.doesNotMatch(result.stdout, /DEFAULT SET/);
+fs.writeFileSync(defConfig, JSON.stringify({ defaultMode: 'lite' }, null, 2));
+
 // review is not a valid default (#377) — the command is ignored, config unchanged.
 result = run('ponytail-mode-tracker.js', defEnv, JSON.stringify({ prompt: '/ponytail default review' }));
 assert.equal(result.status, 0, result.stderr);

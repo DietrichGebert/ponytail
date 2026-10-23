@@ -67,8 +67,12 @@ function finish() {
         if (arg === 'default') {
           const dmode = parts[2];
           if (dmode === 'off' || dmode === 'lite' || dmode === 'full' || dmode === 'ultra') {
-            writeDefaultMode(dmode);
-            defaultNotice = 'PONYTAIL DEFAULT SET — new sessions start in ' + dmode + '.';
+            try {
+              writeDefaultMode(dmode);
+              defaultNotice = 'PONYTAIL DEFAULT SET — new sessions start in ' + dmode + '.';
+            } catch (e) {
+              defaultNotice = 'PONYTAIL DEFAULT NOT SAVED — ' + e.message + ' Config left unchanged.';
+            }
             if (!isQoder) writeHookOutput('UserPromptSubmit', dmode, defaultNotice);
           }
           // Qoder still needs this turn's ruleset: the block below folds the
