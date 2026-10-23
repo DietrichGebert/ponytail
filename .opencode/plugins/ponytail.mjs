@@ -23,7 +23,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 // The shared instruction builder is CommonJS; bridge to it from this ES module.
 const require = createRequire(import.meta.url);
 const { getPonytailInstructions } = require('../../hooks/ponytail-instructions');
-const { getDefaultMode, normalizeMode, writeDefaultMode } = require('../../hooks/ponytail-config');
+const { getDefaultMode, isDeactivationCommand, normalizeMode, writeDefaultMode } = require('../../hooks/ponytail-config');
 const { parseCommandFile, parseSkillFile } = require('./ponytail-frontmatter.cjs');
 
 // OpenCode has no flag-file convention of its own; keep mode beside its config.
@@ -159,7 +159,17 @@ export default {
       if (mode === 'off') return;
       event.system.push({ type: 'text', text: getPonytailInstructions(mode) });
     };
-    await ctx.session.hook('context', addRuleset);
+    // V2 has no chat-message hook; `context` sees the turn's messages before the
+    // ruleset goes in, so "stop ponytail" typed as the last user message turns it
+    // off on that same turn, like `/ponytail off`.
+    await ctx.session.hook('context', (event) => {
+      const last = event.messages?.at(-1);
+      if (last?.role === 'user') {
+        const text = last.content.filter((part) => part.type === 'text').map((part) => part.text).join('');
+        if (isDeactivationCommand(text)) persistMode('off');
+      }
+      addRuleset(event);
+    });
     await ctx.session.hook('compaction', addRuleset);
   },
 
