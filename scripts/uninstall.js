@@ -47,12 +47,10 @@ try {
   const hooksFile = cursorHooks.uninstall('user');
   if (hooksFile) console.log(`Removed ponytail hooks from ${hooksFile}`);
 } catch (e) {
-  if (e instanceof SyntaxError) {
-    // ponytail: malformed hooks.json — can't safely edit it; leave intact, warn
-    console.warn(`~/.cursor/hooks.json is malformed — could not remove the ponytail hook entries. Remove them manually from: ${cursorHooks.hooksPath('user')} (${e.message})`);
-  } else {
-    throw e;
-  }
+  // ponytail: any hooks.json we can't safely edit (malformed JSON, wrong shape,
+  // unreadable) — leave intact, warn, and still run the statusLine cleanup below
+  const why = e instanceof SyntaxError ? 'is malformed' : 'could not be read as a hooks config';
+  console.warn(`~/.cursor/hooks.json ${why} — could not remove the ponytail hook entries. Remove them manually from: ${cursorHooks.hooksPath('user')} (${e.message})`);
 }
 
 const settingsPath = path.join(getClaudeDir(), 'settings.json');
