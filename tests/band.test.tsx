@@ -328,6 +328,31 @@ test('the ledger is written on Windows, where there is no mkdir', async ($, on) 
   expect(written[1]?.endsWith('C:/Users/u/.config/ponytail/band/board.html')).toBe(true)
 })
 
+test('a worktree of a bare repo files its tasks under the folder that holds .bare', async ($, on) => {
+  mock.clock(on)
+  mock.store(on)
+  on('env.get', ($, e) => ({ value: e.name === 'XDG_CONFIG_HOME' ? '/home/u/.config' : undefined }))
+  // `git clone --bare <url> shop/.bare`, then `git worktree add`: the session reports the bare repo as its root.
+  on('session.repo', () => ({ value: { root: '/src/shop/.bare' } }) as never)
+  on('session.id', () => ({ value: 's1' }))
+  on('session.turns', () => ({ value: 1 }))
+  on('session.usage', () => ({ value: { startedAt: 0, cost: { usd: 0.5 } } }) as never)
+  on('process.run', () => ({ value: { exitCode: 1, stdout: '', stderr: '' } }) as never)
+  on('fs.read', () => ({ deny: 'missing' }) as never)
+  on('fs.list', () => ({ value: [] }))
+  const written: string[] = []
+  on('fs.write', ($, e) => {
+    written.push(e.path)
+    return { value: undefined }
+  })
+  on('ui.status', () => ({ value: undefined }))
+  on('session.start', ($, e) => ({ cwd: e.cwd }))
+  on('turn.complete', () => ({ text: '' }))
+  await $.session.start({ cwd: '/src/shop/main', surface: null } as never)
+  await $.turn.complete({ answer: '', durationMs: 1000 } as never)
+  expect(written[0]).toBe('/home/u/.config/ponytail/band/shop.csv')
+})
+
 test('without HOME (Windows) the band reads its flags under USERPROFILE', async ($, on) => {
   mock.clock(on)
   mock.store(on)

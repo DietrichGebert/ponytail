@@ -187,7 +187,8 @@ async function start($: EngineInterface): Promise<Map<string, string>> {
   const level = await readLevel($)
   const details = (await $.store.get('details')) === true
   const repo = await $.session.repo().catch(() => null)
-  const project = base(repo?.root ?? (await $.session.cwd()))
+  // A worktree of a bare repo (`git clone --bare <url> shop/.bare`) has .bare as its root: the folder above names the project.
+  const project = base((repo?.root ?? (await $.session.cwd())).replace(/[\\/]\.bare[\\/]*$/, ''))
   const session = await $.session.id()
   // The cost so far is the baseline for the last turn's own cost.
   const usage = await $.session.usage().catch(() => undefined)
