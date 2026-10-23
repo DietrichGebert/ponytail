@@ -280,7 +280,8 @@ export function markdown(s: Snapshot): string {
 export const CSV_HEADER = 'key,started,project,name,cost_usd,turns,agent_minutes,tokens_total,tokens_output,reuse_pct,reused,new,callers_open,tests,level,model'
 
 const csvField = (v: string | number | null) => {
-  const s = v === null ? '' : String(v)
+  let s = v === null ? '' : String(v)
+  if (/^[=+\-@\t\r]/.test(s)) s = `'${s}`
   return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s
 }
 

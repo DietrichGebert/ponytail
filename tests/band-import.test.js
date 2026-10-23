@@ -80,6 +80,8 @@ assert.equal(sessionStats(records.filter(r => !r.origin)), null);
 // CSV: the band's format, an older header replaced, a recorded session never imported twice.
 const row = csvRow('abcd1234-0000', 'shop', s);
 assert.ok(row.startsWith(`abcd1234-${s.startedMs},`) && row.endsWith(',import,claude-opus-5-5'));
+const formulaRow = csvRow('abcd1234-0000', 'shop', { ...s, name: '=2+2' });
+assert.equal(formulaRow.split(',')[3], "'=2+2", 'a name starting with = is written as text, not a spreadsheet formula');
 const old = 'key,started,project,name\nabcd1234-1,2026-10-01 10:00,shop,Live\n';
 const merged = mergeRows(old, [row, csvRow('ffff0000-0000', 'shop', s)]);
 assert.equal(merged.added, 1);
