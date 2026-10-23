@@ -26,6 +26,7 @@ test('publishing gates OIDC access on tests and pins executable dependencies', (
   assert.equal((publish.match(/^\s*id-token:/gm) || []).length, 1);
   assert.doesNotMatch(ci, /id-token:/);
   assert.match(publish, /npm install -g npm@\d+\.\d+\.\d+(?:\r?\n|$)/);
+  assert.match(ci, /pip install pandas==\d+\.\d+\.\d+/, 'the CI pandas install is pinned like every other executable dependency');
 
   for (const workflow of [publish, ci]) {
     for (const action of workflow.matchAll(/^\s+- uses: (.+)$/gm)) {
