@@ -94,6 +94,15 @@ async function bandHidden($: EngineInterface): Promise<boolean> {
   }
 }
 
+// `{ "band": { "hideCost": true } }` in ponytail's config.json keeps the dollar amounts off a shared screen; the ledger and the board still record them.
+async function costHidden($: EngineInterface): Promise<boolean> {
+  try {
+    return JSON.parse(await $.fs.read(`${await configDir($)}/config.json`))?.band?.hideCost === true
+  } catch {
+    return false
+  }
+}
+
 // The level ponytail's own hooks write. Absent flag = off.
 // shortcut: the shared flag the statusline reads, so two sessions in different repos show the last switch; read the per-project flag if that matters.
 async function readLevel($: EngineInterface): Promise<string> {
@@ -127,11 +136,12 @@ async function readModel($: EngineInterface, transcript: string): Promise<string
   return grep?.exitCode === 0 ? mainModel(grep.stdout) : ''
 }
 
-// Where the task ledgers and the board live.
+// Where ponytail's config.json, the task ledgers and the board live.
 // shortcut: ~/.config only (XDG respected); Windows would want %APPDATA%.
-async function ledgerDir($: EngineInterface) {
-  return `${(await $.env.get('XDG_CONFIG_HOME')) ?? `${await home($)}/.config`}/ponytail/band`
+async function configDir($: EngineInterface) {
+  return `${(await $.env.get('XDG_CONFIG_HOME')) ?? `${await home($)}/.config`}/ponytail`
 }
+const ledgerDir = async ($: EngineInterface) => `${await configDir($)}/band`
 
 const ledgerFile = (dir: string, project: string) => `${dir}/${project.replace(/[^\w.-]/g, '_')}.csv`
 
@@ -348,6 +358,7 @@ export const register: Register = (on, options) => {
     const reuse = percent(b.reused.length, b.created.length)
     const avg = b.turns > 0 ? b.spent / b.turns : 0
     const last = b.turnCosts[b.turnCosts.length - 1]
+    const showCost = !(await costHidden($))
 
     const setLevel = async (level: string) => {
       await update($, band, x => ({ ...x, level }))
@@ -388,8 +399,8 @@ export const register: Register = (on, options) => {
           <Button key="level" plain onPress={toggle}>
             <Text color={b.level === 'off' ? 'inactive' : 'suggestion'}>●</Text> {b.level}
           </Button>
-          <Text>${b.spent.toFixed(2)}</Text>
-          {last !== undefined && <Text dimColor>last ${last.toFixed(2)}</Text>}
+          {showCost && <Text>${b.spent.toFixed(2)}</Text>}
+          {showCost && last !== undefined && <Text dimColor>last ${last.toFixed(2)}</Text>}
           <Text dimColor>{elapsed(b.busyMs)}</Text>
           {reuse !== undefined && <Text>{reuse}% reuse</Text>}
           {hasDupes && <Text color="warning">{b.dupes.length} duplicate?</Text>}
@@ -410,7 +421,7 @@ export const register: Register = (on, options) => {
 
     // Only columns that say something; callers and tests appear once there is something to report.
     const cols: Col[] = [
-      { key: 'cost', label: 'cost', value: `$${b.spent.toFixed(2)}`, sub: last === undefined ? '' : `last $${last.toFixed(2)} · ⌀ $${avg.toFixed(2)}` },
+      ...(showCost ? [{ key: 'cost', label: 'cost', value: `$${b.spent.toFixed(2)}`, sub: last === undefined ? '' : `last $${last.toFixed(2)} · ⌀ $${avg.toFixed(2)}` }] : []),
       { key: 'tokens', label: 'tokens', value: fmtTokens(totalTokens(b.tokens)), sub: `${fmtTokens(b.tokens.output)} out · ${b.turns} ${b.turns === 1 ? 'turn' : 'turns'}` },
       { key: 'time', label: 'agent time', value: elapsed(b.busyMs), sub: b.turns > 0 ? `⌀ ${elapsed(b.busyMs / b.turns)} / turn` : '' },
     ]

@@ -425,3 +425,17 @@ test('a test run shows its count, and an edit after it marks the tests stale', a
   expect(await ui.find({ type: 'Text', text: /no test since change/ })).toBeDefined()
   await ui.unmount()
 })
+
+test('band.hideCost in config.json leaves the dollar amounts out of the compact row and the details', async ($, on) => {
+  mock.clock(on)
+  mock.store(on)
+  on('env.get', ($, e) => ({ value: e.name === 'HOME' ? '/home/u' : undefined }))
+  on('fs.read', ($, e, next) => (e.path === '/home/u/.config/ponytail/config.json' ? { value: '{"band":{"hideCost":true}}' } : next(e)))
+  const ui = await $.ui.mount({ plugin: 'ponytail', surface: 'terminal', ...BAND })
+  expect(await ui.find({ key: 'level' })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /\$/ })).toBeUndefined()
+  await ui.press({ key: 'details' })
+  expect(await ui.find({ type: 'Text', text: /^cost$/ })).toBeUndefined()
+  expect(await ui.find({ type: 'Text', text: /^tokens$/ })).toBeDefined()
+  await ui.unmount()
+})
