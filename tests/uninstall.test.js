@@ -195,6 +195,20 @@ assert.equal(
   'malformed hooks.json must be left unchanged',
 );
 
+// A hooks.json of the wrong shape must warn like malformed JSON and still
+// reach the statusLine cleanup.
+const wrongShapeHooks = '{"version":1,"hooks":[]}';
+fs.writeFileSync(cursorHooksPath, wrongShapeHooks);
+fs.writeFileSync(settingsPath, JSON.stringify({
+  statusLine: { type: 'command', command: 'bash /some/path/ponytail-statusline.sh' },
+}));
+
+result = runUninstall(env);
+assert.equal(result.status, 0, result.stderr);
+assert.ok(/hooks must be an object/.test(result.stdout + result.stderr), 'must warn with the wrong-shape error');
+assert.equal(fs.readFileSync(cursorHooksPath, 'utf8'), wrongShapeHooks, 'wrong-shape hooks.json must be left unchanged');
+assert.equal(JSON.parse(fs.readFileSync(settingsPath, 'utf8')).statusLine, undefined, 'statusLine must still be removed');
+
 // Running on an already-clean machine must not throw.
 result = runUninstall({ HOME: path.join(temp, 'home-empty'), USERPROFILE: path.join(temp, 'home-empty') });
 assert.equal(result.status, 0, result.stderr);
