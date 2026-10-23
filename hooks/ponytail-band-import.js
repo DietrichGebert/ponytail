@@ -196,13 +196,14 @@ function mergeRows(existing, rows, have = new Set()) {
 
 const TEMP = [os.tmpdir(), '/tmp/', '/private/tmp/', '/var/folders/', '/private/var/folders/'];
 // A worktree counts for its main repo: the desktop app's <repo>/.claude/worktrees/<name> even
-// after it is gone, and any git worktree through its common .git dir.
+// after it is gone, and any git worktree through its common dir: <repo>/.git, or <repo>/.bare for a
+// worktree of a bare repo (`git clone --bare <url> <repo>/.bare`).
 function projectOf(cwd, cache) {
   if (!cache.has(cwd)) {
     let root = cwd.split(/[\\/]\.claude[\\/]worktrees[\\/]/)[0];
     if (fs.existsSync(root)) {
       const git = spawnSync('git', ['-C', root, 'rev-parse', '--path-format=absolute', '--git-common-dir'], { encoding: 'utf8' });
-      if (git.status === 0 && /[\\/]\.git$/.test(git.stdout.trim())) root = path.dirname(git.stdout.trim());
+      if (git.status === 0 && /[\\/]\.(git|bare)$/.test(git.stdout.trim())) root = path.dirname(git.stdout.trim());
     }
     cache.set(cwd, path.basename(root.replace(/[\\/]+$/, '')));
   }
@@ -271,4 +272,4 @@ if (require.main === module) {
   process.stdout.write(`ponytail band import: ${sessions} past sessions found, ${added} new rows in the board.\n`);
 }
 
-module.exports = { CSV_HEADER, PRICES, replyCost, sessionStats, csvRow, mergeRows, readRecords, run };
+module.exports = { CSV_HEADER, PRICES, replyCost, sessionStats, csvRow, mergeRows, projectOf, readRecords, run };

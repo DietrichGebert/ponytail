@@ -2,12 +2,13 @@
 // Past sessions into the band's board: numbers per session, prices, the CSV the band reads.
 
 const assert = require('assert');
+const { execFileSync } = require('child_process');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
 
 const root = path.join(__dirname, '..');
-const { CSV_HEADER, replyCost, sessionStats, csvRow, mergeRows, run } = require('../hooks/ponytail-band-import');
+const { CSV_HEADER, replyCost, sessionStats, csvRow, mergeRows, projectOf, run } = require('../hooks/ponytail-band-import');
 
 // The import writes the band's own columns.
 const metrics = fs.readFileSync(path.join(root, 'hooks', 'band', 'metrics.ts'), 'utf8');
@@ -106,6 +107,20 @@ try {
 } finally {
   for (const [k, v] of Object.entries(env)) if (v === undefined) delete process.env[k]; else process.env[k] = v;
   fs.rmSync(temp, { recursive: true, force: true });
+}
+
+// A worktree of a bare repo (`git clone --bare <url> shop/.bare`, then `git worktree add`) counts for the
+// folder that holds .bare, as a worktree of a normal repo counts for its repo.
+const bare = fs.mkdtempSync(path.join(os.tmpdir(), 'ponytail-bare-'));
+try {
+  const git = (...args) => execFileSync('git', args, { cwd: bare, stdio: 'ignore' });
+  git('init', '-q', 'src');
+  git('-C', 'src', '-c', 'user.name=t', '-c', 'user.email=t@t', 'commit', '-q', '--allow-empty', '-m', 'init');
+  git('clone', '-q', '--bare', 'src', 'shop/.bare');
+  git('-C', 'shop/.bare', 'worktree', 'add', '-q', '../main');
+  assert.equal(projectOf(path.join(bare, 'shop', 'main'), new Map()), 'shop', 'a worktree of a bare repo counts for its folder');
+} finally {
+  fs.rmSync(bare, { recursive: true, force: true });
 }
 
 console.log('band import checks passed');
