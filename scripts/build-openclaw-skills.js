@@ -51,6 +51,21 @@ function outPath(name) {
 module.exports = { DESCRIPTIONS, NAMES, render, outPath, sourceBody };
 
 if (require.main === module) {
+  const skillsDir = path.join(ROOT, 'skills');
+  const missing = fs.readdirSync(skillsDir, { withFileTypes: true })
+    .filter((e) => e.isDirectory() && fs.existsSync(path.join(skillsDir, e.name, 'SKILL.md')) && !NAMES.includes(e.name))
+    .map((e) => e.name);
+  if (missing.length) {
+    console.error(`skills/ has no DESCRIPTIONS entry for: ${missing.join(', ')}`);
+    process.exit(1);
+  }
+  const outDir = path.join(ROOT, '.openclaw', 'skills');
+  for (const e of fs.existsSync(outDir) ? fs.readdirSync(outDir, { withFileTypes: true }) : []) {
+    if (e.isDirectory() && !NAMES.includes(e.name)) {
+      fs.rmSync(path.join(outDir, e.name), { recursive: true });
+      console.log('removed', `.openclaw/skills/${e.name}`);
+    }
+  }
   for (const name of NAMES) {
     const p = outPath(name);
     fs.mkdirSync(path.dirname(p), { recursive: true });
