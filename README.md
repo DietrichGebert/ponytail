@@ -56,7 +56,7 @@ Files it writes, all outside the plugin folder:
 
 `~/.claude` is replaced by `CLAUDE_CONFIG_DIR` when that is set.
 
-**Statusline offer:** the first session asks the agent to offer adding a `statusLine` to `~/.claude/settings.json` that runs the copied statusline script, if you have none. The crewcut hooks never read `settings.json`. Nothing is changed unless you accept. Crewcut makes this offer only once.
+**Statusline offer:** the first session asks the agent to offer adding a `statusLine` to `~/.claude/settings.json` that runs the copied statusline script, if you have none. Crewcut never reads `settings.json`. Nothing is changed unless you accept. Crewcut makes this offer only once.
 
 To remove all of these files, run `node scripts/uninstall.js` before uninstalling the plugin.
 

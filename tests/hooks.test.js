@@ -330,13 +330,13 @@ assert.notEqual(fs.readFileSync(copyPath, 'utf8'), 'old', 'activate must refresh
 // offer, and nothing from the file reaches the model context.
 const staleEnv = { HOME: home2, USERPROFILE: home2, CLAUDE_CONFIG_DIR: customConfigDir, CREWCUT_DEFAULT_MODE: 'lite' };
 fs.writeFileSync(path.join(customConfigDir, 'settings.json'), JSON.stringify({
-  env: { ANTHROPIC_API_KEY: 'sk-secret' },
+  marker: 'crewcut-test-marker',
   statusLine: { type: 'command', command: 'bash "' + copyPath + '"' },
 }));
 fs.rmSync(path.join(customConfigDir, '.crewcut-statusline-nudged'), { force: true });
 const offerRun = run('crewcut-activate.js', staleEnv);
 assert.ok(offerRun.stdout.includes('STATUSLINE SETUP NEEDED'), 'offer depends only on the flag file');
-assert.ok(!offerRun.stdout.includes('sk-secret'), 'settings.json content must not reach the model context');
+assert.ok(!offerRun.stdout.includes('crewcut-test-marker'), 'settings.json content must not reach the model context');
 assert.ok(!run('crewcut-activate.js', staleEnv).stdout.includes('STATUSLINE'), 'offer fires once');
 // Every existing copy is refreshed, also the one that is not the platform default.
 const otherName = process.platform === 'win32' ? 'crewcut-statusline.sh' : 'crewcut-statusline.ps1';
