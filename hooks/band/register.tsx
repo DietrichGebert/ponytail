@@ -223,14 +223,13 @@ export const register: Register = (on, options) => {
     return next(e)
   }).catch(($, e, next) => next(e))
 
-  // Only the classic hook input carries the transcript path, which holds the sidebar name.
-  on('classic.UserPromptSubmit', async ($, e, next) => {
-    await update($, band, b => (b.transcript === e.transcript_path ? b : { ...EMPTY, ...b, transcript: e.transcript_path }))
-    return next(e)
-  }).catch(($, e, next) => next(e))
-
-  // The first prompt names the task until the session has a sidebar name.
+  // The transcript holds the sidebar name and the model. Its classic.UserPromptSubmit hook is passed over where an
+  // organisation's cc-plugin-sec-default is seated outermost, so the path is rebuilt from the session id.
+  // shortcut: assumes the engine's projects/<cwd, non-alphanumerics as "-">/<id>.jsonl layout; the row has no name or model if it differs, drop this once classic hooks reach user plugins.
+  // The first prompt also names the task until the session has a sidebar name.
   on('prompt.submit', async ($, e, next) => {
+    const transcript = `${await claudeDir($)}/projects/${(await $.session.cwd()).replace(/[^a-zA-Z0-9]/g, '-')}/${await $.session.id()}.jsonl`
+    await update($, band, b => (b.transcript === transcript ? b : { ...EMPTY, ...b, transcript }))
     const text = e.text.trim()
     if (e.origin.kind !== 'plugin' && text !== '' && !text.startsWith('/')) {
       const name = (text.split('\n')[0] ?? '').slice(0, 60)

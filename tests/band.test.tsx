@@ -328,6 +328,32 @@ test('the ledger is written on Windows, where there is no mkdir', async ($, on) 
   expect(written[1]?.endsWith('C:/Users/u/.config/ponytail/band/board.html')).toBe(true)
 })
 
+test('the transcript is found from the session id, with no classic.UserPromptSubmit hook', async ($, on) => {
+  mock.clock(on)
+  mock.store(on)
+  on('env.get', ($, e) => ({ value: e.name === 'HOME' ? '/home/u' : undefined }))
+  on('session.repo', () => ({ value: { root: '/repo/shop' } }) as never)
+  on('session.id', () => ({ value: 's1' }))
+  on('session.cwd', () => ({ value: '/repo/shop' }))
+  on('session.turns', () => ({ value: 1 }))
+  on('session.usage', () => ({ value: { startedAt: 0, cost: { usd: 0.5 } } }) as never)
+  on('prompt.submit', ($, e) => ({ text: e.text }))
+  const argvs: string[][] = []
+  on('process.run', ($, e) => {
+    argvs.push([...e.argv])
+    return { value: { exitCode: 1, stdout: '', stderr: '' } } as never
+  })
+  on('fs.read', () => ({ deny: 'missing' }) as never)
+  on('fs.list', () => ({ value: [] }))
+  on('fs.write', () => ({ value: undefined }))
+  on('session.start', ($, e) => ({ cwd: e.cwd }))
+  on('turn.complete', () => ({ text: '' }))
+  await $.session.start({ cwd: '/repo/shop', surface: null } as never)
+  await $.prompt.submit({ text: 'fix the cart' } as never)
+  await $.turn.complete({ answer: '', durationMs: 1000 } as never)
+  expect(argvs.some(argv => argv[0] === 'grep' && argv.at(-1) === '/home/u/.claude/projects/-repo-shop/s1.jsonl')).toBe(true)
+})
+
 test('without HOME (Windows) the band reads its flags under USERPROFILE', async ($, on) => {
   mock.clock(on)
   mock.store(on)
