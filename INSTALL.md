@@ -4,6 +4,8 @@ Pick your agent below. Not listed? Most agents read [`AGENTS.md`](AGENTS.md): co
 
 The Claude Code and Codex plugins (and the Cursor hooks) run two tiny Node.js lifecycle hooks, so `node` needs to be on your PATH (note for Nix/nvm users: it must be on the non-interactive shell's PATH). If it isn't, the skills still work, but every hook call shows a harmless `node: command not found` error; installing Node (or putting it on that PATH) makes it go away.
 
+In Claude Code, the band also shows `off` when Node is unavailable because the level hook cannot write its mode flag. This looks the same as `/ponytail off` and does not mean the level was set successfully.
+
 ## Claude Code
 
 ```
