@@ -22,8 +22,12 @@ A Host + Web-client bundle for DeepSeek Harness (dsh). It reuses the existing
 
 The dsh bundle is the `dsh-plugin/` subdirectory package (`dsh-ponytail`). It
 depends on the root `@dietrichgebert/ponytail` package for `hooks/` and
-`skills/`; there is no second copy of the prompt. A local checkout uses the
-parent directory directly, so edits are live.
+`skills/`; there is no second copy of the prompt. `dsh plugin add` asks pnpm to
+fetch the Git repository automatically; there is no manual `git clone`. pnpm
+installs only the `dsh-plugin/` subdirectory as the bundle and resolves the
+declared `@dietrichgebert/ponytail` dependency from the registry for `hooks/`
+and `skills/`. A local checkout uses the parent directory directly instead, so
+edits are live.
 
 ### DeepSeek Harness Web / Desktop
 
