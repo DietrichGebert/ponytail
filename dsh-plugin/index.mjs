@@ -166,7 +166,7 @@ export function apply(ctx) {
   const ruleCache = new Map()
   /** agent.id -> { ctx, disposeSection, disposeListener } */
   const agents = new Map()
-  /** session.id -> agent, for projection-driven mode changes */
+  /** session.id -> Map(agent.id -> agent); a session can own more than one agent */
   const sessionAgents = new Map()
   let closed = false
 
@@ -259,7 +259,14 @@ export function apply(ctx) {
     const scope = agent.ctx
     const entry = { ctx: scope, disposeSection: null, disposeListener: null }
     agents.set(agent.id, entry)
-    if (agent.session?.id !== undefined) sessionAgents.set(agent.session.id, agent)
+    if (agent.session?.id !== undefined) {
+      let peers = sessionAgents.get(agent.session.id)
+      if (peers === undefined) {
+        peers = new Map()
+        sessionAgents.set(agent.session.id, peers)
+      }
+      peers.set(agent.id, agent)
+    }
 
     // Standalone "stop ponytail" / "normal mode" disables this agent. The whole
     // message must match, so a request that merely mentions the phrase is safe.
@@ -294,7 +301,13 @@ export function apply(ctx) {
       disposeEntry(entry)
       agents.delete(agent.id)
     }
-    if (agent?.session?.id !== undefined) sessionAgents.delete(agent.session.id)
+    if (agent?.session?.id !== undefined && agent.id !== undefined) {
+      const peers = sessionAgents.get(agent.session.id)
+      if (peers !== undefined) {
+        peers.delete(agent.id)
+        if (peers.size === 0) sessionAgents.delete(agent.session.id)
+      }
+    }
     if (agent?.id !== undefined) sessionModes.delete(agent.id)
   }
 
@@ -302,10 +315,12 @@ export function apply(ctx) {
   ctx.effect(() => ctx.sessionProjections.onChanged((session, key, value) => {
     if (key !== 'ponytail') return
     const mode = normalizeMode(value?.mode) || 'full'
-    const agent = session?.id === undefined ? undefined : sessionAgents.get(session.id)
-    if (agent !== undefined) {
-      sessionModes.set(agent.id, mode)
-      installSection(agent)
+    const peers = session?.id === undefined ? undefined : sessionAgents.get(session.id)
+    if (peers !== undefined) {
+      for (const agent of peers.values()) {
+        sessionModes.set(agent.id, mode)
+        installSection(agent)
+      }
     }
   }))
 

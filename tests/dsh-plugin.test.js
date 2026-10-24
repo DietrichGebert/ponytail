@@ -116,7 +116,7 @@ function fakeHost() {
     commands: { register: (definition) => (state.commands.push(definition), () => {}) },
     sessionProjections: {
       register: () => () => {},
-      onChanged: () => () => {},
+      onChanged: (listener) => (state.onChanged = listener, () => {}),
       stateOf: () => undefined,
     },
     on(event, listener) {
@@ -168,6 +168,40 @@ test('per-agent sections dispose on off, stop phrase and teardown', () => {
 
     for (const dispose of state.effects) dispose()
     assert.equal(state.sections.length, 0, 'teardown leaves no section behind')
+  } finally {
+    if (previous === undefined) delete process.env.PONYTAIL_DEFAULT_MODE
+    else process.env.PONYTAIL_DEFAULT_MODE = previous
+  }
+})
+
+
+test('projection updates every agent sharing a session', () => {
+  const previous = process.env.PONYTAIL_DEFAULT_MODE
+  process.env.PONYTAIL_DEFAULT_MODE = 'full'
+  try {
+    const { ctx, state, makeScope } = fakeHost()
+    apply(ctx)
+
+    const first = { id: 'a1', session: { id: 'shared' }, ctx: makeScope() }
+    const second = { id: 'a2', session: { id: 'shared' }, ctx: makeScope() }
+    const created = state.hostListeners.get('agent/created')
+    created({ agent: first })
+    created({ agent: second })
+    assert.equal(state.sections.length, 2)
+
+    state.onChanged({ id: 'shared' }, 'ponytail', { mode: 'off' })
+    assert.equal(state.sections.length, 0, 'all agents sharing the session see the projection change')
+
+    state.onChanged({ id: 'shared' }, 'ponytail', { mode: 'full' })
+    assert.equal(state.sections.length, 2)
+
+    state.hostListeners.get('agent/disposed')({ agent: first })
+    assert.equal(state.sections.length, 1, 'disposing one peer leaves the other registration')
+
+    state.onChanged({ id: 'shared' }, 'ponytail', { mode: 'off' })
+    assert.equal(state.sections.length, 0)
+
+    for (const dispose of state.effects) dispose()
   } finally {
     if (previous === undefined) delete process.env.PONYTAIL_DEFAULT_MODE
     else process.env.PONYTAIL_DEFAULT_MODE = previous
