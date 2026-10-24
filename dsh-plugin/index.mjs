@@ -18,7 +18,7 @@ if (!fs.existsSync(path.join(repoRoot, 'hooks/ponytail-config.js'))) {
   repoRoot = path.resolve(path.dirname(rootEntry), '..', '..')
 }
 const { getPonytailInstructions } = require(path.join(repoRoot, 'hooks/ponytail-instructions.js'))
-const { getDefaultMode, normalizeMode, writeDefaultMode } = require(path.join(repoRoot, 'hooks/ponytail-config.js'))
+const { getDefaultMode, normalizeMode, writeDefaultMode, isDeactivationCommand } = require(path.join(repoRoot, 'hooks/ponytail-config.js'))
 
 export const name = 'dsh-ponytail'
 export const inject = ['systemPrompt', 'commands', 'skills', 'sessionProjections']
@@ -150,9 +150,25 @@ function rulesFor(mode) {
   return mode === 'off' ? '' : getPonytailInstructions(mode)
 }
 
+function messageText(message) {
+  if (message === null || typeof message !== 'object') return ''
+  const content = message.content
+  if (typeof content === 'string') return content
+  if (!Array.isArray(content)) return ''
+  return content
+    .filter((block) => block !== null && typeof block === 'object' && block.type === 'text' && typeof block.text === 'string')
+    .map((block) => block.text)
+    .join('\n')
+}
+
 export function apply(ctx) {
   const sessionModes = new Map()
   const ruleCache = new Map()
+  /** agent.id -> { ctx, disposeSection, disposeListener } */
+  const agents = new Map()
+  /** session.id -> agent, for projection-driven mode changes */
+  const sessionAgents = new Map()
+  let closed = false
 
   const rulesForCached = (mode) => {
     if (!ruleCache.has(mode)) ruleCache.set(mode, rulesFor(mode))
@@ -169,25 +185,128 @@ export function apply(ctx) {
   }
 
   const modeForAgent = (agent) => {
-    if (agent?.id && sessionModes.has(agent.id)) return sessionModes.get(agent.id)
+    if (agent?.id !== undefined && sessionModes.has(agent.id)) return sessionModes.get(agent.id)
     const fallback = normalizeMode(getDefaultMode()) || 'full'
     const mode = agent?.session ? modeOf(agent.session, fallback) : fallback
-    if (agent?.id) sessionModes.set(agent.id, mode)
+    if (agent?.id !== undefined) sessionModes.set(agent.id, mode)
     return mode
+  }
+
+  function disposeSection(entry) {
+    if (entry.disposeSection === null) return
+    try {
+      entry.disposeSection()
+    } catch {
+      /* a failed disposal must not block a replacement or teardown */
+    }
+    entry.disposeSection = null
+  }
+
+  function disposeListener(entry) {
+    if (entry.disposeListener === null) return
+    try {
+      entry.disposeListener()
+    } catch {
+      /* teardown is best-effort */
+    }
+    entry.disposeListener = null
+  }
+
+  function disposeEntry(entry) {
+    disposeSection(entry)
+    disposeListener(entry)
+  }
+
+  /**
+   * Register or remove this agent instance's prompt section. The section text
+   * stays dynamic, so a mode change does not need a new registration; `off`
+   * disposes it so no inert section remains in the assembly.
+   */
+  function installSection(agent) {
+    const entry = agents.get(agent?.id)
+    if (entry === undefined || closed) return false
+    if (modeForAgent(agent) === 'off') {
+      disposeSection(entry)
+      return true
+    }
+    if (entry.disposeSection !== null) return true
+    const scope = entry.ctx
+    if (scope === undefined || typeof scope.systemPrompt?.section !== 'function') return false
+    try {
+      const dispose = scope.systemPrompt.section({
+        name: 'ponytail',
+        order: 400,
+        text: () => {
+          const current = modeForAgent(agent)
+          return current === 'off' ? '' : rulesForCached(current)
+        },
+      })
+      entry.disposeSection = typeof dispose === 'function' ? dispose : null
+      return entry.disposeSection !== null
+    } catch {
+      return false
+    }
+  }
+
+  function setMode(agent, mode) {
+    if (agent?.id === undefined) return false
+    sessionModes.set(agent.id, mode)
+    return installSection(agent)
+  }
+
+  function setupAgent(agent) {
+    if (closed || agent?.id === undefined || agents.has(agent.id)) return
+    const scope = agent.ctx
+    const entry = { ctx: scope, disposeSection: null, disposeListener: null }
+    agents.set(agent.id, entry)
+    if (agent.session?.id !== undefined) sessionAgents.set(agent.session.id, agent)
+
+    // Standalone "stop ponytail" / "normal mode" disables this agent. The whole
+    // message must match, so a request that merely mentions the phrase is safe.
+    if (scope !== undefined && typeof scope.on === 'function') {
+      try {
+        const dispose = scope.on('agent/pre-step', (payload, next) => {
+          try {
+            const messages = payload?.messages
+            if (Array.isArray(messages) && messages.length > 0) {
+              const text = messageText(messages[messages.length - 1])
+              if (text.length > 0 && isDeactivationCommand(text) && modeForAgent(agent) !== 'off') {
+                setMode(agent, 'off')
+              }
+            }
+          } catch {
+            /* never fail a turn because a deactivation check failed */
+          }
+          return typeof next === 'function' ? next() : undefined
+        })
+        if (typeof dispose === 'function') entry.disposeListener = dispose
+      } catch {
+        /* a missing pre-step hook leaves /ponytail off available */
+      }
+    }
+
+    installSection(agent)
+  }
+
+  function disposeAgent(agent) {
+    const entry = agents.get(agent?.id)
+    if (entry !== undefined) {
+      disposeEntry(entry)
+      agents.delete(agent.id)
+    }
+    if (agent?.session?.id !== undefined) sessionAgents.delete(agent.session.id)
+    if (agent?.id !== undefined) sessionModes.delete(agent.id)
   }
 
   ctx.effect(() => ctx.sessionProjections.register(createPonytailProjection()))
   ctx.effect(() => ctx.sessionProjections.onChanged((session, key, value) => {
-    if (key === 'ponytail') sessionModes.set(session.id, normalizeMode(value?.mode) || 'full')
-  }))
-
-  ctx.effect(() => ctx.systemPrompt.section({
-    name: 'ponytail',
-    order: 400,
-    text: (call) => {
-      const mode = modeForAgent(call?.agent)
-      return mode === 'off' ? '' : rulesForCached(mode)
-    },
+    if (key !== 'ponytail') return
+    const mode = normalizeMode(value?.mode) || 'full'
+    const agent = session?.id === undefined ? undefined : sessionAgents.get(session.id)
+    if (agent !== undefined) {
+      sessionModes.set(agent.id, mode)
+      installSection(agent)
+    }
   }))
 
   for (const skillName of SKILL_NAMES) {
@@ -221,18 +340,33 @@ export function apply(ctx) {
         return { kind: 'success', text: `Default Ponytail mode set to ${written}${note}.` }
       }
       if (parsed.type === 'set-mode') {
-        sessionModes.set(agent.id, parsed.mode)
+        setMode(agent, parsed.mode)
         return { kind: 'success', text: `Ponytail mode set to ${parsed.mode}.` }
       }
       return { kind: 'error', text: `Ponytail: unknown mode "${parsed.mode ?? rawInput.trim()}".` }
     },
   }))
 
-  ctx.on('agent/created', ({ agent }) => {
-    const fallback = normalizeMode(getDefaultMode()) || 'full'
-    sessionModes.set(agent.id, modeOf(agent.session, fallback))
-  })
-  ctx.on('agent/disposed', ({ agent }) => {
-    sessionModes.delete(agent.id)
+  ctx.on('agent/created', ({ agent }) => setupAgent(agent))
+  ctx.on('agent/disposed', ({ agent }) => disposeAgent(agent))
+
+  // A profile reload lands in a running Host; install for agents that already exist.
+  try {
+    const live = ctx.get?.('agents')
+    if (live !== undefined && typeof live.list === 'function') {
+      for (const agent of live.list()) setupAgent(agent)
+    }
+  } catch {
+    /* the per-agent hook still covers future agents */
+  }
+
+  // Agent-scope sections are owned by the agent's fiber, not this plugin's;
+  // dispose them explicitly so remove/reinstall leaves no section behind.
+  ctx.effect(() => () => {
+    closed = true
+    for (const entry of agents.values()) disposeEntry(entry)
+    agents.clear()
+    sessionAgents.clear()
+    sessionModes.clear()
   })
 }

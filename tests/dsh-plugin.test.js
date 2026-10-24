@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { parsePonytailCommand, createPonytailProjection, readSkill } from '../dsh-plugin/index.mjs'
+import { apply, parsePonytailCommand, createPonytailProjection, readSkill } from '../dsh-plugin/index.mjs'
 
 test('parses /ponytail arguments', () => {
   assert.deepEqual(parsePonytailCommand('', 'full', 'full'), { type: 'status' })
@@ -82,5 +82,94 @@ test('every skill reads with a name, description and body', () => {
     assert.ok(skill.description.length > 10)
     assert.ok(!skill.content.startsWith('---'))
     assert.ok(skill.content.length > 100)
+  }
+})
+
+function fakeHost() {
+  const state = { sections: [], effects: [], skills: [], commands: [], hostListeners: new Map() }
+
+  function makeScope() {
+    const scope = {
+      preSteps: new Map(),
+      systemPrompt: {
+        section(definition) {
+          state.sections.push(definition)
+          let live = true
+          return () => {
+            if (!live) return
+            live = false
+            const index = state.sections.indexOf(definition)
+            if (index >= 0) state.sections.splice(index, 1)
+          }
+        },
+      },
+      on(event, listener) {
+        scope.preSteps.set(event, listener)
+        return () => scope.preSteps.delete(event)
+      },
+    }
+    return scope
+  }
+
+  const ctx = {
+    skills: { register: (definition) => (state.skills.push(definition), () => {}) },
+    commands: { register: (definition) => (state.commands.push(definition), () => {}) },
+    sessionProjections: {
+      register: () => () => {},
+      onChanged: () => () => {},
+      stateOf: () => undefined,
+    },
+    on(event, listener) {
+      state.hostListeners.set(event, listener)
+      return () => state.hostListeners.delete(event)
+    },
+    effect(action) {
+      const dispose = action()
+      if (typeof dispose === 'function') state.effects.push(dispose)
+      return () => {}
+    },
+    get: () => undefined,
+  }
+
+  return { ctx, state, makeScope }
+}
+
+test('per-agent sections dispose on off, stop phrase and teardown', () => {
+  const previous = process.env.PONYTAIL_DEFAULT_MODE
+  process.env.PONYTAIL_DEFAULT_MODE = 'full'
+  try {
+    const { ctx, state, makeScope } = fakeHost()
+    apply(ctx)
+
+    const first = { id: 'a1', session: { id: 's1' }, ctx: makeScope() }
+    const second = { id: 'a2', session: { id: 's2' }, ctx: makeScope() }
+    const created = state.hostListeners.get('agent/created')
+    created({ agent: first })
+    created({ agent: second })
+    assert.equal(state.sections.length, 2, 'each agent instance owns one section')
+
+    const command = state.commands.find((entry) => entry.name === 'ponytail')
+    command.handler({ agent: first, rawInput: 'off' })
+    assert.equal(state.sections.length, 1, 'off disposes only the first agent section')
+    assert.match(state.sections[0].text(), /level: full/)
+
+    const preStep = second.ctx.preSteps.get('agent/pre-step')
+    preStep({ messages: [{ content: 'please stop ponytail after this' }] }, () => {})
+    assert.equal(state.sections.length, 1, 'the phrase only counts as a standalone message')
+    preStep({ messages: [{ content: 'stop ponytail' }] }, () => {})
+    assert.equal(state.sections.length, 0, 'stop ponytail disposes the second agent section')
+
+    command.handler({ agent: second, rawInput: 'ultra' })
+    assert.equal(state.sections.length, 1)
+    assert.match(state.sections[0].text(), /level: ultra/)
+
+    state.hostListeners.get('agent/disposed')({ agent: second })
+    assert.equal(state.sections.length, 0, 'agent disposal cleans up its section')
+
+    for (const dispose of state.effects) dispose()
+    assert.equal(state.sections.length, 0, 'teardown leaves no section behind')
+  } finally {
+    if (previous === undefined) delete process.env.PONYTAIL_DEFAULT_MODE
+    else process.env.PONYTAIL_DEFAULT_MODE = previous
   }
 })

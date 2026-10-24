@@ -5,8 +5,9 @@ A Host + Web-client bundle for DeepSeek Harness (dsh). It reuses the existing
 
 ## What you get
 
-- A per-step `systemPrompt` section carrying the Ponytail ruleset at the active
-  level (empty when the level is `off`).
+- A per-agent `systemPrompt` section carrying the Ponytail ruleset at the active
+  level. Each live agent instance owns its registration; `off` disposes it
+  instead of leaving an empty section behind.
 - `/ponytail` with `lite`, `full`, `ultra`, `off`, `status`, and
   `default <mode>`.
 - The six skills as runtime skills: `/ponytail-review`, `/ponytail-audit`,
@@ -17,6 +18,8 @@ A Host + Web-client bundle for DeepSeek Harness (dsh). It reuses the existing
   dimmed, shows `OFF`, and one click turns it on at `full`.
 - Per-session level state derived from the `/ponytail` command log, so resume
   and fork restore it without a new session event type.
+- A standalone `stop ponytail` or `normal mode` message turns the current agent
+  off through the agent's `pre-step` hook.
 
 ## Install
 
@@ -86,8 +89,8 @@ dsh --profile web --dump-config
 5. In a model turn, the system prompt carries `PONYTAIL MODE ACTIVE — level:
    <mode>` from the current level.
 
-The unit tests cover the argument parser, the projection fold, and the skill
-reader:
+The unit tests cover the argument parser, the projection fold, the skill reader,
+and the per-agent section lifecycle (off disposal, stop phrase, unload):
 
 ```bash
 node --test tests/dsh-plugin.test.js
@@ -100,8 +103,10 @@ node --test tests/dsh-plugin.test.js
   the plugin adds a second copy; prefer one or the other.
 - Compaction replays the last committed `system/message`, so a level change
   made while a compaction request is in flight can lag one summary call.
-- A child agent gets the global section with its own default level; a
+- A child agent gets its own agent-scoped section with its own default level; a
   per-session override is not inherited by subagents.
+- `stop ponytail` changes the host section immediately; the Web mark reflects
+  the command projection and updates on the next `/ponytail` command or reload.
 - Command input is a hint only; dsh has no custom argument-completion hook.
 
 ## Uninstall
