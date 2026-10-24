@@ -40,6 +40,10 @@ Take the first option that fully works:
 - Between options of equal size, take the one that is correct on edge cases.
 - Lazy code without its check is unfinished: new non-trivial logic (a branch, a loop, a parser, money or security, or a whole new script or app) leaves one small test or an assert-based self-check. Trivial changes need none.
 - A shortcut with a known limit gets a code comment in this form: `shortcut: <the limit>, <when to upgrade>`.
+- Span-replace hazard: before replacing everything between heading A and heading B, list the headings between them (grep `^## `) and confirm each survives or is intentionally dropped. Check what you removed, not just what you added — a section can vanish inside a replaced span while the diff still looks right.
+- After any merge or dedupe pass over sections, grep the touched section names: a heading appearing twice means the splice stitched two copies.
+- Verify content survives, not just that the edit landed: when a replacement eats a whole section, diff the deleted lines against master or the file's prior state and account for each one (kept, moved, or intentionally cut) before committing. A word-probe with the OLD phrasing reports false misses on intentionally reworded lines — report a survived/moved/cut ledger per deletion instead, and keep a reuse ledger (a mapping of each removed rule to where it lives now) so a later reviewer can verify the move instead of re-deriving it.
+- A plain-language or compression rewrite keeps the qualifier phrases and worked examples that carry rule content ("or section", "at that level", "pure", a named example that makes a vague rule concrete) — cutting them reads cleaner and silently weakens the rule. When a review demands a skipped rule's trigger examples (when a rule applies, what counts as risky), encode them as a closed list plus "unsure = do it", never as author judgment.
 
 Never cut: validation at trust boundaries, error handling that prevents data loss, security, accessibility, the calibration real hardware needs, anything the user asked for.
 
