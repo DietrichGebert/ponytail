@@ -48,11 +48,10 @@ const INVARIANTS = [
   'shortcut: <the limit>, <when to upgrade>',   // shortcut marker comment
   'correct on edge cases',                 // robust-variant rule
   'Lazy code without its check is unfinished', // test reflex
-  // the "never cut" carve-outs: pin each so a reword in either file can't silently drop one.
   'validation at trust boundaries',
-  'prevents data loss',
-  'security',
-  'accessibility',
+  // the "never cut" carve-out: pin the full phrase, so a bare 'security' match
+  // in the test-reflex rule ("money or security") can't satisfy it
+  'prevents data loss, security, accessibility',
 ];
 
 const skill = read('skills/ponytail/SKILL.md');
@@ -64,6 +63,14 @@ for (const phrase of INVARIANTS) {
       failed = true;
     }
   }
+}
+
+// hooks/ponytail-instructions.js holds a fallback copy of the rule text for hosts
+// that cannot read SKILL.md. It contains the same test-reflex wording, so it is
+// checked against the full never-cut phrase too.
+if (!read('hooks/ponytail-instructions.js').includes('prevents data loss, security, accessibility')) {
+  console.error('hooks/ponytail-instructions.js is missing rule invariant: "prevents data loss, security, accessibility"');
+  failed = true;
 }
 
 if (failed) {
