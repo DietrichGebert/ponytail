@@ -222,7 +222,14 @@ const APP = `(function () {
     var f = first(scope())
     return f ? Math.max(7, Math.round((now - new Date(f.slice(0, 10) + 'T00:00').getTime()) / DAY) + 1) : 30
   }
-  function days(n) { var out = []; for (var i = n - 1; i >= 0; i--) out.push(dayKey(now - i * DAY)); return out }
+  function days(n) {
+    var out = [], d = new Date(now)
+    // Noon keeps calendar stepping clear of midnight clock changes.
+    d.setHours(12, 0, 0, 0)
+    d.setDate(d.getDate() - n + 1)
+    for (var i = 0; i < n; i++) { out.push(dayKey(d.getTime())); d.setDate(d.getDate() + 1) }
+    return out
+  }
   function inDays(list, keys) { return list.filter(function (t) { return keys.indexOf(t.started.slice(0, 10)) >= 0 }) }
   function perDay(list, keys, pick) { return keys.map(function (k) { return total(list.filter(function (t) { return t.started.slice(0, 10) === k }), pick) }) }
   function avg(values, r) { return values.map(function (_, i) { var a = values.slice(Math.max(0, i - r), i + r + 1); return a.reduce(add, 0) / a.length }) }
@@ -395,7 +402,7 @@ const APP = `(function () {
   // The last 12 weeks as a honeycomb: a column per week, a row per weekday, the colour is the day's agent time.
   function heat() {
     var s = byId('heat'), list = scope(), keys = days(84), vals = perDay(list, keys, METRICS.time.pick), max = Math.max.apply(null, vals.concat([0]))
-    var r = 17, w = Math.sqrt(3) * r, left = 44, top = r + 2, firstDow = new Date(now - 83 * DAY).getDay(), cols = Math.ceil((84 + firstDow) / 7); s.textContent = ''
+    var r = 17, w = Math.sqrt(3) * r, left = 44, top = r + 2, firstDow = new Date(keys[0] + 'T12:00:00').getDay(), cols = Math.ceil((84 + firstDow) / 7); s.textContent = ''
     blur(svg('defs', {}, s), 'hglow', 6)
     var cells = keys.map(function (k, i) {
       var pos = i + firstDow, row = pos % 7
