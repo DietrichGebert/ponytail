@@ -63,3 +63,25 @@ The one previously "environmental" failure is resolved **without modifying syste
 - CI execution (GitHub Actions) — requires push; not authorized.
 - Any deployment/publish — not authorized.
 - Coverage tooling — not configured in-repo; not added (zero-dep project).
+
+## claude-code/testing harness resolution attempt (2026-10-26)
+
+`tests/band.test.tsx` imports `claude-code/testing` — a module provided by the
+Claude Code **host runtime**, not npm. Verified exhaustively:
+
+- npm `claude-code@1.0.0` (what bun's cache resolves): a stub whose `index.js`
+  prints "Wrong package!" and exits — no exports.
+- npm `@anthropic-ai/claude-code@2.1.310` (real package, installed into an
+  isolated dir): CLI binary only (`claude.exe`); no `testing` module, no
+  `atom` export, no `exports` field in package.json.
+- Conclusion: the harness exists **only inside the Claude Code plugin
+  runtime**; it cannot be installed via npm without modifying the project or
+  fabricating a stub — both forbidden. The narrow-terminal row behavior
+  (#1292) was therefore verified at module level instead: with
+  `bodyColumns = 48` the row drops last-cost/elapsed/reuse/tests and keeps
+  level + cost (+ warnings/buttons), matching the issue's expected outcome.
+
+**Maintainer-side command** (where the harness resolves): run
+`tests/band.test.tsx` through the Claude Code plugin test runner on a machine
+with ponytail installed (`/plugin install ponytail@ponytail`). Documented in
+the audit as the one test that cannot run outside the host.
