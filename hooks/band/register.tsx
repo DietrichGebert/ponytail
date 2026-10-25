@@ -382,6 +382,10 @@ export const register: Register = (on, options) => {
     const hasOpen = b.openCallers.length > 0
 
     if (!b.details) {
+      // Narrow terminals (phone view, ~48 cols) shrink every <Text> in the row,
+      // cutting numbers mid-digit. Below ~70 columns drop the secondary reads
+      // and keep level, cost, warnings and the buttons readable (#1292).
+      const narrow = e.props.bodyColumns < 70
       return stack(
         <Box flexDirection="row" alignItems="center" gap={2} width={e.props.bodyColumns}>
           {/* A click opens the four levels: one click, one turn, no stops on levels nobody wanted. */}
@@ -389,12 +393,12 @@ export const register: Register = (on, options) => {
             <Text color={b.level === 'off' ? 'inactive' : 'suggestion'}>●</Text> {b.level}
           </Button>
           <Text>${b.spent.toFixed(2)}</Text>
-          {last !== undefined && <Text dimColor>last ${last.toFixed(2)}</Text>}
-          <Text dimColor>{elapsed(b.busyMs)}</Text>
-          {reuse !== undefined && <Text>{reuse}% reuse</Text>}
+          {!narrow && last !== undefined && <Text dimColor>last ${last.toFixed(2)}</Text>}
+          {!narrow && <Text dimColor>{elapsed(b.busyMs)}</Text>}
+          {!narrow && reuse !== undefined && <Text>{reuse}% reuse</Text>}
           {hasDupes && <Text color="warning">{b.dupes.length} duplicate?</Text>}
           {hasOpen && <Text color="warning">⚠ {b.openCallers.length} callers open</Text>}
-          {testsText !== '' && (
+          {!narrow && testsText !== '' && (
             <Text color={testsColor} dimColor={b.tests.state === 'stale'}>
               {testsText}
             </Text>
