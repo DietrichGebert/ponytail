@@ -17,7 +17,7 @@ The upstream tracker's 15 open issues were triaged: 12 already have open PRs (no
 |---|---|---|---|
 | #1287 board chart plots 00:00–00:59 sessions at noon (`+h \|\| 12` catches falsy 0) | extracted `dayFraction()`: noon fallback only for rows with no time part; midnight stays 0 | `637f983` | `dayFraction` 6/6 cases from the real module (bun import of board.ts); `boardHtml` end-to-end renders both dots; regression test added to `band.test.tsx` (claude-code/testing harness); full chain 153/153 + 30/30 |
 | #1292 compact band truncates every item on ~48-col terminals | below `bodyColumns < 70` drop secondary reads (last cost, elapsed, reuse, tests), keep level + cost + warnings + buttons | `0be5e78` | TSX transpile clean; runtime harness unavailable locally (bun cache resolves a claude-code build lacking `atom` — environment issue, pre-existing, also on unmodified HEAD); maintainer's harness covers the row |
-| #1280 band reads `off` without Node, indistinguishable from `/ponytail off` | documented the ambiguity in INSTALL.md's existing Node-PATH paragraph (the fix the issue author offered) | `0d0dfe0` | docs-only; phrase present in INSTALL.md |
+| #1280 band reads `off` without Node, indistinguishable from `/ponytail off` | documented, then **reverted** (`86f4c78`): upstream PR #1285 (open) adds the same sentence to the same paragraph — ours would have duplicated a pending contribution. #1280 is covered upstream; nothing left to do locally. | `0d0dfe0` → reverted by `86f4c78` | docs-only; reverted before any push |
 
 Also fixed during the fix: a bun-transpiler edge (backtick inside a `//` comment in board.ts produced a misleading `h is not defined` at import) — comment rewritten without backticks; no runtime change.
 
