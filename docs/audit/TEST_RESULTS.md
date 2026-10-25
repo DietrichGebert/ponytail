@@ -35,6 +35,18 @@ Machine: Windows 10 (win32), Node v24.19.0, npm 11.17.0. Clone at `09c434a` (v5.
 - `npm test` full chain: exit 1 — root **153/152/1** (the environmental pandas test; the `&&` chain then skips pi, as documented in F-3), `npm test --prefix pi-extension` run separately: **30/30**.
 - `check-rule-copies.js` PASS · `check-versions.js` PASS (7 files @ 5.3.2) · `npm pack --dry-run`: **46 files**, no maintainer scripts/tests/audit docs in the package (grep-verified).
 
+## Fourth pass (2026-10-25, pandas resolved in an isolated venv — no system Python touched)
+
+`python -m venv /c/tmp/ponytail-audit/venv-pandas && venv pip install pandas` (pandas 3.1.0, Python 3.11.4), then the suites with the venv's python first on PATH:
+
+| Command | Outcome |
+|---|---|
+| `node --test tests/correctness.test.js` | **18/18 pass** — the pandas-present path of F-1 now exercised end-to-end locally |
+| `node --test tests/*.test.js` | **153/153 pass, exit 0** — fully green |
+| `npm test` (full chain: root && pi) | **exit 0 — root 153/153, pi 30/30** |
+
+The one previously "environmental" failure is resolved **without modifying system Python** (isolated venv, outside the repo, discardable). Upstream CI (read-only API check) has not run on our commits — they are local-only; recent upstream runs show `action_required` (the repo's external-PR approval gate).
+
 ## Regression coverage added
 
 `tests/correctness.test.js` — `csv: missing pandas reports the dependency, not a harness traceback` (first pass);
