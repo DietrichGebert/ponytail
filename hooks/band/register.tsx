@@ -206,11 +206,13 @@ export const register: Register = (on, options) => {
     return next(e)
   }).catch(($, e, next) => next(e))
 
-  // /clear and /resume go on under another session id with an empty band and no session.start, so the band showed
-  // "off" until the first turn ended. Set it up again once a command has moved the session.
+  // /clear, /resume and /branch go on under another session id with an empty band and no session.start, so the band
+  // showed "off" until the first turn ended. Set it up again once one of them has moved the session.
+  // Only these commands: the engine labels a command's output with every plugin its hook chain ran through, so a hook on
+  // every command printed "ponytail+<plugin>:" before other plugins' commands.
   // shortcut: after /clear, ponytail-activate.js may reset the flag to the default level after this, so a level switched
   // before /clear can show until the first turn ends; a session skips a plugin's classic.SessionStart hook, the one later point.
-  on('command.run', async ($, e, next) => {
+  on('command.run', { command: ['clear', 'resume', 'branch'] }, async ($, e, next) => {
     const session = await $.session.id()
     const result = await next(e)
     if ((await $.session.id()) !== session) known = await start($).catch(() => known)

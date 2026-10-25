@@ -271,7 +271,7 @@ test('after /ponytail band the band draws nothing', async ($, on) => {
   await ui.unmount()
 })
 
-for (const command of ['clear', 'resume']) {
+for (const command of ['clear', 'resume', 'branch']) {
   test(`after /${command} the band shows the level again, with no session.start`, async ($, on) => {
     mock.clock(on)
     mock.store(on)
@@ -280,7 +280,7 @@ for (const command of ['clear', 'resume']) {
     on('fs.read', ($, e, next) => (e.path === '/home/u/.claude/.ponytail-active' ? { value: 'full' } : next(e)))
     on('session.repo', () => ({ value: { root: '/repo/shop' } }) as never)
     on('session.id', () => ({ value: session }))
-    // /clear and /resume go on under another session id; /help stays in this one.
+    // /clear, /resume and /branch go on under another session id; /help stays in this one.
     on('command.run', ($, e) => {
       if (e.command !== 'help') session = 's2'
       return { text: '' }
@@ -293,6 +293,14 @@ for (const command of ['clear', 'resume']) {
     await ui.unmount()
   })
 }
+
+test("another plugin's command runs without the band's hook, so its output is not labelled ponytail", async ($, on) => {
+  let reads = 0
+  on('session.id', () => (reads++, { value: 's1' }))
+  on('command.run', () => ({ text: '' }))
+  await $.command.run({ command: 'anymodel', args: '' })
+  expect(reads).toBe(0)
+})
 
 test('the ledger is written on Windows, where there is no mkdir', async ($, on) => {
   mock.clock(on)
