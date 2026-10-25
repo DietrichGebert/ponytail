@@ -85,3 +85,20 @@ Claude Code **host runtime**, not npm. Verified exhaustively:
 `tests/band.test.tsx` through the Claude Code plugin test runner on a machine
 with ponytail installed (`/plugin install ponytail@ponytail`). Documented in
 the audit as the one test that cannot run outside the host.
+
+## Final validation pass (2026-10-26, production-readiness gate)
+
+| Check | Result |
+|---|---|
+| `git diff --check` on the full diff (09c434a..HEAD, 11 files, +423/−13) | clean — no whitespace/conflict markers |
+| Secrets scan on the full diff | no credentials (3 regex hits are the security-review prose itself) |
+| Root suite **with pandas** (isolated venv, Python 3.11.4 + pandas 3.1.0) | **153/153, exit 0** |
+| Root suite **without pandas** (bare machine PATH) | 152/153 — only the csv/pandas test (environmental) |
+| pi-extension suite | **30/30** |
+| `check-rule-copies.js` / `check-versions.js` | PASS / PASS (7 files @ 5.3.2) |
+| Clean-package smoke (tarball from `npm pack`, extracted to a fresh dir) | activate hook exit 0 + ruleset emitted; map hook exit 0; mode-tracker `/ponytail lite` → flag updated to `lite`; `uninstall.js` exit 0 removing flag/nudge/statusline script; package has **no** tests/audit-docs/maintainer scripts; zero dependencies; `main` entry loads |
+| `rmSync` scope audit (uninstall) | all three recursive-delete targets are config-dir scoped (`~/.claude`, `~/.cursor`, `~/.codebuddy`) — never workspace content (live-verified with isolated CLAUDE_CONFIG_DIR) |
+| Prompt-injection surface (map hook) | identifiers only, charset `[$\w]`, no newlines — instruction text cannot survive extraction; residual: a directive-looking identifier (single word) appears in model context at the same trust level as any filename in `git ls-files` (accepted) |
+| Upstream conflict scan (50 open PRs) | #1289 (DST) touches different board.ts lines — no overlap; **#1212 fixes the same narrow-terminal defect as my #1292 commit** via `wrap="truncate-end"` — upstream PR exists, so my `0be5e78` should be dropped in the PR to avoid duplication |
+| `claude-code/testing` harness | still host-runtime-only; npm `@anthropic-ai/claude-code@2.1.310` ships the CLI binary only — verified by installation into an isolated dir |
+| Fork/PR | blocked: push denied 403 (account `Saitarun29` lacks write to `dietrichgebert/ponytail`); `gh` not authenticated |
