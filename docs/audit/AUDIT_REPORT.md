@@ -4,7 +4,7 @@ Auditor: autonomous staff-engineer pass per the master-mission brief.
 Scope: full repository at `09c434a` (v5.3.2), fresh clone, clean tree.
 Deliverables: this report, `SECURITY_REVIEW.md`, `TEST_RESULTS.md`, `IMPLEMENTATION_PLAN.md` (same directory).
 
-**2026-10-25 (second pass):** REA toolkit installed and used (`analyze-javascript-application` on the shipped npm package); prior findings independently challenged; F-2 upgraded from accepted-risk to fixed (see §4). Baselines re-verified.
+**2026-10-25 (second pass):** REA toolkit installed and used (`analyze-javascript-application` on the shipped npm package); prior findings independently challenged; F-2 upgraded from accepted-risk to fixed (see §4). Baselines re-verified. **(Third pass):** the F-2 fix was independently re-verified from first principles — 32-class boundary derivation, quote-inescapability proof, single-spawn structural guard — and the test suite extended to 8 tests; root 152/153, pi 30/30.
 
 ## 1. What this repository is
 
@@ -55,7 +55,7 @@ Candidates examined, all **live** — no removals made (per Phase 7 evidence rul
 ## 6. Changelog for this audit
 
 - `benchmarks/correctness.js` + `tests/correctness.test.js`: csv-check dependency diagnosability fix with regression test (F-1). 2 files, +37/−3.
-- `scripts/publish-openclaw-skills.js` + `tests/publish-args-safety.test.js` (second pass): publish-argument shell-injection allowlist + import-safety, with 5 regression tests (F-2). 2 files, +26/−4 and +47 new.
+- `scripts/publish-openclaw-skills.js` + `tests/publish-args-safety.test.js` (second pass): publish-argument shell-injection allowlist + import-safety, with 8 regression tests after independent verification (F-2).
 
 ### REA verification (second pass)
 

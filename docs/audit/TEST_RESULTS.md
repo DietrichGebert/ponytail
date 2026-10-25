@@ -19,19 +19,26 @@ Machine: Windows 10 (win32), Node v24.19.0, npm 11.17.0. Clone at `09c434a` (v5.
 
 | Command | Outcome |
 |---|---|
-| `node --test tests/*.test.js` | **150 tests — 149 pass, 1 fail** (same environmental pandas test; +5 new publish-safety tests all pass) |
+| `node --test tests/*.test.js` | **153 tests — 152 pass, 1 fail** (same environmental pandas test; +8 publish-safety tests all pass) |
 | `npm test --prefix pi-extension` | **30/30 pass** |
-| `node --test tests/publish-args-safety.test.js` | **5/5 pass** (import-safety, allowlist accepts, 8 injection vectors refused, quote display, displayName) |
+| `node --test tests/publish-args-safety.test.js` | **8/8 pass** (import-safety; allowlist accepts; 8 known injection vectors + 15 derived boundary/encoding classes refused; structural single-spawn/validated-first/no-eval guard; all arg sources covered incl. version + displayName charset proof; quote display; displayName) |
 | `node scripts/check-rule-copies.js` / `check-versions.js` | PASS / PASS (unchanged) |
 | `npm pack --dry-run` | OK — 46 files (publish script is not shipped; fix affects maintainer tooling only) |
 | Dependency-absent path (live) | `correctness()` on a pandas-importing submission returns the clear dependency message — verified by direct call this pass |
 | Dependency-present path | Not executable on this machine (would require installing pandas — not authorized); the gate is a two-clause boolean whose false-branch is the previously shipped CI-green behavior; CI runs it on every push |
 | REA | `analyze-javascript-application` on shipped tarball: ran, 0 parse failures, 0 integrity contradictions (see AUDIT_REPORT §REA verification) |
 
+## Third pass (2026-10-25, independent patch verification)
+
+- Independent boundary derivation (not payload-list-based): 32 shell-relevant character/payload classes tested against `SAFE_ARG` — all blocked; `quote()` proven unable to be terminated early or escaped (its content can never contain `"` or `\`, both outside the allowlist); exactly 1 `spawnSync` site, 0 `eval`/`Function`, `args.forEach(assertSafeArg)` textually precedes the spawn; `...passthrough` flows through the same validated array.
+- Windows behavior: `shell:true` on win32 resolves to `cmd.exe` (COMSPEC); `%`, `^`, `!`, `&` all blocked — no cmd.exe expansion/separator path exists through allowlisted chars. (POSIX sh: `$`, backtick, `;`, `|`, `&`, `<`, `>`, `()`, newline all blocked.)
+- `npm test` full chain: exit 1 — root **153/152/1** (the environmental pandas test; the `&&` chain then skips pi, as documented in F-3), `npm test --prefix pi-extension` run separately: **30/30**.
+- `check-rule-copies.js` PASS · `check-versions.js` PASS (7 files @ 5.3.2) · `npm pack --dry-run`: **46 files**, no maintainer scripts/tests/audit docs in the package (grep-verified).
+
 ## Regression coverage added
 
 `tests/correctness.test.js` — `csv: missing pandas reports the dependency, not a harness traceback` (first pass);
-`tests/publish-args-safety.test.js` — 5 tests covering the F-2 publish-argument allowlist (second pass): forces the no-pandas probe state via the new `resetPythonProbe('python', false)` seam, asserts `pass === false` and `reason` names pandas, restores the live probe in `finally`.
+`tests/publish-args-safety.test.js` — 8 tests covering the F-2 publish-argument allowlist (second pass: 5; third pass: +3 — derived boundary classes, structural single-spawn guard, arg-source coverage): forces the no-pandas probe state via the new `resetPythonProbe('python', false)` seam, asserts `pass === false` and `reason` names pandas, restores the live probe in `finally`.
 
 ## Pre-existing vs introduced
 
