@@ -58,13 +58,20 @@ function exec(cmd, opts = {}) {
 // Prefer one with pandas (the csv task needs it): on Windows python3 can be a
 // bundled Python without it while python has it (#919).
 let pythonCmd;
+let pythonHasPandas;
 function python() {
   if (pythonCmd) return pythonCmd;
   const candidates = ['python3', 'python'];
-  pythonCmd = candidates.find((cmd) => exec(`${cmd} -c "import pandas"`).ok)
-    || candidates.find((cmd) => exec(`${cmd} -c "import sys"`).ok)
-    || 'python3';
+  const withPandas = candidates.find((cmd) => exec(`${cmd} -c "import pandas"`).ok);
+  pythonHasPandas = Boolean(withPandas);
+  pythonCmd = withPandas || candidates.find((cmd) => exec(`${cmd} -c "import sys"`).ok) || 'python3';
   return pythonCmd;
+}
+
+// ponytail: tests simulate a machine without pandas; nothing else may call this.
+function resetPythonProbe(cmd = null, hasPandas = null) {
+  pythonCmd = cmd;
+  pythonHasPandas = hasPandas;
 }
 
 // Write content to a temp file, return the path.
@@ -183,6 +190,13 @@ setTimeout(() => {
   csv(blocks) {
     const code = blocks.find((b) => b.lang === 'python' || b.lang === 'py' || (!b.lang && b.code.includes('csv') && b.code.includes('sum')));
     if (!code) return { pass: false, reason: 'No Python code block found' };
+    // No python on this machine has pandas and this code imports it: it cannot
+    // run. Say so instead of letting the import raise a traceback in the harness.
+    // Code without the import (print(999), raise) still executes and is judged.
+    python();
+    if (!pythonHasPandas && /import\s+pandas|from\s+pandas/.test(code.code)) {
+      return { pass: false, reason: 'pandas is not installed for python3 or python; the csv check needs it (CI runs: pip install pandas)' };
+    }
 
     // Create a test CSV and wrap the generated code so it reads it.
     const csvContent = 'name,amount\nAlice,100.5\nBob,200.0\nCharlie,50.5\n';
@@ -289,3 +303,4 @@ module.exports = (output, context) => {
     reason: result.reason,
   };
 };
+module.exports.resetPythonProbe = resetPythonProbe;

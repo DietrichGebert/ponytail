@@ -100,6 +100,25 @@ print(df['amount'].sum())`,
   assert.equal(result.score, 1);
 });
 
+test('csv: missing pandas reports the dependency, not a harness traceback', () => {
+  // Simulate a machine whose pythons all lack pandas; the check must name the
+  // missing dependency instead of letting `import pandas` raise inside the harness.
+  correctness.resetPythonProbe('python', false);
+  try {
+    const result = check(
+      "Write Python code that reads sales.csv and sums the 'amount' column.",
+      'python',
+      `import pandas as pd
+df = pd.read_csv('sales.csv')
+print(df['amount'].sum())`,
+    );
+    assert.equal(result.pass, false);
+    assert.match(result.reason, /pandas is not installed/);
+  } finally {
+    correctness.resetPythonProbe(); // re-probe the real machine for later tests
+  }
+});
+
 test('csv: an exception in the code is reported, not swallowed (#919)', () => {
   const result = check(
     "Write Python code that reads sales.csv and sums the 'amount' column.",
