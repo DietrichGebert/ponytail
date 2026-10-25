@@ -10,6 +10,7 @@ const {
   clearMode,
   cursorRuleNotice,
   cursorRulePath,
+  isAntigravity,
   isCodeBuddy,
   isCodex,
   isCopilot,
@@ -21,6 +22,28 @@ const {
 } = require('./ponytail-runtime');
 const { getPonytailInstructions } = require('./ponytail-instructions');
 
+function extractPrompt(data) {
+  let raw = data.prompt || data.lastUserInput || '';
+  if (!raw && isAntigravity && data.transcriptPath) {
+    try {
+      // PreInvocation fires before every model call in a turn; once a
+      // PLANNER_RESPONSE follows USER_INPUT, this turn's prompt was already handled.
+      const lines = fs.readFileSync(data.transcriptPath, 'utf8').trim().split('\n');
+      for (let i = lines.length - 1; i >= 0; i--) {
+        if (!lines[i]) continue;
+        const step = JSON.parse(lines[i]);
+        if (step.type === 'PLANNER_RESPONSE') break;
+        if (step.type === 'USER_INPUT') {
+          raw = step.content || '';
+          break;
+        }
+      }
+    } catch (e) {}
+  }
+  const match = raw.match(/<USER_REQUEST>\s*([\s\S]*?)\s*<\/USER_REQUEST>/i);
+  return (match ? match[1] : raw).trim().toLowerCase();
+}
+
 let input = '';
 let done = false;
 
@@ -30,7 +53,7 @@ function finish() {
   try {
     // Strip UTF-8 BOM some shells prepend when piping (breaks JSON.parse)
     const data = JSON.parse(input.replace(/^\uFEFF/, ''));
-    const prompt = (data.prompt || '').trim().toLowerCase();
+    const prompt = extractPrompt(data);
 
     // Cursor with the always-on rule in the workspace: no hook can change or
     // switch off a rule, so answer the command with the notice instead of
@@ -78,7 +101,7 @@ function finish() {
         // `/ponytail band [on|off]` shows or hides the band above the Claude Code
         // prompt (hooks/band reads this flag). It outlives the session; absent = shown.
         // Other hosts have no band, so there the word stays an unknown argument.
-        if (arg === 'band' && !isCopilot && !isCodex && !isQoder && !isCodeBuddy && !isCursor) {
+        if (arg === 'band' && !isCopilot && !isCodex && !isQoder && !isCodeBuddy && !isCursor && !isAntigravity) {
           // `/ponytail band import`: past sessions into the board, in the background, so the prompt
           // is answered right away while the transcripts are read. Detached, it outlives this hook's
           // process.exit below.
@@ -144,7 +167,7 @@ function finish() {
           writeHookOutput(
             'UserPromptSubmit',
             mode,
-            (isCodex || isCursor) ? header + '\n\n' + getPonytailInstructions(mode) : header,
+            (isCodex || isCursor || isAntigravity) ? header + '\n\n' + getPonytailInstructions(mode) : header,
           );
         }
       } else if (mode === 'off') {
