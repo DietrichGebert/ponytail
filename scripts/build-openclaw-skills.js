@@ -26,6 +26,7 @@ const DESCRIPTIONS = {
 };
 
 const SKILLS_DIR = path.join(ROOT, 'skills');
+const OUT_DIR = path.join(ROOT, '.openclaw', 'skills');
 const NAMES = fs.readdirSync(SKILLS_DIR, { withFileTypes: true })
   .filter((e) => e.isDirectory() && fs.existsSync(path.join(SKILLS_DIR, e.name, 'SKILL.md')))
   .map((e) => e.name)
@@ -50,12 +51,25 @@ function render(name) {
 }
 
 function outPath(name) {
-  return path.join(ROOT, '.openclaw', 'skills', name, 'SKILL.md');
+  return path.join(OUT_DIR, name, 'SKILL.md');
+}
+
+// Remove generated dirs whose skill was deleted or renamed, so publish cannot
+// pick up a stale slug.
+function prune() {
+  if (!fs.existsSync(OUT_DIR)) return;
+  for (const e of fs.readdirSync(OUT_DIR, { withFileTypes: true })) {
+    if (!e.isDirectory() || NAMES.includes(e.name)) continue;
+    const p = path.join(OUT_DIR, e.name);
+    fs.rmSync(p, { recursive: true });
+    console.log('removed', path.relative(ROOT, p).replace(/\\/g, '/'));
+  }
 }
 
 module.exports = { DESCRIPTIONS, NAMES, render, outPath, sourceBody };
 
 if (require.main === module) {
+  prune();
   for (const name of NAMES) {
     const p = outPath(name);
     fs.mkdirSync(path.dirname(p), { recursive: true });

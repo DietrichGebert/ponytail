@@ -28,7 +28,7 @@ removeIfExists(path.join(getClaudeDir(), '.ponytail-statusline-nudged'), 'status
 removeIfExists(path.join(getClaudeDir(), '.ponytail-band'), 'band flag');
 removeIfExists(path.join(os.homedir(), '.cursor', '.ponytail-active'), 'Cursor mode flag');
 removeIfExists(path.join(getQoderDir(), '.ponytail-active'), 'Qoder mode flag');
-for (const dir of [path.join(getClaudeDir(), 'ponytail-modes'), path.join(os.homedir(), '.cursor', 'ponytail-modes'), path.join(process.env.CODEBUDDY_CONFIG_DIR || path.join(os.homedir(), '.codebuddy'), 'ponytail-modes')]) {
+for (const dir of [path.join(getClaudeDir(), 'ponytail-modes'), path.join(getQoderDir(), 'ponytail-modes'), path.join(os.homedir(), '.cursor', 'ponytail-modes'), path.join(process.env.CODEBUDDY_CONFIG_DIR || path.join(os.homedir(), '.codebuddy'), 'ponytail-modes')]) {
   if (fs.existsSync(dir)) {
     fs.rmSync(dir, { recursive: true });
     console.log(`Removed per-project mode flags: ${dir}`);
@@ -48,9 +48,9 @@ try {
   const hooksFile = cursorHooks.uninstall('user');
   if (hooksFile) console.log(`Removed ponytail hooks from ${hooksFile}`);
 } catch (e) {
-  if (e instanceof SyntaxError) {
-    // ponytail: malformed hooks.json — can't safely edit it; leave intact, warn
-    console.warn(`~/.cursor/hooks.json is malformed — could not remove the ponytail hook entries. Remove them manually from: ${cursorHooks.hooksPath('user')} (${e.message})`);
+  if (e instanceof SyntaxError || e.code === 'EINVALID') {
+    // ponytail: can't safely edit this hooks.json; leave intact, warn
+    console.warn(`~/.cursor/hooks.json is malformed or has an unexpected shape — could not remove the ponytail hook entries. Remove them manually from: ${cursorHooks.hooksPath('user')} (${e.message})`);
   } else {
     throw e;
   }

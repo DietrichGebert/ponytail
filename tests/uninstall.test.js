@@ -42,6 +42,10 @@ const qoderCustomDir = path.join(temp, 'qoder-custom-config');
 const qoderCustomFlagPath = path.join(qoderCustomDir, '.ponytail-active');
 fs.mkdirSync(qoderCustomDir, { recursive: true });
 fs.writeFileSync(qoderCustomFlagPath, 'lite');
+// #1279: Qoder keeps per-project mode flags beside its shared flag.
+const qoderModePath = path.join(home, '.qoder', 'ponytail-modes', 'project-hash');
+fs.mkdirSync(path.dirname(qoderModePath), { recursive: true });
+fs.writeFileSync(qoderModePath, 'ultra');
 
 // OpenCode keeps its flag beside its own config; a leftover "off" would start a
 // reinstall switched off.
@@ -99,6 +103,7 @@ let result = runUninstall(env);
 assert.equal(result.status, 0, result.stderr);
 assert.equal(fs.existsSync(flagPath), false, 'mode flag must be removed');
 assert.equal(fs.existsSync(qoderFlagPath), false, 'Qoder mode flag must be removed');
+assert.equal(fs.existsSync(qoderModePath), false, 'Qoder per-project mode flags must be removed');
 assert.equal(fs.existsSync(opencodeFlagPath), false, 'OpenCode mode flag must be removed');
 assert.equal(fs.existsSync(qoderCustomFlagPath), true, 'default Qoder uninstall must not touch a separate custom config');
 assert.equal(fs.existsSync(nudgeFlagPath), false, 'statusline nudge flag must be removed');
@@ -166,6 +171,28 @@ assert.equal(
 result = runUninstall({ ...env, QODER_CONFIG_DIR: qoderCustomDir });
 assert.equal(result.status, 0, result.stderr);
 assert.equal(fs.existsSync(qoderCustomFlagPath), false, 'Qoder custom config mode flag must be removed');
+
+// #1263: a hooks.json with the wrong shape must warn and continue, so the
+// settings.json cleanup below still happens and the file stays untouched.
+const wrongShapeHooks = { version: 1, hooks: [] };
+fs.writeFileSync(cursorHooksPath, JSON.stringify(wrongShapeHooks));
+fs.writeFileSync(settingsPath, JSON.stringify({
+  statusLine: { type: 'command', command: 'bash /p/ponytail-statusline.sh' },
+}));
+
+result = runUninstall(env);
+assert.equal(result.status, 0, result.stderr);
+assert.match(result.stdout + result.stderr, /hooks\.json .*could not remove/i, 'must warn that the Cursor hook entries could not be removed');
+assert.deepEqual(
+  JSON.parse(fs.readFileSync(cursorHooksPath, 'utf8')),
+  wrongShapeHooks,
+  'wrong-shaped hooks.json must be left unchanged',
+);
+assert.equal(
+  JSON.parse(fs.readFileSync(settingsPath, 'utf8')).statusLine,
+  undefined,
+  'statusLine cleanup must still run after a bad hooks.json',
+);
 
 // #434: a malformed settings.json must not crash the script mid-cleanup. It
 // can't be safely edited, so uninstall warns and leaves the file byte-for-byte
