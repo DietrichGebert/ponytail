@@ -233,6 +233,40 @@ const BAND = {
   props: { hasSurvey: false, isWorking: false, maxRows: 12, bodyColumns: 100, scroll: { offset: 0, bodyRows: 12 }, view: {} },
 } as const
 
+test('a narrow band drops the quiet extras so the numbers stay readable (#1292)', async ($, on) => {
+  mock.clock(on)
+  mock.store(on)
+  on('env.get', ($, e) => ({ value: e.name === 'HOME' ? '/home/u' : undefined }))
+  on('session.repo', () => ({ value: { root: '/repo/shop' } }) as never)
+  on('session.id', () => ({ value: 's1' }))
+  on('session.turns', () => ({ value: 1 }))
+  // The session baseline costs $0.50; the turn then reports $0.70, so the last turn cost $0.20.
+  let calls = 0
+  on('session.usage', () => ({ value: { startedAt: 0, cost: { usd: calls++ === 0 ? 0.5 : 0.7 } } }) as never)
+  on('process.run', () => ({ value: { exitCode: 1, stdout: '', stderr: '' } }) as never)
+  on('fs.read', () => ({ deny: 'missing' }) as never)
+  on('fs.list', () => ({ value: [] }))
+  on('fs.write', () => ({ value: undefined }))
+  on('session.start', ($, e) => ({ cwd: e.cwd }))
+  on('turn.complete', () => ({ text: '' }))
+  await $.session.start({ cwd: '/repo/shop', surface: null } as never)
+  await $.turn.complete({ answer: '', durationMs: 1000 } as never)
+
+  const wide = await $.ui.mount({ plugin: 'ponytail', surface: 'terminal', ...BAND, props: { ...BAND.props, bodyColumns: 100 } })
+  expect(await wide.find({ type: 'Text', text: /last \$0\.20/ })).toBeDefined()
+  expect(await wide.find({ type: 'Text', text: /^1s$/ })).toBeDefined()
+  await wide.unmount()
+
+  // A phone-sized terminal: each <Text> would shrink and the numbers get cut into unreadable pieces.
+  const narrow = await $.ui.mount({ plugin: 'ponytail', surface: 'terminal', ...BAND, props: { ...BAND.props, bodyColumns: 48 } })
+  expect(await narrow.find({ type: 'Text', text: /last \$0\.20/ })).toBeUndefined()
+  expect(await narrow.find({ type: 'Text', text: /^1s$/ })).toBeUndefined()
+  expect(await narrow.find({ key: 'level' })).toBeDefined()
+  expect(await narrow.find({ type: 'Text', text: /\$0\.70/ })).toBeDefined()
+  expect(await narrow.find({ key: 'board' })).toBeDefined()
+  await narrow.unmount()
+})
+
 test('the band switches between compact and details on terminal and desktop', async ($, on) => {
   mock.clock(on)
   mock.store(on)
