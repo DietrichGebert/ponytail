@@ -32,13 +32,14 @@ This same install also covers the Codex desktop app: restart the app after insta
 ## Muse Code
 
 ```bash
-muse plugins marketplace add ponytail https://github.com/DietrichGebert/ponytail
-muse plugins install ponytail@ponytail
+git clone https://github.com/DietrichGebert/ponytail
+muse plugins install ./ponytail/muse
+muse plugins approve ponytail
 ```
 
-Review and approve its lifecycle hooks (`muse plugins approve ponytail`), then start a new session. Ponytail ships a native Muse plugin ([`.muse-plugin/plugin.json`](.muse-plugin/plugin.json)), so Muse loads it natively, not through the Claude-compatible import, and levels work as in Claude Code: type `/ponytail lite`, `/ponytail ultra` and so on as plain messages. The Claude `userConfig` options (task board, webhook) are Claude/Codex-only and are not declared in the Muse bundle.
+Then start a new session. The bundle in [`muse/`](muse/) is a self-contained native Muse plugin (generated from `skills/` and `hooks/` by `scripts/build-muse-bundle.js`), so Muse loads it natively with zero diagnostics, not through the Claude-compatible import. It ships as its own plugin root because Muse allows exactly one host manifest per plugin root. Levels work as in Claude Code: type `/ponytail lite`, `/ponytail ultra` and so on as plain messages. The Claude `userConfig` options (task board, webhook) are Claude/Codex-only and are not declared in the Muse bundle.
 
-From a checkout instead: `muse plugins install /path/to/ponytail`; update a checkout install with `muse plugins update ponytail`. Remove with `muse plugins remove ponytail`.
+Update with `git -C ponytail pull`, then `muse plugins update ponytail`. Remove with `muse plugins remove ponytail`.
 
 Skills only, without hooks or persistent levels: `muse skills install ./skills/ponytail --scope user` (repeat per skill). For the always-on ruleset in every project, copy [`AGENTS.md`](AGENTS.md) to `~/.config/muse/AGENTS.md`.
 

@@ -24,7 +24,7 @@ const VERSION_FILES = [
   '.devin-plugin/plugin.json',   // Devin CLI plugin
   '.github/plugin/plugin.json',  // Copilot plugin
   '.qoder-plugin/plugin.json',   // Qoder plugin
-  '.muse-plugin/plugin.json',    // Muse Code native plugin
+  'muse/.muse-plugin/plugin.json', // Muse Code native plugin bundle
   'gemini-extension.json',       // Gemini CLI extension
   'package.json',                // pi-package / repo root
 ];
