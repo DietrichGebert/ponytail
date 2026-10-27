@@ -366,7 +366,9 @@ export const register: Register = (on, options) => {
     }
 
     const { Box, Text, Button } = $.ui.resolve(e)
-    const stack = (mine: NonNullable<typeof below>) => (below ? <Box flexDirection="column">{mine}{below}</Box> : mine)
+    // bodyColumns counts terminal cells; a graphical surface draws Buttons wider than their cells, so a row sized to it wraps there.
+    const width = e.surface === 'terminal' ? e.props.bodyColumns : undefined
+    const stack =(mine: NonNullable<typeof below>) => (below ? <Box flexDirection="column">{mine}{below}</Box> : mine)
 
     const testsText =
       b.tests.state === 'pass'
@@ -383,7 +385,7 @@ export const register: Register = (on, options) => {
 
     if (!b.details) {
       return stack(
-        <Box flexDirection="row" alignItems="center" gap={2} width={e.props.bodyColumns}>
+        <Box flexDirection="row" alignItems="center" gap={2} width={width}>
           {/* A click opens the four levels: one click, one turn, no stops on levels nobody wanted. */}
           <Button key="level" plain onPress={toggle}>
             <Text color={b.level === 'off' ? 'inactive' : 'suggestion'}>●</Text> {b.level}
@@ -463,7 +465,7 @@ export const register: Register = (on, options) => {
     }
 
     return stack(
-      <Box flexDirection="column" gap={1} width={e.props.bodyColumns}>
+      <Box flexDirection="column" gap={1} width={width}>
         <Box flexDirection="row" alignItems="center" gap={1}>
           {LEVELS.map(level => (
             <Button

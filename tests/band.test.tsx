@@ -254,6 +254,18 @@ test('the band switches between compact and details on terminal and desktop', as
   }
 })
 
+test('the row takes bodyColumns only in the terminal, where a Button is as wide as its cells', async ($, on) => {
+  mock.clock(on)
+  mock.store(on)
+  for (const [surface, width] of [['terminal', 100], ['vscode', undefined]] as const) {
+    const ui = await $.ui.mount({ plugin: 'ponytail', surface, ...BAND })
+    expect((await ui.find({ type: 'Box' }))?.props.width).toBe(width)
+    await ui.press({ key: 'details' })
+    expect((await ui.find({ type: 'Box' }))?.props.width).toBe(width)
+    await ui.unmount()
+  }
+})
+
 test('after /ponytail band the band draws nothing', async ($, on) => {
   mock.clock(on)
   mock.store(on)
