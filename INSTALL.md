@@ -2,7 +2,7 @@
 
 Pick your agent below. Not listed? Most agents read [`AGENTS.md`](AGENTS.md): copy it into your project, or ask your agent to install [`skills/ponytail/SKILL.md`](skills/ponytail/SKILL.md) as a skill. Which files map to which agent: [Agent portability](docs/agent-portability.md).
 
-The Claude Code and Codex plugins (and the Cursor hooks) run two tiny Node.js lifecycle hooks, so `node` needs to be on your PATH (note for Nix/nvm users: it must be on the non-interactive shell's PATH). If it isn't, the skills still work, but every hook call shows a harmless `node: command not found` error; installing Node (or putting it on that PATH) makes it go away.
+The Claude Code, Codex and Muse Code plugins (and the Cursor hooks) run two tiny Node.js lifecycle hooks, so `node` needs to be on your PATH (note for Nix/nvm users: it must be on the non-interactive shell's PATH). If it isn't, the skills still work, but every hook call shows a harmless `node: command not found` error; installing Node (or putting it on that PATH) makes it go away.
 
 ## Claude Code
 
@@ -28,6 +28,19 @@ codex plugin add ponytail@ponytail
 Run `codex` and open `/hooks`, review and trust its two lifecycle hooks, and start a new thread.
 
 This same install also covers the Codex desktop app: restart the app after installing and it picks up the plugin.
+
+## Muse Code
+
+```bash
+muse plugins marketplace add ponytail https://github.com/DietrichGebert/ponytail
+muse plugins install ponytail@ponytail
+```
+
+Review and approve its lifecycle hooks (`muse plugins approve ponytail`), then start a new session. Ponytail ships a native Muse plugin ([`.muse-plugin/plugin.json`](.muse-plugin/plugin.json)), so Muse loads it natively, not through the Claude-compatible import, and levels work as in Claude Code: type `/ponytail lite`, `/ponytail ultra` and so on as plain messages. The Claude `userConfig` options (task board, webhook) are Claude/Codex-only and are not declared in the Muse bundle.
+
+From a checkout instead: `muse plugins install /path/to/ponytail`; update a checkout install with `muse plugins update ponytail`. Remove with `muse plugins remove ponytail`.
+
+Skills only, without hooks or persistent levels: `muse skills install ./skills/ponytail --scope user` (repeat per skill). For the always-on ruleset in every project, copy [`AGENTS.md`](AGENTS.md) to `~/.config/muse/AGENTS.md`.
 
 ## GitHub Copilot CLI
 

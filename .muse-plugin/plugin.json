@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "name": "ponytail",
+  "displayName": "Ponytail",
+  "version": "5.3.2",
+  "description": "Lazy senior dev mode. Forces the simplest, shortest solution that actually works: YAGNI, stdlib first, no unrequested abstractions.",
+  "compat": {
+    "source": "native",
+    "manifestDir": ".muse-plugin"
+  },
+  "capabilities": {
+    "skills": [
+      { "id": "ponytail", "path": "skills/ponytail/SKILL.md", "enabledDefault": true },
+      { "id": "ponytail-review", "path": "skills/ponytail-review/SKILL.md", "enabledDefault": true },
+      { "id": "ponytail-audit", "path": "skills/ponytail-audit/SKILL.md", "enabledDefault": true },
+      { "id": "ponytail-debt", "path": "skills/ponytail-debt/SKILL.md", "enabledDefault": true },
+      { "id": "ponytail-gain", "path": "skills/ponytail-gain/SKILL.md", "enabledDefault": true },
+      { "id": "ponytail-help", "path": "skills/ponytail-help/SKILL.md", "enabledDefault": true }
+    ],
+    "commands": [],
+    "hooks": [
+      { "id": "activate", "event": "SessionStart", "command": ["node", "hooks/ponytail-activate.js"], "timeoutMs": 15000, "statusMessage": "Loading ponytail mode..." },
+      { "id": "mode-tracker", "event": "UserPromptSubmit", "command": ["node", "hooks/ponytail-mode-tracker.js"], "timeoutMs": 15000, "statusMessage": "Tracking ponytail mode..." },
+      { "id": "subagent", "event": "SubagentStart", "command": ["node", "hooks/ponytail-subagent.js"], "timeoutMs": 15000, "statusMessage": "Loading ponytail mode..." }
+    ],
+    "mcpServers": [],
+    "reminders": []
+  }
+}
