@@ -518,3 +518,31 @@ test('a test run shows its count, and an edit in the project after it marks the 
   expect(await ui.find({ type: 'Text', text: /no test since change/ })).toBeDefined()
   await ui.unmount()
 })
+
+test('git grep stops in time, so a huge untracked tree cannot hold up session start or a turn', async ($, on) => {
+  mock.clock(on)
+  mock.store(on)
+  const env: Record<string, string> = { HOME: '/home/u' }
+  on('env.get', ($, e) => ({ value: env[e.name] }))
+  on('session.repo', () => ({ value: { root: '/repo/shop' } }) as never)
+  on('session.id', () => ({ value: 's1' }))
+  on('session.turns', () => ({ value: 1 }))
+  on('session.usage', () => ({ value: { startedAt: 0, cost: { usd: 0 } } }) as never)
+  const limits: unknown[] = []
+  on('process.run', ($, e) => {
+    if (e.argv[0] === 'git') limits.push(e.init?.timeoutMs)
+    return { value: { exitCode: 1, stdout: '', stderr: '', isStdoutTruncated: false, isStderrTruncated: false } } as never
+  })
+  on('fs.read', () => ({ deny: 'missing' }) as never)
+  on('fs.list', () => ({ value: [] }))
+  on('fs.write', () => ({ value: undefined }))
+  on('tool.call', { tool: 'Edit' }, () => ({ result: {}, text: 'ok' }) as never)
+  on('session.start', ($, e) => ({ cwd: e.cwd }))
+  on('turn.complete', () => ({ text: '' }))
+  await $.session.start({ cwd: '/repo/shop', surface: null } as never)
+  // Removing a definition makes the turn grep for callers that still use it.
+  await $.tool.call({ tool: 'Edit', file_path: '/repo/shop/cart.py', old_string: 'def total(items):\n    return sum(items)\n', new_string: '', replace_all: false } as never)
+  await $.turn.complete({ answer: '', durationMs: 1000 } as never)
+  // One grep at session start, one for the removed `total`: each well under the engine's 30 s default.
+  expect(limits.map((ms) => typeof ms === 'number' && ms <= 5000)).toEqual([true, true])
+})

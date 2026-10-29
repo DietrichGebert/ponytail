@@ -197,9 +197,12 @@ async function openBoard($: EngineInterface) {
   await $.process.run(windows ? ['cmd', '/c', 'start', '', file] : [mac ? 'open' : 'xdg-open', file])
 }
 
+// shortcut: git grep stops after 3 s, like the codebase map, so a tree too big to search in time (a home folder in git) shows no reuse; grep after session start if big repos need it.
+const GREP_LIMIT = { timeoutMs: 3000 }
+
 // Sets the band up for a session (level, project, task row, cost baseline); returns the definitions that exist now.
 async function start($: EngineInterface): Promise<Map<string, string>> {
-  const grep = await $.process.run(['git', 'grep', '--untracked', '-nE', GREP_DEFS]).catch(() => undefined)
+  const grep = await $.process.run(['git', 'grep', '--untracked', '-nE', GREP_DEFS], GREP_LIMIT).catch(() => undefined)
   const level = await readLevel($)
   const details = (await $.store.get('details')) === true
   const repo = await $.session.repo().catch(() => null)
@@ -313,7 +316,7 @@ export const register: Register = (on, options) => {
     const stillRemoved: string[] = []
     const open: string[] = []
     for (const name of removed) {
-      const grep = await $.process.run(['git', 'grep', '--untracked', '-nw', '-e', name]).catch(() => undefined)
+      const grep = await $.process.run(['git', 'grep', '--untracked', '-nw', '-e', name], GREP_LIMIT).catch(() => undefined)
       const rows = hits(grep?.stdout ?? '')
       if (rows.some(r => defsIn(r.file, r.text.trimStart()).includes(name))) continue
       const call = new RegExp(`(?<![\\w$])${name.replace(/\$/g, '\\$')}\\s*\\(`)
