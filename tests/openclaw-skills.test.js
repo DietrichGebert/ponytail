@@ -6,7 +6,20 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('fs');
+const path = require('path');
 const { NAMES, render, outPath, sourceBody, DESCRIPTIONS } = require('../scripts/build-openclaw-skills');
+
+const dirs = (d) => fs.readdirSync(d, { withFileTypes: true }).filter((e) => e.isDirectory()).map((e) => e.name).sort();
+
+test('.openclaw/skills holds exactly the DESCRIPTIONS names', () => {
+  assert.deepEqual(dirs(path.join(__dirname, '..', '.openclaw', 'skills')), [...NAMES].sort());
+});
+
+test('every skills/*/SKILL.md has a DESCRIPTIONS entry', () => {
+  const skills = path.join(__dirname, '..', 'skills');
+  const missing = dirs(skills).filter((n) => fs.existsSync(path.join(skills, n, 'SKILL.md')) && !NAMES.includes(n));
+  assert.deepEqual(missing, []);
+});
 
 for (const name of NAMES) {
   test(`${name}: committed OpenClaw skill matches the generator`, () => {
