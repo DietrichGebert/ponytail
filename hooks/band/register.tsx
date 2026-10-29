@@ -77,7 +77,7 @@ const band = atom({ plugin: 'ponytail', key: 'band' } as const, EMPTY)
 const load = async ($: EngineInterface): Promise<Band> => ({ ...EMPTY, ...(await read($, band)) })
 
 const union = (a: string[], b: string[]) => [...new Set([...a, ...b])]
-const base = (path: string) => path.replace(/\/+$/, '').split('/').pop() ?? path
+const base = (path: string) => path.replace(/[\\/]+$/, '').split(/[\\/]+/).pop() ?? path
 
 // Windows sets USERPROFILE, not HOME.
 const home = async ($: EngineInterface) => (await $.env.get('HOME')) ?? (await $.env.get('USERPROFILE'))
