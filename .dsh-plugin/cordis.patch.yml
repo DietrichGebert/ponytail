@@ -1,0 +1,24 @@
+# DeepSeek Harness bundle. Mounts one host-plane plugin that reads this repo's
+# own skills/ and hooks/ — there is no vendored copy, so the ruleset cannot
+# drift from the rest of the repo.
+#
+# Surfaces:
+#   - the six skills registered on ctx.skills; DSH turns each into a native
+#     `/name` invocation, so /ponytail-review, /ponytail-audit, /ponytail-debt,
+#     /ponytail-gain and /ponytail-help need no command rows. A host command
+#     SHADOWS a skill of the same name (dsh-client-ui-skill), which is why only
+#     /ponytail itself is a command.
+#   - the `ponytail` command: /ponytail [lite|full|ultra|off]; no argument
+#     reports the current level.
+#   - a per-agent system-prompt section carrying the level-filtered ruleset.
+#     `off` DISPOSES the registration: systemPrompt.assemble() keeps sections
+#     whose text renders empty, so returning '' would not be a real gate.
+#
+# defaultMode: the level every session starts at. Anything else falls back to
+# the repo's own resolution order (PONYTAIL_DEFAULT_MODE, then
+# ~/.config/ponytail/config.json, then 'full').
+- insert:
+    - id: ponytail
+      name: 'ponytail-dsh'
+      config:
+        defaultMode: full

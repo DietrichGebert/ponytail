@@ -112,6 +112,26 @@ Qoder auto-loads `AGENTS.md` from the repo root as always-on context, so running
 
 For full plugin-tier support (automatic mode activation + ruleset injection on every prompt), install ponytail as a Qoder plugin (`qodercli plugins install <path-to-ponytail>`): the manifest loads [`hooks/qoder-hooks.json`](hooks/qoder-hooks.json) and Qoder fills in `${QODER_PLUGIN_ROOT}`. Without the plugin, copy those hooks into your `.qoder/settings.json` and replace `${QODER_PLUGIN_ROOT}` with the path to your ponytail checkout. Qoder's `UserPromptSubmit` hook activates the default mode on first prompt and injects the ruleset every turn; `PreToolUse` with `task|Task` matcher injects the ruleset into subagents. Level switches (`/ponytail lite|full|ultra|off`) work automatically.
 
+## DeepSeek Harness
+
+DeepSeek Harness installs ponytail as a Cordis bundle in one profile, so nothing in the Harness
+application is modified and removing the bundle removes every trace:
+
+```bash
+dsh plugin --profile <profile> add <path-to-ponytail>/.dsh-plugin
+```
+
+The bundle at [`.dsh-plugin/`](.dsh-plugin/) reads this repo's own `skills/` and `hooks/` — there is
+no vendored copy, so the ruleset cannot drift from the rest of the repo. It registers the six
+skills, which Harness exposes as native `/ponytail-review`, `/ponytail-audit`, `/ponytail-debt`,
+`/ponytail-gain` and `/ponytail-help` invocations, adds `/ponytail [lite|full|ultra|off]` as a
+command, and injects the level-filtered ruleset as a system-prompt section in every session. Levels
+are per session; `defaultMode` in the bundle's `cordis.patch.yml` sets where a new session starts.
+
+Only `/ponytail` is a command: Harness resolves a host command before a skill of the same name, so
+registering all six as commands would make the skills unreachable. `/ponytail off` disposes the
+prompt section rather than blanking it, so the ruleset leaves the assembled prompt entirely.
+
 ## Antigravity CLI
 
 ```bash
@@ -235,6 +255,7 @@ Jules (Google) reads `AGENTS.md` from the repository root, which this repo ships
 | Oh My Pi (omp) | `omp plugin uninstall ponytail@ponytail`, then `omp plugin marketplace remove ponytail` |
 | OpenCode | `opencode plugin remove @dietrichgebert/ponytail` |
 | Cursor hooks | `node scripts/cursor-hooks.js uninstall` (add `--project` for a project-level install); removes only ponytail's entries from `hooks.json` |
+| DeepSeek Harness | `dsh plugin --profile <profile> remove ponytail-dsh` |
 | Cursor rule / Windsurf / Cline / Qoder / etc. | Delete the copied rule file |
 
 These remove the plugin's own files. They leave behind a small amount of state ponytail writes outside the plugin folder: the mode flag (`~/.claude/.ponytail-active`, or `~/.cursor/.ponytail-active` for Cursor), `~/.config/ponytail/config.json`, the statusline script copy (`~/.claude/ponytail-statusline.sh` or `.ps1`), ponytail's entries in `~/.cursor/hooks.json`, and (if you accepted the setup nudge) a `statusLine` entry in `~/.claude/settings.json`. Until they are removed, the statusline badge keeps showing the last mode. Run `node scripts/uninstall.js` to clean those up too. **Run it before the host remove command above**: the script is itself a plugin file, so removing the plugin first deletes it (or run it from a separate clone of this repo). It only removes the statusLine entry if it points at ponytail's own script, so a statusline you set up yourself is left untouched.
