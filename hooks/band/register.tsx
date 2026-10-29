@@ -443,13 +443,14 @@ export const register: Register = (on, options) => {
     }
 
     let metrics = (
-      <Box flexDirection="column" gap={1}>
+      <Box flexDirection="column">
         <Text dimColor wrap="truncate-end">
           {'─'.repeat(e.props.bodyColumns)}
         </Text>
         <Box flexDirection="row" gap={2}>
           {cols.map(c => (
-            <Box key={c.key} flexDirection="column" width={Math.max(10, Math.floor(e.props.bodyColumns / cols.length) - 2)}>
+            // Off the terminal the columns share the row; a width in cells would leave most of it empty and cut the text.
+            <Box key={c.key} flexDirection="column" {...(width === undefined ? { flexGrow: 1 } : { width: Math.max(10, Math.floor(width / cols.length) - 2) })}>
               <Text dimColor>{c.label}</Text>
               <Text bold color={c.tone}>
                 {c.value}
@@ -469,7 +470,8 @@ export const register: Register = (on, options) => {
     }
 
     return stack(
-      <Box flexDirection="column" gap={1} width={width}>
+      // The desktop's SVG draws its own line at the top, which would touch the buttons without the gap.
+      <Box flexDirection="column" width={width} gap={e.surface === 'desktop' ? 1 : 0}>
         <Box flexDirection="row" alignItems="center" gap={1}>
           {LEVELS.map(level => (
             <Button
