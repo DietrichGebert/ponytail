@@ -294,39 +294,42 @@ for (const command of ['clear', 'resume']) {
   })
 }
 
-test('the ledger is written on Windows, where there is no mkdir', async ($, on) => {
-  mock.clock(on)
-  mock.store(on)
-  const env: Record<string, string> = { OS: 'Windows_NT', XDG_CONFIG_HOME: 'C:/Users/u/.config' }
-  on('env.get', ($, e) => ({ value: env[e.name] }))
-  on('session.repo', () => ({ value: { root: 'C:/repo/shop' } }) as never)
-  on('session.id', () => ({ value: 's1' }))
-  on('session.turns', () => ({ value: 1 }))
-  on('session.usage', () => ({ value: { startedAt: 0, cost: { usd: 0.5 } } }) as never)
-  on('process.run', ($, e) => (e.argv[0] === 'mkdir' ? { deny: 'mkdir: not found' } : ({ value: { exitCode: 1, stdout: '', stderr: '' } } as never)))
-  on('fs.read', () => ({ deny: 'missing' }) as never)
-  on('fs.list', () => ({ value: [] }))
-  const written: string[] = []
-  on('fs.write', ($, e) => {
-    // The engine writes the path with this OS's separator.
-    written.push(e.path.replace(/\\/g, '/'))
-    return { value: undefined }
+// The engine may hand the repo root on with either separator; the ledger is named after the folder either way.
+for (const root of ['C:/repo/shop', 'C:\\repo\\shop']) {
+  test(`the ledger is written on Windows, where there is no mkdir (${root})`, async ($, on) => {
+    mock.clock(on)
+    mock.store(on)
+    const env: Record<string, string> = { OS: 'Windows_NT', XDG_CONFIG_HOME: 'C:/Users/u/.config' }
+    on('env.get', ($, e) => ({ value: env[e.name] }))
+    on('session.repo', () => ({ value: { root } }) as never)
+    on('session.id', () => ({ value: 's1' }))
+    on('session.turns', () => ({ value: 1 }))
+    on('session.usage', () => ({ value: { startedAt: 0, cost: { usd: 0.5 } } }) as never)
+    on('process.run', ($, e) => (e.argv[0] === 'mkdir' ? { deny: 'mkdir: not found' } : ({ value: { exitCode: 1, stdout: '', stderr: '' } } as never)))
+    on('fs.read', () => ({ deny: 'missing' }) as never)
+    on('fs.list', () => ({ value: [] }))
+    const written: string[] = []
+    on('fs.write', ($, e) => {
+      // The engine writes the path with this OS's separator.
+      written.push(e.path.replace(/\\/g, '/'))
+      return { value: undefined }
+    })
+    const status: unknown[] = []
+    on('ui.status', ($, e) => {
+      status.push(e)
+      return { value: undefined }
+    })
+    on('session.start', ($, e) => ({ cwd: e.cwd }))
+    on('turn.complete', () => ({ text: '' }))
+    await $.session.start({ cwd: root, surface: null } as never)
+    await $.turn.complete({ answer: '', durationMs: 1000 } as never)
+    expect(JSON.stringify(status)).not.toContain('could not write the task ledger')
+    // Off Windows a C: path is relative, so the working dir comes in front of it: compare the end.
+    expect(written.length).toBe(2)
+    expect(written[0]?.endsWith('C:/Users/u/.config/ponytail/band/shop.csv')).toBe(true)
+    expect(written[1]?.endsWith('C:/Users/u/.config/ponytail/band/board.html')).toBe(true)
   })
-  const status: unknown[] = []
-  on('ui.status', ($, e) => {
-    status.push(e)
-    return { value: undefined }
-  })
-  on('session.start', ($, e) => ({ cwd: e.cwd }))
-  on('turn.complete', () => ({ text: '' }))
-  await $.session.start({ cwd: 'C:/repo/shop', surface: null } as never)
-  await $.turn.complete({ answer: '', durationMs: 1000 } as never)
-  expect(JSON.stringify(status)).not.toContain('could not write the task ledger')
-  // Off Windows a C: path is relative, so the working dir comes in front of it: compare the end.
-  expect(written.length).toBe(2)
-  expect(written[0]?.endsWith('C:/Users/u/.config/ponytail/band/shop.csv')).toBe(true)
-  expect(written[1]?.endsWith('C:/Users/u/.config/ponytail/band/board.html')).toBe(true)
-})
+}
 
 test('the transcript is found with no classic hook, in its named folder or any other', async ($, on) => {
   mock.clock(on)
