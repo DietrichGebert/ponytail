@@ -239,7 +239,15 @@ function run() {
       try { records = readRecords(p); } catch (e) { continue; }
       const sub = path.join(root, dir, id, 'subagents');
       let subRecords = [];
-      try { subRecords = fs.readdirSync(sub).filter(f => /^agent-.*\.jsonl$/.test(f)).flatMap(f => readRecords(path.join(sub, f))); } catch (e) {}
+      try {
+        const subDir = path.resolve(sub) + path.sep;
+        const subNames = fs.readdirSync(sub).filter(f => /^agent-.*\.jsonl$/.test(f));
+        for (const name of subNames) {
+          const safeName = path.basename(name);
+          const resolved = path.resolve(subDir, safeName);
+          if (resolved.startsWith(subDir)) subRecords.push(...readRecords(resolved));
+        }
+      } catch (e) {}
       const stats = sessionStats(records, subRecords, id);
       if (!stats || !Number.isFinite(stats.startedMs)) continue;
       sessions++;
