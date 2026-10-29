@@ -1,3 +1,9 @@
+$Helper = Join-Path $PSScriptRoot "ponytail-statusline.js"
+if ((Test-Path -LiteralPath $Helper) -and (Get-Command node -ErrorAction SilentlyContinue)) {
+    & node $Helper
+    exit $LASTEXITCODE
+}
+
 # CLAUDE_CONFIG_DIR overrides ~/.claude, matching where the hooks write the flag (issue #34)
 $ClaudeDir = if ($env:CLAUDE_CONFIG_DIR) { $env:CLAUDE_CONFIG_DIR } else { Join-Path $HOME ".claude" }
 $Flag = Join-Path $ClaudeDir ".ponytail-active"
@@ -9,6 +15,9 @@ $Mode = ""
 try {
     $Mode = (Get-Content $Flag -ErrorAction Stop | Select-Object -First 1).Trim()
 } catch {
+    exit 0
+}
+if ($Mode -eq "off") {
     exit 0
 }
 
