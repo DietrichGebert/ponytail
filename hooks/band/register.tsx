@@ -162,7 +162,7 @@ async function record($: EngineInterface, b: Band, options: Options) {
     const file = ledgerFile(dir, b.project)
     const existing = await $.fs.read(file).catch(() => '')
     // $.fs.write creates the directory: no mkdir, which Windows does not have.
-    await $.fs.write(file, upsertCsv(existing, row))
+    await $.fs.write(file, upsertCsv(existing, row, await $.clock.now()))
     // The board is a plain file a refresh rereads, so it is rebuilt with every row.
     await writeBoard($, dir)
   }
@@ -211,7 +211,11 @@ async function start($: EngineInterface): Promise<Map<string, string>> {
   const usage = await $.session.usage().catch(() => undefined)
   const csv = usage ? await $.fs.read(ledgerFile(await ledgerDir($), project)).catch(() => '') : ''
   const key = usage ? taskKey(session, usage.startedAt) : ''
-  await update($, band, b => resume({ ...EMPTY, ...b, level, details, project, session, cost: usage?.cost?.usd ?? b.cost }, csv, key))
+  // A resumed session shows its totals right away, not $0 until its first turn.
+  const turns = await $.session.turns().catch(() => undefined)
+  await update($, band, b =>
+    resume({ ...EMPTY, ...b, level, details, project, session, cost: usage?.cost?.usd ?? b.cost, spent: usage?.cost?.usd ?? b.spent, turns: turns ?? b.turns }, csv, key),
+  )
   return grep?.exitCode === 0 ? parseDefs(grep.stdout) : new Map()
 }
 
