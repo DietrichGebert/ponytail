@@ -138,6 +138,20 @@ function getHideStatus() {
   }
 }
 
+// Emojis in the pi status line: config.statusEmojis overrides any of
+// { logo, lite, full, ultra }; "" drops one. Non-string values are ignored.
+const DEFAULT_STATUS_EMOJIS = { logo: '🐴', lite: '🌿', full: '⚡', ultra: '🔥' };
+function getStatusEmojis() {
+  const emojis = { ...DEFAULT_STATUS_EMOJIS };
+  try {
+    const config = JSON.parse(fs.readFileSync(getConfigPath(), 'utf8').replace(/^\uFEFF/, ''));
+    for (const key of Object.keys(emojis)) {
+      if (typeof config?.statusEmojis?.[key] === 'string') emojis[key] = config.statusEmojis[key];
+    }
+  } catch (_) {}
+  return emojis;
+}
+
 function writeDefaultMode(mode) {
   // ponytail: only a runtime level can be a default; review is session-only (#377).
   const normalized = normalizeMode(mode);
@@ -165,6 +179,7 @@ module.exports = {
   getClaudeDir,
   getQoderDir,
   getHideStatus,
+  getStatusEmojis,
   getQuietStartup,
   isShellSafe,
   normalizeMode,
