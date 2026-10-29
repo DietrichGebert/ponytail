@@ -165,6 +165,14 @@ codex plugin add ponytail@ponytail
 
 Then open `/hooks` in Codex, trust its two lifecycle hooks, and start a new thread.
 
+**DeepSeek Harness:**
+
+```bash
+dsh plugin --profile web add "github:DietrichGebert/ponytail#path:/dsh-plugin"
+```
+
+Then `dsh web` (or refresh the running UI). The `dsh-plugin/` subdirectory installs as the `dsh-ponytail` bundle and is selected automatically; the **Plugins → Add plugin** wizard accepts the same Git address. See [dsh-plugin/README.md](dsh-plugin/README.md).
+
 **Any other agent:** copy [`AGENTS.md`](AGENTS.md) into your project, or ask your agent to install [`skills/ponytail/SKILL.md`](skills/ponytail/SKILL.md) as a skill. Step by step for Copilot, Cursor, OpenCode, Gemini and the rest: **[INSTALL.md](INSTALL.md)**.
 
 That was it. He'd be proud. He won't say it.
