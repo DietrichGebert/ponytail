@@ -2,7 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const { createHash } = require('crypto');
-const { getClaudeDir, getQoderDir } = require('./ponytail-config');
+const { getDefaultMode, getClaudeDir, getQoderDir } = require('./ponytail-config');
 
 const STATE_FILE = '.ponytail-active';
 
@@ -56,8 +56,34 @@ const projectStatePath = projectDir
     createHash('sha256').update(path.normalize(projectDir)).digest('hex'))
   : null;
 
-// The shared flag is still written, for the statusline and project-less hosts.
-function setMode(mode) {
+const { sessionMode } = require('./ponytail-session');
+let session = null;
+let sessionFailed = false;
+const sessionHost = process.env.GROK_HOOK_EVENT ? 'grok'
+  : isCodex ? 'codex'
+  : !isCopilot && !isQoder && !isCodeBuddy && !isCursor && process.env.CLAUDECODE === '1' ? 'claude' : null;
+
+function getSessionId(data) {
+  const id = data?.session_id ?? data?.sessionId;
+  return typeof id === 'string' && id.trim() && id.length <= 512 ? id.trim() : null;
+}
+function setSessionContext(data) {
+  session = sessionMode(statePath, sessionHost, getSessionId(data), projectDir);
+}
+function wantsSessionScope() { return process.env.PONYTAIL_SESSION_SCOPE === '1' && sessionHost !== null; }
+function isSessionScoped() { return session !== null && !sessionFailed; }
+function sessionAction(action, legacy) {
+  if (isSessionScoped()) {
+    try { return action(session); } catch (error) {
+      sessionFailed = true;
+      process.stderr.write('Ponytail: session state unavailable; using legacy mode.\n');
+    }
+  }
+  return legacy();
+}
+
+// Only legacy mode writes the shared flag used by the statusline.
+function setLegacyMode(mode) {
   for (const file of [projectStatePath, statePath]) {
     if (!file) continue;
     fs.mkdirSync(path.dirname(file), { recursive: true });
@@ -65,19 +91,26 @@ function setMode(mode) {
   }
 }
 
-function clearMode() {
+function clearLegacyMode() {
   for (const file of [projectStatePath, statePath]) {
     if (file) try { fs.unlinkSync(file); } catch (e) {}
   }
 }
 
 // Live mode written by activate/mode-tracker. Absent flag = ponytail off.
-function readMode() {
+function readLegacyMode() {
   try {
     return fs.readFileSync(projectStatePath || statePath, 'utf8').trim() || null;
   } catch (e) {
     return null;
   }
+}
+
+function setMode(mode) { return sessionAction(store => store.write(mode), () => setLegacyMode(mode)); }
+function clearMode() { return sessionAction(store => store.write('off'), clearLegacyMode); }
+function readMode(sessionID) {
+  if (sessionID !== undefined) setSessionContext({session_id: sessionID});
+  return sessionAction(store => store.read(getDefaultMode()), () => readLegacyMode() || (sessionFailed ? getDefaultMode() : null));
 }
 
 // Cursor's always-on project rule (.cursor/rules/ponytail.mdc) already puts the
@@ -168,6 +201,10 @@ function writeHookOutput(event, mode, context = '') {
 }
 
 module.exports = {
+  getSessionId,
+  wantsSessionScope,
+  setSessionContext,
+  isSessionScoped,
   clearMode,
   cursorRuleNotice,
   cursorRulePath,

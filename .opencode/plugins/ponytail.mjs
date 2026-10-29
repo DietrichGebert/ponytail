@@ -24,6 +24,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const require = createRequire(import.meta.url);
 const { getPonytailInstructions } = require('../../hooks/ponytail-instructions');
 const { getDefaultMode, normalizeMode, writeDefaultMode } = require('../../hooks/ponytail-config');
+const { sessionMode } = require('../../hooks/ponytail-session');
 const { parseCommandFile, parseSkillFile } = require('./ponytail-frontmatter.cjs');
 
 // OpenCode has no flag-file convention of its own; keep mode beside its config.
@@ -34,7 +35,11 @@ const statePath = path.join(
   '.ponytail-active',
 );
 
-function readMode() {
+function readMode(sessionID) {
+  const session = sessionMode(statePath, 'opencode', sessionID);
+  if (session) try { return session.read(getDefaultMode()); } catch (error) {
+    console.error('Ponytail: session state unavailable; using legacy mode.');
+  }
   try {
     // review is a one-shot command, never a level (#736); an old saved review falls back.
     return normalizeMode(fs.readFileSync(statePath, 'utf8')) || getDefaultMode();
@@ -43,7 +48,11 @@ function readMode() {
   }
 }
 
-function writeMode(mode) {
+function writeMode(mode, sessionID) {
+  const session = sessionMode(statePath, 'opencode', sessionID);
+  if (session) try { session.write(mode); return; } catch (error) {
+    console.error('Ponytail: session state unavailable; using legacy mode.');
+  }
   fs.mkdirSync(path.dirname(statePath), { recursive: true });
   fs.writeFileSync(statePath, mode);
 }
@@ -52,7 +61,8 @@ function writeMode(mode) {
 // An unrecognized level leaves the current one alone. The write lands before
 // the next turn's injection, not the current one — good enough; switch to a
 // synchronous store if same-turn switching ever matters.
-function persistMode(args) {
+function persistMode(args, sessionID) {
+  if (sessionID !== undefined) readMode(sessionID);
   const wanted = String(args == null ? '' : args).trim();
   // `/ponytail default <level>` saves the default for new sessions, like the Claude hook.
   const [first, second] = wanted.toLowerCase().split(/\s+/);
@@ -62,10 +72,10 @@ function persistMode(args) {
     return;
   }
   // Bare /ponytail switches ponytail on, or keeps the level when it already is (#639).
-  if (!wanted && readMode() !== 'off') return;
+  if (!wanted && readMode(sessionID) !== 'off') return;
   const mode = wanted ? normalizeMode(wanted) : (getDefaultMode() === 'off' ? 'full' : getDefaultMode());
   if (!mode) return;
-  writeMode(mode);
+  writeMode(mode, sessionID);
   console.log('ponytail ' + mode);
 }
 
@@ -134,7 +144,7 @@ export default {
           name: command.name,
           description: command.description,
           execute: async ({ sessionID, prompt, delivery }) => {
-            if (command.name === 'ponytail') persistMode(prompt.text);
+            if (command.name === 'ponytail') persistMode(prompt.text, sessionID);
             const withoutMentions = (items) => items?.map(({ mention, ...item }) => item);
             await ctx.session.prompt({
               ...prompt,
@@ -155,7 +165,7 @@ export default {
     // Summary compaction runs its own hook with the same event shape; without
     // it the compaction request misses the ruleset and the provider prompt cache.
     const addRuleset = (event) => {
-      const mode = readMode();
+      const mode = readMode(event.sessionID);
       if (mode === 'off') return;
       event.system.push({ type: 'text', text: getPonytailInstructions(mode) });
     };

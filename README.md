@@ -193,6 +193,49 @@ Commands need a skill-capable host (Claude Code, Codex, Devin CLI, OpenCode, Gem
 **Does it need a config file?**
 No. An optional `~/.config/ponytail/config.json` or `PONYTAIL_DEFAULT_MODE` env var can set the default level, but nothing is required.
 
+**Can sessions use separate modes?**
+
+Set `PONYTAIL_SESSION_SCOPE=1` in the client environment to keep a separate mode for each session.
+This option supports Claude Code, Codex, OpenCode V2, and Grok hook integrations that supply a stable session ID.
+The default behavior remains unchanged when the variable is absent or has another value.
+Unsupported clients and events without a valid session ID also use the legacy behavior.
+OpenCode V1 retains the legacy behavior.
+
+A session saves its default mode when Ponytail first receives its ID.
+The saved modes are `off`, `lite`, `full`, and `ultra`.
+`review` remains a one-shot command.
+Resume, clear, compaction, and process restart retain the saved mode when the client retains the same ID.
+A new ID starts a new mode snapshot.
+`/ponytail default <level>` changes the default for future snapshots, including sessions that Ponytail has not seen yet.
+It does not change existing snapshots.
+
+Session files reside in `.ponytail-sessions` beside the legacy state path.
+Each filename hashes the host, available normalized project path, and session ID with SHA-256.
+Ponytail publishes initialization without replacing an existing file and replaces explicit mode writes atomically.
+It does not migrate the shared flag, delete state at session end, or perform automatic cleanup.
+Stop the affected clients before manually removing obsolete session files.
+Removing a file resets that session to the current default on its next use.
+Disabling the option exposes the legacy shared mode. Re-enabling it restores retained session modes.
+
+A storage error emits a diagnostic and falls back to the legacy mode.
+Session isolation is not guaranteed during this fallback.
+An invalid saved mode resets to the current default.
+The existing statusline badge, band, and board continue to use legacy state.
+They can show a stale mode or no mode. They do not display or control separate session modes.
+The existing statusline setup offer does not make the badge session-aware.
+Grok needs an external hook adapter that sets `GROK_HOOK_EVENT` and supplies `session_id` or `sessionId`.
+This option does not install that adapter. The bundled Grok installation does not enable lifecycle hooks.
+
+Session-aware subagent hooks read stdin to obtain the session ID.
+If stdin stalls, they wait up to one second before using the legacy mode.
+Malformed input or a missing ID also selects legacy state, which can be absent or stale.
+This fallback can inject no ruleset or a different mode. It cannot guarantee session isolation.
+The default stdin-independent path remains unchanged when session scope is disabled.
+
+Session files survive uninstall. Remove them manually after stopping the clients if you no longer need them.
+The store requires hard-link support. Filesystems without it always use the documented storage-error fallback.
+
+
 **Why does it write `shortcut:` comments?**
 They mark a deliberate shortcut and when to revisit it, and `/ponytail-debt` collects them into a ledger. Want another word, or none? Say so in your project's `CLAUDE.md` or `AGENTS.md`, then run `/ponytail-debt <your word>`.
 
