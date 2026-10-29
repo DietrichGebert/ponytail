@@ -87,6 +87,8 @@ function finish() {
             writeHookOutput('UserPromptSubmit', readMode() || 'off', 'PONYTAIL BAND IMPORT: past Claude Code sessions (cost, agent time, tokens) are being added to the board in the background. Open the board in a minute. Confirm in one short line.');
             return;
           }
+          // Unknown third word: ignore like /ponytail ulta, never toggle on a typo.
+          if (parts[2] !== undefined && parts[2] !== 'on' && parts[2] !== 'off') return;
           const flag = path.join(getClaudeDir(), '.ponytail-band');
           let hidden = false;
           try { hidden = fs.readFileSync(flag, 'utf8').trim() === 'off'; } catch (e) {}

@@ -27,6 +27,14 @@ function hooksPath(scope) {
     : path.join(os.homedir(), '.cursor', 'hooks.json');
 }
 
+// Shape errors are the user's config, not a crash: callers such as the
+// uninstaller warn and continue instead of aborting the rest of the cleanup.
+function invalidConfig(message) {
+  const e = new Error(message);
+  e.code = 'EINVALID';
+  return e;
+}
+
 // Missing file → empty config. Malformed JSON throws a SyntaxError so the
 // caller can refuse to touch the file rather than overwrite it.
 function readConfig(file) {
@@ -37,15 +45,15 @@ function readConfig(file) {
     if (e.code !== 'ENOENT') throw e;
   }
   if (!config || typeof config !== 'object' || Array.isArray(config)) {
-    throw new Error(file + ' must contain a JSON object; nothing was changed');
+    throw invalidConfig(file + ' must contain a JSON object; nothing was changed');
   }
   if (config.hooks === undefined) config.hooks = {};
   if (!config.hooks || typeof config.hooks !== 'object' || Array.isArray(config.hooks)) {
-    throw new Error(file + ': hooks must be an object; nothing was changed');
+    throw invalidConfig(file + ': hooks must be an object; nothing was changed');
   }
   for (const [event, entries] of Object.entries(config.hooks)) {
     if (!Array.isArray(entries)) {
-      throw new Error(file + ': hooks.' + event + ' must be an array; nothing was changed');
+      throw invalidConfig(file + ': hooks.' + event + ' must be an array; nothing was changed');
     }
   }
   return config;
@@ -53,7 +61,10 @@ function readConfig(file) {
 
 function writeConfig(file, config) {
   fs.mkdirSync(path.dirname(file), { recursive: true });
-  fs.writeFileSync(file, JSON.stringify(config, null, 2) + '\n', 'utf8');
+  // Write-then-rename so an interrupted write cannot leave a truncated hooks.json.
+  const tmp = file + '.tmp';
+  fs.writeFileSync(tmp, JSON.stringify(config, null, 2) + '\n', 'utf8');
+  fs.renameSync(tmp, file);
 }
 
 // The template's PONYTAIL_DIR placeholder becomes this checkout's absolute
@@ -78,6 +89,7 @@ function stripPonytail(config) {
   for (const [event, entries] of Object.entries(config.hooks)) {
     if (!Array.isArray(entries)) continue;
     const kept = entries.filter((entry) => !isPonytailHook(entry));
+    if (kept.length === entries.length) continue; // nothing of ours in this event
     if (kept.length) config.hooks[event] = kept;
     else delete config.hooks[event];
   }

@@ -48,15 +48,19 @@ const INVARIANTS = [
   'shortcut: <the limit>, <when to upgrade>',   // shortcut marker comment
   'correct on edge cases',                 // robust-variant rule
   'Lazy code without its check is unfinished', // test reflex
-  // the "never cut" carve-outs: pin each so a reword in either file can't silently drop one.
+  // the "never cut" carve-outs: pin the whole fragment so dropping any one
+  // carve-out fails, not just reordering the others.
   'validation at trust boundaries',
-  'prevents data loss',
-  'security',
-  'accessibility',
+  'prevents data loss, security, accessibility',
 ];
 
 const skill = read('skills/ponytail/SKILL.md');
-const sources = [['skills/ponytail/SKILL.md', skill], ['AGENTS.md', agents]];
+const sources = [
+  ['skills/ponytail/SKILL.md', skill],
+  ['AGENTS.md', agents],
+  // The hook fallback holds a fourth copy of the ruleset.
+  ['hooks/ponytail-instructions.js', read('hooks/ponytail-instructions.js')],
+];
 for (const phrase of INVARIANTS) {
   for (const [label, text] of sources) {
     if (!text.includes(phrase)) {

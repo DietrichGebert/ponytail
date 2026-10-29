@@ -14,7 +14,7 @@ const fs = require('fs');
 const path = require('path');
 
 const ROOT = path.join(__dirname, '..');
-const HOMEPAGE = 'https://github.com/DietrichGebert/ponytail';
+const pkg = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8'));
 
 const DESCRIPTIONS = {
   'ponytail': 'Lazy senior dev mode for any coding task: the smallest change that fully solves it, and a reply a busy human understands in one read.',
@@ -25,10 +25,15 @@ const DESCRIPTIONS = {
   'ponytail-help': "Quick reference for ponytail's modes, skills, and commands. One-shot display.",
 };
 
-const NAMES = Object.keys(DESCRIPTIONS);
+const SKILLS_DIR = path.join(ROOT, 'skills');
+const OUT_DIR = path.join(ROOT, '.openclaw', 'skills');
+const NAMES = fs.readdirSync(SKILLS_DIR, { withFileTypes: true })
+  .filter((e) => e.isDirectory() && fs.existsSync(path.join(SKILLS_DIR, e.name, 'SKILL.md')))
+  .map((e) => e.name)
+  .sort();
 
 function sourceBody(name) {
-  const src = fs.readFileSync(path.join(ROOT, 'skills', name, 'SKILL.md'), 'utf8').replace(/\r\n/g, '\n');
+  const src = fs.readFileSync(path.join(SKILLS_DIR, name, 'SKILL.md'), 'utf8').replace(/\r\n/g, '\n');
   const fm = src.match(/^---\n[\s\S]*?\n---\n?/);
   if (!fm) throw new Error(`skills/${name}/SKILL.md has no frontmatter`);
   return src.slice(fm[0].length);
@@ -36,21 +41,35 @@ function sourceBody(name) {
 
 function render(name) {
   const desc = DESCRIPTIONS[name];
+  if (!desc) throw new Error(`no OpenClaw description for ${name}`);
   if (desc.length > 160 || desc.includes('\n') || desc.includes('"')) {
     throw new Error(`description for ${name} must be one line, no quotes, under 160 chars`);
   }
   const frontmatter =
-    `---\nname: ${name}\ndescription: "${desc}"\nhomepage: ${HOMEPAGE}\nlicense: MIT\n---\n`;
+    `---\nname: ${name}\ndescription: "${desc}"\nhomepage: ${pkg.homepage}\nlicense: ${pkg.license}\n---\n`;
   return frontmatter + sourceBody(name);
 }
 
 function outPath(name) {
-  return path.join(ROOT, '.openclaw', 'skills', name, 'SKILL.md');
+  return path.join(OUT_DIR, name, 'SKILL.md');
+}
+
+// Remove generated dirs whose skill was deleted or renamed, so publish cannot
+// pick up a stale slug.
+function prune() {
+  if (!fs.existsSync(OUT_DIR)) return;
+  for (const e of fs.readdirSync(OUT_DIR, { withFileTypes: true })) {
+    if (!e.isDirectory() || NAMES.includes(e.name)) continue;
+    const p = path.join(OUT_DIR, e.name);
+    fs.rmSync(p, { recursive: true });
+    console.log('removed', path.relative(ROOT, p).replace(/\\/g, '/'));
+  }
 }
 
 module.exports = { DESCRIPTIONS, NAMES, render, outPath, sourceBody };
 
 if (require.main === module) {
+  prune();
   for (const name of NAMES) {
     const p = outPath(name);
     fs.mkdirSync(path.dirname(p), { recursive: true });
