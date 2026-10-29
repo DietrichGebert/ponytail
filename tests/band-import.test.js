@@ -22,6 +22,7 @@ assert.equal(replyCost('claude-haiku-5-5', { input_tokens: 200000 }), 0.1, 'over
 assert.equal(replyCost('claude-opus-5-5', { output_tokens: 0, server_tool_use: { web_search_requests: 3 } }), 0.03);
 assert.equal(replyCost('claude-unknown-9', { input_tokens: 1 }), null);
 assert.equal(replyCost('claude-opus-5-5', { input_tokens: 1, speed: 'fast' }), null);
+assert.equal(replyCost(123, { input_tokens: 1 }), null, 'a non-string model is an unknown price, not a crash');
 
 // A session: two typed prompts, a reply repeated per content block, a tool round trip, a subagent.
 const at = s => `2026-10-01T10:${s}Z`;
