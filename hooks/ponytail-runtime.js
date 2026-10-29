@@ -20,7 +20,13 @@ function isVsCodeCopilotRoot(pluginRoot) {
 const isCopilot = Boolean(process.env.COPILOT_PLUGIN_DATA) ||
   isVsCodeCopilotRoot(process.env.CLAUDE_PLUGIN_ROOT);
 const isCodex = !isCopilot && Boolean(process.env.PLUGIN_DATA);
-const isQoder = !isCopilot && !isCodex && Boolean(process.env.QODER_SESSION_ID);
+// Qoder does not hand QODER_SESSION_ID to plugin hook processes, so detection
+// keyed on it alone misses every hook: Qoder falls through to the Claude branch,
+// which writes the mode to ~/.claude and emits the ruleset as raw stdout, and
+// Qoder only injects hookSpecificOutput JSON (#1092). QODER_PROJECT_DIR is in
+// the env Qoder builds for every hook it runs.
+const isQoder = !isCopilot && !isCodex &&
+  Boolean(process.env.QODER_SESSION_ID || process.env.QODER_PROJECT_DIR);
 // CodeBuddy (#854) loads the Claude-format plugin and sets CLAUDE_PLUGIN_ROOT
 // too, but adds CODEBUDDY_PLUGIN_ROOT only for its own plugin hook processes.
 const isCodeBuddy = !isCopilot && !isCodex && !isQoder && Boolean(process.env.CODEBUDDY_PLUGIN_ROOT);
