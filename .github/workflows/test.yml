@@ -24,7 +24,7 @@ jobs:
           python-version: '3.12'
 
       - name: Install Python deps for correctness checks
-        run: pip install pandas
+        run: pip install pandas==3.0.2
 
       - name: Check rule copies
         run: node scripts/check-rule-copies.js
