@@ -16,6 +16,7 @@ function runUninstall(env) {
 }
 
 delete process.env.CLAUDE_CONFIG_DIR;
+delete process.env.ANTIGRAVITY_APP_DATA_DIR;
 
 const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'ponytail-uninstall-'));
 process.on('exit', () => fs.rmSync(temp, { recursive: true, force: true }));
@@ -68,6 +69,9 @@ const cursorDir = path.join(home, '.cursor');
 fs.mkdirSync(cursorDir, { recursive: true });
 const cursorFlagPath = path.join(cursorDir, '.ponytail-active');
 fs.writeFileSync(cursorFlagPath, 'lite');
+const antigravityFlagPath = path.join(home, '.gemini', 'antigravity', '.ponytail-active');
+fs.mkdirSync(path.dirname(antigravityFlagPath), { recursive: true });
+fs.writeFileSync(antigravityFlagPath, 'full');
 const cursorHooksPath = path.join(cursorDir, 'hooks.json');
 fs.writeFileSync(cursorHooksPath, JSON.stringify({
   version: 1,
@@ -95,6 +99,7 @@ assert.equal(fs.existsSync(qoderCustomFlagPath), true, 'default Qoder uninstall 
 assert.equal(fs.existsSync(nudgeFlagPath), false, 'statusline nudge flag must be removed');
 assert.equal(fs.existsSync(configPath), false, 'config file must be removed');
 assert.equal(fs.existsSync(cursorFlagPath), false, 'Cursor mode flag must be removed');
+assert.equal(fs.existsSync(antigravityFlagPath), false, 'Antigravity mode flag must be removed');
 assert.equal(fs.existsSync(statuslineCopyPath), false, 'statusline script copy must be removed (#1032)');
 assert.equal(fs.existsSync(statuslinePs1CopyPath), false, 'statusline .ps1 copy must be removed (#1032)');
 assert.deepEqual(

@@ -1,0 +1,18 @@
+{
+  "ponytail": {
+    "SessionStart": [
+      {
+        "type": "command",
+        "command": "node hooks/ponytail-activate.js",
+        "timeout": 15
+      }
+    ],
+    "PreInvocation": [
+      {
+        "type": "command",
+        "command": "node hooks/ponytail-mode-tracker.js",
+        "timeout": 15
+      }
+    ]
+  }
+}
