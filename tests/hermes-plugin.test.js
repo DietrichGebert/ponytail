@@ -291,6 +291,41 @@ print(json.dumps({'nothing_persisted': nothing_persisted, 'off': off, 'still_off
   assert.match(data.back_on.context, /PONYTAIL MODE ACTIVE — level: full/);
 });
 
+test('Hermes treats a typed "stop ponytail" like /ponytail off, and a gateway runs it as that command', () => {
+  // The ruleset says "stop ponytail" or "normal mode" turns it off. If the plugin misses it, compaction
+  // re-injects the ruleset; in a gateway the phrase has to pass the same access control as /ponytail.
+  const output = python(String.raw`
+import importlib.util, json
+spec = importlib.util.spec_from_file_location('ponytail_hermes_plugin', '__init__.py')
+mod = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(mod)
+class Event:
+    def __init__(self, text): self.text = text
+first = mod._pre_llm_call(conversation_history=[])
+history = [{
+    'role': 'user',
+    'content': 'first task',
+    'api_content': 'first task\\n\\n' + first['context'],
+}]
+mention = mod._pre_llm_call(user_message='add a normal mode toggle', conversation_history=history)
+stop = mod._pre_llm_call(user_message='Stop ponytail.', conversation_history=history)
+after_compaction = mod._pre_llm_call(user_message='next task', conversation_history=[])
+print(json.dumps({
+    'mention': mention,
+    'stop': stop,
+    'after_compaction': after_compaction,
+    'gateway': mod.rewrite_gateway_command(event=Event('Normal mode!')),
+    'gateway_chatter': mod.rewrite_gateway_command(event=Event('stop ponytail from adding tests')),
+}))
+`);
+  const data = JSON.parse(output);
+  assert.equal(data.mention, null);
+  assert.deepEqual(data.stop, { context: 'PONYTAIL MODE OFF' });
+  assert.equal(data.after_compaction, null);
+  assert.deepEqual(data.gateway, { action: 'rewrite', text: '/ponytail off' });
+  assert.equal(data.gateway_chatter, null);
+});
+
 test('Hermes gateway rewrite respects slash access denial', () => {
   const output = python(String.raw`
 import importlib.util, json
