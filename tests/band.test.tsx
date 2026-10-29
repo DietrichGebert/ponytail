@@ -304,6 +304,99 @@ test('after /ponytail band the band draws nothing', async ($, on) => {
   await ui.unmount()
 })
 
+test('a hidden band skips scans and records, then starts when shown', async ($, on) => {
+  mock.clock(on)
+  mock.store(on)
+  let hidden = true
+  let scans = 0
+  let writes = 0
+  on('env.get', ($, e) => ({ value: e.name === 'HOME' ? '/home/u' : undefined }))
+  on('fs.read', ($, e, next) => e.path.endsWith('.ponytail-band') && hidden ? { value: 'off' } : next(e))
+  on('session.repo', () => ({ value: { root: '/repo/shop' } }) as never)
+  on('session.id', () => ({ value: 's1' }))
+  on('session.turns', () => ({ value: 1 }))
+  on('session.usage', () => ({ value: { startedAt: 0, cost: { usd: 0.5 } } }) as never)
+  on('process.run', () => { scans++; return { value: { exitCode: 1, stdout: '', stderr: '' } } as never })
+  on('fs.list', () => ({ value: [] }))
+  on('fs.write', () => { writes++; return { value: undefined } })
+  on('session.start', ($, e) => ({ cwd: e.cwd }))
+  on('command.run', () => ({ text: '' }))
+  on('tool.call', { tool: 'Bash' }, () => ({ result: {}, text: '' }) as never)
+  on('turn.complete', () => ({ text: '' }))
+  await $.session.start({ cwd: '/repo/shop', surface: null } as never)
+  await $.command.run({ command: 'clear', args: '' })
+  await $.tool.call({ tool: 'Bash', command: 'npm test' } as never)
+  await $.turn.complete({ answer: '', durationMs: 1000 } as never)
+  expect(scans).toBe(0)
+  expect(writes).toBe(0)
+  hidden = false
+  await $.turn.complete({ answer: '', durationMs: 1000 } as never)
+  expect(scans).toBe(1)
+  expect(writes).toBe(2)
+  const ui = await $.ui.mount({ plugin: 'ponytail', surface: 'terminal', ...BAND })
+  expect(await ui.find({ type: 'Text', text: /last \$0\.00/ })).toBeUndefined()
+  await ui.unmount()
+})
+
+test('a hidden render invalidates an in-flight scan before it can initialize', async ($, on) => {
+  mock.clock(on)
+  mock.store(on)
+  let hidden = false
+  let session = 's1'
+  let scans = 0
+  let release: (() => void) | undefined
+  let began: (() => void) | undefined
+  const entered = new Promise<void>(resolve => { began = resolve })
+  const gate = new Promise<void>(resolve => { release = resolve })
+  on('env.get', ($, e) => ({ value: e.name === 'HOME' ? '/home/u' : undefined }))
+  on('fs.read', ($, e, next) => e.path.endsWith('.ponytail-band') && hidden ? { value: 'off' } : next(e))
+  on('session.id', () => ({ value: session }))
+  on('session.repo', () => ({ value: { root: '/repo/shop' } }) as never)
+  on('session.usage', () => ({ value: { startedAt: 0, cost: { usd: 1 } } }) as never)
+  on('process.run', async () => {
+    scans++
+    if (scans === 1) { began?.(); await gate }
+    return { value: { exitCode: 1, stdout: '', stderr: '' } } as never
+  })
+  on('session.start', ($, e) => ({ cwd: e.cwd }))
+  on('tool.call', { tool: 'Bash' }, () => ({ result: {}, text: '' }) as never)
+  on('ui.render', ($, e) => { const { Text } = $.ui.resolve(e); return <Text>prompt only</Text> })
+  const first = $.session.start({ cwd: '/repo/shop', surface: null } as never)
+  await entered
+  hidden = true
+  const ui = await $.ui.mount({ plugin: 'ponytail', surface: 'terminal', ...BAND })
+  await ui.unmount()
+  session = 's2'
+  hidden = false
+  release?.()
+  await first
+  await $.tool.call({ tool: 'Bash', command: 'npm test' } as never)
+  expect(scans).toBe(2)
+})
+
+test('a session change during initialization does not record the old turn', async ($, on) => {
+  mock.clock(on)
+  mock.store(on)
+  let session = 's1'
+  let release: (() => void) | undefined
+  let began: (() => void) | undefined
+  const entered = new Promise<void>(resolve => { began = resolve })
+  const gate = new Promise<void>(resolve => { release = resolve })
+  let writes = 0
+  on('session.id', () => ({ value: session }))
+  on('session.repo', () => ({ value: { root: '/repo/shop' } }) as never)
+  on('session.usage', () => ({ value: { startedAt: 0, cost: { usd: 1 } } }) as never)
+  on('process.run', async () => { began?.(); await gate; return { value: { exitCode: 1, stdout: '', stderr: '' } } as never })
+  on('fs.write', () => { writes++; return { value: undefined } })
+  on('turn.complete', () => ({ text: '' }))
+  const turn = $.turn.complete({ answer: '', durationMs: 1000 } as never)
+  await entered
+  session = 's2'
+  release?.()
+  await turn
+  expect(writes).toBe(0)
+})
+
 for (const command of ['clear', 'resume', 'branch']) {
   test(`after /${command} the band shows the level again, with no session.start`, async ($, on) => {
     mock.clock(on)
@@ -502,6 +595,12 @@ test('copy hands the task to the clipboard as Markdown', async ($, on) => {
 
 test('a test run shows its count, and an edit in the project after it marks the tests stale', async ($, on) => {
   mock.clock(on)
+  // The first tool.call now finishes the band's setup (no session.start came before it).
+  mock.store(on)
+  on('session.id', () => ({ value: 's1' }))
+  on('env.get', ($, e) => ({ value: e.name === 'HOME' ? '/home/u' : undefined }))
+  on('session.usage', () => ({ value: { startedAt: 0, cost: { usd: 0 } } }) as never)
+  on('process.run', () => ({ value: { exitCode: 1, stdout: '', stderr: '' } }) as never)
   on('session.repo', () => ({ value: { root: '/repo' } }) as never)
   on('tool.call', { tool: 'Bash' }, () => ({ result: { stdout: 'ℹ pass 14', stderr: '', interrupted: false }, text: 'ℹ pass 14' }) as never)
   on('tool.call', { tool: 'Edit' }, () => ({ result: {}, text: 'ok' }) as never)
