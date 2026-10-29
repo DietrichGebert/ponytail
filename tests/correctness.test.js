@@ -419,6 +419,53 @@ test('ratelimit: a refusal fails', () => {
   assert.equal(result.pass, false);
 });
 
+test('ratelimit: a limiter built in one block and applied to the route in the next passes', () => {
+  // A Sonnet 4.6 answer, failed as "no rate limiting, no FastAPI usage".
+  const output = [
+    '**Install one thing:**', '```bash', 'pip install slowapi', '```',
+    '**Minimal wiring:**', '```python',
+    'from slowapi import Limiter, _rate_limit_exceeded_handler',
+    'from slowapi.util import get_remote_address',
+    'from slowapi.errors import RateLimitExceeded',
+    'limiter = Limiter(key_func=get_remote_address)',
+    'app.state.limiter = limiter',
+    'app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)', '```',
+    '**On the endpoint:**', '```python',
+    '@app.get("/your-endpoint")',
+    '@limiter.limit("20/minute")',
+    'async def your_endpoint(request: Request):',
+    '    ...', '```',
+  ].join('\n');
+  assert.equal(correctness(output, { vars: { task: "Add rate limiting to my FastAPI endpoint so users can't spam it." } }).pass, true);
+});
+
+test('ratelimit: a lifetime counter whose 429 names a window fails, a window kept in an f-string key passes', () => {
+  assert.equal(check('Add rate limiting to my FastAPI endpoint.', 'python', `from fastapi import FastAPI, HTTPException
+
+app = FastAPI()
+hits = {}
+
+@app.get("/api")
+def endpoint(user: str = "anon"):
+    """Allow 10 requests per window."""
+    hits[user] = hits.get(user, 0) + 1
+    if hits[user] > 10:
+        raise HTTPException(429, "Too many requests in this window, retry after the ttl")
+    return {"ok": True}`).pass, false);
+  assert.equal(check('Add rate limiting to my FastAPI endpoint.', 'python', `import time
+import redis
+from fastapi import FastAPI, HTTPException
+
+app = FastAPI()
+r = redis.Redis()
+
+@app.get("/api")
+def endpoint(user: str = "anon"):
+    if r.incr(f"rl:{user}:{int(time.time() // 60)}") > 10:
+        raise HTTPException(429, "Too Many Requests")
+    return {"ok": True}`).pass, true);
+});
+
 // --- Edge cases ---
 
 test('unknown task is gracefully skipped', () => {

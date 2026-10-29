@@ -250,17 +250,21 @@ else:
   },
 
   ratelimit(blocks) {
-    const code = blocks.find((b) => b.lang === 'python' || b.lang === 'py' || (!b.lang && (b.code.includes('rate') || b.code.includes('limit'))));
-    if (!code) return { pass: false, reason: 'No Python code block found' };
+    // Every Python block, read as one file: an answer often builds the limiter in one block and applies it to the
+    // route in the next.
+    const code = blocks.filter((b) => b.lang === 'python' || b.lang === 'py' || (!b.lang && (b.code.includes('rate') || b.code.includes('limit'))));
+    if (code.length === 0) return { pass: false, reason: 'No Python code block found' };
 
     // Structural check for rate limiting: a limiter library, or requests tracked over time and turned away with a 429.
     // Comments are dropped: a "# TODO: rate limit" limits nothing.
-    const src = code.code.replace(/(^|\s)#.*$/gm, '$1');
+    const src = code.map((b) => b.code).join('\n').replace(/(^|\s)#.*$/gm, '$1');
+    // And strings, for the time check: a 429 that says "this window" tracks no time. An f-string's {expressions} run.
+    const logic = src.replace(/("{3}|'{3})[\s\S]*?\1|("|')(?:\\.|(?!\2)[^\\\n])*\2/g, (s) => ' ' + (s.match(/\{[^{}]*\}/g) || []).join(' ') + ' ');
     // A limiter applied to a route or as the app's default, not one only imported or constructed.
     const hasLibrary = /@\s*\w*limiter\.limit\(|Depends\(\s*RateLimiter\(|default_limits\s*=/i.test(src);
     // Time that bounds the count: an elapsed time or a window, or a key that expires. A start time beside a
     // lifetime counter ("STARTED = time.time()") limits nothing.
-    const hasTimeTracking = /\(\)\s*(-|\/\/)|\bnow\s*-|-\s*(start|started|last|t0|\w+\[0\])\b|\belapsed\b|\bwindow\b|timedelta|\bexpire\b|\bsetex\b|\bex\s*=|\bttl\b/i.test(src);
+    const hasTimeTracking = /\(\)\s*(-|\/\/)|\bnow\s*-|-\s*(start|started|last|t0|\w+\[0\])\b|\belapsed\b|\bwindow\b|timedelta|\bexpire\b|\bsetex\b|\bex\s*=|\bttl\b/i.test(logic);
     const rejects = /429|Too Many|TOO_MANY_REQUESTS|HTTPException/.test(src);
     const hasFastAPI = /fastapi|FastAPI|app\s*=|@app\./.test(src);
 
