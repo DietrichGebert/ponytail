@@ -1,4 +1,8 @@
 import { createRequire } from "node:module";
+import { readFileSync } from "node:fs";
+import { homedir } from "node:os";
+import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 
 const require = createRequire(import.meta.url);
 const {
@@ -17,6 +21,27 @@ const { getPonytailInstructions, filterSkillBodyForMode } = require("../hooks/po
 export { filterSkillBodyForMode };
 export const readDefaultMode = getDefaultMode;
 export const readQuietStartup = getQuietStartup;
+
+function getAgentDir() {
+  const agentDir = process.env.PI_CODING_AGENT_DIR || join(homedir(), ".pi", "agent");
+  if (agentDir.startsWith("file://")) return fileURLToPath(agentDir);
+  if (agentDir === "~") return homedir();
+  if (agentDir.startsWith("~/") || (process.platform === "win32" && agentDir.startsWith("~\\"))) {
+    return join(homedir(), agentDir.slice(2));
+  }
+  return agentDir;
+}
+
+export function readHideStatus() {
+  if (process.env.PONYTAIL_HIDE_STATUS !== undefined) return getHideStatus();
+  try {
+    const settings = JSON.parse(readFileSync(join(getAgentDir(), "settings.json"), "utf8").replace(/^\uFEFF/, ""));
+    if (typeof settings?.ponytail?.hideStatus === "boolean") return settings.ponytail.hideStatus;
+  } catch (_) {
+    // Missing or invalid Pi settings must not disable the existing Ponytail config.
+  }
+  return getHideStatus();
+}
 
 const RUNTIME_MODE_LIST = RUNTIME_MODES.join("|");
 const PONYTAIL_COMMAND_DESCRIPTION = `Set mode: ${RUNTIME_MODE_LIST}. Commands: status, default <mode>`;
@@ -73,7 +98,7 @@ export { writeDefaultMode };
 export default function ponytailExtension(pi) {
   let currentMode = DEFAULT_MODE;
   let configuredDefaultMode = getDefaultMode();
-  let hideStatus = getHideStatus();
+  let hideStatus = readHideStatus();
   let isActive = false;
   let lastCtx = null;
 
@@ -202,7 +227,7 @@ export default function ponytailExtension(pi) {
 
   pi.on("session_start", async (_event, ctx) => {
     configuredDefaultMode = getDefaultMode();
-    hideStatus = getHideStatus();
+    hideStatus = readHideStatus();
     restoreSessionMode(ctx);
     if (!getQuietStartup()) {
       ctx?.ui?.notify?.(`Ponytail loaded: ${currentMode}`, "info");
