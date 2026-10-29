@@ -42,6 +42,23 @@ test('qoder hooks config exists and registers UserPromptSubmit', () => {
   assert.ok(cmd.includes('ponytail-mode-tracker.js'), 'must point at ponytail-mode-tracker.js');
 });
 
+test('qoder subagent injection registers SubagentStart', () => {
+  const hooksConfig = readJSON('hooks/qoder-hooks.json');
+  const entries = hooksConfig.hooks.SubagentStart;
+  assert.ok(Array.isArray(entries), 'must register the SubagentStart hook');
+  // No matcher: every subagent gets the ruleset, as on Claude and Codex.
+  assert.equal(entries[0].matcher, undefined, 'SubagentStart must have no matcher');
+  const cmd = entries[0].hooks[0].command;
+  assert.ok(cmd.includes('ponytail-subagent.js'), 'must point at ponytail-subagent.js');
+  // Qoder spawns subagents with the Agent tool, so a PreToolUse matcher on
+  // task|Task never fires (#1092).
+  assert.equal(
+    JSON.stringify(hooksConfig.hooks.PreToolUse || []).includes('ponytail-subagent.js'),
+    false,
+    'subagent injection must not sit behind PreToolUse',
+  );
+});
+
 test('qoder rules file exists and is non-empty', () => {
   const rulesPath = path.join(root, '.qoder', 'rules', 'ponytail.md');
   assert.ok(fs.existsSync(rulesPath), '.qoder/rules/ponytail.md must exist');
