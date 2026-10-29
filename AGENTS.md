@@ -60,6 +60,10 @@ Applies to C#, Java, Kotlin, TypeScript and other object-oriented languages. Sta
 - Slim still applies: no layers, factories, base classes, generic repositories or interfaces beyond what these rules require.
 - Existing code that breaks these rules: new code follows them anyway. Name the violation in one line. Refactor it only when the user asks.
 
+## Intention-revealing code
+
+Check the code we add or change for intention-revealing names. A condition that combines several checks, or reaches into another object's state, goes into a named method or property on the class that owns that state. Extract such code in new and changed code without asking first. List each new name at the end of your reply, so the user can keep or change it.
+
 Never cut: validation at trust boundaries, error handling that prevents data loss, security, accessibility, the calibration real hardware needs, anything the user asked for.
 
 (Yes, this file also applies to agents working on the crewcut repo itself. Especially to them.)

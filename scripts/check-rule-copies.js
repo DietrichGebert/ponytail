@@ -51,6 +51,7 @@ const INVARIANTS = [
   'More than 4 parameters is a smell',      // OO: long parameter lists
   'one class per case behind a shared interface', // OO: replace conditional with polymorphism
   'Nesting deeper than 3 levels',           // readability
+  'intention-revealing names',             // named methods for compound conditions
   // the "never cut" carve-outs: pin each so a reword in either file can't silently drop one.
   'validation at trust boundaries',
   'prevents data loss',
