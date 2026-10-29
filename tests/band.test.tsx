@@ -202,10 +202,11 @@ describe('metrics', () => {
     expect(callsIn(added, known, ['parse_price'])).toEqual(['to_cents'])
   })
 
-  test('flags a new helper whose name exists in another file', () => {
-    const known = new Map([['format_price', 'utils/money.py:9']])
+  test('flags a new helper whose name exists in another file, unless the name is generic', () => {
+    const known = new Map([['format_price', 'utils/money.py:9'], ['main', 'app.py:1']])
     expect(duplicateOf('formatPrice', '/repo/cart.py', known)).toBe('format_price (utils/money.py:9)')
     expect(duplicateOf('format_price', '/repo/utils/money.py', known)).toBeUndefined()
+    expect(duplicateOf('main', '/repo/scripts/seed.py', known)).toBeUndefined()
     // Names only: a helper rewritten under another name is not found.
     expect(duplicateOf('parse_price', '/repo/cart.py', known)).toBeUndefined()
   })
@@ -478,5 +479,42 @@ test('a test run shows its count, and an edit after it marks the tests stale', a
 
   await $.tool.call({ tool: 'Edit', file_path: '/repo/cart.py', old_string: 'a = 1', new_string: 'a = 2', replace_all: false } as never)
   expect(await ui.find({ type: 'Text', text: /no test since change/ })).toBeDefined()
+  await ui.unmount()
+})
+
+test('a scratch file outside the repo raises no duplicate and no open callers', async ($, on) => {
+  mock.clock(on)
+  mock.store(on)
+  on('env.get', ($, e) => ({ value: e.name === 'HOME' ? '/home/u' : undefined }))
+  on('session.repo', () => ({ value: { root: 'C:/Repo/Shop' } }) as never)
+  on('session.id', () => ({ value: 's1' }))
+  on('session.turns', () => ({ value: 1 }))
+  on('session.usage', () => ({ value: { startedAt: 0, cost: { usd: 0 } } }) as never)
+  on('fs.read', () => ({ deny: 'missing' }) as never)
+  on('fs.list', () => ({ value: [] }))
+  on('fs.write', () => ({ value: undefined }))
+  // The repo defines esc() and calls pages() somewhere.
+  on('process.run', ($, e) => {
+    const stdout = e.argv.includes('-nE') ? 'src/html.py:3:def esc(s):\n' : e.argv.at(-1) === 'pages' ? 'src/site.py:9:    pages(site)\n' : ''
+    return { value: { exitCode: stdout === '' ? 1 : 0, stdout, stderr: '' } } as never
+  })
+  on('tool.call', { tool: 'Edit' }, () => ({ result: {}, text: 'ok' }) as never)
+  on('session.start', ($, e) => ({ cwd: e.cwd }))
+  on('turn.complete', () => ({ text: '' }))
+  await $.session.start({ cwd: 'C:/Repo/Shop', surface: null } as never)
+  const ui = await $.ui.mount({ plugin: 'ponytail', surface: 'terminal', ...BAND })
+  // Replaces pages() with an esc() of its own.
+  const edit = (file_path: string) => $.tool.call({ tool: 'Edit', file_path, old_string: 'def pages():\n    pass', new_string: 'def esc(s):\n    return s', replace_all: false } as never)
+
+  await edit('C:\\Users\\u\\AppData\\Local\\Temp\\scratch.py')
+  await $.turn.complete({ answer: '', durationMs: 1000 } as never)
+  expect(await ui.find({ type: 'Text', text: /duplicate\?/ })).toBeUndefined()
+  expect(await ui.find({ type: 'Text', text: /callers open/ })).toBeUndefined()
+
+  // The same edit inside the repo, with the other separator and case Windows may hand over.
+  await edit('c:\\repo\\shop\\src\\build.py')
+  await $.turn.complete({ answer: '', durationMs: 1000 } as never)
+  expect(await ui.find({ type: 'Text', text: /duplicate\?/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /callers open/ })).toBeDefined()
   await ui.unmount()
 })

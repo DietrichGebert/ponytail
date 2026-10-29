@@ -80,6 +80,8 @@ const load = async ($: EngineInterface): Promise<Band> => ({ ...EMPTY, ...(await
 
 const union = (a: string[], b: string[]) => [...new Set([...a, ...b])]
 const base = (path: string) => path.replace(/\/+$/, '').split('/').pop() ?? path
+// Windows hands paths over with either separator and either case.
+const pathKey = (path: string) => path.replace(/\\/g, '/').replace(/\/+$/, '').toLowerCase()
 
 // Windows sets USERPROFILE, not HOME.
 const home = async ($: EngineInterface) => (await $.env.get('HOME')) ?? (await $.env.get('USERPROFILE'))
@@ -271,11 +273,15 @@ export const register: Register = (on, options) => {
     const ran = await next(e)
     if (ran.deny !== undefined || ran.isError) return ran
 
+    // A scratch file outside the repo (Claude Code's scratchpad, say) is never reused or called from it.
+    const root = (await $.session.repo().catch(() => null))?.root
+    const inRepo = root === undefined || pathKey(file).startsWith(`${pathKey(root)}/`)
+    const source = inRepo && isSource(file)
     const oldDefs = defsIn(file, before)
     const newDefs = defsIn(file, after)
-    const created = isSource(file) ? newDefs.filter(n => !oldDefs.includes(n)) : []
-    const removed = oldDefs.filter(n => !newDefs.includes(n))
-    const reused = isSource(file) ? callsIn(addedLines(before, after), known, newDefs) : []
+    const created = source ? newDefs.filter(n => !oldDefs.includes(n)) : []
+    const removed = inRepo ? oldDefs.filter(n => !newDefs.includes(n)) : []
+    const reused = source ? callsIn(addedLines(before, after), known, newDefs) : []
     const dupes = created.flatMap(name => {
       const like = duplicateOf(name, file, known)
       return like ? [{ name, like }] : []

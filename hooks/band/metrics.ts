@@ -81,6 +81,7 @@ const norm = (name: string) => name.toLowerCase().replace(/[_-]/g, '')
 // A new definition whose name an existing one already has, ignoring case and _ (format_price vs formatPrice).
 // shortcut: names only; a helper rewritten under another name (parse_price vs to_cents) is not found.
 export function duplicateOf(name: string, file: string, known: Map<string, string>): string | undefined {
+  if (GENERIC.has(name.toLowerCase())) return undefined
   for (const [other, where] of known) {
     const at = where.slice(0, where.lastIndexOf(':'))
     const sameFile = file === at || file.endsWith(`/${at}`)
