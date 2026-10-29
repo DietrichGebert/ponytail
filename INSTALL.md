@@ -56,6 +56,8 @@ Copilot CLI namespaces plugin commands by plugin name. For example:
 pi install git:github.com/DietrichGebert/ponytail
 ```
 
+pi shows the active level in its status bar and a `Ponytail loaded` notice at startup. Set `PONYTAIL_HIDE_STATUS=1` (or `"hideStatus": true` in `~/.config/ponytail/config.json`) to hide the indicator, and `PONYTAIL_QUIET_STARTUP=1` (or `"quietStartup": true`) to drop the notice. Ponytail stays active either way.
+
 ## Kimi Code
 
 In Kimi Code, run `/plugins install https://github.com/DietrichGebert/ponytail`, then `/reload` or start a new session. The plugin puts [`AGENTS.md`](AGENTS.md) into the system prompt every turn and adds the six skills, which Kimi also offers as `/ponytail`, `/ponytail-review`, `/ponytail-audit`, `/ponytail-debt`, `/ponytail-gain` and `/ponytail-help`. Level switching (`/ponytail lite`) loads the skill for that turn; there is no persistent mode flag in Kimi.
@@ -191,9 +193,11 @@ Merges two native hooks into `~/.cursor/hooks.json` (add `--project` to write `<
 
 ## Settings
 
-Set the level for every new session with the `PONYTAIL_DEFAULT_MODE` env var (`lite`/`full`/`ultra`/`off`), or a `defaultMode` field in `~/.config/ponytail/config.json` (`%APPDATA%\ponytail\config.json` on Windows). The default is `full`.
+Set the level for every new session with the `PONYTAIL_DEFAULT_MODE` env var (`lite`/`full`/`ultra`/`off`), or a `defaultMode` field in `~/.config/ponytail/config.json` (`%APPDATA%\ponytail\config.json` on Windows). The default is `full`. In Claude Code, Codex, Copilot CLI, Cursor, OpenCode, Qoder and pi, `/ponytail default <level>` writes that field for you.
 
 While active, the ruleset is also injected into every subagent spawned via the Agent tool. To scope that to specific agent types (say, keep it off read-only search agents), set the `PONYTAIL_SUBAGENT_MATCHER` env var to a regex tested against the subagent's `agent_type`. It is unanchored and case-insensitive: `explore|general` matches either, `^general$` is exact, and plugin agent types look like `plugin:name`. Unset means inject into every subagent (the default); an invalid regex, or a subagent whose type the platform doesn't report, also falls back to injecting.
+
+In Claude Code, Codex, Copilot CLI and Cursor, the session-start hook also adds a short codebase map: the top-level functions, classes and exports of the project's source files, one line per folder, so the agent sees what already exists before it writes. Set `PONYTAIL_MAP=0` to turn it off, or `PONYTAIL_MAP_CHARS` to change its size (2000 characters by default). If the map takes longer than 3 seconds to build, the session starts without it.
 
 ## Skills CLI
 
