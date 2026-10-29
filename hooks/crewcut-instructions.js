@@ -124,8 +124,16 @@ function getCrewcutInstructions(mode) {
   }
 }
 
+// Short per-turn reminder: the SessionStart ruleset fades in long sessions while
+// other plugins re-inject their own instructions every turn.
+function getCrewcutReminder(mode) {
+  return 'CREWCUT MODE ACTIVE (' + mode + '). Crewcut rules govern all code you write, ' +
+    'whichever process skill drives the task. End your reply with the skipped/risk line.';
+}
+
 module.exports = {
   filterSkillBodyForMode,
   getFallbackInstructions,
   getCrewcutInstructions,
+  getCrewcutReminder,
 };

@@ -13,7 +13,7 @@ const root = path.join(__dirname, '..');
 // paths pass, paths carrying shell metacharacters are rejected so they never get
 // embedded in a shell command.
 const { DEFAULT_MODE, getDefaultMode, isShellSafe, writeDefaultMode } = require('../hooks/crewcut-config');
-const { getCrewcutInstructions } = require('../hooks/crewcut-instructions');
+const { getCrewcutInstructions, getCrewcutReminder } = require('../hooks/crewcut-instructions');
 assert.equal(isShellSafe('C:\\Users\\x\\.claude\\plugins\\crewcut\\hooks\\crewcut-statusline.ps1'), true);
 assert.equal(isShellSafe('/home/u/.claude/plugins/crewcut/hooks/crewcut-statusline.sh'), true);
 assert.equal(isShellSafe('/tmp/a"&calc.exe&"/x.sh'), false);
@@ -835,6 +835,49 @@ assert.equal(
   false,
   '/crewcut-review must not create a review flag on a fresh session (#736)',
 );
+
+// Per-turn reminder: an ordinary prompt gets a short crewcut line while a level
+// is active, so the SessionStart ruleset does not fade behind plugins that
+// re-inject their own instructions every turn.
+{
+  const remindHome = path.join(temp, 'reminder-home');
+  const remindFlag = path.join(remindHome, '.claude', '.crewcut-active');
+  fs.mkdirSync(path.dirname(remindFlag), { recursive: true });
+  const remindEnv = { HOME: remindHome, USERPROFILE: remindHome };
+  const prompt = (text) => run('crewcut-mode-tracker.js', remindEnv, JSON.stringify({ prompt: text }));
+
+  for (const mode of ['lite', 'full', 'ultra']) {
+    fs.writeFileSync(remindFlag, mode);
+    result = prompt('refactor the parser');
+    assert.equal(result.status, 0, result.stderr);
+    assert.equal(result.stdout, getCrewcutReminder(mode), `active ${mode} must get the per-turn reminder`);
+  }
+
+  // A /crewcut command writes only its own confirmation, never a second block.
+  result = prompt('/crewcut lite');
+  assert.equal(result.stdout, 'CREWCUT MODE CHANGED — level: lite');
+
+  // Deactivation answers with OFF only, and later prompts stay silent.
+  result = prompt('stop crewcut');
+  assert.equal(result.stdout, 'CREWCUT MODE OFF');
+  result = prompt('refactor the parser');
+  assert.equal(result.stdout, '', 'no reminder when crewcut is off');
+
+  // review is a one-shot skill, not a level: no reminder.
+  fs.writeFileSync(remindFlag, 'review');
+  result = prompt('refactor the parser');
+  assert.equal(result.stdout, '', 'no reminder for the review mode');
+
+  // Codex gets the reminder in hookSpecificOutput JSON.
+  result = run('crewcut-mode-tracker.js', { ...codexEnv, PLUGIN_DATA: path.join(temp, 'reminder-codex') }, JSON.stringify({ prompt: 'hi' }));
+  assert.equal(result.stdout, '', 'Codex without an active level stays silent');
+  fs.mkdirSync(path.join(temp, 'reminder-codex'), { recursive: true });
+  fs.writeFileSync(path.join(temp, 'reminder-codex', '.crewcut-active'), 'full');
+  result = run('crewcut-mode-tracker.js', { ...codexEnv, PLUGIN_DATA: path.join(temp, 'reminder-codex') }, JSON.stringify({ prompt: 'hi' }));
+  output = JSON.parse(result.stdout);
+  assert.equal(output.hookSpecificOutput.hookEventName, 'UserPromptSubmit');
+  assert.equal(output.hookSpecificOutput.additionalContext, getCrewcutReminder('full'));
+}
 
 // #662/#809: two Claude Code sessions in different repos keep their own mode.
 {

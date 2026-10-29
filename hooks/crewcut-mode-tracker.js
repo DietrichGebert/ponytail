@@ -2,7 +2,7 @@
 // crewcut — UserPromptSubmit hook to track which crewcut mode is active
 // Inspects user input for /crewcut commands and writes mode to flag file
 
-const { getDefaultMode, isDeactivationCommand, writeDefaultMode } = require('./crewcut-config');
+const { getDefaultMode, isDeactivationCommand, normalizeMode, writeDefaultMode } = require('./crewcut-config');
 const {
   clearMode,
   cursorRuleNotice,
@@ -14,7 +14,7 @@ const {
   setMode,
   writeHookOutput,
 } = require('./crewcut-runtime');
-const { getCrewcutInstructions } = require('./crewcut-instructions');
+const { getCrewcutInstructions, getCrewcutReminder } = require('./crewcut-instructions');
 
 let input = '';
 let done = false;
@@ -127,6 +127,14 @@ function finish() {
 
       deactivated = true;
       writeHookOutput('UserPromptSubmit', 'off', 'CREWCUT MODE OFF');
+    }
+
+    // Ordinary prompt: remind the model each turn. /crewcut prompts and
+    // deactivation already wrote their own output (one write per invocation).
+    // Qoder gets the full ruleset below instead.
+    if (!isQoder && !deactivated && !/^[/@$]crewcut/.test(prompt)) {
+      const live = normalizeMode(readMode());
+      if (live && live !== 'off') writeHookOutput('UserPromptSubmit', live, getCrewcutReminder(live));
     }
 
     // Qoder has no SessionStart event, so UserPromptSubmit does double duty:

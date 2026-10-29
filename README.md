@@ -42,7 +42,7 @@ Crewcut runs three Node.js hooks from the plugin folder. It sends nothing over t
 |--------------------|--------------|
 | `SessionStart`     | Adds the crewcut rules to the session context. Adds a short map of the project's top-level classes and functions, built from `git ls-files` and a regex per language, so existing code is reused. |
 | `SubagentStart`    | Adds the same rules to each subagent. Limit this with `CREWCUT_SUBAGENT_MATCHER`. |
-| `UserPromptSubmit` | Detects level switches (`/crewcut lite`, "stop crewcut") and records the level. |
+| `UserPromptSubmit` | Detects level switches (`/crewcut lite`, "stop crewcut") and records the level. On other prompts, adds a one-line crewcut reminder while a level is active. |
 
 Files it writes, all outside the plugin folder:
 
