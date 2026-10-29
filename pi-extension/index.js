@@ -82,7 +82,8 @@ export default function ponytailExtension(pi) {
     if (ctx) lastCtx = ctx;
     const c = ctx || lastCtx;
     // ponytail: hide the indicator but keep the ruleset active (#324).
-    if (hideStatus) return;
+    // RPC hosts keep the last status, so clear it instead of only returning.
+    if (hideStatus) { c?.ui?.setStatus?.("ponytail", undefined); return; }
     if (!c?.ui?.setStatus) return;
     // ponytail: try/catch guards against pi-web theme proxy throwing before initTheme
     let theme;
