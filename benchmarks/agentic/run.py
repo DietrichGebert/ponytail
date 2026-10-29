@@ -80,9 +80,10 @@ def _is_test(p: Path, workdir: Path):
     rel = p.relative_to(workdir)
     name = p.name.lower()
     return (name.startswith("test_") or name.endswith("_test.py") or name == "conftest.py"
-            or any(part.lower() in ("test", "tests") for part in rel.parts[:-1]))
+            or re.search(r"\.(test|spec)\.([cm]?[jt]s|[jt]sx)$", name) is not None
+            or any(part.lower() in ("test", "tests", "__tests__", "spec") for part in rel.parts[:-1]))
 
-CODE_EXT = {".py", ".js", ".ts", ".jsx", ".tsx", ".html", ".css", ".go", ".rs", ".java", ".rb", ".sh"}
+CODE_EXT = {".py", ".js", ".ts", ".jsx", ".tsx", ".mjs", ".cjs", ".mts", ".cts", ".html", ".css", ".go", ".rs", ".java", ".rb", ".sh"}
 
 def _count(p: Path, with_comments: bool):
     try: lines = p.read_text(encoding="utf-8", errors="ignore").splitlines()
@@ -223,10 +224,28 @@ def selftest():
     ok = row["safe_rate"] == 0 and row["correct_rate"] == 0
     print(f"{'ok ' if ok else 'XX '} aggregate    a crashed cell counts as failed")
     failures += 0 if ok else 1
+    failures += _selftest_is_test()
     failures += _selftest_plugin_dir()
+    failures += _selftest_judge_source()
     failures += _selftest_kill()
     print(f"\nselftest: {'all instruments valid' if not failures else str(failures) + ' BROKEN'}")
     return failures
+
+def _selftest_is_test():
+    """Python and JS/TS test conventions count as test LOC, never source; look-alikes stay source."""
+    tests = ["test_x.py", "x_test.py", "conftest.py", "tests/x.py", "test/x.js", "src/button.test.js",
+             "src/button.spec.ts", "src/Button.test.jsx", "src/Button.spec.tsx", "src/__tests__/button.js", "spec/button_spec.js", "src/button.test.mjs", "src/util.spec.cts"]
+    srcs = ["app.py", "src/button.js", "src/latest.ts", "src/contest.tsx", "src/test-utils.js", "src/spec.js",
+            "src/server.mjs", "src/config.cts"]
+    with tempfile.TemporaryDirectory() as d:
+        for f in tests + srcs: _write(Path(d) / f, "x\n")
+        wrong = ([f for f in tests if not _is_test(Path(d) / f, Path(d))]
+                 + [f for f in srcs if _is_test(Path(d) / f, Path(d))])
+        s = code_stats(Path(d))
+    ok = not wrong and (s["src_files"], s["src_loc"], s["test_files"], s["test_loc"]) == (len(srcs), len(srcs), len(tests), len(tests))
+    print(f"{'ok ' if ok else 'XX '} is_test      test/spec files excluded from source LOC"
+          + (f"  misclassified={wrong}" if wrong else ""))
+    return 0 if ok else 1
 
 def _selftest_plugin_dir():
     """Plugin-dir resolution must be portable: env override wins, and a missing install
@@ -252,6 +271,17 @@ def _selftest_plugin_dir():
         ok_miss = True
     print(f"{'ok ' if ok_miss else 'XX '} plugin_dir   miss clear error (sys.exit)")
     return fails + (0 if ok_miss else 1)
+
+def _selftest_judge_source():
+    """The over-engineering judge must see the agent's files, not the .git/ that _git_snapshot adds."""
+    import judge  # lazy: judge is only needed here
+    with tempfile.TemporaryDirectory() as d:
+        _write(Path(d) / "src/app.js", "export const x = 1;\n")
+        _git_snapshot(d)
+        heads = re.findall(r"^# === (.+) ===$", judge.source_text(Path(d)), re.M)
+        ok = (Path(d) / ".git").is_dir() and heads == [str(Path("src/app.js"))]
+    print(f"{'ok ' if ok else 'XX '} judge_source skips .git/ ({len(heads)} files sent)")
+    return 0 if ok else 1
 
 def _tree_kill(proc):
     """Tree-kill one timed-out cell, never a blanket kill (that would also take down this
