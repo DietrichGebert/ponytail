@@ -62,24 +62,48 @@ export function parseCsv(text: string): string[][] {
   return rows
 }
 
-export function tasksFrom(text: string): Task[] {
+// A number that is missing or malformed is not a zero: the row is reported
+// and left out of the numbers, so a broken ledger cannot quietly change the
+// totals (#1206).
+const numeric = (value: string): number | null => {
+  const raw = value.trim()
+  if (raw === '') return null
+  const parsed = Number(raw)
+  return Number.isFinite(parsed) ? parsed : null
+}
+
+export function ledgerFrom(text: string): { tasks: Task[]; invalid: string[] } {
   const [head, ...rows] = parseCsv(text)
-  if (!head?.includes('key')) return []
+  if (!head?.includes('key')) return { tasks: [], invalid: [] }
   const at = (row: string[], col: string) => row[head.indexOf(col)] ?? ''
-  const num = (row: string[], col: string) => Number(at(row, col)) || 0
-  return rows.map(row => ({
-    started: at(row, 'started'),
-    project: at(row, 'project'),
-    name: at(row, 'name'),
-    cost: num(row, 'cost_usd'),
-    turns: num(row, 'turns'),
-    agentMinutes: num(row, 'agent_minutes'),
-    tokens: num(row, 'tokens_total'),
-    reuse: at(row, 'reuse_pct') === '' ? null : num(row, 'reuse_pct'),
-    tests: at(row, 'tests'),
-    level: at(row, 'level'),
-    model: at(row, 'model'),
-  }))
+  const tasks: Task[] = []
+  const invalid: string[] = []
+  rows.forEach((row, index) => {
+    const cost = numeric(at(row, 'cost_usd'))
+    const turns = numeric(at(row, 'turns'))
+    const agentMinutes = numeric(at(row, 'agent_minutes'))
+    const tokens = numeric(at(row, 'tokens_total'))
+    const reuseRaw = at(row, 'reuse_pct').trim()
+    const reuse = reuseRaw === '' ? null : numeric(reuseRaw)
+    if (cost === null || turns === null || agentMinutes === null || tokens === null || (reuseRaw !== '' && reuse === null)) {
+      invalid.push(`row ${index + 2} (${at(row, 'project') || 'unknown project'})`)
+      return
+    }
+    tasks.push({
+      started: at(row, 'started'),
+      project: at(row, 'project'),
+      name: at(row, 'name'),
+      cost,
+      turns,
+      agentMinutes,
+      tokens,
+      reuse,
+      tests: at(row, 'tests'),
+      level: at(row, 'level'),
+      model: at(row, 'model'),
+    })
+  })
+  return { tasks, invalid }
 }
 
 const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
