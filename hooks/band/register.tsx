@@ -198,27 +198,93 @@ async function openBoard($: EngineInterface) {
 }
 
 // Sets the band up for a session (level, project, task row, cost baseline); returns the definitions that exist now.
-async function start($: EngineInterface): Promise<Map<string, string>> {
+async function start($: EngineInterface, current: () => boolean): Promise<Map<string, string> | undefined> {
+  const session = await $.session.id()
   const grep = await $.process.run(['git', 'grep', '--untracked', '-nE', GREP_DEFS]).catch(() => undefined)
   const level = await readLevel($)
   const details = (await $.store.get('details')) === true
   const repo = await $.session.repo().catch(() => null)
   const project = base(repo?.root ?? (await $.session.cwd()))
-  const session = await $.session.id()
   // The cost so far is the baseline for the last turn's own cost.
   const usage = await $.session.usage().catch(() => undefined)
   const csv = usage ? await $.fs.read(ledgerFile(await ledgerDir($), project)).catch(() => '') : ''
   const key = usage ? taskKey(session, usage.startedAt) : ''
-  await update($, band, b => resume({ ...EMPTY, ...b, level, details, project, session, cost: usage?.cost?.usd ?? b.cost }, csv, key))
+  if (!current() || (await bandHidden($)) || (await $.session.id()) !== session || !current()) return undefined
+  await update($, band, b => current() ? resume({ ...EMPTY, ...b, level, details, project, session, cost: usage?.cost?.usd ?? b.cost }, csv, key) : b)
   return grep?.exitCode === 0 ? parseDefs(grep.stdout) : new Map()
 }
 
-export const register: Register = (on, options) => {
+// What the band knows about this session so far. Hidden turns touch none of it, so a later
+// showing starts over instead of trusting state that was never set up.
+type BandState = {
   // Definitions that existed when the session started: what new code can reuse.
-  let known = new Map<string, string>()
+  known: Map<string, string>
+  // Bumped whenever the band goes hidden or the session moves; anything stamped with an older
+  // generation (an in-flight scan, a pending write) is stale by the time it lands.
+  generation: number
+  initialized: boolean
+  starting: Promise<void> | undefined
+  clearPending: boolean
+  baselineUnknown: boolean
+}
+
+function resetState(s: BandState): void {
+  s.generation++
+  s.initialized = false
+  s.baselineUnknown = false
+  s.starting = undefined
+  s.known = new Map()
+}
+
+// True when the band should work this event: shown, set up for the current session, and not
+// hidden away mid-initialization. On the first showing it runs start() and waits, so a session
+// pays the definition scan once, at the first event that can use it.
+async function visible($: EngineInterface, s: BandState): Promise<boolean> {
+  if (await bandHidden($)) {
+    resetState(s)
+    return false
+  }
+  const observed = s.generation
+  if (!s.initialized) {
+    if (!s.starting) {
+      const id = s.generation
+      const pending = start($, () => id === s.generation).then(defs => {
+        if (id === s.generation && defs !== undefined) {
+          s.known = defs
+          s.initialized = true
+        }
+      }).finally(() => {
+        if (id === s.generation) s.starting = undefined
+      })
+      s.starting = pending
+    }
+    await s.starting
+  }
+  if (await bandHidden($)) {
+    resetState(s)
+    return false
+  }
+  if (!s.initialized || observed !== s.generation) return false
+  if (s.clearPending) {
+    s.clearPending = false
+    await update($, band, b => ({ ...EMPTY, ...b, ...TASK }))
+  }
+  return true
+}
+
+export const register: Register = (on, options) => {
+  const s: BandState = {
+    known: new Map(),
+    generation: 0,
+    initialized: false,
+    starting: undefined,
+    clearPending: false,
+    baselineUnknown: false,
+  }
 
   on('session.start', async ($, e, next) => {
-    known = await start($)
+    resetState(s)
+    await visible($, s)
     return next(e)
   }).catch(($, e, next) => next(e))
 
@@ -229,20 +295,42 @@ export const register: Register = (on, options) => {
   // shortcut: after /clear, ponytail-activate.js may reset the flag to the default level after this, so a level switched
   // before /clear can show until the first turn ends; a session skips a plugin's classic.SessionStart hook, the one later point.
   on('command.run', { command: ['clear', 'resume', 'branch'] }, async ($, e, next) => {
+    if (await bandHidden($)) {
+      resetState(s)
+      return next(e)
+    }
     const session = await $.session.id()
     const result = await next(e)
-    if ((await $.session.id()) !== session) known = await start($).catch(() => known)
+    if ((await $.session.id()) !== session) {
+      resetState(s)
+      await visible($, s).catch(() => false)
+    }
     return result
   }).catch(($, e, next) => next(e))
 
   // /clear starts a new task: the counters start over, the cost baseline stays.
   on('session.end', async ($, e, next) => {
-    if (e.reason === 'clear') await update($, band, b => ({ ...EMPTY, ...b, ...TASK }))
+    resetState(s)
+    if (e.reason === 'clear') {
+      s.clearPending = true
+      if (!(await bandHidden($))) {
+        s.clearPending = false
+        await update($, band, b => ({ ...EMPTY, ...b, ...TASK }))
+      }
+    }
     return next(e)
   }).catch(($, e, next) => next(e))
 
   // The first prompt names the task until the session has a sidebar name.
   on('prompt.submit', async ($, e, next) => {
+    if (await bandHidden($)) {
+      resetState(s)
+      return next(e)
+    }
+    if (s.clearPending) {
+      s.clearPending = false
+      await update($, band, b => ({ ...EMPTY, ...b, ...TASK }))
+    }
     const text = e.text.trim()
     if (e.origin.kind !== 'plugin' && text !== '' && !text.startsWith('/')) {
       const name = (text.split('\n')[0] ?? '').slice(0, 60)
@@ -252,9 +340,10 @@ export const register: Register = (on, options) => {
   }).catch(($, e, next) => next(e))
 
   on('tool.call', async ($, e, next) => {
+    if (!(await visible($, s))) return next(e)
     if (e.tool === 'Bash') {
       const ran = await next(e)
-      if (ran.deny === undefined && isTestCommand(e.command)) {
+      if (ran.deny === undefined && isTestCommand(e.command) && !(await bandHidden($))) {
         const tests = { state: ran.isError ? ('fail' as const) : ('pass' as const), ...testCounts(ran.text ?? '') }
         await update($, band, b => ({ ...b, tests }))
       }
@@ -270,13 +359,13 @@ export const register: Register = (on, options) => {
     const before = e.tool === 'Write' ? await $.fs.read(file).catch(() => '') : e.old_string
     const after = e.tool === 'Write' ? e.content : e.new_string
     const ran = await next(e)
-    if (ran.deny !== undefined || ran.isError) return ran
+    if (ran.deny !== undefined || ran.isError || (await bandHidden($))) return ran
 
     const oldDefs = defsIn(file, before)
     const newDefs = defsIn(file, after)
     const created = isSource(file) ? newDefs.filter(n => !oldDefs.includes(n)) : []
     const removed = oldDefs.filter(n => !newDefs.includes(n))
-    const reused = isSource(file) ? callsIn(addedLines(before, after), known, newDefs) : []
+    const reused = isSource(file) ? callsIn(addedLines(before, after), s.known, newDefs) : []
 
     await update($, band, b => ({
       ...b,
@@ -290,6 +379,9 @@ export const register: Register = (on, options) => {
   }).catch(($, e, next) => next(e))
 
   on('turn.complete', async ($, e, next) => {
+    const wasInitialized = s.initialized
+    if (!(await visible($, s))) return next(e)
+    if (!wasInitialized && e.agentId === undefined) s.baselineUnknown = true
     const used = e.usage
     if (e.agentId !== undefined) {
       // A subagent's tokens count; its cost is already in the session cost the main turn reads.
@@ -324,6 +416,12 @@ export const register: Register = (on, options) => {
       }
     }
 
+    if (await bandHidden($)) {
+      resetState(s)
+      return next(e)
+    }
+    const skipTurnCost = s.baselineUnknown
+    s.baselineUnknown = false
     const b = await update($, band, x => {
       const b = { ...EMPTY, ...x }
       const cost = usage.cost?.usd ?? b.cost
@@ -337,7 +435,7 @@ export const register: Register = (on, options) => {
         // Cost and turns are the session's own totals, so a reload or a second band never starts them over.
         spent: usage.cost?.usd ?? b.spent + turn,
         turns,
-        turnCosts: [...b.turnCosts, turn].slice(-20),
+        turnCosts: skipTurnCost ? [] : [...b.turnCosts, turn].slice(-20),
         tokens: used ? addTokens(b.tokens, used) : b.tokens,
         busyMs: b.busyMs + e.durationMs,
         name: title ?? b.name,
@@ -352,7 +450,11 @@ export const register: Register = (on, options) => {
   }).catch(($, e, next) => next(e))
 
   on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
-    if (e.props.hasSurvey || (await bandHidden($))) return next(e)
+    if (await bandHidden($)) {
+      resetState(s)
+      return next(e)
+    }
+    if (e.props.hasSurvey) return next(e)
     // Other mods share this slot: draw theirs below ours instead of replacing it.
     // next(e) rejects only when nothing answers beneath (the test harness): the band still draws.
     const below = await next(e).catch(() => undefined)
