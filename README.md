@@ -139,7 +139,7 @@ The ladder runs *after* it understands the problem, not instead of it: it reads 
 
 Lazy, not negligent: trust-boundary validation, data-loss handling, security, and accessibility are never on the chopping block.
 
-Logic with a branch, a loop, a parser, money or security leaves one small test behind. Every reply ends with what was skipped or not checked and any risk you should know.
+Logic with a branch, a loop, a parser, money or security leaves one small test behind. Coding replies mention skipped or unchecked work and risks when that adds new information.
 
 ## The prompt
 
