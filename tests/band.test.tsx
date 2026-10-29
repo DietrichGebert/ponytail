@@ -8,10 +8,10 @@ import {
   addedLines,
   callsIn,
   defsIn,
-  duplicateOf,
   duration,
   elapsed,
   fmtTokens,
+  inProject,
   isTestCommand,
   mainModel,
   markdown,
@@ -82,7 +82,7 @@ describe('metrics', () => {
 
   const BASE: Band = {
     level: 'full', model: 'claude-opus-5-5', cost: 31.9, spent: 3.1, turns: 6, turnCosts: [0.42], tokens: { input: 5000, output: 85_000, cacheRead: 1_100_000, cacheWrite: 10_000 },
-    busyMs: 1_560_000, name: 'Fix the cart | totals, again', project: 'shop', session: '4c69e3db-57a0', transcript: '', reused: ['to_cents'], created: [], dupes: [],
+    busyMs: 1_560_000, name: 'Fix the cart | totals, again', project: 'shop', session: '4c69e3db-57a0', transcript: '', reused: ['to_cents'], created: [],
     removed: [], openCallers: [], tests: { state: 'pass', passed: 14 }, details: false,
   }
 
@@ -202,12 +202,12 @@ describe('metrics', () => {
     expect(callsIn(added, known, ['parse_price'])).toEqual(['to_cents'])
   })
 
-  test('flags a new helper whose name exists in another file', () => {
-    const known = new Map([['format_price', 'utils/money.py:9']])
-    expect(duplicateOf('formatPrice', '/repo/cart.py', known)).toBe('format_price (utils/money.py:9)')
-    expect(duplicateOf('format_price', '/repo/utils/money.py', known)).toBeUndefined()
-    // Names only: a helper rewritten under another name is not found.
-    expect(duplicateOf('parse_price', '/repo/cart.py', known)).toBeUndefined()
+  test('only files under the project root count, with either slash', () => {
+    expect(inProject('/repo/shop/cart.py', '/repo/shop')).toBe(true)
+    expect(inProject('/repo/shop/cart.py', '/repo/shop/')).toBe(true)
+    expect(inProject('/tmp/scratch/drive.py', '/repo/shop')).toBe(false)
+    expect(inProject('/repo/shop-old/cart.py', '/repo/shop')).toBe(false)
+    expect(inProject('C:\\Users\\a\\shop\\cart.py', 'C:/Users/a/shop')).toBe(true)
   })
 
   test('recognises test runs and their counts', () => {
@@ -479,13 +479,18 @@ test('copy hands the task to the clipboard as Markdown', async ($, on) => {
   await ui.unmount()
 })
 
-test('a test run shows its count, and an edit after it marks the tests stale', async ($, on) => {
+test('a test run shows its count, and an edit in the project after it marks the tests stale', async ($, on) => {
   mock.clock(on)
+  on('session.repo', () => ({ value: { root: '/repo' } }) as never)
   on('tool.call', { tool: 'Bash' }, () => ({ result: { stdout: 'ℹ pass 14', stderr: '', interrupted: false }, text: 'ℹ pass 14' }) as never)
   on('tool.call', { tool: 'Edit' }, () => ({ result: {}, text: 'ok' }) as never)
   const ui = await $.ui.mount({ plugin: 'ponytail', surface: 'terminal', ...BAND })
 
   await $.tool.call({ tool: 'Bash', command: 'npm test' } as never)
+  expect(await ui.find({ type: 'Text', text: /✓ 14 tests/ })).toBeDefined()
+
+  // A scratch script outside the project changes nothing (#1300).
+  await $.tool.call({ tool: 'Edit', file_path: '/tmp/scratch/drive.py', old_string: 'a = 1', new_string: 'def send():\n  pass', replace_all: false } as never)
   expect(await ui.find({ type: 'Text', text: /✓ 14 tests/ })).toBeDefined()
 
   await $.tool.call({ tool: 'Edit', file_path: '/repo/cart.py', old_string: 'a = 1', new_string: 'a = 2', replace_all: false } as never)
