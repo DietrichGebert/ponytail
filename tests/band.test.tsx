@@ -12,7 +12,10 @@ import {
   duration,
   elapsed,
   fmtTokens,
+  isSource,
+  isBuildFailure,
   isTestCommand,
+  isTestTool,
   mainModel,
   markdown,
   metricsSvg,
@@ -22,6 +25,7 @@ import {
   sessionTitle,
   snapshot,
   testCounts,
+  toolTestCounts,
   totalTokens,
   upsertCsv,
   CSV_HEADER,
@@ -192,6 +196,18 @@ describe('metrics', () => {
     expect(defsIn('a.py', 'def to_cents(x):\n    pass\nclass Cart:\n    def total(self): pass')).toEqual(['to_cents', 'Cart'])
     expect(defsIn('a.ts', 'export function formatMoney() {}\nfunction local() {}\nconst x = 1')).toEqual(['formatMoney', 'local'])
     expect(defsIn('README.md', 'def nope():')).toEqual([])
+    expect(defsIn('A.swift', 'public struct Cart {\n  func total() {}\n}\nfinal class Store {}\nfunc formatMoney() {}\nextension Cart {}')).toEqual(['Cart', 'Store', 'formatMoney'])
+  })
+
+  test('Swift test targets are not source', () => {
+    expect(isSource('/repo/Sources/Cart/Cart.swift')).toBe(true)
+    expect(isSource('/repo/Tests/CartTests/Helpers.swift')).toBe(false)
+    expect(isSource('/repo/App/CartTests.swift')).toBe(false)
+    // Xcode's project template puts test targets in <App>Tests/ and <App>UITests/.
+    expect(isSource('/repo/MyAppTests/Mocks.swift')).toBe(false)
+    expect(isSource('/repo/MyAppUITests/Screens.swift')).toBe(false)
+    expect(isSource('/repo/Sources/Experiments/ABTest.swift')).toBe(true)
+    expect(isSource('/repo/tests/cart.js')).toBe(false)
   })
 
   test('counts calls of existing helpers, never new ones, test files or generic names', () => {
@@ -217,6 +233,42 @@ describe('metrics', () => {
     expect(testCounts('===== 14 passed, 1 failed in 0.31s =====')).toEqual({ passed: 14, failed: 1 })
     expect(testCounts('ℹ pass 141\nℹ fail 1')).toEqual({ passed: 141, failed: 1 })
     expect(testCounts('ok')).toEqual({ passed: undefined, failed: undefined })
+    expect(isTestCommand('swift test --filter CartTests')).toBe(true)
+    // Listing runs nothing.
+    expect(isTestCommand('swift test list')).toBe(false)
+    expect(isTestCommand('swift test --list-tests')).toBe(false)
+    expect(isTestCommand('swift test --package-path Pkg list')).toBe(false)
+    expect(isTestCommand('swift test --skip-build --list-tests')).toBe(false)
+    expect(isTestCommand('xcodebuild -scheme App -destination "platform=iOS Simulator" test')).toBe(true)
+    expect(isTestCommand('xcodebuild -scheme App -testPlan Unit build')).toBe(false)
+    expect(testCounts('✔ Test run with 12 tests in 3 suites passed after 0.004 seconds.')).toEqual({ passed: 12, failed: undefined })
+    const xctest = [
+      "Test Suite 'CartTests' failed at 2026-10-22 11:00:00.100.",
+      '\t Executed 4 tests, with 1 failure (0 unexpected) in 0.010 (0.011) seconds',
+      "Test Suite 'All tests' failed at 2026-10-22 11:00:00.200.",
+      '\t Executed 12 tests, with 1 failure (0 unexpected) in 0.031 (0.035) seconds',
+    ].join('\n')
+    expect(testCounts(xctest)).toEqual({ passed: 11, failed: 1 })
+    // swift test reports an empty XCTest run beside Swift Testing's own result.
+    const mixed = 'Executed 0 tests, with 0 failures (0 unexpected) in 0.000 (0.001) seconds\n✘ Test run with 12 tests in 3 suites failed after 0.02 seconds with 2 issues.'
+    expect(testCounts(mixed)).toEqual({ passed: undefined, failed: undefined })
+    const xcLine = 'Executed 5 tests, with 0 failures (0 unexpected) in 0.01 (0.01) seconds'
+    expect(testCounts(`${xcLine}\n✔ Test run with 12 tests in 3 suites passed after 0.02 seconds.`)).toEqual({ passed: 17, failed: 0 })
+    // Swift Testing failed but names no test count: no "0 failed" from the passing XCTest half.
+    expect(testCounts(`${xcLine}\n✘ Test run with 12 tests in 3 suites failed after 0.02 seconds with 2 issues.`).failed).toBeUndefined()
+  })
+
+  test('reads Xcode MCP test runs from their JSON, where a failing test is no tool error', () => {
+    expect(isTestTool('mcp__xcode__RunAllTests')).toBe(true)
+    expect(isTestTool('mcp__xcode__RunSomeTests')).toBe(true)
+    expect(isTestTool('mcp__xcode__BuildProject')).toBe(false)
+    // The server name is the user's choice.
+    expect(isTestTool('mcp__apple-xcode__RunAllTests')).toBe(true)
+    expect(toolTestCounts('{"counts":{"failed":13,"passed":174,"total":187},"results":[]}')).toEqual({ passed: 174, failed: 13 })
+    expect(toolTestCounts('{"type":"error","data":"Build action failed."}')).toBeUndefined()
+    expect(toolTestCounts('not json')).toBeUndefined()
+    expect(isBuildFailure('{"type":"error","data":"Build action failed. Inspect build logs."}')).toBe(true)
+    expect(isBuildFailure('{"data":"Test \'CartTests\' not found in target \'AppTests\'.","type":"error"}')).toBe(false)
   })
 
   test('shows the reuse share only once there is something to share, and a readable time', () => {
@@ -469,6 +521,36 @@ test('a test run shows its count, and an edit after it marks the tests stale', a
   expect(await ui.find({ type: 'Text', text: /✓ 14 tests/ })).toBeDefined()
 
   await $.tool.call({ tool: 'Edit', file_path: '/repo/cart.py', old_string: 'a = 1', new_string: 'a = 2', replace_all: false } as never)
+  expect(await ui.find({ type: 'Text', text: /no test since change/ })).toBeDefined()
+  await ui.unmount()
+})
+
+test('an Xcode MCP run shows its failures though the tool did not error, and a Swift edit marks it stale', async ($, on) => {
+  mock.clock(on)
+  const answers = [
+    { result: '', text: '{"counts":{"failed":0,"passed":187,"total":187},"results":[]}' },
+    { isError: true, result: '', text: '{"data":"Test \'CartTests\' not found in target \'AppTests\'.","type":"error"}' },
+    { isError: true, result: '', text: '{"type":"error","data":"Build action failed. Inspect build logs."}' },
+    { result: '', text: '{"counts":{"failed":13,"passed":174,"total":187},"results":[]}' },
+  ]
+  on('tool.call', { tool: 'mcp__xcode__RunAllTests' }, () => answers.shift() as never)
+  on('tool.call', { tool: 'Edit' }, () => ({ result: {}, text: 'ok' }) as never)
+  const ui = await $.ui.mount({ plugin: 'ponytail', surface: 'terminal', ...BAND })
+
+  await $.tool.call({ tool: 'mcp__xcode__RunAllTests' } as never)
+  expect(await ui.find({ type: 'Text', text: /✓ 187 tests/ })).toBeDefined()
+
+  // A mistyped test says nothing about the code: the last result stands.
+  await $.tool.call({ tool: 'mcp__xcode__RunAllTests' } as never)
+  expect(await ui.find({ type: 'Text', text: /✓ 187 tests/ })).toBeDefined()
+
+  await $.tool.call({ tool: 'mcp__xcode__RunAllTests' } as never)
+  expect(await ui.find({ type: 'Text', text: /✗ +failed/ })).toBeDefined()
+
+  await $.tool.call({ tool: 'mcp__xcode__RunAllTests' } as never)
+  expect(await ui.find({ type: 'Text', text: /13 failed/ })).toBeDefined()
+
+  await $.tool.call({ tool: 'Edit', file_path: '/repo/Sources/Cart.swift', old_string: 'let a = 1', new_string: 'let a = 2', replace_all: false } as never)
   expect(await ui.find({ type: 'Text', text: /no test since change/ })).toBeDefined()
   await ui.unmount()
 })
