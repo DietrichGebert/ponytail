@@ -398,22 +398,31 @@ export const register: Register = (on, options) => {
 
     if (!b.details) {
       return stack(
-        <Box flexDirection="row" alignItems="center" gap={2} width={width}>
+        <Box key="compact" flexDirection="row" alignItems="center" gap={2} width={width} flexWrap="nowrap">
           {/* A click opens the four levels: one click, one turn, no stops on levels nobody wanted. */}
           <Button key="level" plain onPress={toggle}>
-            <Text color={b.level === 'off' ? 'inactive' : 'suggestion'}>●</Text> {b.level}
+            <Text color={b.level === 'off' ? 'inactive' : 'suggestion'} wrap="truncate-end">●</Text> {b.level}
           </Button>
-          <Text>${b.spent.toFixed(2)}</Text>
-          {last !== undefined && <Text dimColor>last ${last.toFixed(2)}</Text>}
-          <Text dimColor>{elapsed(b.busyMs)}</Text>
-          {reuse !== undefined && <Text>{reuse}% reuse</Text>}
-          {hasOpen && <Text color="warning">⚠ {b.openCallers.length} callers open</Text>}
+          <Text wrap="truncate-end">${b.spent.toFixed(2)}</Text>
+          {last !== undefined && (
+            <Text dimColor wrap="truncate-end">
+              last ${last.toFixed(2)}
+            </Text>
+          )}
+          <Text dimColor wrap="truncate-end">
+            {elapsed(b.busyMs)}
+          </Text>
+          {reuse !== undefined && <Text wrap="truncate-end">{reuse}% reuse</Text>}
+          {hasOpen && (
+            <Text color="warning" wrap="truncate-end">
+              ⚠ {b.openCallers.length} callers open
+            </Text>
+          )}
           {testsText !== '' && (
-            <Text color={testsColor} dimColor={b.tests.state === 'stale'}>
+            <Text color={testsColor} dimColor={b.tests.state === 'stale'} wrap="truncate-end">
               {testsText}
             </Text>
           )}
-          <Box flexGrow={1} />
           <Button key="review" plain label="Review" onPress={review} />
           <Button key="audit" plain label="Audit" onPress={audit} />
           <Button key="board" plain label="Board" onPress={board} />
@@ -472,7 +481,7 @@ export const register: Register = (on, options) => {
     return stack(
       // The desktop's SVG draws its own line at the top, which would touch the buttons without the gap.
       <Box flexDirection="column" width={width} gap={e.surface === 'desktop' ? 1 : 0}>
-        <Box flexDirection="row" alignItems="center" gap={1}>
+        <Box flexDirection="row" alignItems="center" gap={1} flexWrap="nowrap">
           {LEVELS.map(level => (
             <Button
               key={`level-${level}`}
@@ -481,7 +490,6 @@ export const register: Register = (on, options) => {
               onPress={() => setLevel(level)}
             />
           ))}
-          <Box flexGrow={1} />
           <Button key="copy" plain label="Copy" onPress={copy} />
           <Button key="review" plain label="Review" onPress={review} />
           <Button key="audit" plain label="Audit" onPress={audit} />
