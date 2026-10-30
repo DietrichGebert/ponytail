@@ -28,7 +28,7 @@ const {
 const claudeDir = getClaudeDir();
 const settingsPath = path.join(claudeDir, 'settings.json');
 
-function activate(mode) {
+function activate(mode, source) {
   // "off" mode — skip activation entirely, don't write flag or emit rules
   if (mode === 'off') {
     clearMode();
@@ -55,6 +55,16 @@ function activate(mode) {
     setMode(mode);
   } catch (e) {
     // Silent fail -- flag is best-effort, don't block the hook
+  }
+
+  // Resume already has the ruleset in its transcript; only remind it of the live level.
+  if (source === 'resume') {
+    try {
+      writeHookOutput('SessionStart', mode, 'PONYTAIL MODE ACTIVE — level: ' + mode);
+    } catch (e) {
+      // Silent fail — stdout closed/EPIPE at hook exit must not surface as a hook failure
+    }
+    return;
   }
 
   // 2. Emit the ponytail ruleset, filtered to the active intensity level.
@@ -173,7 +183,7 @@ function activate(mode) {
   }
 }
 
-// Compaction re-runs SessionStart inside the same conversation, so it keeps the
+// Compaction and resume re-run SessionStart inside the same conversation, keeping the
 // live level (or stays off after "stop ponytail") instead of resetting to the
 // default. Claude Code and Codex pass the trigger as `source` on stdin; reading
 // it there keeps the hook entry, and the trust Codex gave it, unchanged.
@@ -190,7 +200,7 @@ function finish() {
   } catch (e) {
     // No payload, or an unparseable one: treat it as a fresh session
   }
-  activate(source === 'compact' ? (readMode() || 'off') : getDefaultMode());
+  activate(source === 'compact' || source === 'resume' ? (readMode() || 'off') : getDefaultMode(), source);
 }
 
 process.stdin.on('data', chunk => { input += chunk; });
