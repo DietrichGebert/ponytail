@@ -27,4 +27,6 @@ const map = buildMap(dir);
 assert.ok(!/NOTICE|asking|leaked|outside/.test(map), map);
 assert.ok(map.includes('src/: Foo, Bar, baz'), map);
 assert.ok(map.includes('self.helper'), map);
+// Past `until` (ms since node started) no file is read (#1216).
+assert.strictEqual(buildMap(dir, 0), '');
 fs.rmSync(dir, { recursive: true, force: true });
