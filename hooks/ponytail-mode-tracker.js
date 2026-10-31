@@ -17,6 +17,7 @@ const {
   isQoder,
   readMode,
   setMode,
+  setProjectDir,
   writeHookOutput,
 } = require('./ponytail-runtime');
 const { getPonytailInstructions } = require('./ponytail-instructions');
@@ -30,6 +31,7 @@ function finish() {
   try {
     // Strip UTF-8 BOM some shells prepend when piping (breaks JSON.parse)
     const data = JSON.parse(input.replace(/^\uFEFF/, ''));
+    setProjectDir(data.cwd);
     const prompt = (data.prompt || '').trim().toLowerCase();
 
     // Cursor with the always-on rule in the workspace: no hook can change or
@@ -195,6 +197,7 @@ function finish() {
   }
 }
 
+process.stdin.setEncoding('utf8');
 process.stdin.on('data', chunk => { input += chunk; });
 // Exit on 'end', not just finish(): the fallback timer below must stay ref'd
 // (see #790) so it can actually fire when stdin is stuck, and a ref'd timer
