@@ -171,6 +171,15 @@ describe('metrics', () => {
     expect(other.trim().split('\n').length).toBe(3)
   })
 
+  test('a task name with a line break is replaced whole, not left as a stray line', () => {
+    const at = Date.UTC(2026, 9, 15, 12, 0)
+    const first = upsertCsv('', snapshot({ ...BASE, name: 'first\nsecond' }, at))
+    const again = upsertCsv(first, snapshot({ ...BASE, name: 'first\nsecond', turns: 7 }, at))
+    const rows = parseCsv(again)
+    expect(rows.length).toBe(2)
+    expect(rows[1]?.[3]).toBe('first\nsecond')
+  })
+
   test('the desktop row is one SVG with real dividers, escaped and cut to fit', () => {
     const svg = metricsSvg(
       [
