@@ -72,14 +72,18 @@ function namesIn(file, text) {
   return names;
 }
 
-function buildMap(root = process.cwd()) {
+function buildMap(root = process.cwd(), until = Infinity) {
   const files = listFiles(root)
     .filter((f) => SAFE_PATH.test(f) && SRC.test(f) && !SKIP_DIR.test(f) && !SKIP_FILE.test(f))
     .slice(0, MAX_FILES)
     .sort((a, b) => (SHARED.test(b) - SHARED.test(a)) || a.localeCompare(b));
   // One line per directory: names are enough to know something exists; grep finds the file.
   const dirs = new Map();
-  for (const f of files) {
+  let unread = 0;
+  for (const [i, f] of files.entries()) {
+    // A slow disk or a cold start: stop at `until` (ms since node started) and list what was read,
+    // shared folders first, rather than be killed with nothing (#1216).
+    if (performance.now() > until) { unread = files.length - i; break; }
     let text;
     try {
       if (!fs.lstatSync(path.join(root, f)).isFile()) continue;
@@ -103,9 +107,11 @@ function buildMap(root = process.cwd()) {
   }
   if (!lines.length) return '';
   return 'Codebase map (what already exists; reuse it, read a file only when you need its details):\n' +
-    lines.join('\n') + (skipped ? `\n(${skipped} more folders not listed)` : '');
+    lines.join('\n') + (skipped ? `\n(${skipped} more folders not listed)` : '') +
+    (unread ? `\n(${unread} more files not read in time)` : '');
 }
 
 module.exports = { buildMap };
 
-if (require.main === module) process.stdout.write(buildMap(process.argv[2] || process.cwd()) + '\n');
+// 2 s: ponytail-activate.js kills the map at 3 s.
+if (require.main === module) process.stdout.write(buildMap(process.argv[2] || process.cwd(), 2000) + '\n');
