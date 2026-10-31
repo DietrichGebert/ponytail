@@ -8,10 +8,10 @@ import {
   addedLines,
   callsIn,
   defsIn,
-  duplicateOf,
   duration,
   elapsed,
   fmtTokens,
+  inProject,
   isTestCommand,
   mainModel,
   markdown,
@@ -82,7 +82,7 @@ describe('metrics', () => {
 
   const BASE: Band = {
     level: 'full', model: 'claude-opus-5-5', cost: 31.9, spent: 3.1, turns: 6, turnCosts: [0.42], tokens: { input: 5000, output: 85_000, cacheRead: 1_100_000, cacheWrite: 10_000 },
-    busyMs: 1_560_000, name: 'Fix the cart | totals, again', project: 'shop', session: '4c69e3db-57a0', transcript: '', reused: ['to_cents'], created: [], dupes: [],
+    busyMs: 1_560_000, name: 'Fix the cart | totals, again', project: 'shop', session: '4c69e3db-57a0', transcript: '', reused: ['to_cents'], created: [],
     removed: [], openCallers: [], tests: { state: 'pass', passed: 14 }, details: false,
   }
 
@@ -202,12 +202,12 @@ describe('metrics', () => {
     expect(callsIn(added, known, ['parse_price'])).toEqual(['to_cents'])
   })
 
-  test('flags a new helper whose name exists in another file', () => {
-    const known = new Map([['format_price', 'utils/money.py:9']])
-    expect(duplicateOf('formatPrice', '/repo/cart.py', known)).toBe('format_price (utils/money.py:9)')
-    expect(duplicateOf('format_price', '/repo/utils/money.py', known)).toBeUndefined()
-    // Names only: a helper rewritten under another name is not found.
-    expect(duplicateOf('parse_price', '/repo/cart.py', known)).toBeUndefined()
+  test('only files under the project root count, with either slash', () => {
+    expect(inProject('/repo/shop/cart.py', '/repo/shop')).toBe(true)
+    expect(inProject('/repo/shop/cart.py', '/repo/shop/')).toBe(true)
+    expect(inProject('/tmp/scratch/drive.py', '/repo/shop')).toBe(false)
+    expect(inProject('/repo/shop-old/cart.py', '/repo/shop')).toBe(false)
+    expect(inProject('C:\\Users\\a\\shop\\cart.py', 'C:/Users/a/shop')).toBe(true)
   })
 
   test('recognises test runs and their counts', () => {
@@ -288,6 +288,39 @@ test('the band switches between compact and details on terminal and desktop', as
   }
 })
 
+test('the row takes bodyColumns only in the terminal, where a Button is as wide as its cells', async ($, on) => {
+  mock.clock(on)
+  mock.store(on)
+  for (const [surface, width] of [['terminal', 100], ['vscode', undefined]] as const) {
+    const ui = await $.ui.mount({ plugin: 'ponytail', surface, ...BAND })
+    expect((await ui.find({ type: 'Box' }))?.props.width).toBe(width)
+    await ui.press({ key: 'details' })
+    expect((await ui.find({ type: 'Box' }))?.props.width).toBe(width)
+    await ui.unmount()
+  }
+})
+
+test('the details view has its line without empty rows, and off the terminal its columns share the row', async ($, on) => {
+  mock.clock(on)
+  mock.store(on)
+  for (const surface of ['terminal', 'vscode'] as const) {
+    const ui = await $.ui.mount({ plugin: 'ponytail', surface, ...BAND })
+    await ui.press({ key: 'details' })
+    expect(await ui.find({ type: 'Text', text: /─/ })).toBeDefined()
+    expect((await ui.find({ type: 'Box' }))?.props.gap).toBe(0)
+    const cost = (await ui.find({ key: 'cost' }))?.props
+    expect(surface === 'terminal' ? cost?.width : cost?.flexGrow).toBe(surface === 'terminal' ? 31 : 1)
+    // The view is stored, so the next surface would start in details: switch back.
+    await ui.press({ key: 'details' })
+    await ui.unmount()
+  }
+  // The desktop keeps a gap above its SVG, whose top line would otherwise touch the buttons.
+  const ui = await $.ui.mount({ plugin: 'ponytail', surface: 'desktop', ...BAND })
+  await ui.press({ key: 'details' })
+  expect((await ui.find({ type: 'Box' }))?.props.gap).toBe(1)
+  await ui.unmount()
+})
+
 test('after /ponytail band the band draws nothing', async ($, on) => {
   mock.clock(on)
   mock.store(on)
@@ -305,7 +338,7 @@ test('after /ponytail band the band draws nothing', async ($, on) => {
   await ui.unmount()
 })
 
-for (const command of ['clear', 'resume']) {
+for (const command of ['clear', 'resume', 'branch']) {
   test(`after /${command} the band shows the level again, with no session.start`, async ($, on) => {
     mock.clock(on)
     mock.store(on)
@@ -314,7 +347,7 @@ for (const command of ['clear', 'resume']) {
     on('fs.read', ($, e, next) => (e.path === '/home/u/.claude/.ponytail-active' ? { value: 'full' } : next(e)))
     on('session.repo', () => ({ value: { root: '/repo/shop' } }) as never)
     on('session.id', () => ({ value: session }))
-    // /clear and /resume go on under another session id; /help stays in this one.
+    // /clear, /resume and /branch go on under another session id; /help stays in this one.
     on('command.run', ($, e) => {
       if (e.command !== 'help') session = 's2'
       return { text: '' }
@@ -327,6 +360,14 @@ for (const command of ['clear', 'resume']) {
     await ui.unmount()
   })
 }
+
+test("another plugin's command runs without the band's hook, so its output is not labelled ponytail", async ($, on) => {
+  let reads = 0
+  on('session.id', () => (reads++, { value: 's1' }))
+  on('command.run', () => ({ text: '' }))
+  await $.command.run({ command: 'anymodel', args: '' })
+  expect(reads).toBe(0)
+})
 
 test('the ledger is written on Windows, where there is no mkdir', async ($, on) => {
   mock.clock(on)
@@ -360,6 +401,53 @@ test('the ledger is written on Windows, where there is no mkdir', async ($, on) 
   expect(written.length).toBe(2)
   expect(written[0]?.endsWith('C:/Users/u/.config/ponytail/band/shop.csv')).toBe(true)
   expect(written[1]?.endsWith('C:/Users/u/.config/ponytail/band/board.html')).toBe(true)
+})
+
+test('the transcript is found with no classic hook, in its named folder or any other', async ($, on) => {
+  mock.clock(on)
+  mock.store(on)
+  let session = 's1'
+  const projects = '/home/u/.claude/projects'
+  let titles: Record<string, string> = { [`${projects}/-repo-shop-v2/s1.jsonl`]: 'Cart totals' }
+  on('env.get', ($, e) => ({ value: e.name === 'HOME' ? '/home/u' : undefined }))
+  on('session.repo', () => ({ value: { root: '/repo/shop' } }) as never)
+  on('session.root', () => ({ value: '/repo/shop.v2' }))
+  on('session.id', () => ({ value: session }))
+  on('session.turns', () => ({ value: 1 }))
+  on('session.usage', () => ({ value: { startedAt: 0, cost: { usd: 0.5 } } }) as never)
+  const listed: string[] = []
+  on('fs.list', ($, e) => {
+    listed.push(e.path)
+    return { value: e.path === projects ? [{ name: '-repo-shop-v2', kind: 'dir' }, { name: 'notes.txt', kind: 'file' }, { name: '-wt', kind: 'dir' }] : [] } as never
+  })
+  on('fs.exists', ($, e) => ({ value: e.path in titles }))
+  on('process.run', ($, e) => {
+    const title = e.argv[0] === 'grep' && e.argv[1] === '-F' ? titles[e.argv.at(-1) ?? ''] : undefined
+    return { value: { exitCode: title ? 0 : 1, stdout: title ? `${JSON.stringify({ type: 'custom-title', customTitle: title })}\n` : '', stderr: '' } } as never
+  })
+  on('fs.read', () => ({ deny: 'missing' }) as never)
+  const rows: string[] = []
+  on('fs.write', ($, e) => {
+    if (e.path.endsWith('shop.csv')) rows.push(e.text)
+    return { value: undefined }
+  })
+  on('session.start', ($, e) => ({ cwd: e.cwd }))
+  on('turn.complete', () => ({ text: '' }))
+  // Only non-classic events fire, as when cc-plugin-sec-default skips every classic.* hook.
+  await $.session.start({ cwd: '/repo/shop.v2', surface: null } as never)
+  await $.turn.complete({ answer: '', durationMs: 1000 } as never)
+  expect(rows.at(-1)).toContain('Cart totals')
+  // The folder its rule names held the file, so no folder was listed.
+  expect(listed).not.toContain(projects)
+  // A worktree moves the file under the same id, and the session is renamed there.
+  titles = { [`${projects}/-wt/s1.jsonl`]: 'Cart totals, split' }
+  await $.turn.complete({ answer: '', durationMs: 1000 } as never)
+  expect(rows.at(-1)).toContain('Cart totals, split')
+  // /clear goes on under another id, in a folder the rule does not name (a hashed long name, say).
+  session = 's2'
+  titles = { ...titles, [`${projects}/-wt/s2.jsonl`]: 'Refunds' }
+  await $.turn.complete({ answer: '', durationMs: 1000 } as never)
+  expect(rows.at(-1)).toContain('Refunds')
 })
 
 test('without HOME (Windows) the band reads its flags under USERPROFILE', async ($, on) => {
@@ -446,13 +534,18 @@ test('copy hands the task to the clipboard as Markdown', async ($, on) => {
   await ui.unmount()
 })
 
-test('a test run shows its count, and an edit after it marks the tests stale', async ($, on) => {
+test('a test run shows its count, and an edit in the project after it marks the tests stale', async ($, on) => {
   mock.clock(on)
+  on('session.repo', () => ({ value: { root: '/repo' } }) as never)
   on('tool.call', { tool: 'Bash' }, () => ({ result: { stdout: 'ℹ pass 14', stderr: '', interrupted: false }, text: 'ℹ pass 14' }) as never)
   on('tool.call', { tool: 'Edit' }, () => ({ result: {}, text: 'ok' }) as never)
   const ui = await $.ui.mount({ plugin: 'ponytail', surface: 'terminal', ...BAND })
 
   await $.tool.call({ tool: 'Bash', command: 'npm test' } as never)
+  expect(await ui.find({ type: 'Text', text: /✓ 14 tests/ })).toBeDefined()
+
+  // A scratch script outside the project changes nothing (#1300).
+  await $.tool.call({ tool: 'Edit', file_path: '/tmp/scratch/drive.py', old_string: 'a = 1', new_string: 'def send():\n  pass', replace_all: false } as never)
   expect(await ui.find({ type: 'Text', text: /✓ 14 tests/ })).toBeDefined()
 
   await $.tool.call({ tool: 'Edit', file_path: '/repo/cart.py', old_string: 'a = 1', new_string: 'a = 2', replace_all: false } as never)
