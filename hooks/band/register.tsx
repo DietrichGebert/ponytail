@@ -23,6 +23,7 @@ import {
   metricsSvg,
   MODEL_PATTERN,
   parseDefs,
+  pace,
   percent,
   resume,
   snapshot,
@@ -56,6 +57,7 @@ const EMPTY: Band = {
   openCallers: [],
   tests: { state: 'none' },
   details: false,
+  limits: [],
 }
 // The counters of one task: what a new session or /clear starts over.
 const TASK = {
@@ -209,7 +211,7 @@ async function start($: EngineInterface): Promise<Map<string, string>> {
   const usage = await $.session.usage().catch(() => undefined)
   const csv = usage ? await $.fs.read(ledgerFile(await ledgerDir($), project)).catch(() => '') : ''
   const key = usage ? taskKey(session, usage.startedAt) : ''
-  await update($, band, b => resume({ ...EMPTY, ...b, level, details, project, session, cost: usage?.cost?.usd ?? b.cost }, csv, key))
+  await update($, band, b => resume({ ...EMPTY, ...b, level, details, project, session, cost: usage?.cost?.usd ?? b.cost, limits: usage?.rateLimits ?? b.limits }, csv, key))
   return grep?.exitCode === 0 ? parseDefs(grep.stdout) : new Map()
 }
 
@@ -340,6 +342,7 @@ export const register: Register = (on, options) => {
         turnCosts: [...b.turnCosts, turn].slice(-20),
         tokens: used ? addTokens(b.tokens, used) : b.tokens,
         busyMs: b.busyMs + e.durationMs,
+        limits: usage.rateLimits,
         name: title ?? b.name,
         model: model || b.model,
         removed: stillRemoved,
@@ -348,6 +351,12 @@ export const register: Register = (on, options) => {
     })
     await record($, b, options).catch(() => $.ui.status('ponytail band: could not write the task ledger'))
 
+    return next(e)
+  }).catch(($, e, next) => next(e))
+
+  // A rate-limit window moves mid-turn: keep the reading the band draws.
+  on('session.measure', async ($, e, next) => {
+    if (e.changed.includes('rateLimits')) await update($, band, b => ({ ...EMPTY, ...b, limits: e.rateLimits }))
     return next(e)
   }).catch(($, e, next) => next(e))
 
@@ -363,6 +372,7 @@ export const register: Register = (on, options) => {
     const reuse = percent(b.reused.length, b.created.length)
     const avg = b.turns > 0 ? b.spent / b.turns : 0
     const last = b.turnCosts[b.turnCosts.length - 1]
+    const paces = b.limits.flatMap(l => pace(l, now) ?? [])
 
     const setLevel = async (level: string) => {
       await update($, band, x => ({ ...x, level }))
@@ -406,6 +416,11 @@ export const register: Register = (on, options) => {
           <Text>${b.spent.toFixed(2)}</Text>
           {last !== undefined && <Text dimColor>last ${last.toFixed(2)}</Text>}
           <Text dimColor>{elapsed(b.busyMs)}</Text>
+          {paces.map(p => (
+            <Text key={p.label} color={p.tone}>
+              {p.label} {p.used}% {p.sign}
+            </Text>
+          ))}
           {reuse !== undefined && <Text>{reuse}% reuse</Text>}
           {hasOpen && <Text color="warning">⚠ {b.openCallers.length} callers open</Text>}
           {testsText !== '' && (
@@ -428,6 +443,9 @@ export const register: Register = (on, options) => {
       { key: 'tokens', label: 'tokens', value: fmtTokens(totalTokens(b.tokens)), sub: `${b.turns} ${b.turns === 1 ? 'turn' : 'turns'}` },
       { key: 'time', label: 'agent time', value: elapsed(b.busyMs), sub: b.turns > 0 ? `⌀ ${elapsed(b.busyMs / b.turns)} / turn` : '' },
     ]
+    for (const p of paces) {
+      cols.push({ key: `limit-${p.label}`, label: p.name, value: `${p.used}%`, sub: `${p.sign} pts vs time · resets ${elapsed(p.left)}`, tone: p.tone })
+    }
     if (reuse !== undefined) cols.push({ key: 'reuse', label: 'reuse', value: `${reuse}%`, sub: '' })
     if (hasOpen) {
       cols.push({ key: 'callers', label: 'callers', value: `${b.openCallers.length} open`, sub: b.openCallers.slice(0, 2).join(', '), tone: 'warning' })

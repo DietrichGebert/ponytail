@@ -1,7 +1,7 @@
 // Pure helpers for the band: no `$`, so the tests call them directly.
 
 import { duration, elapsed, fmtTokens, parseCsv } from './board'
-import type { Band, Tokens } from './types'
+import type { Band, Limit, Tokens } from './types'
 
 export { duration, elapsed, fmtTokens }
 
@@ -287,6 +287,25 @@ export const csvRow = (s: Snapshot) =>
 export function upsertCsv(existing: string, s: Snapshot): string {
   const rows = existing.split('\n').filter(line => line !== '' && !line.startsWith('key,') && !line.startsWith(`${s.key},`))
   return [CSV_HEADER, ...rows, csvRow(s)].join('\n') + '\n'
+}
+
+const WINDOWS: Record<string, { label: string; name: string; ms: number }> = {
+  five_hour: { label: '5h', name: '5h limit', ms: 5 * 3_600_000 },
+  seven_day: { label: 'week', name: 'week limit', ms: 7 * 86_400_000 },
+}
+
+// Where a rate-limit window stands against the clock. delta = used% minus elapsed%, in points:
+// positive = burning faster than time passes (ahead of the pace), negative = margin left.
+// A window with no reset time, an unknown kind or a reset already past gives nothing.
+export function pace(l: Limit, now: number) {
+  const w = WINDOWS[l.kind]
+  const left = l.resetsAt === undefined ? NaN : Date.parse(l.resetsAt) - now
+  if (w === undefined || !(left > 0)) return undefined
+  const used = Math.round(l.percentUsed)
+  const delta = Math.round(l.percentUsed - Math.min(100, Math.max(0, (1 - left / w.ms) * 100)))
+  const sign = delta > 0 ? `+${delta}` : delta < 0 ? `−${-delta}` : '±0'
+  const tone = used >= 90 || delta >= 15 ? ('error' as const) : delta >= 5 ? ('warning' as const) : delta <= -5 ? ('success' as const) : undefined
+  return { label: w.label, name: w.name, used, delta, sign, tone, left }
 }
 
 // shortcut: no share below 3 functions, where one new helper would read as "0% reuse"; tune the 3 if it shows too late.
