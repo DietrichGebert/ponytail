@@ -8,6 +8,7 @@ import {
   addedLines,
   callsIn,
   defsIn,
+  callPattern,
   duration,
   elapsed,
   fmtTokens,
@@ -192,6 +193,13 @@ describe('metrics', () => {
     expect(defsIn('a.py', 'def to_cents(x):\n    pass\nclass Cart:\n    def total(self): pass')).toEqual(['to_cents', 'Cart'])
     expect(defsIn('a.ts', 'export function formatMoney() {}\nfunction local() {}\nconst x = 1')).toEqual(['formatMoney', 'local'])
     expect(defsIn('README.md', 'def nope():')).toEqual([])
+  })
+
+  test('Ruby predicate calls match literally, without matching a plain method', () => {
+    const predicate = callPattern('enabled?')
+    expect(predicate.test('enabled?()')).toBe(true)
+    expect(predicate.test('enabled()')).toBe(false)
+    expect(callPattern('enabled').test('enabled()')).toBe(true)
   })
 
   test('counts calls of existing helpers, never new ones, test files or generic names', () => {

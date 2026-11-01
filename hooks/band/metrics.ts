@@ -32,6 +32,8 @@ export const isCode = (file: string) => DEFS.some(([ext]) => ext.test(file))
 
 export const isSource = (file: string) => isCode(file) && !SKIP_DIR.test(file) && !SKIP_FILE.test(file)
 
+export const callPattern = (name: string): RegExp => new RegExp(`(?<![\\w$])${name.replace(/[.*+?^${}()|[\]\\]/g, '\\export function defsIn(file: string, text: string): string[] {')}\\s*\\(`)
+
 export function defsIn(file: string, text: string): string[] {
   const rules = DEFS.find(([ext]) => ext.test(file))?.[1] ?? []
   const names = new Set<string>()
