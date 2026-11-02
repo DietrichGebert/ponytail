@@ -11,7 +11,7 @@ const { StringDecoder } = require('string_decoder');
 const { getClaudeDir } = require('./ponytail-config');
 
 // The band's columns (CSV_HEADER in hooks/band/metrics.ts; a test keeps the two equal).
-const CSV_HEADER = 'key,started,project,name,cost_usd,turns,agent_minutes,tokens_total,tokens_output,reuse_pct,reused,new,callers_open,tests,level,model';
+const CSV_HEADER = 'key,started,project,name,cost_usd,turns,agent_minutes,tokens_total,tokens_output,reuse_pct,reused,new,callers_open,tests,level,model,tokens_input,tokens_cache_read,tokens_cache_write';
 
 // USD per million tokens from https://platform.claude.com/docs/en/about-claude/pricing, checked
 // 2026-10-17: [input, 5-minute cache write, 1-hour cache write, cache read, output]. Opus 5.5 and
@@ -109,8 +109,10 @@ function sessionStats(records, subagentRecords = [], sessionId = '') {
   // Usage repeats on every record of one message: count each message id once, subagents included.
   const seen = new Set();
   const replies = {};
-  let tokens = 0;
+  let input = 0;
   let output = 0;
+  let cacheRead = 0;
+  let cacheWrite = 0;
   let estimate = 0;
   const reply = r => r.type === 'assistant' && r.message && r.message.model && r.message.model !== '<synthetic>';
   for (const r of records) if (reply(r)) replies[r.message.model] = (replies[r.message.model] || 0) + 1;
@@ -119,8 +121,14 @@ function sessionStats(records, subagentRecords = [], sessionId = '') {
     const { id, model, usage } = r.message;
     if (!usage || !id || seen.has(id)) continue;
     seen.add(id);
-    tokens += (usage.input_tokens || 0) + (usage.output_tokens || 0) + (usage.cache_read_input_tokens || 0) + (usage.cache_creation_input_tokens || 0);
+    const creation = usage.cache_creation || {};
+    const splitCreation = creation.ephemeral_5m_input_tokens !== undefined || creation.ephemeral_1h_input_tokens !== undefined;
+    input += usage.input_tokens || 0;
     output += usage.output_tokens || 0;
+    cacheRead += usage.cache_read_input_tokens || 0;
+    cacheWrite += splitCreation
+      ? (creation.ephemeral_5m_input_tokens || 0) + (creation.ephemeral_1h_input_tokens || 0)
+      : usage.cache_creation_input_tokens || 0;
     const c = replyCost(model, usage);
     estimate = estimate === null || c === null ? null : estimate + c;
   }
@@ -170,8 +178,11 @@ function sessionStats(records, subagentRecords = [], sessionId = '') {
     estimate,
     turns,
     agentMs,
-    tokens,
+    tokens: input + output + cacheRead + cacheWrite,
+    input,
     output,
+    cacheRead,
+    cacheWrite,
   };
 }
 
@@ -182,7 +193,7 @@ const field = v => { const s = v === null || v === undefined ? '' : String(v); r
 
 function csvRow(sessionId, project, s) {
   return [`${sessionId.slice(0, 8)}-${s.startedMs}`, stamp(s.startedMs), project, s.name, s.cost === null ? '' : s.cost.toFixed(2), s.turns,
-    (s.agentMs / 60000).toFixed(1), s.tokens, s.output, '', '', '', '', '', 'import', s.model].map(field).join(',');
+    (s.agentMs / 60000).toFixed(1), s.tokens, s.output, '', '', '', '', '', 'import', s.model, s.input, s.cacheRead, s.cacheWrite].map(field).join(',');
 }
 
 // New rows go in after the ledger's own: a newer header replaces an older one, and a session
