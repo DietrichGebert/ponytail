@@ -472,9 +472,10 @@ assert.equal(result.stdout, '', 'SubagentStart must stay silent when ponytail is
 // Codex shares claude-codex-hooks.json, so SubagentStart is reachable under Codex
 // too — assert the codex branch emits hookSpecificOutput and no systemMessage (#605).
 const subCodex = path.join(temp, 'sub-codex');
-fs.mkdirSync(subCodex, { recursive: true });
-fs.writeFileSync(path.join(subCodex, '.ponytail-active'), 'full');
-result = run('ponytail-subagent.js', { HOME: subHome, USERPROFILE: subHome, PLUGIN_DATA: subCodex });
+const subCodexEnv = { ...codexEnv, PLUGIN_DATA: subCodex, PONYTAIL_DEFAULT_MODE: 'full' };
+result = run('ponytail-activate.js', subCodexEnv);
+assert.equal(result.status, 0, result.stderr);
+result = run('ponytail-subagent.js', subCodexEnv);
 assert.equal(result.status, 0, result.stderr);
 output = JSON.parse(result.stdout);
 assert.equal(output.systemMessage, undefined, 'Codex must not emit systemMessage (#605)');
