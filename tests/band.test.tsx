@@ -217,6 +217,26 @@ describe('metrics', () => {
     expect(testCounts('===== 14 passed, 1 failed in 0.31s =====')).toEqual({ passed: 14, failed: 1 })
     expect(testCounts('ℹ pass 141\nℹ fail 1')).toEqual({ passed: 141, failed: 1 })
     expect(testCounts('ok')).toEqual({ passed: undefined, failed: undefined })
+    // jest/vitest print a suite/file summary above the Tests line; count tests, not suites.
+    expect(testCounts('Test Suites: 2 passed, 2 total\nTests:       10 passed, 10 total\n')).toEqual({ passed: 10, failed: undefined })
+    expect(testCounts('Test Suites: 1 failed, 1 passed, 2 total\nTests:       1 failed, 9 passed, 10 total\n')).toEqual({ passed: 9, failed: 1 })
+    expect(testCounts(' Test Files  2 passed (2)\n      Tests  10 passed (10)\n')).toEqual({ passed: 10, failed: undefined })
+    expect(testCounts(' Test Files  1 failed | 1 passed (2)\n      Tests  3 failed | 7 passed (10)\n')).toEqual({ passed: 7, failed: 3 })
+    // a generic "Tests ..." line (no counts) must not preempt the real summary or block the fallback.
+    expect(testCounts('  Tests for parser\nTest Suites: 2 passed, 2 total\nTests:       10 passed, 10 total\n')).toEqual({ passed: 10, failed: undefined })
+    expect(testCounts('Tests: 5\n===== 14 passed in 0.31s =====')).toEqual({ passed: 14, failed: undefined })
+    expect(testCounts('Test Suites: 1 failed, 1 total\nTests:       3 failed, 3 total\n')).toEqual({ passed: undefined, failed: 3 })
+    // describe titles that start with digits and status words are not summary lines.
+    expect(testCounts('  Tests 2 failed inputs\nTest Suites: 1 passed, 1 total\nTests:       3 passed, 3 total\n')).toEqual({ passed: 3, failed: undefined })
+    expect(testCounts('  Tests 2 passed conditions\nTest Suites: 1 failed, 1 passed, 2 total\nTests:       3 failed, 7 passed, 10 total\n')).toEqual({ passed: 7, failed: 3 })
+    // CRLF and SGR color codes (vitest colors its summary even when piped).
+    expect(testCounts('Test Suites: 2 passed, 2 total\r\nTests:       10 passed, 10 total\r\n')).toEqual({ passed: 10, failed: undefined })
+    expect(testCounts('\x1b[2m Test Files \x1b[22m \x1b[1m\x1b[32m2 passed\x1b[39m\x1b[22m\x1b[90m (2)\x1b[39m\n\x1b[2m      Tests \x1b[22m \x1b[1m\x1b[32m10 passed\x1b[39m\x1b[22m\x1b[90m (10)\x1b[39m\n')).toEqual({ passed: 10, failed: undefined })
+    // skipped tests can lead the vitest segment list.
+    expect(testCounts(' Test Files  2 passed (2)\n      Tests  2 skipped | 10 passed (12)\n')).toEqual({ passed: 10, failed: undefined })
+    // log captures can leave trailing whitespace on the summary line.
+    expect(testCounts('Test Suites: 2 passed, 2 total\nTests:       10 passed, 10 total \n')).toEqual({ passed: 10, failed: undefined })
+    expect(testCounts(' Test Files  2 passed (2)\n      Tests  10 passed (10)\t\n')).toEqual({ passed: 10, failed: undefined })
   })
 
   test('shows the reuse share only once there is something to share, and a readable time', () => {

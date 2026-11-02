@@ -89,14 +89,30 @@ export const isTestCommand = (command: string) => TEST_CMD.test(command)
 
 // Pass and fail counts from common runners: pytest, jest/vitest, cargo, node --test, TAP.
 export function testCounts(output: string): { passed?: number; failed?: number } {
-  const num = (re: RegExp) => {
-    const m = re.exec(output)
+  // jest/vitest print a file/suite summary ("Test Suites: 2 passed", "Test Files  2 passed")
+  // above the Tests line; the first "N passed" in the output is then the suite count,
+  // not the test count. Read counts from a full Tests summary line when there is one:
+  // jest prints "Tests: N failed, M passed, T total" (always ending ", T total"),
+  // vitest prints "Tests  N failed | M passed (T)" (always ending " (T)"). A line that
+  // merely starts with "Tests" (a describe title like "Tests 2 failed inputs", a bare
+  // "Tests: 5") is not a summary and falls through to the whole output, preserving the
+  // original behavior. Captured output can carry SGR color codes (vitest colors even
+  // when piped), so strip them first.
+  const text = output.replace(/\x1b\[[0-9;]*m/g, '')
+  const tests = /^\s*Tests:?\s+(\d+ (?:failed|passed|skipped|todo)(?:(?:, | \| )\d+ (?:failed|passed|skipped|todo))*(?:, \d+ total| \(\d+\)))[ \t]*\r?$/m.exec(text)?.[1]
+  const num = (re: RegExp, src: string) => {
+    const m = re.exec(src)
     return m ? Number(m[1]) : undefined
   }
-  return {
-    passed: num(/(\d+) (?:passed|passing)\b/) ?? num(/(?:ℹ |# )pass (\d+)/),
-    failed: num(/(\d+) (?:failed|failing)\b/) ?? num(/(?:ℹ |# )fail (\d+)/),
+  const counts = (src: string) => ({
+    passed: num(/(\d+) (?:passed|passing)\b/, src) ?? num(/(?:ℹ |# )pass (\d+)/, src),
+    failed: num(/(\d+) (?:failed|failing)\b/, src) ?? num(/(?:ℹ |# )fail (\d+)/, src),
+  })
+  if (tests) {
+    const scoped = counts(tests)
+    if (scoped.passed !== undefined || scoped.failed !== undefined) return scoped
   }
+  return counts(text)
 }
 
 export type Col = { key: string; label: string; value: string; sub: string; tone?: 'warning' | 'success' | 'error' }
