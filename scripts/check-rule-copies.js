@@ -53,6 +53,7 @@ const INVARIANTS = [
   'prevents data loss',
   'security',
   'accessibility',
+  "would change the user's next step", // the skipped/risk footer only when it matters (#1200)
 ];
 
 const skill = read('skills/ponytail/SKILL.md');
