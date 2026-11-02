@@ -17,6 +17,15 @@ export const elapsed = (ms: number) => {
 export const fmtTokens = (n: number) =>
   n < 1000 ? `${n}` : n < 1e6 ? `${+(n / 1e3).toFixed(1)}k` : `${+(n / 1e6).toFixed(1)}M`
 
+export type TokenKind = 'all' | 'input' | 'output' | 'cacheRead' | 'cacheWrite'
+
+export type TokenBreakdown = {
+  input: number | null
+  output: number | null
+  cacheRead: number | null
+  cacheWrite: number | null
+}
+
 export type Task = {
   started: string
   project: string
@@ -25,6 +34,7 @@ export type Task = {
   turns: number
   agentMinutes: number
   tokens: number
+  tokenBreakdown?: TokenBreakdown
   reuse: number | null
   tests: string
   level: string
@@ -67,6 +77,7 @@ export function tasksFrom(text: string): Task[] {
   if (!head?.includes('key')) return []
   const at = (row: string[], col: string) => row[head.indexOf(col)] ?? ''
   const num = (row: string[], col: string) => Number(at(row, col)) || 0
+  const optionalNum = (row: string[], col: string) => at(row, col) === '' ? null : num(row, col)
   return rows.map(row => ({
     started: at(row, 'started'),
     project: at(row, 'project'),
@@ -75,6 +86,12 @@ export function tasksFrom(text: string): Task[] {
     turns: num(row, 'turns'),
     agentMinutes: num(row, 'agent_minutes'),
     tokens: num(row, 'tokens_total'),
+    tokenBreakdown: {
+      input: optionalNum(row, 'tokens_input'),
+      output: optionalNum(row, 'tokens_output'),
+      cacheRead: optionalNum(row, 'tokens_cache_read'),
+      cacheWrite: optionalNum(row, 'tokens_cache_write'),
+    },
     reuse: at(row, 'reuse_pct') === '' ? null : num(row, 'reuse_pct'),
     tests: at(row, 'tests'),
     level: at(row, 'level'),
@@ -121,6 +138,7 @@ h1{margin:2px 0 0;font-size:26px;font-weight:650;letter-spacing:-.02em}.top p{ma
 .seg{display:inline-flex;background:var(--track);border:1px solid var(--line);border-radius:12px;padding:3px;flex:none}
 .seg button{border:0;background:transparent;color:var(--muted);font:inherit;font-size:13px;padding:6px 12px;border-radius:9px;cursor:pointer}
 .seg button.on{background:var(--segOn);color:var(--text);box-shadow:inset 0 1px 0 rgba(255,255,255,.06),0 0 0 1px var(--line2)}
+.chart-controls{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
 .btn{border:1px solid var(--line2);background:var(--track);color:var(--text);font:inherit;font-size:13px;padding:8px 14px;border-radius:11px;cursor:pointer}.btn:hover{border-color:var(--faint)}
 .card{background:var(--card);border:1px solid var(--line);border-radius:22px;box-shadow:var(--shadow)}
 .kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin-bottom:14px}
@@ -185,7 +203,7 @@ main{padding:16px}.search{width:160px}.big{font-size:32px}}
 const APP = `(function () {
   var D = JSON.parse(document.getElementById('board-data').textContent)
   var tasks = D.tasks, now = D.now, DAY = 86400000, NS = 'http://www.w3.org/2000/svg'
-  var state = { project: '', metric: 'time', q: '', period: 30, hidden: {} }
+  var state = { project: '', metric: 'time', tokenKind: 'all', q: '', period: 30, hidden: {} }
   var MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
   var PALETTE = ${JSON.stringify(PALETTE)}
   // Each KPI its own colour pair, apart from the project colours: the line runs from one to the other.
@@ -209,6 +227,13 @@ const APP = `(function () {
     time: { label: 'Agent time', pick: function (t) { return t.agentMinutes * 60000 }, fmt: time },
     cost: { label: 'Cost', pick: function (t) { return t.cost }, fmt: money },
     tokens: { label: 'Tokens', pick: function (t) { return t.tokens }, fmt: tok }
+  }
+  var TOKEN_METRICS = {
+    all: METRICS.tokens,
+    input: { label: 'Input tokens', pick: function (t) { return t.tokenBreakdown && t.tokenBreakdown.input || 0 }, fmt: tok },
+    output: { label: 'Output tokens', pick: function (t) { return t.tokenBreakdown && t.tokenBreakdown.output || 0 }, fmt: tok },
+    cacheRead: { label: 'Cache read tokens', pick: function (t) { return t.tokenBreakdown && t.tokenBreakdown.cacheRead || 0 }, fmt: tok },
+    cacheWrite: { label: 'Cache write tokens', pick: function (t) { return t.tokenBreakdown && t.tokenBreakdown.cacheWrite || 0 }, fmt: tok }
   }
   function total(list, pick) { return list.map(pick).reduce(add, 0) }
   function latest(name) { return tasks.filter(function (t) { return t.project === name }).reduce(function (m, t) { return t.started > m ? t.started : m }, '') }
@@ -295,13 +320,18 @@ const APP = `(function () {
   }
 
   function chart() {
-    var list = scope(), n = span(), keys = days(n), M = METRICS[state.metric], box = byId('stream'), tip = byId('tip'); tip.hidden = true
+    var list = scope(), n = span(), keys = days(n), M = state.metric === 'tokens' ? TOKEN_METRICS[state.tokenKind] : METRICS[state.metric], box = byId('stream'), tip = byId('tip'); tip.hidden = true
     var W = Math.max(320, Math.round(box.getBoundingClientRect().width) || 900), H = 340, top = 66, base = 282
     box.setAttribute('viewBox', '0 0 ' + W + ' ' + H); box.textContent = ''
     var defs = svg('defs', {}, box); blur(defs, 'sglow', 10)
     var shown = names.filter(function (p) { return (!state.project || p === state.project) && list.some(function (t) { return t.project === p }) })
     var projects = shown.filter(function (p) { return !state.hidden[p] })
     var cur = inDays(list, keys).filter(function (t) { return !state.hidden[t.project] })
+    var tokenControls = byId('token-kind'), tokenNote = byId('token-note'), tokenField = state.tokenKind === 'all' ? '' : state.tokenKind
+    tokenControls.hidden = state.metric !== 'tokens'
+    var missingTokens = state.metric === 'tokens' && tokenField && cur.some(function (t) { return !t.tokenBreakdown || t.tokenBreakdown[tokenField] == null })
+    tokenNote.hidden = !missingTokens
+    tokenNote.textContent = missingTokens ? 'Older sessions without this token breakdown are excluded.' : ''
     byId('chart-sub').textContent = M.label + (state.period ? ', last ' + n + ' days' : ', all time')
     byId('chart-total').textContent = M.fmt(total(cur, M.pick))
     legend(shown)
@@ -475,6 +505,9 @@ const APP = `(function () {
   document.querySelectorAll('[data-metric]').forEach(function (b) {
     b.addEventListener('click', function () { state.metric = b.getAttribute('data-metric'); document.querySelectorAll('[data-metric]').forEach(function (x) { x.classList.toggle('on', x === b) }); chart() })
   })
+  document.querySelectorAll('[data-token-kind]').forEach(function (b) {
+    b.addEventListener('click', function () { state.tokenKind = b.getAttribute('data-token-kind'); document.querySelectorAll('[data-token-kind]').forEach(function (x) { x.classList.toggle('on', x === b) }); chart() })
+  })
   document.querySelectorAll('[data-period]').forEach(function (b) {
     b.addEventListener('click', function () { state.period = +b.getAttribute('data-period'); document.querySelectorAll('[data-period]').forEach(function (x) { x.classList.toggle('on', x === b) }); render() })
   })
@@ -542,8 +575,8 @@ export function boardHtml(tasks: Task[], now: number): string {
 <div class="top"><div><div class="crumb">Board / <b id="crumb"></b></div><h1 id="title"></h1><p id="subtitle"></p></div>
 <div class="actions"><div class="seg" role="group" aria-label="Period">${seg('period', [['7', '7d'], ['30', '30d'], ['90', '90d'], ['0', 'All']], '30')}</div><button type="button" class="btn" id="share">Share card</button></div></div>
 <section class="kpis" id="kpis"></section>
-<section class="card chart-card"><div class="chart-head"><div><div class="label" id="chart-sub"></div><div class="big num" id="chart-total"></div></div>
-<div class="seg" role="group" aria-label="Metric">${seg('metric', [['time', 'Agent time'], ['cost', 'Cost'], ['tokens', 'Tokens']], 'time')}</div></div>
+<section class="card chart-card"><div class="chart-head"><div><div class="label" id="chart-sub"></div><div class="big num" id="chart-total"></div><div class="sub" id="token-note" hidden></div></div>
+<div class="chart-controls"><div class="seg" id="token-kind" role="group" aria-label="Token type" hidden>${seg('token-kind', [['all', 'All'], ['input', 'Input'], ['output', 'Output'], ['cacheRead', 'Cache read'], ['cacheWrite', 'Cache write']], 'all')}</div><div class="seg" role="group" aria-label="Metric">${seg('metric', [['time', 'Agent time'], ['cost', 'Cost'], ['tokens', 'Tokens']], 'time')}</div></div></div>
 <div class="chart-wrap"><svg id="stream" role="img" aria-label="Per project and day"></svg><div class="tip" id="tip" hidden></div></div><div class="legend" id="legend"></div></section>
 <div class="grid2">
 <section class="card list"><div class="list-head"><h3>Sessions<span class="n" id="count"></span></h3><label class="search">${SEARCH_ICON}<input id="q" type="search" placeholder="Search sessions" aria-label="Search sessions"></label></div>
