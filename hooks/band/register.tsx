@@ -39,6 +39,7 @@ import {
 const LEVELS = ['off', 'lite', 'full', 'ultra']
 const EMPTY: Band = {
   level: 'off',
+  pending: '',
   model: '',
   cost: 0,
   spent: 0,
@@ -102,6 +103,15 @@ async function readLevel($: EngineInterface): Promise<string> {
   } catch {
     return 'off'
   }
+}
+
+// A level picked here waits for the session's next prompt, where the mode tracker applies it and empties the file.
+// Writing it starts no turn, so clicks during a turn queue nothing and the last one wins.
+// shortcut: a pick never followed by a prompt leaves its file behind; sweep ponytail-pending/ if that ever adds up.
+const pendingFile = async ($: EngineInterface) => `${await claudeDir($)}/ponytail-pending/${await $.session.id()}`
+async function readPending($: EngineInterface): Promise<string> {
+  const level = (await $.fs.read(await pendingFile($)).catch(() => '')).trim()
+  return LEVELS.includes(level) ? level : ''
 }
 
 // The same commands a person types, so ponytail's own skills and hooks stay the only logic.
@@ -201,6 +211,7 @@ async function openBoard($: EngineInterface) {
 async function start($: EngineInterface): Promise<Map<string, string>> {
   const grep = await $.process.run(['git', 'grep', '--untracked', '-nE', GREP_DEFS]).catch(() => undefined)
   const level = await readLevel($)
+  const pending = await readPending($)
   const details = (await $.store.get('details')) === true
   const repo = await $.session.repo().catch(() => null)
   const project = base(repo?.root ?? (await $.session.cwd()))
@@ -209,7 +220,7 @@ async function start($: EngineInterface): Promise<Map<string, string>> {
   const usage = await $.session.usage().catch(() => undefined)
   const csv = usage ? await $.fs.read(ledgerFile(await ledgerDir($), project)).catch(() => '') : ''
   const key = usage ? taskKey(session, usage.startedAt) : ''
-  await update($, band, b => resume({ ...EMPTY, ...b, level, details, project, session, cost: usage?.cost?.usd ?? b.cost }, csv, key))
+  await update($, band, b => resume({ ...EMPTY, ...b, level, pending, details, project, session, cost: usage?.cost?.usd ?? b.cost }, csv, key))
   return grep?.exitCode === 0 ? parseDefs(grep.stdout) : new Map()
 }
 
@@ -247,6 +258,10 @@ export const register: Register = (on, options) => {
     if (e.origin.kind !== 'plugin' && text !== '' && !text.startsWith('/')) {
       const name = (text.split('\n')[0] ?? '').slice(0, 60)
       await update($, band, b => (b.name === '' ? { ...EMPTY, ...b, name } : b))
+    }
+    // The mode tracker applies the pick with this prompt; turn.complete confirms from the flag.
+    if (text !== '' && !text.startsWith('/')) {
+      await update($, band, b => (b.pending !== '' ? { ...EMPTY, ...b, level: b.pending, pending: '' } : b))
     }
     return next(e)
   }).catch(($, e, next) => next(e))
@@ -297,9 +312,13 @@ export const register: Register = (on, options) => {
       return next(e)
     }
 
+    // The level first: the transcript reads and git greps below take a while, and the band waits on none of them.
+    const level = await readLevel($)
+    const pending = await readPending($)
+    await update($, band, b => ({ ...EMPTY, ...b, level, pending }))
+
     const usage = await $.session.usage()
     const turns = await $.session.turns()
-    const level = await readLevel($)
     const { removed, transcript: saved } = await load($)
     const session = await $.session.id()
     // Here, not at start: the first turn writes the file, and a new id (/clear, /resume) or a move (/cd, a worktree) changes it.
@@ -364,9 +383,10 @@ export const register: Register = (on, options) => {
     const avg = b.turns > 0 ? b.spent / b.turns : 0
     const last = b.turnCosts[b.turnCosts.length - 1]
 
+    // Picking the level in force again takes the pick back.
     const setLevel = async (level: string) => {
-      await update($, band, x => ({ ...x, level }))
-      await run($, 'ponytail:ponytail', level)
+      const picked = await update($, band, x => ({ ...x, pending: level === x.level ? '' : level }))
+      await $.fs.write(await pendingFile($), picked.pending)
     }
     const toggle = async () => {
       await update($, band, x => ({ ...x, details: !x.details }))
@@ -399,9 +419,10 @@ export const register: Register = (on, options) => {
     if (!b.details) {
       return stack(
         <Box flexDirection="row" alignItems="center" gap={2} width={width}>
-          {/* A click opens the four levels: one click, one turn, no stops on levels nobody wanted. */}
+          {/* A click opens the four levels; a pick there applies with the next prompt. */}
           <Button key="level" plain onPress={toggle}>
             <Text color={b.level === 'off' ? 'inactive' : 'suggestion'}>●</Text> {b.level}
+            {b.pending !== '' && ` → ${b.pending}`}
           </Button>
           <Text>${b.spent.toFixed(2)}</Text>
           {last !== undefined && <Text dimColor>last ${last.toFixed(2)}</Text>}
@@ -477,10 +498,11 @@ export const register: Register = (on, options) => {
             <Button
               key={`level-${level}`}
               label={level}
-              {...(level === b.level ? { variant: 'primary' as const } : { plain: true as const, dimColor: true })}
+              {...(level === (b.pending || b.level) ? { variant: 'primary' as const } : { plain: true as const, dimColor: true })}
               onPress={() => setLevel(level)}
             />
           ))}
+          {b.pending !== '' && <Text dimColor>from your next message</Text>}
           <Box flexGrow={1} />
           <Button key="copy" plain label="Copy" onPress={copy} />
           <Button key="review" plain label="Review" onPress={review} />

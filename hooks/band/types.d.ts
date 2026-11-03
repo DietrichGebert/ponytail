@@ -8,6 +8,8 @@ export type Tokens = { input: number; output: number; cacheRead: number; cacheWr
 
 export type Band = {
   level: string
+  // A level picked in the band that applies with the next prompt; '' when none.
+  pending: string
   model: string
   cost: number
   spent: number

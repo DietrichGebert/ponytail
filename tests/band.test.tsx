@@ -472,9 +472,6 @@ test('review and audit run the same commands a person types', async ($, on) => {
   await ui.press({ key: 'level' })
   expect(await ui.find({ key: 'level-ultra' })).toBeDefined()
   expect(sent).toEqual([])
-  await ui.press({ key: 'level-lite' })
-  expect(sent).toEqual(['/ponytail:ponytail lite'])
-  sent.length = 0
   await ui.press({ key: 'review' })
   await ui.press({ key: 'audit' })
   expect(sent).toEqual(['/ponytail:ponytail-review', '/ponytail:ponytail-audit'])
@@ -516,5 +513,60 @@ test('a test run shows its count, and an edit in the project after it marks the 
 
   await $.tool.call({ tool: 'Edit', file_path: '/repo/cart.py', old_string: 'a = 1', new_string: 'a = 2', replace_all: false } as never)
   expect(await ui.find({ type: 'Text', text: /no test since change/ })).toBeDefined()
+  await ui.unmount()
+})
+
+test('a level pick starts no turn, the last pick wins, and it shows as pending until the next prompt applies it', async ($, on) => {
+  mock.clock(on)
+  mock.store(on)
+  const sent: string[] = []
+  const files = new Map<string, string>([['/home/u/.claude/.ponytail-active', 'full']])
+  on('env.get', ($, e) => ({ value: e.name === 'HOME' ? '/home/u' : undefined }))
+  on('session.id', () => ({ value: 's1' }))
+  on('session.repo', () => ({ value: { root: '/repo/shop' } }) as never)
+  on('session.turns', () => ({ value: 1 }))
+  on('session.usage', () => ({ value: { startedAt: 0, cost: { usd: 0.5 } } }) as never)
+  on('process.run', () => ({ value: { exitCode: 1, stdout: '', stderr: '' } }) as never)
+  on('fs.list', () => ({ value: [] }))
+  on('session.start', ($, e) => ({ cwd: e.cwd }))
+  on('prompt.submit', () => ({ text: '' }) as never)
+  on('turn.complete', () => ({ text: '' }))
+  on('fs.read', ($, e) => (files.has(e.path) ? { value: files.get(e.path) } : { deny: 'missing' }) as never)
+  on('fs.write', ($, e) => {
+    files.set(e.path, e.text)
+    return { value: undefined }
+  })
+  on('command.run', ($, e) => {
+    sent.push(`/${e.command} ${e.args}`.trim())
+    return { text: '' }
+  })
+  const pending = '/home/u/.claude/ponytail-pending/s1'
+  const ui = await $.ui.mount({ plugin: 'ponytail', surface: 'terminal', ...BAND })
+  await $.session.start({ cwd: '/repo/shop', surface: null } as never)
+  await ui.press({ key: 'level' })
+
+  // off, then ultra, while a turn runs: no command, and only ultra waits.
+  await ui.press({ key: 'level-off' })
+  await ui.press({ key: 'level-ultra' })
+  expect(sent).toEqual([])
+  expect(files.get(pending)).toBe('ultra')
+  expect((await ui.find({ key: 'level-ultra' }))?.props.variant).toBe('primary')
+  expect(await ui.find({ type: 'Text', text: /from your next message/ })).toBeDefined()
+
+  // Picking the level in force takes the pick back.
+  await ui.press({ key: 'level-full' })
+  expect(files.get(pending)).toBe('')
+  expect(await ui.find({ type: 'Text', text: /from your next message/ })).toBeUndefined()
+
+  // The next prompt applies the pick at once; the end of the turn confirms it from the flag the tracker wrote.
+  await ui.press({ key: 'level-lite' })
+  await $.prompt.submit({ text: 'fix the cart', origin: { kind: 'user' } } as never)
+  expect(await ui.find({ type: 'Text', text: /from your next message/ })).toBeUndefined()
+  expect((await ui.find({ key: 'level-lite' }))?.props.variant).toBe('primary')
+  files.set('/home/u/.claude/.ponytail-active', 'lite')
+  files.set(pending, '')
+  await $.turn.complete({ answer: '', durationMs: 1000 } as never)
+  expect((await ui.find({ key: 'level-lite' }))?.props.variant).toBe('primary')
+  expect(sent).toEqual([])
   await ui.unmount()
 })

@@ -80,6 +80,19 @@ function readMode() {
   }
 }
 
+// A level picked in the band (hooks/band) waits in ponytail-pending/<session id> until
+// the session's next prompt. Reading it consumes it; empty means the pick was taken back.
+function takePendingMode(sessionId) {
+  if (!/^[\w-]+$/.test(String(sessionId || ''))) return null;
+  const file = path.join(stateDir, 'ponytail-pending', sessionId);
+  let mode = null;
+  try {
+    mode = fs.readFileSync(file, 'utf8').trim();
+    fs.unlinkSync(file);
+  } catch (e) {}
+  return ['off', 'lite', 'full', 'ultra'].includes(mode) ? mode : null;
+}
+
 // Cursor's always-on project rule (.cursor/rules/ponytail.mdc) already puts the
 // ruleset in front of every prompt and no hook can switch a rule off, so while
 // it is in the workspace the hooks step back instead of injecting a second,
@@ -178,5 +191,6 @@ module.exports = {
   isQoder,
   readMode,
   setMode,
+  takePendingMode,
   writeHookOutput,
 };
