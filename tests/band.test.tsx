@@ -570,3 +570,23 @@ test('a level pick starts no turn, the last pick wins, and it shows as pending u
   expect(sent).toEqual([])
   await ui.unmount()
 })
+
+test('a waiting pick reads as text where the row has room, and as an icon with the text on hover where it has not', async ($, on) => {
+  mock.clock(on)
+  mock.store(on)
+  on('env.get', ($, e) => ({ value: e.name === 'HOME' ? '/home/u' : undefined }))
+  on('session.id', () => ({ value: 's1' }))
+  on('fs.write', () => ({ value: undefined }))
+  for (const [bodyColumns, icon] of [[130, false], [60, true]] as const) {
+    const ui = await $.ui.mount({ plugin: 'ponytail', surface: 'desktop', ...BAND, props: { ...BAND.props, bodyColumns } })
+    await ui.press({ key: 'details' })
+    await ui.press({ key: 'level-ultra' })
+    expect(await ui.find({ type: 'Text', text: /ultra applies with your next message/ })).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: 'ℹ' })).toEqual(icon ? expect.anything() : undefined)
+    // The hover card is hidden until the pointer is on the icon.
+    if (icon) expect((await ui.find({ key: 'pending-hint' }))?.props).toBeDefined()
+    await ui.press({ key: 'level-off' })
+    await ui.press({ key: 'details' })
+    await ui.unmount()
+  }
+})

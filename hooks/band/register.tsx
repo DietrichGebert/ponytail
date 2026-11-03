@@ -114,6 +114,10 @@ async function readPending($: EngineInterface): Promise<string> {
   return LEVELS.includes(level) ? level : ''
 }
 
+// Cells the details row needs for the levels, the actions and the pending pick's text; narrower, the text becomes an icon.
+// shortcut: a guess for the desktop, whose Buttons are wider than their cells; tune it if the row still wraps there.
+const ROOM_FOR_HINT = 110
+
 // The same commands a person types, so ponytail's own skills and hooks stay the only logic.
 const run = ($: EngineInterface, command: string, args = '') => $.command.run({ command, args })
 
@@ -415,6 +419,7 @@ export const register: Register = (on, options) => {
             : ''
     const testsColor = b.tests.state === 'pass' ? 'success' : b.tests.state === 'fail' ? 'error' : undefined
     const hasOpen = b.openCallers.length > 0
+    const hint = `${b.pending} applies with your next message`
 
     if (!b.details) {
       return stack(
@@ -502,6 +507,18 @@ export const register: Register = (on, options) => {
               onPress={() => setLevel(level)}
             />
           ))}
+          {b.pending !== '' &&
+            (e.props.bodyColumns >= ROOM_FOR_HINT ? (
+              <Text dimColor wrap="truncate-end">{hint}</Text>
+            ) : (
+              // Too narrow for the text: an icon whose hover shows it, without moving the row.
+              <Box key="pending-hint">
+                <Text dimColor>ℹ</Text>
+                <Box position="absolute" top={1} left={0} borderStyle="round" display="none" hover={{ display: 'flex' }}>
+                  <Text>{hint}</Text>
+                </Box>
+              </Box>
+            ))}
           <Box flexGrow={1} />
           <Button key="copy" plain label="Copy" onPress={copy} />
           <Button key="review" plain label="Review" onPress={review} />
@@ -509,12 +526,6 @@ export const register: Register = (on, options) => {
           <Button key="board" plain label="Board" onPress={board} />
           <Button key="details" plain label="Compact" onPress={toggle} />
         </Box>
-        {/* Its own line: in the row it took the buttons' room and wrapped in a narrow pane. */}
-        {b.pending !== '' && (
-          <Text dimColor wrap="truncate-end">
-            {b.pending} applies with your next message
-          </Text>
-        )}
         {metrics}
       </Box>
     )
