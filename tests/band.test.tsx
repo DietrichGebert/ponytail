@@ -551,17 +551,17 @@ test('a level pick starts no turn, the last pick wins, and it shows as pending u
   expect(sent).toEqual([])
   expect(files.get(pending)).toBe('ultra')
   expect((await ui.find({ key: 'level-ultra' }))?.props.variant).toBe('primary')
-  expect(await ui.find({ type: 'Text', text: /from your next message/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /applies with your next message/ })).toBeDefined()
 
   // Picking the level in force takes the pick back.
   await ui.press({ key: 'level-full' })
   expect(files.get(pending)).toBe('')
-  expect(await ui.find({ type: 'Text', text: /from your next message/ })).toBeUndefined()
+  expect(await ui.find({ type: 'Text', text: /applies with your next message/ })).toBeUndefined()
 
   // The next prompt applies the pick at once; the end of the turn confirms it from the flag the tracker wrote.
   await ui.press({ key: 'level-lite' })
   await $.prompt.submit({ text: 'fix the cart', origin: { kind: 'user' } } as never)
-  expect(await ui.find({ type: 'Text', text: /from your next message/ })).toBeUndefined()
+  expect(await ui.find({ type: 'Text', text: /applies with your next message/ })).toBeUndefined()
   expect((await ui.find({ key: 'level-lite' }))?.props.variant).toBe('primary')
   files.set('/home/u/.claude/.ponytail-active', 'lite')
   files.set(pending, '')

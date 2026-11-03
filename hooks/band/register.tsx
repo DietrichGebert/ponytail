@@ -502,7 +502,6 @@ export const register: Register = (on, options) => {
               onPress={() => setLevel(level)}
             />
           ))}
-          {b.pending !== '' && <Text dimColor>from your next message</Text>}
           <Box flexGrow={1} />
           <Button key="copy" plain label="Copy" onPress={copy} />
           <Button key="review" plain label="Review" onPress={review} />
@@ -510,6 +509,12 @@ export const register: Register = (on, options) => {
           <Button key="board" plain label="Board" onPress={board} />
           <Button key="details" plain label="Compact" onPress={toggle} />
         </Box>
+        {/* Its own line: in the row it took the buttons' room and wrapped in a narrow pane. */}
+        {b.pending !== '' && (
+          <Text dimColor wrap="truncate-end">
+            {b.pending} applies with your next message
+          </Text>
+        )}
         {metrics}
       </Box>
     )
