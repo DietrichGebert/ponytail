@@ -75,9 +75,10 @@ describe('board', () => {
 
 describe('metrics', () => {
   test('the pick chip escapes its tooltip and drops its label when narrow', () => {
-    expect(pendingChipSvg('<b>&', true)).toContain('<title>&lt;b&gt;&amp;</title>')
-    expect(pendingChipSvg('x', false)).not.toContain('<text')
-    expect(pendingChipSvg('x', false)).toContain('width="22"')
+    expect(pendingChipSvg('<b>&', true).source).toContain('<title>&lt;b&gt;&amp;</title>')
+    expect(pendingChipSvg('x', false).source).not.toContain('<text')
+    expect(pendingChipSvg('x', false)).toMatchObject({ width: 22, height: 22 })
+    expect(pendingChipSvg('x', true)).toMatchObject({ width: 104, height: 22 })
   })
 
   test('adds up tokens and prints them short', () => {
@@ -592,6 +593,8 @@ test('a waiting pick is a clock chip, labelled where the row has room, with the 
     const chip = (await ui.find({ type: 'Svg' }))?.props
     expect(chip?.alt).toBe('ultra applies with your next message')
     expect(chip?.isInteractive).toBe(true)
+    // Without a size the interactive frame fills its slot: a chip as tall as the band.
+    expect([chip?.width, chip?.height]).toEqual([labelled ? 104 : 22, 22])
     expect(chip?.source).toContain('<title>ultra applies with your next message</title>')
     expect(chip?.source.includes('next message</text>')).toBe(labelled)
     await ui.press({ key: 'level-off' })

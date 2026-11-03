@@ -507,7 +507,7 @@ export const register: Register = (on, options) => {
     )
     if (e.surface !== 'terminal') {
       const { Svg } = $.ui.resolve(e)
-      chip = <Svg source={pendingChipSvg(hint, labelled)} alt={hint} isInteractive />
+      chip = <Svg {...pendingChipSvg(hint, labelled)} alt={hint} isInteractive />
     }
 
     return stack(
