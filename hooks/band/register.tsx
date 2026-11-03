@@ -21,6 +21,7 @@ import {
   mainModel,
   markdown,
   metricsSvg,
+  pendingChipSvg,
   MODEL_PATTERN,
   parseDefs,
   percent,
@@ -114,9 +115,10 @@ async function readPending($: EngineInterface): Promise<string> {
   return LEVELS.includes(level) ? level : ''
 }
 
-// Cells the details row needs for the levels, the actions and the pending pick's text; narrower, the text becomes an icon.
-// shortcut: a guess for the desktop, whose Buttons are wider than their cells; tune it if the row still wraps there.
-const ROOM_FOR_HINT = 110
+// Cells the details row needs to keep the waiting pick's "next message" label; narrower, the chip is its clock alone.
+// shortcut: a guess for the desktop, whose Buttons are wider than their cells (110 was too many for a full-width pane);
+// tune it if the label still wraps there or drops where it would fit.
+const ROOM_FOR_LABEL = 80
 
 // The same commands a person types, so ponytail's own skills and hooks stay the only logic.
 const run = ($: EngineInterface, command: string, args = '') => $.command.run({ command, args })
@@ -495,6 +497,19 @@ export const register: Register = (on, options) => {
       metrics = <Svg source={metricsSvg(cols, b.turnCosts)} alt={cols.map(c => `${c.label} ${c.value}`).join(', ')} />
     }
 
+    // The waiting pick as a chip: a clock, labelled "next message" where the row has room; the full hint on hover.
+    const labelled = e.props.bodyColumns >= ROOM_FOR_LABEL
+    let chip = (
+      <Text>
+        <Text color="warning">◷</Text>
+        <Text dimColor>{labelled ? ' next message' : ''}</Text>
+      </Text>
+    )
+    if (e.surface !== 'terminal') {
+      const { Svg } = $.ui.resolve(e)
+      chip = <Svg source={pendingChipSvg(hint, labelled)} alt={hint} isInteractive />
+    }
+
     return stack(
       // The desktop's SVG draws its own line at the top, which would touch the buttons without the gap.
       <Box flexDirection="column" width={width} gap={e.surface === 'desktop' ? 1 : 0}>
@@ -507,18 +522,7 @@ export const register: Register = (on, options) => {
               onPress={() => setLevel(level)}
             />
           ))}
-          {b.pending !== '' &&
-            (e.props.bodyColumns >= ROOM_FOR_HINT ? (
-              <Text dimColor wrap="truncate-end">{hint}</Text>
-            ) : (
-              // Too narrow for the text: an icon whose hover shows it, without moving the row.
-              <Box key="pending-hint">
-                <Text dimColor>ℹ</Text>
-                <Box position="absolute" top={1} left={0} borderStyle="round" display="none" hover={{ display: 'flex' }}>
-                  <Text>{hint}</Text>
-                </Box>
-              </Box>
-            ))}
+          {b.pending !== '' && chip}
           <Box flexGrow={1} />
           <Button key="copy" plain label="Copy" onPress={copy} />
           <Button key="review" plain label="Review" onPress={review} />

@@ -16,6 +16,7 @@ import {
   mainModel,
   markdown,
   metricsSvg,
+  pendingChipSvg,
   parseDefs,
   percent,
   resume,
@@ -73,6 +74,12 @@ describe('board', () => {
 })
 
 describe('metrics', () => {
+  test('the pick chip escapes its tooltip and drops its label when narrow', () => {
+    expect(pendingChipSvg('<b>&', true)).toContain('<title>&lt;b&gt;&amp;</title>')
+    expect(pendingChipSvg('x', false)).not.toContain('<text')
+    expect(pendingChipSvg('x', false)).toContain('width="22"')
+  })
+
   test('adds up tokens and prints them short', () => {
     const t = addTokens(addTokens(NO_TOKENS, { input_tokens: 10, output_tokens: 90, cache_read_input_tokens: 1000, cache_creation_input_tokens: 0 }), { input_tokens: 0, output_tokens: 10, cache_read_input_tokens: 140, cache_creation_input_tokens: 0 })
     expect(totalTokens(t)).toBe(1250)
@@ -551,17 +558,17 @@ test('a level pick starts no turn, the last pick wins, and it shows as pending u
   expect(sent).toEqual([])
   expect(files.get(pending)).toBe('ultra')
   expect((await ui.find({ key: 'level-ultra' }))?.props.variant).toBe('primary')
-  expect(await ui.find({ type: 'Text', text: /applies with your next message/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: '◷' })).toBeDefined()
 
   // Picking the level in force takes the pick back.
   await ui.press({ key: 'level-full' })
   expect(files.get(pending)).toBe('')
-  expect(await ui.find({ type: 'Text', text: /applies with your next message/ })).toBeUndefined()
+  expect(await ui.find({ type: 'Text', text: '◷' })).toBeUndefined()
 
   // The next prompt applies the pick at once; the end of the turn confirms it from the flag the tracker wrote.
   await ui.press({ key: 'level-lite' })
   await $.prompt.submit({ text: 'fix the cart', origin: { kind: 'user' } } as never)
-  expect(await ui.find({ type: 'Text', text: /applies with your next message/ })).toBeUndefined()
+  expect(await ui.find({ type: 'Text', text: '◷' })).toBeUndefined()
   expect((await ui.find({ key: 'level-lite' }))?.props.variant).toBe('primary')
   files.set('/home/u/.claude/.ponytail-active', 'lite')
   files.set(pending, '')
@@ -571,21 +578,24 @@ test('a level pick starts no turn, the last pick wins, and it shows as pending u
   await ui.unmount()
 })
 
-test('a waiting pick reads as text where the row has room, and as an icon with the text on hover where it has not', async ($, on) => {
+test('a waiting pick is a clock chip, labelled where the row has room, with the full hint as its tooltip', async ($, on) => {
   mock.clock(on)
   mock.store(on)
   on('env.get', ($, e) => ({ value: e.name === 'HOME' ? '/home/u' : undefined }))
   on('session.id', () => ({ value: 's1' }))
   on('fs.write', () => ({ value: undefined }))
-  for (const [bodyColumns, icon] of [[130, false], [60, true]] as const) {
+  for (const [bodyColumns, labelled] of [[100, true], [60, false]] as const) {
     const ui = await $.ui.mount({ plugin: 'ponytail', surface: 'desktop', ...BAND, props: { ...BAND.props, bodyColumns } })
     await ui.press({ key: 'details' })
     await ui.press({ key: 'level-ultra' })
-    expect(await ui.find({ type: 'Text', text: /ultra applies with your next message/ })).toBeDefined()
-    expect(await ui.find({ type: 'Text', text: 'ℹ' })).toEqual(icon ? expect.anything() : undefined)
-    // The hover card is hidden until the pointer is on the icon.
-    if (icon) expect((await ui.find({ key: 'pending-hint' }))?.props).toBeDefined()
+    // The chip is the first Svg in the band, ahead of the metrics line.
+    const chip = (await ui.find({ type: 'Svg' }))?.props
+    expect(chip?.alt).toBe('ultra applies with your next message')
+    expect(chip?.isInteractive).toBe(true)
+    expect(chip?.source).toContain('<title>ultra applies with your next message</title>')
+    expect(chip?.source.includes('next message</text>')).toBe(labelled)
     await ui.press({ key: 'level-off' })
+    expect((await ui.find({ type: 'Svg' }))?.props.alt).not.toContain('next message')
     await ui.press({ key: 'details' })
     await ui.unmount()
   }
