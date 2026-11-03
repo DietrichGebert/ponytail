@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node -e \"require(require('path').join(process.env.CLAUDE_PLUGIN_ROOT.split(String.fromCharCode(92)).join('/'), 'hooks/ponytail-activate.js'))\"",
+            "command": "node -e \"const r=[process.env.CLAUDE_PLUGIN_ROOT,process.env.PLUGIN_ROOT].find(Boolean);if(!r)throw Error('Plugin root is missing');require(require('path').join(r.split(String.fromCharCode(92)).join('/'), 'hooks/ponytail-activate.js'))\"",
             "timeout": 15,
             "statusMessage": "Loading ponytail mode..."
           }
@@ -18,7 +18,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node -e \"require(require('path').join(process.env.CLAUDE_PLUGIN_ROOT.split(String.fromCharCode(92)).join('/'), 'hooks/ponytail-subagent.js'))\"",
+            "command": "node -e \"const r=[process.env.CLAUDE_PLUGIN_ROOT,process.env.PLUGIN_ROOT].find(Boolean);if(!r)throw Error('Plugin root is missing');require(require('path').join(r.split(String.fromCharCode(92)).join('/'), 'hooks/ponytail-subagent.js'))\"",
             "timeout": 15,
             "statusMessage": "Loading ponytail mode..."
           }
@@ -30,7 +30,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node -e \"require(require('path').join(process.env.CLAUDE_PLUGIN_ROOT.split(String.fromCharCode(92)).join('/'), 'hooks/ponytail-mode-tracker.js'))\"",
+            "command": "node -e \"const r=[process.env.CLAUDE_PLUGIN_ROOT,process.env.PLUGIN_ROOT].find(Boolean);if(!r)throw Error('Plugin root is missing');require(require('path').join(r.split(String.fromCharCode(92)).join('/'), 'hooks/ponytail-mode-tracker.js'))\"",
             "timeout": 15,
             "statusMessage": "Tracking ponytail mode..."
           }
