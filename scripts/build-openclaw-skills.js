@@ -50,11 +50,25 @@ function outPath(name) {
 
 module.exports = { DESCRIPTIONS, NAMES, render, outPath, sourceBody };
 
+function copyReferences(name) {
+  const srcDir = path.join(ROOT, 'skills', name, 'references');
+  if (!fs.existsSync(srcDir)) return;
+  const destDir = path.join(ROOT, '.openclaw', 'skills', name, 'references');
+  fs.mkdirSync(destDir, { recursive: true });
+  for (const entry of fs.readdirSync(srcDir)) {
+    const from = path.join(srcDir, entry);
+    if (!fs.statSync(from).isFile()) continue;
+    fs.copyFileSync(from, path.join(destDir, entry));
+    console.log('wrote', path.relative(ROOT, path.join(destDir, entry)).replace(/\\/g, '/'));
+  }
+}
+
 if (require.main === module) {
   for (const name of NAMES) {
     const p = outPath(name);
     fs.mkdirSync(path.dirname(p), { recursive: true });
     fs.writeFileSync(p, render(name));
     console.log('wrote', path.relative(ROOT, p).replace(/\\/g, '/'));
+    copyReferences(name);
   }
 }
