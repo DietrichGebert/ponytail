@@ -17,9 +17,13 @@ const {
   isQoder,
   readMode,
   setMode,
+  takePendingMode,
   writeHookOutput,
 } = require('./ponytail-runtime');
 const { getPonytailInstructions } = require('./ponytail-instructions');
+
+// The level came from the band, not from the prompt: the model answers the prompt, not the switch.
+const BAND_NOTE = ' (picked in the band; answer the user\'s message as usual)';
 
 let input = '';
 let done = false;
@@ -30,7 +34,15 @@ function finish() {
   try {
     // Strip UTF-8 BOM some shells prepend when piping (breaks JSON.parse)
     const data = JSON.parse(input.replace(/^\uFEFF/, ''));
-    const prompt = (data.prompt || '').trim().toLowerCase();
+    let prompt = (data.prompt || '').trim().toLowerCase();
+
+    // A level picked in the band applies with this prompt, as if the user had typed it:
+    // clicks during a turn start no turn, and only the last one counts. A level switch
+    // typed in this prompt wins over the pick.
+    const pending = takePendingMode(data.session_id);
+    const fromBand = Boolean(pending) &&
+      !/^[/@$]ponytail(:ponytail)?(\s|$)/.test(prompt) && !isDeactivationCommand(prompt);
+    if (fromBand) prompt = '/ponytail ' + pending;
 
     // Cursor with the always-on rule in the workspace: no hook can change or
     // switch off a rule, so answer the command with the notice instead of
@@ -139,12 +151,13 @@ function finish() {
           // Cursor (#817) and Codex have no /ponytail command that would load
           // the skill body for the new level, and the SessionStart ruleset is
           // filtered to the start level, so the tracker delivers that level's
-          // ruleset along with the confirmation.
-          const header = 'PONYTAIL MODE CHANGED — level: ' + mode;
+          // ruleset along with the confirmation. A pick in the band loads no
+          // skill body either.
+          const header = 'PONYTAIL MODE CHANGED — level: ' + mode + (fromBand ? BAND_NOTE : '');
           writeHookOutput(
             'UserPromptSubmit',
             mode,
-            (isCodex || isCursor) ? header + '\n\n' + getPonytailInstructions(mode) : header,
+            (isCodex || isCursor || fromBand) ? header + '\n\n' + getPonytailInstructions(mode) : header,
           );
         }
       } else if (mode === 'off') {
@@ -152,7 +165,7 @@ function finish() {
         else clearMode();
 
         deactivated = true;
-        writeHookOutput('UserPromptSubmit', 'off', 'PONYTAIL MODE OFF');
+        writeHookOutput('UserPromptSubmit', 'off', 'PONYTAIL MODE OFF' + (fromBand ? BAND_NOTE : ''));
       }
     }
 

@@ -134,6 +134,19 @@ export function metricsSvg(cols: Col[], turnCosts: number[], width = 720): strin
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}"><style>${STYLE}</style>${body}</svg>`
 }
 
+const CHIP_STYLE = `.o{fill:none;stroke:#1f1e1d;stroke-opacity:.16}.c{fill:#5e5d59;font:12px ${FONT}}.k{fill:none;stroke:#d97757;stroke-width:1.4;stroke-linecap:round;stroke-linejoin:round}@media (prefers-color-scheme:dark){.o{stroke:#fff}.c{fill:#b9b7ae}}`
+
+// A waiting level pick as a chip: a clock, plus "next message" where the row has room.
+// The <title> is the tooltip, so `hint` says it in full on hover at either size. The size goes to <Svg> too:
+// an interactive Svg left without one fills its slot instead of keeping the markup's own size.
+export function pendingChipSvg(hint: string, withLabel: boolean): { source: string; width: number; height: number } {
+  const [width, height] = [withLabel ? 104 : 22, 22]
+  const clock = `<circle class="k" cx="11" cy="11" r="5.6"/><path class="k" d="M11 8.3V11l2 1.3"/>`
+  const label = withLabel ? `<text class="c" x="21" y="15">next message</text>` : ''
+  const source = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}"><title>${esc(hint)}</title><style>${CHIP_STYLE}</style><rect class="o" x="0.5" y="0.5" width="${width - 1}" height="${height - 1}" rx="${(height - 1) / 2}"/>${clock}${label}</svg>`
+  return { source, width, height }
+}
+
 export const NO_TOKENS: Tokens = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 }
 
 type Usage = { input_tokens: number; output_tokens: number; cache_read_input_tokens: number; cache_creation_input_tokens: number }
