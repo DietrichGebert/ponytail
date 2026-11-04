@@ -17,7 +17,9 @@ import {
   inProject,
   isCode,
   isSource,
+  isBuildFailure,
   isTestCommand,
+  isTestTool,
   mainModel,
   markdown,
   metricsSvg,
@@ -27,6 +29,7 @@ import {
   resume,
   snapshot,
   testCounts,
+  toolTestCounts,
   sessionTitle,
   taskKey,
   testsLabel,
@@ -255,7 +258,20 @@ export const register: Register = (on, options) => {
     if (e.tool === 'Bash') {
       const ran = await next(e)
       if (ran.deny === undefined && isTestCommand(e.command)) {
-        const tests = { state: ran.isError ? ('fail' as const) : ('pass' as const), ...testCounts(ran.text ?? '') }
+        // A pipe (xcodebuild test | xcbeautify, npm test | tail) exits 0 on failures, so the count decides too.
+        const counts = testCounts(ran.text ?? '')
+        const tests = { state: ran.isError || counts.failed ? ('fail' as const) : ('pass' as const), ...counts }
+        await update($, band, b => ({ ...b, tests }))
+      }
+      return ran
+    }
+
+    if (isTestTool(e.tool)) {
+      const ran = await next(e)
+      const counts = ran.isError ? undefined : toolTestCounts(ran.text ?? '')
+      const broke = ran.isError === true && isBuildFailure(ran.text ?? '')
+      if (ran.deny === undefined && (broke || counts)) {
+        const tests = { state: broke || counts?.failed ? ('fail' as const) : ('pass' as const), ...counts }
         await update($, band, b => ({ ...b, tests }))
       }
       return ran
