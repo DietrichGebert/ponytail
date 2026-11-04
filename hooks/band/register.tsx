@@ -198,7 +198,7 @@ async function openBoard($: EngineInterface) {
 }
 
 // Sets the band up for a session (level, project, task row, cost baseline); returns the definitions that exist now.
-async function start($: EngineInterface): Promise<Map<string, string>> {
+async function start($: EngineInterface, cleared = false): Promise<Map<string, string>> {
   const grep = await $.process.run(['git', 'grep', '--untracked', '-nE', GREP_DEFS]).catch(() => undefined)
   const level = await readLevel($)
   const details = (await $.store.get('details')) === true
@@ -209,7 +209,21 @@ async function start($: EngineInterface): Promise<Map<string, string>> {
   const usage = await $.session.usage().catch(() => undefined)
   const csv = usage ? await $.fs.read(ledgerFile(await ledgerDir($), project)).catch(() => '') : ''
   const key = usage ? taskKey(session, usage.startedAt) : ''
-  await update($, band, b => resume({ ...EMPTY, ...b, level, details, project, session, cost: usage?.cost?.usd ?? b.cost }, csv, key))
+  await update($, band, b => {
+    const usd = usage?.cost?.usd
+    return resume({
+      ...EMPTY,
+      ...b,
+      level,
+      details,
+      project,
+      session,
+      cost: usd ?? b.cost,
+      // /clear keeps that baseline and a zero task cost. Resume, branch and reload show the session total,
+      // so the next turn adds to it instead of starting from zero.
+      spent: cleared ? 0 : (usd ?? b.spent),
+    }, csv, key)
+  })
   return grep?.exitCode === 0 ? parseDefs(grep.stdout) : new Map()
 }
 
@@ -231,7 +245,8 @@ export const register: Register = (on, options) => {
   on('command.run', { command: ['clear', 'resume', 'branch'] }, async ($, e, next) => {
     const session = await $.session.id()
     const result = await next(e)
-    if ((await $.session.id()) !== session) known = await start($).catch(() => known)
+    // /clear is a new task. Resume and branch keep showing the session's own total.
+    if ((await $.session.id()) !== session) known = await start($, e.command === 'clear').catch(() => known)
     return result
   }).catch(($, e, next) => next(e))
 
@@ -326,16 +341,19 @@ export const register: Register = (on, options) => {
 
     const b = await update($, band, x => {
       const b = { ...EMPTY, ...x }
-      const cost = usage.cost?.usd ?? b.cost
+      const usd = usage.cost?.usd
+      const cost = usd ?? b.cost
       // A cost below the baseline means the engine started its ledger over.
-      const turn = cost >= b.cost ? cost - b.cost : cost
+      const reset = usd !== undefined && usd < b.cost
+      const turn = reset ? cost : cost - b.cost
       return {
         ...b,
         level,
         transcript,
         cost,
-        // Cost and turns are the session's own totals, so a reload or a second band never starts them over.
-        spent: usage.cost?.usd ?? b.spent + turn,
+        // Engine cost counts across /clear; spent is only the turns since that baseline.
+        spent: reset ? cost : b.spent + turn,
+        // The session's own count, so a reload never starts it over.
         turns,
         turnCosts: [...b.turnCosts, turn].slice(-20),
         tokens: used ? addTokens(b.tokens, used) : b.tokens,
