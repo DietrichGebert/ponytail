@@ -537,7 +537,7 @@ test('a level pick starts no turn, the last pick wins, and it shows as pending u
   on('process.run', () => ({ value: { exitCode: 1, stdout: '', stderr: '' } }) as never)
   on('fs.list', () => ({ value: [] }))
   on('session.start', ($, e) => ({ cwd: e.cwd }))
-  on('prompt.submit', () => ({ text: '' }) as never)
+  on('turn.start', () => ({ turnId: 't1' }))
   on('turn.complete', () => ({ text: '' }))
   on('fs.read', ($, e) => (files.has(e.path) ? { value: files.get(e.path) } : { deny: 'missing' }) as never)
   on('fs.write', ($, e) => {
@@ -566,15 +566,26 @@ test('a level pick starts no turn, the last pick wins, and it shows as pending u
   expect(files.get(pending)).toBe('')
   expect(await ui.find({ type: 'Text', text: '◷' })).toBeUndefined()
 
-  // The next prompt applies the pick at once; the end of the turn confirms it from the flag the tracker wrote.
+  // The next turn shows what the tracker left on disk, a slash command's turn too (the tracker deletes the file).
+  const flag = '/home/u/.claude/.ponytail-active'
   await ui.press({ key: 'level-lite' })
-  await $.prompt.submit({ text: 'fix the cart', origin: { kind: 'user' } } as never)
+  files.set(flag, 'lite')
+  files.delete(pending)
+  await $.turn.start({ text: '/shop:checkout', turnId: 't1' } as never)
   expect(await ui.find({ type: 'Text', text: '◷' })).toBeUndefined()
   expect((await ui.find({ key: 'level-lite' }))?.props.variant).toBe('primary')
-  files.set('/home/u/.claude/.ponytail-active', 'lite')
-  files.set(pending, '')
+
+  // A subagent's turn reads nothing; a typed /ponytail switch wins over the pick, which the tracker drops.
+  await ui.press({ key: 'level-ultra' })
+  await $.turn.start({ text: 'look around', turnId: 't2', agentId: 'a1' } as never)
+  expect(await ui.find({ type: 'Text', text: '◷' })).toBeDefined()
+  files.set(flag, 'full')
+  files.delete(pending)
+  await $.turn.start({ text: '/ponytail full', turnId: 't3' } as never)
+  expect(await ui.find({ type: 'Text', text: '◷' })).toBeUndefined()
+  expect((await ui.find({ key: 'level-full' }))?.props.variant).toBe('primary')
   await $.turn.complete({ answer: '', durationMs: 1000 } as never)
-  expect((await ui.find({ key: 'level-lite' }))?.props.variant).toBe('primary')
+  expect((await ui.find({ key: 'level-full' }))?.props.variant).toBe('primary')
   expect(sent).toEqual([])
   await ui.unmount()
 })

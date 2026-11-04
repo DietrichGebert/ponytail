@@ -265,11 +265,18 @@ export const register: Register = (on, options) => {
       const name = (text.split('\n')[0] ?? '').slice(0, 60)
       await update($, band, b => (b.name === '' ? { ...EMPTY, ...b, name } : b))
     }
-    // The mode tracker applies the pick with this prompt; turn.complete confirms from the flag.
-    if (text !== '' && !text.startsWith('/')) {
-      await update($, band, b => (b.pending !== '' ? { ...EMPTY, ...b, level: b.pending, pending: '' } : b))
-    }
     return next(e)
+  }).catch(($, e, next) => next(e))
+
+  // The mode tracker's UserPromptSubmit hook has run by now and applied or dropped the pick, slash commands included,
+  // so the band reads both back instead of guessing from the prompt.
+  on('turn.start', async ($, e, next) => {
+    if (e.agentId !== undefined) return next(e)
+    const started = await next(e)
+    const level = await readLevel($)
+    const pending = await readPending($)
+    await update($, band, b => ({ ...EMPTY, ...b, level, pending }))
+    return started
   }).catch(($, e, next) => next(e))
 
   on('tool.call', async ($, e, next) => {
