@@ -571,6 +571,18 @@ test('a test run shows its count, and an edit in the project after it marks the 
   await ui.unmount()
 })
 
+test('a piped test run that exits 0 still shows its failures', async ($, on) => {
+  mock.clock(on)
+  const out = '\t Executed 12 tests, with 1 failure (0 unexpected) in 0.031 (0.035) seconds'
+  on('tool.call', { tool: 'Bash' }, () => ({ result: { stdout: out, stderr: '', interrupted: false }, text: out }) as never)
+  const ui = await $.ui.mount({ plugin: 'ponytail', surface: 'terminal', ...BAND })
+
+  await $.tool.call({ tool: 'Bash', command: 'xcodebuild -scheme App test | xcbeautify' } as never)
+  expect(await ui.find({ type: 'Text', text: /1 failed/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /✓/ })).toBeUndefined()
+  await ui.unmount()
+})
+
 test('an Xcode MCP run shows its failures though the tool did not error, and a Swift edit marks it stale', async ($, on) => {
   mock.clock(on)
   const answers = [
@@ -579,6 +591,7 @@ test('an Xcode MCP run shows its failures though the tool did not error, and a S
     { isError: true, result: '', text: '{"type":"error","data":"Build action failed. Inspect build logs."}' },
     { result: '', text: '{"counts":{"failed":13,"passed":174,"total":187},"results":[]}' },
   ]
+  on('session.repo', () => ({ value: { root: '/repo' } }) as never)
   on('tool.call', { tool: 'mcp__xcode__RunAllTests' }, () => answers.shift() as never)
   on('tool.call', { tool: 'Edit' }, () => ({ result: {}, text: 'ok' }) as never)
   const ui = await $.ui.mount({ plugin: 'ponytail', surface: 'terminal', ...BAND })
