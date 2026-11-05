@@ -20,10 +20,15 @@ const DEFS: [RegExp, RegExp[]][] = [
   [/\.go$/, [/^func\s+(?:\([^)]*\)\s*)?([A-Za-z]\w*)/gm]],
   [/\.rs$/, [/^(?:pub\s+)?(?:async\s+)?fn\s+(\w+)/gm]],
   [/\.rb$/, [/^\s*def\s+(?:self\.)?([A-Za-z]\w*[?!]?)/gm]],
+  [/\.php$/, [
+    /^\s*(?:(?:public|protected|private|static|abstract|final)\s+)*function\s+&?([A-Za-z_]\w*)\s*\(/gm,
+    /^\s*(?:(?:abstract|final|readonly)\s+)*(?:class|interface|trait|enum)\s+([A-Za-z_]\w*)/gm,
+  ]],
+  [/\.(java|kt|swift|cs)$/, [/^\s*(?:public\s+)?(?:static\s+)?(?:final\s+)?(?:class|interface|enum|record)\s+(\w+)/gm]],
 ]
 
 // Lines worth a closer look; the per-language regexes above decide.
-export const GREP_DEFS = '^[[:space:]]*(export|async|def|class|function|func|pub|fn)[[:space:]]'
+export const GREP_DEFS = '^[[:space:]]*(export|async|def|class|function|func|pub|fn|public|protected|private|static|abstract|final|readonly|interface|trait|enum|record)[[:space:]]'
 
 // Names too generic to say anything about reuse.
 const GENERIC = new Set(['main', 'init', 'run', 'get', 'set', 'test', 'setup', 'open', 'close', 'read', 'write', 'start', 'stop', 'load', 'save', 'update', 'create', 'delete', 'handle', 'render', 'index', 'new', 'call', 'apply'])
