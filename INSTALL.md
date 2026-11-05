@@ -227,6 +227,7 @@ Jules (Google) reads `AGENTS.md` from the repository root, which this repo ships
 |------|---------|
 | Claude Code | `/plugin remove ponytail` |
 | Codex | `codex plugin remove ponytail` |
+| GitHub Copilot CLI | `copilot plugin uninstall ponytail`, then `copilot plugin marketplace remove ponytail` |
 | Devin CLI | `devin plugins remove ponytail` |
 | Grok Build | `grok plugin uninstall ponytail` |
 | Pi agent | `pi uninstall ponytail` |
