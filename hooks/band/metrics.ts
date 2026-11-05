@@ -99,7 +99,40 @@ export function testCounts(output: string): { passed?: number; failed?: number }
   }
 }
 
-export type Col = { key: string; label: string; value: string; sub: string; tone?: 'warning' | 'success' | 'error' }
+// split: the cell's breakdown as fractions in KINDS order, drawn as one colored bar.
+export type Col = { key: string; label: string; value: string; sub: string; tone?: 'warning' | 'success' | 'error'; split?: number[] }
+
+// Price per token relative to uncached input; the ratios hold across Claude models.
+// shortcut: every cache write is priced as the 1-hour cache (2×); 5-minute writes (1.25×) are overstated. Split by TTL if the engine reports it.
+export const KINDS = [
+  { key: 'cacheRead', label: 'cache read', weight: 0.1 },
+  { key: 'cacheWrite', label: 'cache write', weight: 2 },
+  { key: 'output', label: 'output', weight: 5 },
+  { key: 'input', label: 'input', weight: 1 },
+] as const satisfies readonly { key: keyof Tokens; label: string; weight: number }[]
+
+// One color per kind, in KINDS order: the Cove categorical palette.
+export const KIND_COLORS = ['#2a78d6', '#eb6834', '#1baf7a', '#eda100'] as const
+const KIND_COLORS_DARK = ['#3987e5', '#d95926', '#199e70', '#c98500'] as const
+
+export type Part = { label: string; tokens: number; usd: number }
+
+// The session's real dollars split across token types by price weight, so the parts add up to `spent` exactly.
+// shortcut: advisor calls are not in the token counts but their dollars may be in `spent`, so they get spread over the four kinds.
+// Whole cents, largest remainder first, so the legend's dollars add up to the cost cell to the cent.
+export function breakdown(t: Tokens, spent: number): Part[] {
+  const weighted = KINDS.reduce((sum, k) => sum + t[k.key] * k.weight, 0)
+  const exact = KINDS.map(k => (weighted > 0 ? (Math.round(spent * 100) * t[k.key] * k.weight) / weighted : 0))
+  const cents = exact.map(Math.floor)
+  let left = (weighted > 0 ? Math.round(spent * 100) : 0) - cents.reduce((a, b) => a + b, 0)
+  for (const i of exact.map((v, i) => [v - Math.floor(v), i] as const).sort((a, b) => b[0] - a[0]).map(([, i]) => i)) {
+    if (left-- <= 0) break
+    cents[i] = (cents[i] ?? 0) + 1
+  }
+  return KINDS.map((k, i) => ({ label: k.label, tokens: t[k.key], usd: (cents[i] ?? 0) / 100 }))
+}
+
+export const legendText = (p: Part) => `${p.label} $${p.usd.toFixed(2)} · ${fmtTokens(p.tokens)}`
 
 const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 const fit = (s: string, max: number) => (s.length > max ? `${s.slice(0, Math.max(1, max - 1))}…` : s)
@@ -107,21 +140,36 @@ const fit = (s: string, max: number) => (s.length > max ? `${s.slice(0, Math.max
 const FONT = "-apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif"
 // The image cannot read the app's theme, so it follows the system's.
 // shortcut: an app theme that differs from the system theme gets the wrong text color; pass the theme in if that bites.
-const STYLE = `.l,.s{fill:#87867f;font:12px ${FONT}}.v{fill:#1f1e1d;font:600 16px ${FONT}}.d{stroke:#1f1e1d;stroke-opacity:.12}.b{fill:#87867f}.warning{fill:#a86400}.success{fill:#2e7d32}.error{fill:#c62828}@media (prefers-color-scheme:dark){.v{fill:#ecebe6}.d{stroke:#fff;stroke-opacity:.14}.warning{fill:#e3a03d}.success{fill:#6abf69}.error{fill:#ef6a5a}}`
+const KIND_STYLE = KIND_COLORS.map((c, i) => `.k${i}{fill:${c}}`).join('')
+const KIND_STYLE_DARK = KIND_COLORS_DARK.map((c, i) => `.k${i}{fill:${c}}`).join('')
+const STYLE = `.l,.s{fill:#87867f;font:12px ${FONT}}.v{fill:#1f1e1d;font:600 16px ${FONT}}.d{stroke:#1f1e1d;stroke-opacity:.12}.b{fill:#87867f}.warning{fill:#a86400}.success{fill:#2e7d32}.error{fill:#c62828}${KIND_STYLE}@media (prefers-color-scheme:dark){.v{fill:#ecebe6}.d{stroke:#fff;stroke-opacity:.14}.warning{fill:#e3a03d}.success{fill:#6abf69}.error{fill:#ef6a5a}${KIND_STYLE_DARK}}`
 
 // The details row as one SVG for surfaces that draw it: real 1px dividers and exact columns.
-export function metricsSvg(cols: Col[], turnCosts: number[], width = 720): string {
-  const height = 64
+// legend: one entry per kind, in KINDS order, drawn under its own divider.
+export function metricsSvg(cols: Col[], turnCosts: number[], width = 720, legend: string[] = []): string {
+  const hasSplit = cols.some(c => c.split)
+  const rowH = hasSplit ? 72 : 64
+  const height = legend.length > 0 ? rowH + 30 : rowH
+  const subY = hasSplit ? 68 : 61
   const colW = width / Math.max(1, cols.length)
   const max = Math.max(...turnCosts, 0)
   let body = `<line class="d" x1="0" y1="0.5" x2="${width}" y2="0.5"/>`
   cols.forEach((c, i) => {
     const x = i * colW + (i === 0 ? 0 : 12)
     const tone = c.tone ? ` ${c.tone}` : ''
-    if (i > 0) body += `<line class="d" x1="${i * colW}" y1="14" x2="${i * colW}" y2="${height - 2}"/>`
+    if (i > 0) body += `<line class="d" x1="${i * colW}" y1="14" x2="${i * colW}" y2="${rowH - 2}"/>`
     body += `<text class="l" x="${x}" y="24">${esc(c.label)}</text>`
     body += `<text class="v${tone}" x="${x}" y="44">${esc(fit(c.value, Math.floor((colW - 16) / 9)))}</text>`
-    if (c.sub) body += `<text class="s${c.tone === 'warning' ? tone : ''}" x="${x}" y="61">${esc(fit(c.sub, Math.floor((colW - 16) / 6.2)))}</text>`
+    if (c.split) {
+      const barW = colW - 28
+      let at = x
+      c.split.forEach((f, k) => {
+        const w = f * barW
+        if (w > 0) body += `<rect class="k${k}" x="${at.toFixed(1)}" y="50" width="${w.toFixed(1)}" height="5"/>`
+        at += w
+      })
+    }
+    if (c.sub) body += `<text class="s${c.tone === 'warning' ? tone : ''}" x="${x}" y="${subY}">${esc(fit(c.sub, Math.floor((colW - 16) / 6.2)))}</text>`
     if (c.key === 'cost' && turnCosts.length > 1 && max > 0) {
       const bars = turnCosts.slice(-10)
       const x0 = (i + 1) * colW - 16 - bars.length * 5
@@ -131,6 +179,15 @@ export function metricsSvg(cols: Col[], turnCosts: number[], width = 720): strin
       })
     }
   })
+  if (legend.length > 0) {
+    const itemW = width / legend.length
+    body += `<line class="d" x1="0" y1="${rowH + 0.5}" x2="${width}" y2="${rowH + 0.5}"/>`
+    legend.forEach((text, k) => {
+      const x = k * itemW
+      body += `<rect class="k${k}" x="${x}" y="${rowH + 13}" width="10" height="10" rx="2"/>`
+      body += `<text class="s" x="${x + 15}" y="${rowH + 22}">${esc(fit(text, Math.floor((itemW - 20) / 5.6)))}</text>`
+    })
+  }
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}"><style>${STYLE}</style>${body}</svg>`
 }
 
