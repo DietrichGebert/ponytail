@@ -47,6 +47,11 @@ delete process.env.CURSOR_PROJECT_DIR;
 // Same for CodeBuddy (#854), which sets these only for its plugin hook processes.
 delete process.env.CODEBUDDY_PLUGIN_ROOT;
 delete process.env.CODEBUDDY_CONFIG_DIR;
+// A machine-wide default mode (env or $XDG_CONFIG_HOME/ponytail/config.json)
+// would replace the built-in 'full' that the default-level assertions expect.
+delete process.env.PONYTAIL_DEFAULT_MODE;
+delete process.env.XDG_CONFIG_HOME;
+delete process.env.QODER_CONFIG_DIR;
 
 const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'ponytail-hooks-'));
 // Runs on normal exit and on assertion-throw exit; force makes it idempotent.
@@ -999,6 +1004,75 @@ assert.equal(
   // Every other source still starts at the default level.
   for (const source of ['startup', 'resume', 'clear']) {
     assert.match(start(source).stdout, /PONYTAIL MODE ACTIVE — level: full/, `${source} must start at the default level`);
+  }
+}
+
+// Level switches, /ponytail off and "stop ponytail" behave the same on every
+// hook host, each in its own state dir. Qoder persists 'off' (no SessionStart
+// to tell a stopped session from a fresh one); the others drop the flag.
+for (const { label, env, stateDir, offFlag } of [
+  { label: 'Claude', env: {}, stateDir: h => path.join(h, '.claude') },
+  { label: 'Codex', env: h => ({ PLUGIN_DATA: path.join(h, 'codex-data') }), stateDir: h => path.join(h, 'codex-data') },
+  { label: 'Copilot', env: h => ({ COPILOT_PLUGIN_DATA: path.join(h, 'copilot-data') }), stateDir: h => path.join(h, 'copilot-data') },
+  { label: 'Qoder', env: { QODER_SESSION_ID: 'host-modes' }, stateDir: h => path.join(h, '.qoder'), offFlag: 'off' },
+  {
+    label: 'CodeBuddy',
+    env: h => ({ CODEBUDDY_PLUGIN_ROOT: root, CLAUDE_PLUGIN_ROOT: root, CODEBUDDY_CONFIG_DIR: path.join(h, 'codebuddy-config') }),
+    stateDir: h => path.join(h, 'codebuddy-config'),
+  },
+  // An empty project dir, so the repo's own .cursor/rules/ponytail.mdc does not block switching.
+  { label: 'Cursor', env: h => ({ CURSOR_VERSION: '3.20.17', CURSOR_PROJECT_DIR: h }), stateDir: h => path.join(h, '.cursor') },
+]) {
+  const hostHome = fs.mkdtempSync(path.join(temp, 'host-modes-'));
+  const hostEnv = { HOME: hostHome, USERPROFILE: hostHome, ...(typeof env === 'function' ? env(hostHome) : env) };
+  const flag = path.join(stateDir(hostHome), '.ponytail-active');
+  const send = (prompt) => {
+    const r = run('ponytail-mode-tracker.js', hostEnv, JSON.stringify({ prompt }));
+    assert.equal(r.status, 0, `${label} ${prompt}: ${r.stderr}`);
+  };
+  const level = () => (fs.existsSync(flag) ? fs.readFileSync(flag, 'utf8') : undefined);
+
+  send('/ponytail ultra');
+  assert.equal(level(), 'ultra', `${label}: /ponytail ultra`);
+  send('/ponytail lite');
+  assert.equal(level(), 'lite', `${label}: /ponytail lite`);
+  send('/ponytail off');
+  assert.equal(level(), offFlag, `${label}: /ponytail off`);
+  send('/ponytail ultra');
+  send('stop ponytail');
+  assert.equal(level(), offFlag, `${label}: stop ponytail`);
+  send('/ponytail ultra');
+  send('add a normal mode toggle');
+  assert.equal(level(), 'ultra', `${label}: incidental "normal mode" must not turn ponytail off`);
+
+  send('/ponytail full');
+  assert.equal(level(), 'full', `${label}: /ponytail full`);
+  send('/PONYTAIL ULTRA');
+  assert.equal(level(), 'ultra', `${label}: commands are case-insensitive`);
+  send('$ponytail lite');
+  assert.equal(level(), 'lite', `${label}: $ponytail alias`);
+  send('@ponytail ultra');
+  assert.equal(level(), 'ultra', `${label}: @ponytail alias`);
+  send('/ponytail:ponytail lite');
+  assert.equal(level(), 'lite', `${label}: namespaced /ponytail:ponytail`);
+
+  // Unknown arguments and /ponytail-review leave the level alone.
+  send('/ponytail bogus');
+  assert.equal(level(), 'lite', `${label}: unknown argument must not change the level`);
+  send('/ponytail-review');
+  assert.equal(level(), 'lite', `${label}: /ponytail-review must not latch a level`);
+
+  // Bare /ponytail keeps a live level and switches an off session back on.
+  send('/ponytail');
+  assert.equal(level(), 'lite', `${label}: bare /ponytail must not reset the live level`);
+  send('/ponytail off');
+  send('/ponytail');
+  assert.equal(level(), 'full', `${label}: bare /ponytail switches an off session on`);
+
+  // Each host keeps its state in its own dir only.
+  if (label !== 'Claude') {
+    assert.equal(fs.existsSync(path.join(hostHome, '.claude', '.ponytail-active')), false,
+      `${label}: must not write the Claude flag`);
   }
 }
 
