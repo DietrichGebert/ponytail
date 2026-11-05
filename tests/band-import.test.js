@@ -86,26 +86,41 @@ assert.equal(merged.added, 1);
 assert.equal(merged.text.split('\n')[0], CSV_HEADER);
 assert.equal(mergeRows('', [row], new Set(['abcd1234-'])).added, 0, 'a session in another project file is not imported again');
 
-// End to end: transcripts under CLAUDE_CONFIG_DIR, the ledger under XDG_CONFIG_HOME.
-const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'ponytail-import-'));
-const projects = path.join(temp, 'claude', 'projects', '-work-shop');
-fs.mkdirSync(path.join(projects, 'abcd1234-0000', 'subagents'), { recursive: true });
-const withCwd = r => ({ ...r, cwd: '/work/shop/.claude/worktrees/brave-otter' });
-fs.writeFileSync(path.join(projects, 'abcd1234-0000.jsonl'), records.map(withCwd).map(r => JSON.stringify(r)).join('\n') + '\n');
-fs.writeFileSync(path.join(projects, 'abcd1234-0000', 'subagents', 'agent-1.jsonl'), sub.map(r => JSON.stringify(r)).join('\n'));
-fs.writeFileSync(path.join(projects, 'beef0000-1111.jsonl'), records.filter(r => !r.origin).map(withCwd).map(r => JSON.stringify(r)).join('\n'));
-const env = { CLAUDE_CONFIG_DIR: process.env.CLAUDE_CONFIG_DIR, XDG_CONFIG_HOME: process.env.XDG_CONFIG_HOME };
-process.env.CLAUDE_CONFIG_DIR = path.join(temp, 'claude');
-process.env.XDG_CONFIG_HOME = path.join(temp, 'config');
-try {
-  assert.deepEqual(run(), { sessions: 1, added: 1 }, 'the typed session is imported, the automated one is not');
-  const csv = fs.readFileSync(path.join(temp, 'config', 'ponytail', 'band', 'shop.csv'), 'utf8');
-  assert.equal(csv.split('\n')[0], CSV_HEADER, 'a desktop worktree counts for its repo');
-  assert.ok(csv.includes(',shop,Fix the cart totals,'));
-  assert.deepEqual(run(), { sessions: 1, added: 0 }, 'a second import adds nothing');
-} finally {
-  for (const [k, v] of Object.entries(env)) if (v === undefined) delete process.env[k]; else process.env[k] = v;
-  fs.rmSync(temp, { recursive: true, force: true });
+// End to end: transcripts under CLAUDE_CONFIG_DIR, the ledger and board.html under XDG_CONFIG_HOME.
+async function main() {
+  const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'ponytail-import-'));
+  const projects = path.join(temp, 'claude', 'projects', '-work-shop');
+  fs.mkdirSync(path.join(projects, 'abcd1234-0000', 'subagents'), { recursive: true });
+  const withCwd = r => ({ ...r, cwd: '/work/shop/.claude/worktrees/brave-otter' });
+  fs.writeFileSync(path.join(projects, 'abcd1234-0000.jsonl'), records.map(withCwd).map(r => JSON.stringify(r)).join('\n') + '\n');
+  fs.writeFileSync(path.join(projects, 'abcd1234-0000', 'subagents', 'agent-1.jsonl'), sub.map(r => JSON.stringify(r)).join('\n'));
+  fs.writeFileSync(path.join(projects, 'beef0000-1111.jsonl'), records.filter(r => !r.origin).map(withCwd).map(r => JSON.stringify(r)).join('\n'));
+  const band = path.join(temp, 'config', 'ponytail', 'band');
+  fs.mkdirSync(band, { recursive: true });
+  fs.writeFileSync(path.join(band, 'other.csv'), `${CSV_HEADER}\nzzzz9999-1,2026-10-02 09:00,other,Keep the lights on,1.00,1,2.0,10,1,,,,,full,\n`);
+  const env = { CLAUDE_CONFIG_DIR: process.env.CLAUDE_CONFIG_DIR, XDG_CONFIG_HOME: process.env.XDG_CONFIG_HOME };
+  process.env.CLAUDE_CONFIG_DIR = path.join(temp, 'claude');
+  process.env.XDG_CONFIG_HOME = path.join(temp, 'config');
+  try {
+    assert.deepEqual(await run(), { sessions: 1, added: 1 }, 'the typed session is imported, the automated one is not');
+    const csv = fs.readFileSync(path.join(band, 'shop.csv'), 'utf8');
+    assert.equal(csv.split('\n')[0], CSV_HEADER, 'a desktop worktree counts for its repo');
+    assert.ok(csv.includes(',shop,Fix the cart totals,'));
+    const board = path.join(band, 'board.html');
+    const html = fs.readFileSync(board, 'utf8');
+    assert.ok(html.includes('<title>ponytail board</title>'), 'import writes the band page');
+    assert.ok(html.includes('Fix the cart totals') && html.includes('Keep the lights on'), 'every ledger is on the board, including one this import did not touch');
+    fs.rmSync(board);
+    assert.deepEqual(await run(), { sessions: 1, added: 0 }, 'a second import adds nothing');
+    assert.ok(fs.readFileSync(board, 'utf8').includes('Fix the cart totals'), 'no new rows still rewrites a missing board');
+  } finally {
+    for (const [k, v] of Object.entries(env)) if (v === undefined) delete process.env[k]; else process.env[k] = v;
+    fs.rmSync(temp, { recursive: true, force: true });
+  }
+  console.log('band import checks passed');
 }
 
-console.log('band import checks passed');
+main().catch(err => {
+  console.error(err);
+  process.exit(1);
+});

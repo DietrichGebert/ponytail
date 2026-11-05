@@ -1,11 +1,12 @@
 #!/usr/bin/env node
-// ponytail — imports past Claude Code sessions into the band's task ledger, so the board can
-// compare them: cost, agent time, tokens, turns, name and model. Started in the background by
-// `/ponytail band import`; also runs by hand. Sessions already in the ledger are left alone.
+// ponytail — imports past Claude Code sessions into the band's task ledger and rewrites
+// board.html from every ledger: cost, agent time, tokens, turns, name and model. Started in the
+// background by `/ponytail band import`; also runs by hand. Sessions already in the ledger are left alone.
 
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
+const { pathToFileURL } = require('url');
 const { spawnSync } = require('child_process');
 const { StringDecoder } = require('string_decoder');
 const { getClaudeDir } = require('./ponytail-config');
@@ -213,7 +214,40 @@ function ledgerDir() {
   return path.join(process.env.XDG_CONFIG_HOME || path.join(os.homedir(), '.config'), 'ponytail', 'band');
 }
 
-function run() {
+// Node loads hooks/band/board.ts, the same page the band builds. Its './logo' import has no
+// extension, which Node ESM will not resolve.
+let boardModule;
+function loadBoard() {
+  if (boardModule) return boardModule;
+  const { registerHooks } = require('node:module');
+  registerHooks({
+    resolve(specifier, context, nextResolve) {
+      if ((specifier.startsWith('./') || specifier.startsWith('../')) && path.extname(specifier) === '')
+        return nextResolve(`${specifier}.ts`, context);
+      return nextResolve(specifier, context);
+    },
+  });
+  const emit = process.emitWarning;
+  process.emitWarning = (warning, type, code) => {
+    if ((code || (type && type.code)) === 'MODULE_TYPELESS_PACKAGE_JSON') return;
+    return emit.call(process, warning, type, code);
+  };
+  // shortcut: Node 22 type stripping loads board.ts; on older Node this throws, the CSV is already saved.
+  boardModule = import(pathToFileURL(path.join(__dirname, 'band', 'board.ts')).href)
+    .finally(() => { process.emitWarning = emit; });
+  return boardModule;
+}
+
+// Same rebuild as writeBoard in hooks/band/register.tsx: every project's ledger, not only new rows.
+async function writeBoard(dir) {
+  const names = fs.readdirSync(dir).filter(f => f.endsWith('.csv'));
+  if (names.length === 0) return;
+  const { boardHtml, tasksFrom } = await loadBoard();
+  const texts = names.map(name => { try { return fs.readFileSync(path.join(dir, name), 'utf8'); } catch (e) { return ''; } });
+  fs.writeFileSync(path.join(dir, 'board.html'), boardHtml(texts.flatMap(tasksFrom), Date.now()));
+}
+
+async function run() {
   const root = path.join(getClaudeDir(), 'projects');
   const byProject = new Map();
   const roots = new Map();
@@ -263,12 +297,17 @@ function run() {
     if (merged.added > 0) fs.writeFileSync(file, merged.text);
     added += merged.added;
   }
+  await writeBoard(dir);
   return { sessions, added };
 }
 
 if (require.main === module) {
-  const { sessions, added } = run();
-  process.stdout.write(`ponytail band import: ${sessions} past sessions found, ${added} new rows in the board.\n`);
+  run().then(({ sessions, added }) => {
+    process.stdout.write(`ponytail band import: ${sessions} past sessions found, ${added} new rows in the board.\n`);
+  }).catch(err => {
+    process.stderr.write(`${err && err.stack || err}\n`);
+    process.exit(1);
+  });
 }
 
 module.exports = { CSV_HEADER, PRICES, replyCost, sessionStats, csvRow, mergeRows, readRecords, run };
