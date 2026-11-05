@@ -221,6 +221,17 @@ Amp (Sourcegraph) reads `AGENTS.md` from the working directory and parent direct
 
 Jules (Google) reads `AGENTS.md` from the repository root, which this repo ships, so it picks up the ruleset with no setup.
 
+## Troubleshooting
+
+Ponytail seems to do nothing? Check these, in order:
+
+- **`node` on PATH.** The hooks need it on the non-interactive shell's PATH (see the note at the [top](#install)).
+- **The mode flag.** The hooks write the current level to `~/.claude/.ponytail-active` (or `$CLAUDE_CONFIG_DIR/.ponytail-active` when that is set). Cursor uses `~/.cursor/.ponytail-active`, or a per-project flag (see [docs/cursor-hooks.md](docs/cursor-hooks.md#limitations)). No file means the level is `off` or the hooks never ran.
+- **The default level.** `config.json` is read from `$XDG_CONFIG_HOME/ponytail/`, else `~/.config/ponytail/` (`%APPDATA%\ponytail\` on Windows). Invalid JSON or an unknown `defaultMode` is ignored without a warning, so the level falls back to `PONYTAIL_DEFAULT_MODE`, or `full` if that is unset. See [Settings](#settings).
+- **The codebase map.** `PONYTAIL_MAP=0` turns it off; the ruleset is still injected.
+- **The statusline badge.** If it stays blank, check that the script path in the `statusLine` entry of `~/.claude/settings.json` still exists.
+- **Cursor.** While `.cursor/rules/ponytail.mdc` is in the workspace, the hooks inject nothing and `/ponytail <level>` changes nothing. Delete the rule to use the hooks (see [Cursor](#cursor)).
+
 ## Uninstall
 
 | Host | Command |
