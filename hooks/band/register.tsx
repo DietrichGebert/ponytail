@@ -363,6 +363,8 @@ export const register: Register = (on, options) => {
     const reuse = percent(b.reused.length, b.created.length)
     const avg = b.turns > 0 ? b.spent / b.turns : 0
     const last = b.turnCosts[b.turnCosts.length - 1]
+    // shortcut: a band resumed from the ledger books cache reads as input (see resume), so the rate reads low until /clear; upgrade once the ledger keeps the cache columns.
+    const cacheHit = percent(b.tokens.cacheRead, b.tokens.input + b.tokens.cacheWrite)
 
     const setLevel = async (level: string) => {
       await update($, band, x => ({ ...x, level }))
@@ -407,6 +409,7 @@ export const register: Register = (on, options) => {
           {last !== undefined && <Text dimColor>last ${last.toFixed(2)}</Text>}
           <Text dimColor>{elapsed(b.busyMs)}</Text>
           {reuse !== undefined && <Text>{reuse}% reuse</Text>}
+          {cacheHit !== undefined && <Text dimColor>{cacheHit}% cache</Text>}
           {hasOpen && <Text color="warning">⚠ {b.openCallers.length} callers open</Text>}
           {testsText !== '' && (
             <Text color={testsColor} dimColor={b.tests.state === 'stale'}>
