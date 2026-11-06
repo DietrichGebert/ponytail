@@ -40,6 +40,8 @@ delete process.env.PONYTAIL_SUBAGENT_MATCHER;
 delete process.env.QODER_SESSION_ID;
 // A leaked project dir would move the flag into ponytail-modes/ (#662).
 delete process.env.CLAUDE_PROJECT_DIR;
+// Same for a leaked session id (a suite run from inside Claude Code).
+delete process.env.CLAUDE_CODE_SESSION_ID;
 // Cursor sets these only for hook processes, but a suite launched from a Cursor
 // hook would otherwise steer every case into the Cursor JSON branch (#817).
 delete process.env.CURSOR_VERSION;
@@ -996,10 +998,54 @@ assert.equal(
   assert.equal(compact().stdout, '', 'compaction must not switch a stopped session back on');
   assert.equal(fs.existsSync(compactFlag), false);
 
-  // Every other source still starts at the default level.
+  // Every other source still starts at the default level. Without a session id
+  // there is no record of the session's own, so resume starts there too.
   for (const source of ['startup', 'resume', 'clear']) {
     assert.match(start(source).stdout, /PONYTAIL MODE ACTIVE — level: full/, `${source} must start at the default level`);
   }
+}
+
+// Each Claude Code session keeps its own level. Another session in the same repo
+// starting at an "off" default deleted the per-project flag, and its switches
+// overwrote it, so compaction, the band and subagents read the wrong level.
+{
+  const sessHome = path.join(temp, 'session-home');
+  const sessDir = path.join(sessHome, '.claude', 'ponytail-modes');
+  const env = (id) => ({
+    HOME: sessHome, USERPROFILE: sessHome, PONYTAIL_DEFAULT_MODE: 'off',
+    CLAUDE_PROJECT_DIR: path.join(temp, 'same-repo'), CLAUDE_CODE_SESSION_ID: id,
+  });
+  const start = (id, source) => run('ponytail-activate.js', env(id), JSON.stringify({ source }));
+  const say = (id, prompt) => run('ponytail-mode-tracker.js', env(id), JSON.stringify({ prompt }));
+  const own = (id) => fs.readFileSync(path.join(sessDir, 'session-' + id), 'utf8');
+
+  start('a', 'startup');
+  assert.equal(own('a'), 'off', 'an off start records off for the session');
+  say('a', '/ponytail:ponytail full');
+  start('b', 'startup');
+  assert.equal(own('a'), 'full', 'a new session starting off must not clear another session');
+  say('b', '/ponytail lite');
+  say('b', 'stop ponytail');
+  assert.equal(own('a'), 'full', "another session's switch or stop must not change this one");
+  assert.match(start('a', 'compact').stdout, /PONYTAIL MODE ACTIVE — level: full/);
+  assert.match(start('a', 'resume').stdout, /PONYTAIL MODE ACTIVE — level: full/, 'resume keeps the session level');
+  assert.match(run('ponytail-subagent.js', env('a'), '{}').stdout, /level: full/);
+  assert.equal(run('ponytail-subagent.js', env('b'), '{}').stdout, '');
+  assert.equal(start('b', 'resume').stdout, '', 'a stopped session stays off on resume');
+  // A resumed session with no record of its own starts at the default.
+  assert.equal(start('c', 'resume').stdout, '');
+  assert.equal(own('c'), 'off');
+
+  // Session ids are file names: anything but [A-Za-z0-9_-] is dropped.
+  say('../x', '/ponytail ultra');
+  assert.equal(own('x'), 'ultra');
+
+  // Records untouched for 30 days are dropped at the next fresh start.
+  const old = new Date(Date.now() - 31 * 24 * 3600 * 1000);
+  fs.utimesSync(path.join(sessDir, 'session-c'), old, old);
+  start('d', 'startup');
+  assert.equal(fs.existsSync(path.join(sessDir, 'session-c')), false);
+  assert.equal(own('a'), 'full');
 }
 
 console.log('hook compatibility checks passed');
