@@ -518,3 +518,28 @@ test('a test run shows its count, and an edit in the project after it marks the 
   expect(await ui.find({ type: 'Text', text: /no test since change/ })).toBeDefined()
   await ui.unmount()
 })
+
+test('the band shows its own session level, not the flag another session left behind', async ($, on) => {
+  mock.clock(on)
+  mock.store(on)
+  on('env.get', ($, e) => ({ value: e.name === 'HOME' ? '/home/u' : undefined }))
+  on('session.id', () => ({ value: 's1' }))
+  on('session.repo', () => ({ value: { root: '/repo/shop' } }) as never)
+  on('session.start', ($, e) => ({ cwd: e.cwd }))
+  // Another session switched to ultra (or, starting at an "off" default, deleted the flag); this one is on full.
+  const files: Record<string, string> = {
+    '/home/u/.claude/.ponytail-active': 'ultra',
+    '/home/u/.claude/ponytail-modes/session-s1': 'full',
+  }
+  on('fs.read', ($, e, next) => (files[e.path] === undefined ? next(e) : { value: files[e.path] }))
+  const ui = await $.ui.mount({ plugin: 'ponytail', surface: 'terminal', ...BAND })
+
+  await $.session.start({ cwd: '/repo/shop', surface: null } as never)
+  expect((await ui.find({ key: 'level' }))?.text).toBe('● full')
+
+  // Hooks without a session id write only the shared flag: the band falls back to it.
+  delete files['/home/u/.claude/ponytail-modes/session-s1']
+  await $.session.start({ cwd: '/repo/shop', surface: null } as never)
+  expect((await ui.find({ key: 'level' }))?.text).toBe('● ultra')
+  await ui.unmount()
+})

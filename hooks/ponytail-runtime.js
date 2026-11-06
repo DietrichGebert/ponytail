@@ -46,8 +46,7 @@ const statePath = path.join(stateDir, STATE_FILE);
 // Claude Code hands every hook its project dir, so the live mode is kept per
 // project and concurrent sessions in different repos stop overwriting each other
 // (#662, #809). Hosts without it keep the single shared flag.
-// ponytail: sessions in the SAME repo still share one mode, and the statusline
-// scripts read the shared flag (last write wins); key by session_id if either matters.
+// ponytail: the statusline scripts still read the shared flag (last write wins).
 const projectDir = (process.env.CLAUDE_PROJECT_DIR || '').trim();
 // Replacing separators with '_' aliases e.g. /work/a/b and /work/a_b (#662).
 // Do not read old sanitized keys: they cannot be assigned to one project safely.
@@ -56,27 +55,60 @@ const projectStatePath = projectDir
     createHash('sha256').update(path.normalize(projectDir)).digest('hex'))
   : null;
 
-// The shared flag is still written, for the statusline and project-less hosts.
+// Claude Code also hands every hook its session id, so each session keeps its own
+// level: another session starting at an "off" default, switching, or stopping in
+// the same repo cleared or overwrote the per-project flag, and the band and
+// compaction then read "off" for a session that was never switched off.
+// hooks/band/register.tsx reads this same file.
+const SESSION_PREFIX = 'session-';
+const sessionId = (process.env.CLAUDE_CODE_SESSION_ID || '').replace(/[^A-Za-z0-9_-]/g, '');
+const sessionStatePath = sessionId
+  ? path.join(stateDir, 'ponytail-modes', SESSION_PREFIX + sessionId)
+  : null;
+
+// The project and shared flags are still written, for the statusline and hosts
+// without a session id.
 function setMode(mode) {
-  for (const file of [projectStatePath, statePath]) {
+  for (const file of [sessionStatePath, projectStatePath, statePath]) {
     if (!file) continue;
     fs.mkdirSync(path.dirname(file), { recursive: true });
     fs.writeFileSync(file, mode);
   }
 }
 
+// The session records "off" rather than deleting its file, so readMode never
+// falls back to a flag another session wrote.
 function clearMode() {
+  if (sessionStatePath) setMode('off');
   for (const file of [projectStatePath, statePath]) {
     if (file) try { fs.unlinkSync(file); } catch (e) {}
   }
 }
 
 // Live mode written by activate/mode-tracker. Absent flag = ponytail off.
-function readMode() {
-  try {
-    return fs.readFileSync(projectStatePath || statePath, 'utf8').trim() || null;
-  } catch (e) {
-    return null;
+// ownOnly: this session's record or nothing, never another session's flag.
+function readMode(ownOnly = false) {
+  const files = ownOnly ? [sessionStatePath] : [sessionStatePath, projectStatePath || statePath];
+  for (const file of files) {
+    if (!file) continue;
+    try {
+      return fs.readFileSync(file, 'utf8').trim() || null;
+    } catch (e) {}
+  }
+  return null;
+}
+
+// One small file per session; drop the ones untouched for 30 days.
+// ponytail: a session idle longer than that resumes at the default level.
+function pruneSessionModes(maxAgeMs = 30 * 24 * 3600 * 1000) {
+  const dir = path.join(stateDir, 'ponytail-modes');
+  let names = [];
+  try { names = fs.readdirSync(dir); } catch (e) { return; }
+  const cutoff = Date.now() - maxAgeMs;
+  for (const name of names) {
+    if (!name.startsWith(SESSION_PREFIX)) continue;
+    const file = path.join(dir, name);
+    try { if (fs.statSync(file).mtimeMs < cutoff) fs.unlinkSync(file); } catch (e) {}
   }
 }
 
@@ -176,6 +208,7 @@ module.exports = {
   isCopilot,
   isCursor,
   isQoder,
+  pruneSessionModes,
   readMode,
   setMode,
   writeHookOutput,
