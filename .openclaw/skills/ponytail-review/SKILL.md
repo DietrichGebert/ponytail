@@ -50,11 +50,14 @@ This is a report the user asked for, so give it in full.
    - split: one function doing several unrelated jobs, so it is hard to read
      or test. Split by job, never by line count, and never into helpers that
      exist only to make a function shorter.
+   - dup-test: a test that repeats another test in the change or the suite
+   - scope: a change the goal of the change does not need
 
 ## 3. Check before you report
 
 - Every finding needs a concrete case: "this input or situation leads to this
-  wrong result". No case, no finding.
+  wrong result". No case, no finding. For a lean finding the case is the lines
+  that go and what replaces them.
 - Re-read the lines and confirm: the caller exists, the value can really be
   empty, the code really is unused.
 - A shortcut marked with a `shortcut:` (or older `ponytail:`) comment that names its limit is a
@@ -89,10 +92,10 @@ Every finding has all four parts, each one or two short sentences:
 
 End with:
 - `Verdict: Ship.` or `Verdict: fix 1 and 3 first.`
-- `Lean: -<N> lines possible.` when lean findings exist.
+- `Lean: -<N> lines possible.`, or `Lean: 0 lines possible.` when there are none.
 - `Not checked:` one line, if something mattered and you could not check it.
 
-Nothing found: `What this change does:`, then `Looks good. Ship.` and one line
-on what you checked.
+Nothing found: `What this change does:`, then `Looks good. Ship.`,
+`Lean: 0 lines possible.` and one line on what you checked.
 
 Lists findings, changes no code.
