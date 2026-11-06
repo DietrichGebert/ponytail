@@ -287,6 +287,30 @@ test('the details view has its line without empty rows, and off the terminal its
   await ui.unmount()
 })
 
+for (const [nodeRuns, shown] of [[true, 'off'], [false, 'no node']] as const) {
+  test(`with no level flag and node ${nodeRuns ? 'installed' : 'missing'} the band shows ${shown}`, async ($, on) => {
+    mock.clock(on)
+    mock.store(on)
+    let session = 's1'
+    on('env.get', ($, e) => ({ value: e.name === 'HOME' ? '/home/u' : undefined }))
+    on('fs.read', ($, e, next) => (e.path === '/home/u/.claude/.ponytail-active' ? ({ deny: 'missing' } as never) : next(e)))
+    on('process.run', ($, e, next) =>
+      e.argv[0] !== 'node' ? next(e) : nodeRuns ? ({ value: { exitCode: 0, stdout: 'v24.0.0', stderr: '' } } as never) : ({ deny: 'node: not found' } as never))
+    on('session.repo', () => ({ value: { root: '/repo/shop' } }) as never)
+    on('session.id', () => ({ value: session }))
+    on('command.run', () => {
+      session = 's2'
+      return { text: '' }
+    })
+    const ui = await $.ui.mount({ plugin: 'ponytail', surface: 'terminal', ...BAND })
+    // /clear runs the band's setup, which reads the level.
+    await $.command.run({ command: 'clear', args: '' })
+    expect(await ui.find({ key: 'level', text: /no node/ }) !== undefined).toBe(!nodeRuns)
+    expect(await ui.find({ key: 'level', text: new RegExp(shown) })).toBeDefined()
+    await ui.unmount()
+  })
+}
+
 test('after /ponytail band the band draws nothing', async ($, on) => {
   mock.clock(on)
   mock.store(on)
