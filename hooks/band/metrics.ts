@@ -80,7 +80,10 @@ export function callsIn(text: string, known: Map<string, string>, own: string[])
 export function inProject(file: string, root: string): boolean {
   const f = file.replace(/\\/g, '/')
   const r = root.replace(/\\/g, '/').replace(/\/+$/, '')
-  return f === r || f.startsWith(`${r}/`)
+  const ignoreCase = /^[A-Za-z]:(?:\/|$)/.test(r) || r.startsWith('//')
+  const path = ignoreCase ? f.toLowerCase() : f
+  const project = ignoreCase ? r.toLowerCase() : r
+  return path === project || path.startsWith(`${project}/`)
 }
 
 const TEST_CMD = /\b(npm (run )?test|pnpm (run )?test|yarn test|bun test|npx (jest|vitest)|jest|vitest|pytest|python3? -m pytest|go test|cargo test|mvn test|gradle test|rspec|phpunit|dotnet test|node --test|deno test|make test)\b/
