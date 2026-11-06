@@ -100,7 +100,9 @@ async function readLevel($: EngineInterface): Promise<string> {
     const level = (await $.fs.read(`${dir}/.ponytail-active`)).trim()
     return LEVELS.includes(level) ? level : 'off'
   } catch {
-    return 'off'
+    // Only the node hooks write the flag, so without node an absent flag is not a deliberate /ponytail off (#1280).
+    const node = await $.process.run(['node', '--version']).catch(() => undefined)
+    return node?.exitCode === 0 ? 'off' : 'no node'
   }
 }
 
@@ -401,7 +403,7 @@ export const register: Register = (on, options) => {
         <Box flexDirection="row" alignItems="center" gap={2} width={width}>
           {/* A click opens the four levels: one click, one turn, no stops on levels nobody wanted. */}
           <Button key="level" plain onPress={toggle}>
-            <Text color={b.level === 'off' ? 'inactive' : 'suggestion'}>●</Text> {b.level}
+            <Text color={b.level === 'off' ? 'inactive' : b.level === 'no node' ? 'warning' : 'suggestion'}>●</Text> {b.level}
           </Button>
           <Text>${b.spent.toFixed(2)}</Text>
           {last !== undefined && <Text dimColor>last ${last.toFixed(2)}</Text>}
