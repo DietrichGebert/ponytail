@@ -48,7 +48,10 @@ function listFiles(root) {
     const out = [];
     (function walk(dir, depth) {
       if (depth > 6 || out.length > MAX_FILES * 5) return;
-      for (const ent of fs.readdirSync(dir, { withFileTypes: true })) {
+      // A folder we may not read (EACCES, or macOS-protected ones under ~) is skipped, not fatal.
+      let ents;
+      try { ents = fs.readdirSync(dir, { withFileTypes: true }); } catch (e) { return; }
+      for (const ent of ents) {
         if (ent.name.startsWith('.')) continue;
         const rel = path.relative(root, path.join(dir, ent.name)).replace(/\\/g, '/');
         if (ent.isDirectory()) { if (!SKIP_DIR.test(rel + '/')) walk(path.join(dir, ent.name), depth + 1); }
