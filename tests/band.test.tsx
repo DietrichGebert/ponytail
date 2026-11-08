@@ -291,7 +291,8 @@ test('after /ponytail band the band draws nothing', async ($, on) => {
   mock.clock(on)
   mock.store(on)
   on('env.get', ($, e) => ({ value: e.name === 'HOME' ? '/home/u' : undefined }))
-  on('fs.read', ($, e, next) => (e.path === '/home/u/.claude/.ponytail-band' ? { value: 'off' } : next(e)))
+  // The engine may hand the path on with either separator, and on Windows with a drive in front: compare the end.
+  on('fs.read', ($, e, next) => (e.path.replaceAll('\\', '/').endsWith('/home/u/.claude/.ponytail-band') ? { value: 'off' } : next(e)))
   // What Claude Code draws without the band.
   on('ui.render', ($, e) => {
     const { Text } = $.ui.resolve(e)
@@ -310,7 +311,7 @@ for (const command of ['clear', 'resume', 'branch']) {
     mock.store(on)
     let session = 's1'
     on('env.get', ($, e) => ({ value: e.name === 'HOME' ? '/home/u' : undefined }))
-    on('fs.read', ($, e, next) => (e.path === '/home/u/.claude/.ponytail-active' ? { value: 'full' } : next(e)))
+    on('fs.read', ($, e, next) => (e.path.replaceAll('\\', '/').endsWith('/home/u/.claude/.ponytail-active') ? { value: 'full' } : next(e)))
     on('session.repo', () => ({ value: { root: '/repo/shop' } }) as never)
     on('session.id', () => ({ value: session }))
     // /clear, /resume and /branch go on under another session id; /help stays in this one.
