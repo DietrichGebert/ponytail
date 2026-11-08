@@ -472,7 +472,9 @@ export const register: Register = (on, options) => {
     return stack(
       // The desktop's SVG draws its own line at the top, which would touch the buttons without the gap.
       <Box flexDirection="column" width={width} gap={e.surface === 'desktop' ? 1 : 0}>
-        <Box flexDirection="row" alignItems="center" gap={1}>
+        {/* Mode, its levels, a dot, the actions: one airy line. columnGap alone, so a wrap adds no empty rows. */}
+        <Box flexDirection="row" alignItems="center" columnGap={2} flexWrap="wrap">
+          <Text dimColor>Mode</Text>
           {LEVELS.map(level => (
             <Button
               key={`level-${level}`}
@@ -481,7 +483,7 @@ export const register: Register = (on, options) => {
               onPress={() => setLevel(level)}
             />
           ))}
-          <Box flexGrow={1} />
+          <Text dimColor>·</Text>
           <Button key="copy" plain label="Copy" onPress={copy} />
           <Button key="review" plain label="Review" onPress={review} />
           <Button key="audit" plain label="Audit" onPress={audit} />
