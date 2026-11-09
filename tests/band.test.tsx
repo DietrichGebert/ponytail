@@ -65,6 +65,18 @@ describe('board', () => {
     expect(html).toContain(':root[data-theme=system]{')
   })
 
+  test('the period selector offers month to date and last month, spanning whole calendar days', () => {
+    const html = boardHtml([], Date.UTC(2026, 10, 9, 12, 0))
+    expect(html).toContain('data-period="mtd"')
+    expect(html).toContain('data-period="last"')
+    const src = /function monthKeys[\s\S]*?\n  }\n/.exec(html)?.[0] ?? ''
+    const keys = new Function('now', 'dayKey', `${src}; return [monthKeys(0, 9), monthKeys(-1), monthKeys(-2)]`)(
+      Date.UTC(2026, 10, 9, 12, 0),
+      (ms: number) => new Date(ms).toLocaleDateString('en-CA'),
+    ) as string[][]
+    expect(keys.map(k => [k[0], k[k.length - 1], k.length])).toEqual([['2026-11-01', '2026-11-09', 9], ['2026-10-01', '2026-10-31', 31], ['2026-09-01', '2026-09-30', 30]])
+  })
+
   test('an empty board still loads and says there are no sessions yet', () => {
     const html = boardHtml([], Date.UTC(2026, 9, 15, 12, 0))
     expect(dataOf(html).tasks).toEqual([])
