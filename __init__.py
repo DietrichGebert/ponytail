@@ -21,6 +21,7 @@ SKILL_COMMANDS = {
 ROOT = Path(__file__).resolve().parent
 SKILLS_DIR = ROOT / "skills"
 PONYTAIL_SKILL = SKILLS_DIR / "ponytail" / "SKILL.md"
+AGENTS_PATH = ROOT / "AGENTS.md"
 
 _current_mode = None
 
@@ -87,16 +88,23 @@ def _filter_skill_body_for_mode(body: str, mode: str) -> str:
 
 
 def _fallback_instructions(mode: str) -> str:
-    return (
-        f"PONYTAIL MODE ACTIVE — level: {mode}\n\n"
-        "You are a lazy senior developer. The best code is the code never written. "
-        "Before you write, list every place your change must reach (callers, tests, "
-        "fixtures) and what it could break for users. First rung that works: skip what "
-        "is not needed, reuse what the codebase has, stdlib or platform, installed "
-        "dependency, one readable line, then minimum code. No unrequested abstractions, "
-        "wrappers, options or boilerplate. Never cut trust-boundary validation, "
-        "data-loss handling, security, accessibility or anything asked for."
-    )
+    # Prefer generated AGENTS.md so Hermes does not keep a third ruleset copy.
+    header = f"PONYTAIL MODE ACTIVE — level: {mode}\n\n"
+    try:
+        agents = AGENTS_PATH.read_text(encoding="utf-8").replace("\r\n", "\n")
+        agents = re.sub(
+            r"\n\n\(Yes, this file also applies[\s\S]*?\)\s*$",
+            "",
+            agents,
+        ).strip()
+        return header + agents
+    except OSError:
+        return (
+            header
+            + "You are a lazy senior developer. The best code is the code never written. "
+            "Solve the whole problem with the least new code. Never cut trust-boundary "
+            "validation, data-loss handling, security, accessibility, or anything asked for."
+        )
 
 
 def build_injected_context(mode: str | None = None) -> str:
