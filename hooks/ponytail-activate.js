@@ -11,20 +11,18 @@ const fs = require('fs');
 const path = require('path');
 const { execFileSync } = require('child_process');
 const { getDefaultMode, getClaudeDir, isShellSafe } = require('./ponytail-config');
+const { resolveHost } = require('./ponytail-host');
 const { getPonytailInstructions } = require('./ponytail-instructions');
 const {
   clearMode,
   cursorRuleNotice,
   cursorRulePath,
-  isCodeBuddy,
-  isCodex,
-  isCopilot,
-  isCursor,
   readMode,
   setMode,
   writeHookOutput,
 } = require('./ponytail-runtime');
 
+const host = resolveHost();
 const claudeDir = getClaudeDir();
 const settingsPath = path.join(claudeDir, 'settings.json');
 
@@ -38,7 +36,7 @@ function activate(mode) {
   // Cursor with the always-on rule in the workspace: the rule already carries the
   // ruleset and would contradict any other level, so leave the flag alone and
   // hand the model a one-line notice instead of a second copy (#817).
-  if (isCursor) {
+  if (host.respectsAlwaysOnRule) {
     const rule = cursorRulePath();
     if (rule) {
       try {
@@ -71,7 +69,7 @@ function activate(mode) {
   } catch (e) { /* no map */ }
 
   // 3. Detect missing statusline config — nudge Claude to help set it up
-  if (!isCodex && !isCopilot && !isCursor && !isCodeBuddy) try {
+  if (host.supportsStatuslineNudge) try {
     const isWindows = process.platform === 'win32';
     let statusCommand = null;
     if (fs.existsSync(settingsPath)) {
