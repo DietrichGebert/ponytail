@@ -83,7 +83,7 @@ function finish() {
           // is answered right away while the transcripts are read. Detached, it outlives this hook's
           // process.exit below.
           if (parts[2] === 'import') {
-            spawn(process.execPath, [path.join(__dirname, 'ponytail-band-import.js')], { detached: true, stdio: 'ignore' });
+            spawn(process.execPath, [path.join(__dirname, 'ponytail-band-import.js')], { detached: true, stdio: 'ignore', windowsHide: true });
             writeHookOutput('UserPromptSubmit', readMode() || 'off', 'PONYTAIL BAND IMPORT: past Claude Code sessions (cost, agent time, tokens) are being added to the board in the background. Open the board in a minute. Confirm in one short line.');
             return;
           }
