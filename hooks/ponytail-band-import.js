@@ -163,7 +163,7 @@ function sessionStats(records, subagentRecords = [], sessionId = '') {
   const started = records.map(ms).find(Number.isFinite);
   return {
     startedMs: started,
-    name: (titled.length ? titled[titled.length - 1].customTitle.trim() : first.split('\n')[0]).slice(0, 60),
+    name: [...(titled.length ? titled[titled.length - 1].customTitle.trim() : first.split('\n')[0])].slice(0, 60).join(''),
     model: models.sort((a, b) => replies[b] - replies[a])[0],
     cost,
     own,

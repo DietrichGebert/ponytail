@@ -149,6 +149,16 @@ describe('metrics', () => {
     expect(sessionTitle(JSON.stringify({ type: 'custom-title', customTitle: 'x'.repeat(80) }))?.length).toBe(60)
   })
 
+  test('sidebar names keep a whole emoji at the 60-character limit', () => {
+    for (const prefix of ['x'.repeat(59), '😀'.repeat(59)]) {
+      const name = prefix + '😀'
+      const title = sessionTitle(JSON.stringify({ type: 'custom-title', customTitle: name + ' omitted' }))
+      expect(title).toBe(name)
+      const html = boardHtml(tasksFrom(`${CSV_HEADER}\ns-1,2026-11-10 12:00,shop,${title},0,1,0,0,0,,,,,,full,\n`), 0)
+      expect(html).toContain(name)
+    }
+  })
+
   test('the Markdown export holds every value and the task name', () => {
     const md = markdown(snapshot(BASE, Date.UTC(2026, 9, 15, 12, 0)))
     expect(md.split('\n')[0]).toBe('## Fix the cart \\| totals, again')
@@ -478,6 +488,25 @@ test('review and audit run the same commands a person types', async ($, on) => {
   await ui.press({ key: 'review' })
   await ui.press({ key: 'audit' })
   expect(sent).toEqual(['/ponytail:ponytail-review', '/ponytail:ponytail-audit'])
+  await ui.unmount()
+})
+
+test('the first prompt keeps a whole emoji at the task-name limit', async ($, on) => {
+  mock.clock(on)
+  mock.store(on)
+  on('prompt.submit', ($, e) => ({ text: e.text }))
+  const name = 'x'.repeat(59) + '😀'
+  const copied: string[] = []
+  on('ui.copy', ($, e) => {
+    copied.push(e.text)
+    return { value: { isCopied: true as const } }
+  })
+  on('ui.toast', () => ({ value: undefined }))
+  await $.prompt.submit({ text: name + ' omitted\nsecond line', origin: { kind: 'human' } } as never)
+  const ui = await $.ui.mount({ plugin: 'ponytail', surface: 'terminal', ...BAND })
+  await ui.press({ key: 'details' })
+  await ui.press({ key: 'copy' })
+  expect(copied[0]).toContain(`## ${name}\n`)
   await ui.unmount()
 })
 
