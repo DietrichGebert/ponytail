@@ -209,7 +209,8 @@ async function start($: EngineInterface): Promise<Map<string, string>> {
   const usage = await $.session.usage().catch(() => undefined)
   const csv = usage ? await $.fs.read(ledgerFile(await ledgerDir($), project)).catch(() => '') : ''
   const key = usage ? taskKey(session, usage.startedAt) : ''
-  await update($, band, b => resume({ ...EMPTY, ...b, level, details, project, session, cost: usage?.cost?.usd ?? b.cost }, csv, key))
+  // Another session (/resume, /branch) starts its own counters; its row brings back what it had.
+  await update($, band, b => resume({ ...EMPTY, ...(b.session === session ? b : { ...b, ...TASK }), level, details, project, session, cost: usage?.cost?.usd ?? b.cost }, csv, key))
   return grep?.exitCode === 0 ? parseDefs(grep.stdout) : new Map()
 }
 
@@ -334,8 +335,8 @@ export const register: Register = (on, options) => {
         level,
         transcript,
         cost,
-        // Cost and turns are the session's own totals, so a reload or a second band never starts them over.
-        spent: usage.cost?.usd ?? b.spent + turn,
+        // Each turn adds its own cost. Not the engine's total: it goes on across /clear and starts over in a new process.
+        spent: b.spent + turn,
         turns,
         turnCosts: [...b.turnCosts, turn].slice(-20),
         tokens: used ? addTokens(b.tokens, used) : b.tokens,
