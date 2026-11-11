@@ -518,3 +518,41 @@ test('a test run shows its count, and an edit in the project after it marks the 
   expect(await ui.find({ type: 'Text', text: /no test since change/ })).toBeDefined()
   await ui.unmount()
 })
+
+test('session.start does not wait for the definitions grep, and an edit still counts reuse once it lands', async ($, on) => {
+  mock.clock(on)
+  mock.store(on)
+  on('env.get', ($, e) => ({ value: e.name === 'HOME' ? '/home/u' : undefined }))
+  on('session.repo', () => ({ value: { root: '/repo' } }) as never)
+  on('session.id', () => ({ value: 's1' }))
+  on('session.turns', () => ({ value: 1 }))
+  on('session.usage', () => ({ value: { startedAt: 0, cost: { usd: 0.5 } } }) as never)
+  let land = () => {}
+  const landed = new Promise<void>(r => (land = r))
+  on('process.run', async ($, e) => {
+    if (e.argv[0] !== 'git' || e.argv[1] !== 'grep') return { value: { exitCode: 1, stdout: '', stderr: '' } } as never
+    await landed
+    return { value: { exitCode: 0, stdout: 'money.py:1:def to_cents(v):\n', stderr: '' } } as never
+  })
+  on('fs.read', () => ({ deny: 'missing' }) as never)
+  on('fs.list', () => ({ value: [] }))
+  const rows: string[] = []
+  on('fs.write', ($, e) => {
+    if (e.path.endsWith('.csv')) rows.push(e.text)
+    return { value: undefined }
+  })
+  on('session.start', ($, e) => ({ cwd: e.cwd }))
+  on('turn.complete', () => ({ text: '' }))
+  on('tool.call', { tool: 'Edit' }, () => ({ result: {}, text: 'ok' }) as never)
+
+  const started = $.session.start({ cwd: '/repo', surface: null } as never).then(() => 'started')
+  const held = new Promise(r => setTimeout(() => r('held'), 2000))
+  expect(await Promise.race([started, held])).toBe('started')
+
+  const edit = $.tool.call({ tool: 'Edit', file_path: '/repo/cart.py', old_string: 'a = 1', new_string: 'a = to_cents(1)', replace_all: false } as never)
+  land()
+  await edit
+  await $.turn.complete({ answer: '', durationMs: 1000 } as never)
+  const [head, row] = parseCsv(rows.at(-1) ?? '')
+  expect(row?.[head?.indexOf('reused') ?? -1]).toBe('1')
+})
