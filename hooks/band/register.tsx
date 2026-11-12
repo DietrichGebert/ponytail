@@ -167,7 +167,7 @@ async function record($: EngineInterface, b: Band, options: Options) {
   const url = typeof options.webhookUrl === 'string' ? options.webhookUrl.trim() : ''
   if (url !== '') {
     const token = typeof options.webhookToken === 'string' ? options.webhookToken.trim() : ''
-    const request = webhookRequest(url, token, options.sendNames !== false, row)
+    const request = webhookRequest(url, token, options.sendNames === true, row)
     if ('refused' in request) {
       $.ui.status(`ponytail band: ${request.refused}`)
       return
