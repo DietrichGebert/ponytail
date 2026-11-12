@@ -8,6 +8,8 @@ import re
 from pathlib import Path
 from typing import Any, Callable
 
+
+
 DEFAULT_MODE = "full"
 RUNTIME_MODES = {"off", "lite", "full", "ultra"}
 SKILL_COMMANDS = {
