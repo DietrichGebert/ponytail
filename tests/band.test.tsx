@@ -500,6 +500,15 @@ test('copy hands the task to the clipboard as Markdown', async ($, on) => {
   await ui.unmount()
 })
 
+test('a test run through the PowerShell tool counts like one through Bash', async ($, on) => {
+  mock.clock(on)
+  on('tool.call', { tool: 'PowerShell' }, () => ({ result: { stdout: 'ℹ pass 7', stderr: '', interrupted: false }, text: 'ℹ pass 7' }) as never)
+  const ui = await $.ui.mount({ plugin: 'ponytail', surface: 'terminal', ...BAND })
+  await $.tool.call({ tool: 'PowerShell', command: 'npm test' } as never)
+  expect(await ui.find({ type: 'Text', text: /✓ 7 tests/ })).toBeDefined()
+  await ui.unmount()
+})
+
 test('a test run shows its count, and an edit in the project after it marks the tests stale', async ($, on) => {
   mock.clock(on)
   on('session.repo', () => ({ value: { root: '/repo' } }) as never)
