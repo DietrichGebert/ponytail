@@ -159,8 +159,11 @@ async function record($: EngineInterface, b: Band, options: Options) {
     const dir = await ledgerDir($)
     const file = ledgerFile(dir, b.project)
     const existing = await $.fs.read(file).catch(() => '')
+    const fresh = !(await $.fs.exists(dir).catch(() => false))
     // $.fs.write creates the directory: no mkdir, which Windows does not have.
     await $.fs.write(file, upsertCsv(existing, row))
+    // $.fs.write takes no mode, so a directory made just now is locked to the user once.
+    if (fresh && (await $.env.get('OS')) !== 'Windows_NT') await $.process.run(['chmod', '700', dir]).catch(() => {})
     // The board is a plain file a refresh rereads, so it is rebuilt with every row.
     await writeBoard($, dir)
   }

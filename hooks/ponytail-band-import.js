@@ -249,7 +249,7 @@ function run() {
     }
   }
   const dir = ledgerDir();
-  fs.mkdirSync(dir, { recursive: true });
+  fs.mkdirSync(dir, { recursive: true, mode: 0o700 });
   const have = new Set();
   for (const f of fs.readdirSync(dir).filter(f => f.endsWith('.csv'))) {
     try { fs.readFileSync(path.join(dir, f), 'utf8').split('\n').forEach(l => l && !l.startsWith('key,') && have.add(sessionOf(l))); } catch (e) {}
@@ -260,7 +260,7 @@ function run() {
     let existing = '';
     try { existing = fs.readFileSync(file, 'utf8'); } catch (e) {}
     const merged = mergeRows(existing, rows, have);
-    if (merged.added > 0) fs.writeFileSync(file, merged.text);
+    if (merged.added > 0) fs.writeFileSync(file, merged.text, { mode: 0o600 });
     added += merged.added;
   }
   return { sessions, added };
