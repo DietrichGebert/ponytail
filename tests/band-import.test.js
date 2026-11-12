@@ -103,9 +103,19 @@ try {
   assert.equal(csv.split('\n')[0], CSV_HEADER, 'a desktop worktree counts for its repo');
   assert.ok(csv.includes(',shop,Fix the cart totals,'));
   assert.deepEqual(run(), { sessions: 1, added: 0 }, 'a second import adds nothing');
+  if (process.platform !== 'win32') {
+    const ledger = path.join(temp, 'config', 'ponytail', 'band');
+    assert.equal(fs.statSync(ledger).mode & 0o777, 0o700, 'the ledger directory is private to the user');
+    assert.equal(fs.statSync(path.join(ledger, 'shop.csv')).mode & 0o777, 0o600, 'the ledger CSV is private to the user');
+  }
 } finally {
   for (const [k, v] of Object.entries(env)) if (v === undefined) delete process.env[k]; else process.env[k] = v;
   fs.rmSync(temp, { recursive: true, force: true });
 }
+
+// The band's own writer cannot set a mode, so it locks a fresh ledger directory once.
+const register = fs.readFileSync(path.join(root, 'hooks', 'band', 'register.tsx'), 'utf8');
+assert.ok(register.includes('const fresh = !(await $.fs.exists(dir).catch(() => false))'), 'the fresh check reads whether the ledger directory exists before the write, and a failing exists counts as not fresh');
+assert.ok(/fresh && \(await \$\.env\.get\('OS'\)\) !== 'Windows_NT'\) await \$\.process\.run\(\['chmod', '700', dir\]\)/.test(register), 'a fresh ledger directory is chmod 700, except on Windows');
 
 console.log('band import checks passed');
