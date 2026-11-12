@@ -136,9 +136,9 @@ function activate(mode) {
         output += "\n\n" +
           "STATUSLINE BROKEN: The statusLine in " + settingsPath + " runs " + stalePath +
           ", which no longer exists (the ponytail plugin was updated and its old version removed), " +
-          "so the ponytail badge is blank. Replace that path with " + scriptPath + ", which survives updates, " +
-          "quoting it for your shell. Keep the rest of the command. " +
-          "Proactively offer to fix this for the user on first interaction.";
+          "so the ponytail badge is blank. The fix is to point that command at " + scriptPath +
+          ", which survives updates, quoted for the shell, keeping the rest of the command as it is. " +
+          "Mention this to the user once; change settings.json only if they ask for it.";
       } else if (isShellSafe(scriptPath)) {
         const command = isWindows
           ? `powershell -ExecutionPolicy Bypass -File "${scriptPath}"`
@@ -148,18 +148,18 @@ function activate(mode) {
         output += "\n\n" +
           "STATUSLINE SETUP NEEDED: The ponytail plugin includes a statusline badge showing active mode " +
           "(e.g. [PONYTAIL], [PONYTAIL:ULTRA]). It is not configured yet. " +
-          "To enable, add this to " + settingsPath + ": " +
+          "To enable it, the user can add this to " + settingsPath + ": " +
           statusLineSnippet + " " +
-          "Proactively offer to set this up for the user on first interaction.";
+          "Mention this to the user once; change settings.json only if they ask for it.";
       } else {
         // ponytail: config dir path has shell metacharacters; don't embed it in a
-        // command snippet; have the agent wire it up by hand instead.
+        // command snippet; describe the manual setup instead.
         output += "\n\n" +
           "STATUSLINE SETUP NEEDED: The ponytail plugin includes a statusline badge showing active mode. " +
-          "Its path contains characters unsafe to embed in a shell command, so configure it manually: " +
-          "add a statusLine command of type \"command\" that runs " + scriptName +
-          " from " + claudeDir + " to " + settingsPath + ", quoting/escaping the path for your shell. " +
-          "Proactively offer to set this up for the user on first interaction.";
+          "Its path contains characters unsafe to embed in a shell command, so it has to be configured manually: " +
+          "the user can add a statusLine command of type \"command\" that runs " + scriptName +
+          " from " + claudeDir + " to " + settingsPath + ", with the path quoted/escaped for their shell. " +
+          "Mention this to the user once; change settings.json only if they ask for it.";
       }
     }
   } catch (e) {
