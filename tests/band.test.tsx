@@ -28,6 +28,31 @@ import {
   webhookRequest,
 } from '../hooks/band/metrics'
 
+test('definition and caller searches skip binary files', async ($, on) => {
+  mock.clock(on)
+  mock.store(on)
+  on('env.get', ($, e) => ({ value: e.name === 'HOME' ? '/home/u' : undefined }))
+  on('session.repo', () => ({ value: { root: '/repo/shop' } }) as never)
+  on('session.id', () => ({ value: 's1' }))
+  on('session.turns', () => ({ value: 1 }))
+  on('session.usage', () => ({ value: { startedAt: 0, cost: { usd: 0 } } }) as never)
+  const searches: string[][] = []
+  on('process.run', ($, e) => {
+    if (e.argv[0] === 'git' && e.argv[1] === 'grep') searches.push(e.argv)
+    return { value: { exitCode: 1, stdout: '', stderr: '' } } as never
+  })
+  on('fs.read', () => ({ deny: 'missing' }) as never)
+  on('fs.list', () => ({ value: [] }))
+  on('fs.write', () => ({ value: undefined }))
+  on('tool.call', { tool: 'Edit' }, () => ({ result: {}, text: 'ok' }) as never)
+  on('session.start', ($, e) => ({ cwd: e.cwd }))
+  on('turn.complete', () => ({ text: '' }))
+  await $.session.start({ cwd: '/repo/shop', surface: null } as never)
+  await $.tool.call({ tool: 'Edit', file_path: '/repo/shop/cart.py', old_string: 'def total(items):\n    return sum(items)\n', new_string: '', replace_all: false } as never)
+  await $.turn.complete({ answer: '', durationMs: 1000 } as never)
+  expect(searches.map(argv => argv.includes('-I'))).toEqual([true, true])
+})
+
 describe('board', () => {
   const CSV = 'key,started,project,name,cost_usd,turns,agent_minutes,tokens_total,tokens_output,reuse_pct,reused,new,callers_open,tests,level\n' +
     'a-1,2026-10-15 12:00,shop,"Fix ""cart"", totals\nand tax",3.10,6,26.0,1200000,85000,83,5,1,0,14 passed,full\n' +
