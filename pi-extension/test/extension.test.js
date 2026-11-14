@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import test from "node:test";
+import test, { describe } from "node:test";
 
 import ponytailExtension, { parsePonytailCommand } from "../index.js";
 
@@ -364,4 +364,41 @@ test("/ponytail autocompletes modes, commands and default <mode>", () => {
   for (const { value } of complete("")) {
     assert.notEqual(parsePonytailCommand(value).type, "invalid", `Enter on "${value}" must run a valid command`);
   }
+});
+
+describe("codebase map", () => {
+  async function firstPrompt(cwd, event = "session_start") {
+    const { events } = createPiHarness();
+    const ctx = createCommandContext({ cwd });
+    await events.get(event)({ reason: "startup" }, ctx);
+    return (await events.get("before_agent_start")({ systemPrompt: "BASE" }, ctx)).systemPrompt;
+  }
+
+  function withProject(fn) {
+    const cwd = mkdtempSync(join(tmpdir(), "ponytail-map-"));
+    writeFileSync(join(cwd, "util.js"), "export function slugify() {}\n");
+    return Promise.resolve(cwd).then(fn).finally(() => rmSync(cwd, { recursive: true, force: true }));
+  }
+
+  test("should add the project's map to the first prompt when the session starts in a project", async () => withTempConfig(() => withProject(async (cwd) => {
+    const prompt = await firstPrompt(cwd);
+
+    assert.ok(prompt.includes("Codebase map"), "the first prompt carries the codebase map");
+    assert.ok(prompt.includes("slugify"), "the map lists the project's exports");
+  })));
+
+  test("should build the map for the new project when OMP switches sessions", async () => withTempConfig(() => withProject(async (cwd) => {
+    const prompt = await firstPrompt(cwd, "session_switch");
+
+    assert.ok(prompt.includes("slugify"), "the switched-to project's exports are in the map");
+  })));
+
+  test("should leave the map out when PONYTAIL_MAP is 0", async () => withTempConfig(() => withProject(async (cwd) => {
+    process.env.PONYTAIL_MAP = "0";
+
+    const prompt = await firstPrompt(cwd).finally(() => delete process.env.PONYTAIL_MAP);
+
+    assert.ok(prompt.includes("PONYTAIL MODE ACTIVE"), "the rules are still injected");
+    assert.ok(!prompt.includes("Codebase map"), "the map is left out");
+  })));
 });
