@@ -445,6 +445,36 @@ assert.equal(
 output = JSON.parse(result.stdout);
 assert.deepEqual(output, {});
 
+// Native Claude SessionStart must also use the hookSpecificOutput JSON form:
+// Claude Code records raw hook stdout in the transcript as a hook_success
+// attachment, so a session that is opened and closed without a prompt looks
+// non-empty - it gets saved and titled with the ruleset instead of staying out
+// of --resume.
+{
+  const plainHome = path.join(temp, 'plain-home');
+  fs.mkdirSync(path.join(plainHome, '.claude'), { recursive: true });
+  const plainEnv = { HOME: plainHome, USERPROFILE: plainHome, PONYTAIL_DEFAULT_MODE: 'full' };
+
+  result = run('ponytail-activate.js', plainEnv);
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(
+    result.stdout.trimStart().startsWith('{'),
+    true,
+    'native SessionStart must emit JSON, not raw ruleset text',
+  );
+  output = JSON.parse(result.stdout);
+  assert.equal(output.hookSpecificOutput.hookEventName, 'SessionStart');
+  assert.match(
+    output.hookSpecificOutput.additionalContext,
+    /PONYTAIL MODE ACTIVE — level: full/,
+  );
+  assert.equal(
+    output.additionalContext,
+    undefined,
+    'native SessionStart must not emit additionalContext at top level',
+  );
+}
+
 // SubagentStart hook: when ponytail mode is active it injects the ruleset into
 // each subagent (issue #252). Native Claude must get the hookSpecificOutput JSON
 // form, not raw stdout, or the context is dropped.
