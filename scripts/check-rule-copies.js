@@ -44,6 +44,7 @@ for (const [relPath, normalize] of copies) {
 const INVARIANTS = [
   'in this codebase',                      // ladder rung: reuse what already exists (#217)
   'grep every caller',                     // root-cause bug fix (#245)
+  'the code that makes it',                 // a wrong value is owned by its constructor/parser (#1374)
   'never about the change itself',         // scope: callers, tests and fixtures the change breaks
   'shortcut: <the limit>, <when to upgrade>',   // shortcut marker comment
   'correct on edge cases',                 // robust-variant rule
