@@ -103,6 +103,7 @@ export default function ponytailExtension(pi) {
     if (!normalized) return;
 
     currentMode = normalized;
+    process.env.PONYTAIL_SESSION_MODE = normalized;
     pi.appendEntry("ponytail-mode", { mode: normalized });
     syncStatus(ctx);
     ctx?.ui?.notify?.(`Ponytail mode set to ${normalized}.`, "info");
@@ -194,16 +195,22 @@ export default function ponytailExtension(pi) {
     }
   });
 
-  const restoreSessionMode = (ctx) => {
+  // Subagents start as a fresh session, in this process or a child that inherits its environment,
+  // so the spawner's mode reaches them through PONYTAIL_SESSION_MODE.
+  const restoreSessionMode = (ctx, inherit = false) => {
     const entries = ctx?.sessionManager?.getBranch?.() || ctx?.sessionManager?.getEntries?.() || [];
-    currentMode = resolveSessionMode(entries, configuredDefaultMode);
+    const fallback = (inherit && normalizePersistedMode(process.env.PONYTAIL_SESSION_MODE)) || configuredDefaultMode;
+    currentMode = resolveSessionMode(entries, fallback);
+    process.env.PONYTAIL_SESSION_MODE = currentMode;
     syncStatus(ctx);
   };
 
-  pi.on("session_start", async (_event, ctx) => {
+  pi.on("session_start", async (event, ctx) => {
     configuredDefaultMode = getDefaultMode();
     hideStatus = getHideStatus();
-    restoreSessionMode(ctx);
+    // /new, /resume and /fork start from this session's own entries, never the previous session's mode.
+    // /reload keeps it: the variable then holds this session's mode, which a nested pi never saved.
+    restoreSessionMode(ctx, ["startup", "reload"].includes(event?.reason ?? "startup"));
     if (!getQuietStartup()) {
       ctx?.ui?.notify?.(`Ponytail loaded: ${currentMode}`, "info");
     }
