@@ -127,7 +127,7 @@ In Claude Code, ponytail now shows a band above the prompt: what the current tas
   <img src="assets/band/board.png" width="880" alt="The ponytail board, a local page: 61 sessions, 20h 13m agent time, $285.30 and 492.5M tokens in the last 30 days; agent time per project over time; the latest sessions with their tests; active days and streak.">
 </p>
 
-**Board** opens a local page with every task across your projects: cost, agent time and tokens over time, every session with its tests, and the days you worked. By default, everything stays on your machine, in `~/.config/ponytail/band/`. `/ponytail band import` adds your past Claude Code sessions to it, with their cost, agent time and tokens.
+**Board** opens a local page with every task across your projects: cost, agent time and tokens over time, every session with its tests, and the days you worked. By default, everything stays on your machine, in `~/.config/ponytail/band/`. `/ponytail band import` adds your past Claude Code sessions to it, with their cost, agent time and tokens. pi sessions land on the same board after every agent run; `/ponytail-board` opens it from pi.
 
 ## How it works
 
@@ -180,6 +180,7 @@ Only install ponytail from `DietrichGebert/ponytail` on GitHub or `@dietrichgebe
 | `/ponytail [lite \| full \| ultra \| off]` | Set the intensity, or turn it off. No argument switches ponytail on at the default level if it is off, and otherwise reports the current level. |
 | `/ponytail band [on \| off]` | Claude Code only: hide or show the band above the prompt. No argument switches it. The level stays. |
 | `/ponytail band import` | Claude Code only: add your past Claude Code sessions to the board, with their cost, agent time and tokens. |
+| `/ponytail-board` | pi only: rebuild the board from every project's ledger and open it in the browser. |
 | `/ponytail-review` | Review the current diff like the senior dev who gets paged when it breaks: bugs, security, real load, risky code without a test, slow paths, and what to cut. Each finding says what the code does, what goes wrong, how to fix it, and what happens if you don't. Name a target in plain words to narrow or widen it: `uncommitted`, `staged`, `branch`, or a PR link. |
 | `/ponytail-audit` | The same check for the whole repo, most important first. |
 | `/ponytail-debt` | Harvest the `shortcut:` comments you've deferred into a ledger, so "later" doesn't become "never". |
