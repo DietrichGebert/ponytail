@@ -469,6 +469,26 @@ result = run('ponytail-subagent.js', subEnv);
 assert.equal(result.status, 0, result.stderr);
 assert.equal(result.stdout, '', 'SubagentStart must stay silent when ponytail is off');
 
+// SessionStart (#1421): native Claude records raw hook stdout as a
+// `hook_success` transcript attachment, and that attachment is enough to persist
+// and title a session the user never prompted. The ruleset must therefore arrive
+// as hookSpecificOutput JSON, exactly like SubagentStart.
+const startHome = path.join(temp, 'start-home');
+const startEnv = { HOME: startHome, USERPROFILE: startHome };
+result = run(
+  'ponytail-activate.js',
+  startEnv,
+  JSON.stringify({ hook_event_name: 'SessionStart', source: 'startup' }),
+);
+assert.equal(result.status, 0, result.stderr);
+output = JSON.parse(result.stdout);
+assert.equal(
+  output.hookSpecificOutput.hookEventName,
+  'SessionStart',
+  'SessionStart context must be JSON, not raw stdout (#1421)',
+);
+assert.match(output.hookSpecificOutput.additionalContext, /PONYTAIL MODE ACTIVE — level: full/);
+
 // Codex shares claude-codex-hooks.json, so SubagentStart is reachable under Codex
 // too — assert the codex branch emits hookSpecificOutput and no systemMessage (#605).
 const subCodex = path.join(temp, 'sub-codex');
