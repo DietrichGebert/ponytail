@@ -400,9 +400,9 @@ export const register: Register = (on, options) => {
       return stack(
         <Box flexDirection="row" alignItems="center" gap={2} width={width}>
           {/* A click opens the four levels: one click, one turn, no stops on levels nobody wanted. */}
-          <Button key="level" plain onPress={toggle}>
-            <Text color={b.level === 'off' ? 'inactive' : 'suggestion'}>●</Text> {b.level}
-          </Button>
+          {/* Button takes one string label (engine 2.1.292 refuses Text children), so the dot sits beside it. */}
+          <Text color={b.level === 'off' ? 'inactive' : 'suggestion'}>●</Text>
+          <Button key="level" plain label={b.level} onPress={toggle} />
           <Text>${b.spent.toFixed(2)}</Text>
           {last !== undefined && <Text dimColor>last ${last.toFixed(2)}</Text>}
           <Text dimColor>{elapsed(b.busyMs)}</Text>
