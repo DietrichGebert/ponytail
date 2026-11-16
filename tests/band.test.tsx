@@ -43,6 +43,18 @@ describe('board', () => {
     expect(tasksFrom('not,a,ledger\n1,2,3')).toEqual([])
   })
 
+  test('a project written as a whole Windows path, drive letter in either case, is one project', () => {
+    const csv = 'key,started,project\n' + ['c:\\Repos\\shop', 'C:\\Repos\\shop\\', 'shop', '/repo/shop/'].map((p, i) => `k-${i},2026-10-15 12:00,"${p}"`).join('\n')
+    expect(tasksFrom(csv).map(t => t.project)).toEqual(['shop', 'shop', 'shop', 'shop'])
+  })
+
+  test('where case is ignored, a folder spelled in another case is the same project, named as its newest row spells it', () => {
+    const csv = 'key,started,project\n' + ['C:\\Repos\\Shop', 'c:\\repos\\shop', 'SHOP', 'other'].map((p, i) => `k-${i},2026-10-1${i} 12:00,"${p}"`).join('\n')
+    const projects = (ignoreCase: boolean) => dataOf(boardHtml(tasksFrom(csv), Date.UTC(2026, 9, 15, 12, 0), ignoreCase)).tasks.map((t: { project: string }) => t.project)
+    expect(projects(true)).toEqual(['SHOP', 'SHOP', 'SHOP', 'other'])
+    expect(projects(false)).toEqual(['Shop', 'shop', 'SHOP', 'other'])
+  })
+
   const dataOf = (html: string) => JSON.parse(/<script type="application\/json" id="board-data">([\s\S]*?)<\/script>/.exec(html)?.[1] ?? 'null')
 
   test('the board carries every task as data no name can break out of', () => {

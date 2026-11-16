@@ -69,7 +69,8 @@ export function tasksFrom(text: string): Task[] {
   const num = (row: string[], col: string) => Number(at(row, col)) || 0
   return rows.map(row => ({
     started: at(row, 'started'),
-    project: at(row, 'project'),
+    // Windows rows may hold the whole path, drive letter in either case (#1440): the folder names the project, as the import does.
+    project: at(row, 'project').replace(/[\\/]+$/, '').split(/[\\/]/).pop() ?? '',
     name: at(row, 'name'),
     cost: num(row, 'cost_usd'),
     turns: num(row, 'turns'),
@@ -531,7 +532,11 @@ const FAVICON = `data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www
 
 const SEARCH_ICON = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>'
 
-export function boardHtml(tasks: Task[], now: number): string {
+export function boardHtml(tasks: Task[], now: number, ignoreCase = false): string {
+  // Where the file system ignores case, Shop and shop are one folder (#1440); the newest row's spelling names it.
+  const key = (project: string) => (ignoreCase ? project.toLowerCase() : project)
+  const spelling = new Map([...tasks].sort((a, b) => a.started.localeCompare(b.started)).map(t => [key(t.project), t.project]))
+  tasks = tasks.map(t => ({ ...t, project: spelling.get(key(t.project)) ?? t.project }))
   const seg = (attr: string, items: [string, string][], on: string) =>
     items.map(([value, label]) => `<button type="button" data-${attr}="${value}"${value === on ? ' class="on"' : ''}>${label}</button>`).join('')
   return `<!doctype html><html lang="en" data-theme="dark"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>ponytail board</title><link rel="icon" href="${FAVICON}"><style>${CSS}</style></head>
