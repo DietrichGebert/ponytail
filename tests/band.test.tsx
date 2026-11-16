@@ -518,3 +518,14 @@ test('a test run shows its count, and an edit in the project after it marks the 
   expect(await ui.find({ type: 'Text', text: /no test since change/ })).toBeDefined()
   await ui.unmount()
 })
+
+test('with trackTools off the band never hooks tool calls, so Code Mode can run (#1433)', { options: { trackTools: false } }, async ($, on) => {
+  mock.clock(on)
+  on('session.repo', () => ({ value: { root: '/repo' } }) as never)
+  on('tool.call', { tool: 'Bash' }, () => ({ result: { stdout: 'ℹ pass 14', stderr: '', interrupted: false }, text: 'ℹ pass 14' }) as never)
+  const ui = await $.ui.mount({ plugin: 'ponytail', surface: 'terminal', ...BAND })
+
+  await $.tool.call({ tool: 'Bash', command: 'npm test' } as never)
+  expect(await ui.find({ type: 'Text', text: /✓ 14 tests/ })).toBeUndefined()
+  await ui.unmount()
+})

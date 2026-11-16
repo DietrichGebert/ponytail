@@ -18,6 +18,12 @@
       "description": "After every turn, write this task's row (cost, turns, agent time, tokens, reuse, tests) to ~/.config/ponytail/band/<project>.csv for the board.",
       "default": true
     },
+    "trackTools": {
+      "type": "boolean",
+      "title": "Reuse and tests",
+      "description": "Read each Bash, Edit and Write call to fill the band's reuse and tests. Off: those stay empty, and Claude Code's Code Mode (experimental) can run, which a mod that checks tool calls turns off.",
+      "default": true
+    },
     "webhookUrl": {
       "type": "string",
       "title": "Webhook URL",

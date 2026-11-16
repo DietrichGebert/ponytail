@@ -251,7 +251,8 @@ export const register: Register = (on, options) => {
     return next(e)
   }).catch(($, e, next) => next(e))
 
-  on('tool.call', async ($, e, next) => {
+  // Code Mode stays off while any mod hooks tool.call, so the hook is only registered when wanted (#1433).
+  if (options.trackTools !== false) on('tool.call', async ($, e, next) => {
     if (e.tool === 'Bash') {
       const ran = await next(e)
       if (ran.deny === undefined && isTestCommand(e.command)) {
