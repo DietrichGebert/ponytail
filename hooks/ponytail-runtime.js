@@ -31,6 +31,9 @@ const isCodeBuddy = !isCopilot && !isCodex && !isQoder && Boolean(process.env.CO
 // hooks next to CLAUDE_PLUGIN_ROOT, and it needs Cursor-shaped JSON either
 // way, so this check comes after the hosts with their own data dirs.
 const isCursor = !isCopilot && !isCodex && !isQoder && !isCodeBuddy && Boolean(process.env.CURSOR_VERSION);
+// Command Code runs the Claude-format SessionStart hook and exports
+// COMMANDCODE_SCRATCHPAD to the shell commands it spawns, hook processes included.
+const isCommandCode = !isCopilot && !isCodex && !isQoder && !isCodeBuddy && !isCursor && Boolean(process.env.COMMANDCODE_SCRATCHPAD);
 
 let stateDir = getClaudeDir();
 if (isCodex) stateDir = process.env.PLUGIN_DATA;
@@ -40,6 +43,7 @@ if (isCopilot) stateDir = process.env.COPILOT_PLUGIN_DATA || getClaudeDir();
 if (isQoder) stateDir = getQoderDir();
 if (isCodeBuddy) stateDir = process.env.CODEBUDDY_CONFIG_DIR || path.join(os.homedir(), '.codebuddy');
 if (isCursor) stateDir = path.join(os.homedir(), '.cursor');
+if (isCommandCode) stateDir = path.join(os.homedir(), '.commandcode');
 
 const statePath = path.join(stateDir, STATE_FILE);
 
@@ -131,10 +135,11 @@ function writeHookOutput(event, mode, context = '') {
     writeOut(JSON.stringify(output));
     return;
   }
-  if (isQoder || isCodeBuddy) {
+  if (isQoder || isCodeBuddy || isCommandCode) {
     // Qoder: hookSpecificOutput JSON, same shape as Codex minus systemMessage.
     // UserPromptSubmit additionalContext is injected into the Agent's conversation.
     // CodeBuddy would take raw stdout too, but also echoes it into the chat.
+    // Command Code reads the same hookSpecificOutput shape on SessionStart.
     const output = {};
     if (context) {
       output.hookSpecificOutput = {
@@ -173,6 +178,7 @@ module.exports = {
   cursorRulePath,
   isCodeBuddy,
   isCodex,
+  isCommandCode,
   isCopilot,
   isCursor,
   isQoder,

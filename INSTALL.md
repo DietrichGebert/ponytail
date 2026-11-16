@@ -189,6 +189,34 @@ node ponytail/scripts/cursor-hooks.js install
 
 Merges two native hooks into `~/.cursor/hooks.json` (add `--project` to write `<project>/.cursor/hooks.json` instead) and keeps any hooks you already have there. The entries run `node` from that checkout, so leave it where it is or re-run the install after moving it. Cursor reloads the file on save; open a new chat and the ruleset for your default level arrives through `sessionStart`. Send `/ponytail lite`, `/ponytail full`, `/ponytail ultra` or `/ponytail off` as a plain message to switch the level for the rest of the conversation; `/ponytail` reports it. Cursor's `subagentStart` cannot inject context, so subagents run without the ruleset, and cloud agents never fire `sessionStart`. The always-on rule (`.cursor/rules/ponytail.mdc`) and the hooks are alternatives: while the rule is in a workspace the hooks inject nothing and the mode commands answer with a notice, so delete the rule to let the hooks manage the level. Contract, verification record and limitations: [docs/cursor-hooks.md](docs/cursor-hooks.md). Uninstall: `node ponytail/scripts/cursor-hooks.js uninstall`.
 
+## Command Code
+
+```bash
+cmd skills add https://github.com/DietrichGebert/ponytail --global
+```
+
+Then register the `SessionStart` hook in `~/.commandcode/settings.json` (create the file if you do not have one, and merge with any existing `hooks` entry):
+
+```json
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node /path/to/ponytail/hooks/ponytail-activate.js",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+Replace `/path/to/ponytail` with your checkout (`git clone https://github.com/DietrichGebert/ponytail` if you do not have one) and leave the checkout where it is. `node` must be on the PATH. Start a new session and the ruleset for your default level arrives through `SessionStart`. Command Code is detected by its `COMMANDCODE_SCRATCHPAD` env var, the mode flag lives in `~/.commandcode/.ponytail-active`, and a Command Code-only machine is never nudged toward Claude's statusline. Levels switch mid-session through the skills (`/ponytail lite`); the hook re-injects the default level at the next session start. Without the hook, `AGENTS.md` copied into the project gives the always-on ruleset, instruction-only. Uninstall: remove the `hooks` entry from `~/.commandcode/settings.json` and run `cmd skills remove ponytail --global` (and the other five skills).
+
 ## Settings
 
 Set the level for every new session with the `PONYTAIL_DEFAULT_MODE` env var (`lite`/`full`/`ultra`/`off`), or a `defaultMode` field in `~/.config/ponytail/config.json` (`%APPDATA%\ponytail\config.json` on Windows). The default is `full`.
