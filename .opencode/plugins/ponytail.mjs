@@ -27,32 +27,37 @@ const { getDefaultMode, normalizeMode, writeDefaultMode } = require('../../hooks
 const { parseCommandFile, parseSkillFile } = require('./ponytail-frontmatter.cjs');
 
 // OpenCode has no flag-file convention of its own; keep mode beside its config.
-// Shared with the V1 path, so a level set under either API is read by both.
-const statePath = path.join(
-  process.env.XDG_CONFIG_HOME || path.join(os.homedir(), '.config'),
-  'opencode',
-  '.ponytail-active',
-);
+// The level belongs to the session that set it, like Claude Code's "sticks
+// until session end": one file per session ID, so a /ponytail in one session
+// never reaches another and a new session starts at the default. A call
+// without a session ID (V1 hooks that lack one) falls back to one shared file.
+const stateDir = path.join(process.env.XDG_CONFIG_HOME || path.join(os.homedir(), '.config'), 'opencode');
 
-function readMode() {
+function statePath(sessionID) {
+  const id = String(sessionID || '').replace(/[^A-Za-z0-9_-]/g, '');
+  return id ? path.join(stateDir, 'ponytail-sessions', id) : path.join(stateDir, '.ponytail-active');
+}
+
+function readMode(sessionID) {
   try {
     // review is a one-shot command, never a level (#736); an old saved review falls back.
-    return normalizeMode(fs.readFileSync(statePath, 'utf8')) || getDefaultMode();
+    return normalizeMode(fs.readFileSync(statePath(sessionID), 'utf8')) || getDefaultMode();
   } catch (e) {
     return getDefaultMode();
   }
 }
 
-function writeMode(mode) {
-  fs.mkdirSync(path.dirname(statePath), { recursive: true });
-  fs.writeFileSync(statePath, mode);
+function writeMode(mode, sessionID) {
+  const file = statePath(sessionID);
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  fs.writeFileSync(file, mode);
 }
 
 // `off` is persisted like any mode; the injection reads it and stays silent.
 // An unrecognized level leaves the current one alone. The write lands before
 // the next turn's injection, not the current one — good enough; switch to a
 // synchronous store if same-turn switching ever matters.
-function persistMode(args) {
+function persistMode(args, sessionID) {
   const wanted = String(args == null ? '' : args).trim();
   // `/ponytail default <level>` saves the default for new sessions, like the Claude hook.
   const [first, second] = wanted.toLowerCase().split(/\s+/);
@@ -62,10 +67,10 @@ function persistMode(args) {
     return;
   }
   // Bare /ponytail switches ponytail on, or keeps the level when it already is (#639).
-  if (!wanted && readMode() !== 'off') return;
+  if (!wanted && readMode(sessionID) !== 'off') return;
   const mode = wanted ? normalizeMode(wanted) : (getDefaultMode() === 'off' ? 'full' : getDefaultMode());
   if (!mode) return;
-  writeMode(mode);
+  writeMode(mode, sessionID);
   console.log('ponytail ' + mode);
 }
 
@@ -134,7 +139,7 @@ export default {
           name: command.name,
           description: command.description,
           execute: async ({ sessionID, prompt, delivery }) => {
-            if (command.name === 'ponytail') persistMode(prompt.text);
+            if (command.name === 'ponytail') persistMode(prompt.text, sessionID);
             const withoutMentions = (items) => items?.map(({ mention, ...item }) => item);
             await ctx.session.prompt({
               ...prompt,
@@ -155,7 +160,7 @@ export default {
     // Summary compaction runs its own hook with the same event shape; without
     // it the compaction request misses the ruleset and the provider prompt cache.
     const addRuleset = (event) => {
-      const mode = readMode();
+      const mode = readMode(event.sessionID);
       if (mode === 'off') return;
       event.system.push({ type: 'text', text: getPonytailInstructions(mode) });
     };
@@ -185,8 +190,8 @@ export default {
         }
       },
 
-      'experimental.chat.system.transform': async (_input, output) => {
-        const mode = readMode();
+      'experimental.chat.system.transform': async (input, output) => {
+        const mode = readMode(input && input.sessionID);
         if (mode === 'off') return;
         const instructions = getPonytailInstructions(mode);
         if (output.system.length > 0) {
@@ -198,8 +203,8 @@ export default {
 
       'command.execute.before': async (input) => {
         if (!input || input.command !== 'ponytail') return;
-        persistMode(input.arguments);
-        log('info', 'ponytail ' + readMode());
+        persistMode(input.arguments, input.sessionID);
+        log('info', 'ponytail ' + readMode(input.sessionID));
       },
     };
   },

@@ -1002,4 +1002,33 @@ assert.equal(
   }
 }
 
+// The level belongs to the session that set it: with the session id on stdin, a
+// /ponytail in one session never reaches another session's compaction or
+// subagents, in the same repo (Claude Code) or anywhere (Codex), and a new
+// session does not switch a running one off.
+for (const [label, extra] of [
+  ['Claude Code, same repo', { CLAUDE_PROJECT_DIR: '/work/shared-repo' }],
+  ['Codex', { PLUGIN_DATA: path.join(temp, 'session-plugin-data') }],
+]) {
+  const sessionHome = path.join(temp, 'session-home-' + label.split(',')[0].replace(/\W/g, ''));
+  fs.mkdirSync(sessionHome, { recursive: true });
+  const env = { HOME: sessionHome, USERPROFILE: sessionHome, PONYTAIL_DEFAULT_MODE: 'off', ...extra };
+  const hook = (script, session, payload) =>
+    run(script, env, JSON.stringify({ session_id: session, ...payload })).stdout;
+  const subagent = (session) => hook('ponytail-subagent.js', session, { agent_type: 'general' });
+
+  assert.equal(hook('ponytail-activate.js', 'A', { source: 'startup' }), '', `${label}: a new session starts off`);
+  assert.equal(hook('ponytail-activate.js', 'B', { source: 'startup' }), '', `${label}: so does a second one`);
+  hook('ponytail-mode-tracker.js', 'A', { prompt: '/ponytail ultra' });
+  assert.match(subagent('A'), /level: ultra/, `${label}: the session that switched it on has it`);
+  assert.equal(subagent('B'), '', `${label}: a running session's subagents get nothing`);
+  assert.equal(hook('ponytail-activate.js', 'B', { source: 'compact' }), '', `${label}: nor does its compaction`);
+
+  assert.equal(hook('ponytail-activate.js', 'C', { source: 'startup' }), '', `${label}: a later new session starts off`);
+  assert.equal(subagent('C'), '', `${label}: and its subagents get nothing`);
+  assert.match(subagent('A'), /level: ultra/, `${label}: the new session did not switch the first one off`);
+  assert.match(hook('ponytail-activate.js', 'A', { source: 'compact' }), /level: ultra/,
+    `${label}: the first session keeps its level across compaction`);
+}
+
 console.log('hook compatibility checks passed');
