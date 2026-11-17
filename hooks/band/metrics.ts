@@ -101,6 +101,79 @@ export function testCounts(output: string): { passed?: number; failed?: number }
 
 export type Col = { key: string; label: string; value: string; sub: string; tone?: 'warning' | 'success' | 'error' }
 
+const union = (a: string[], b: string[]) => [...new Set([...a, ...b])]
+
+// A tool call as the transcript records it, with the result the model saw.
+export type ToolCall = { name: string; input: Record<string, unknown>; failed: boolean; text: string }
+
+type Block = { [field: string]: unknown }
+
+const textOf = (content: unknown): string =>
+  typeof content === 'string'
+    ? content
+    : Array.isArray(content)
+      ? (content as Block[]).map(b => (typeof b?.text === 'string' ? b.text : '')).join('\n')
+      : ''
+
+// The tool calls of the `grep -F` lines for TOOL_USE_RECORD and TOOL_RESULT_RECORD, in the order they ran,
+// each result joined to its call by tool_use_id.
+export function toolCalls(jsonl: string): ToolCall[] {
+  const uses: { id: string; name: string; input: Record<string, unknown> }[] = []
+  const results = new Map<string, { failed: boolean; text: string }>()
+  for (const line of jsonl.split('\n')) {
+    if (line === '') continue
+    let row: { message?: { content?: unknown } }
+    try {
+      row = JSON.parse(line) as typeof row
+    } catch {
+      continue
+    }
+    const content = row.message?.content
+    if (!Array.isArray(content)) continue
+    for (const block of content as Block[]) {
+      if (block?.type === 'tool_use') uses.push({ id: String(block.id), name: String(block.name), input: (block.input ?? {}) as Record<string, unknown> })
+      else if (block?.type === 'tool_result') results.set(String(block.tool_use_id), { failed: block.is_error === true, text: textOf(block.content) })
+    }
+  }
+  return uses.map(u => ({ name: u.name, input: u.input, failed: results.get(u.id)?.failed === true, text: results.get(u.id)?.text ?? '' }))
+}
+
+const str = (input: Record<string, unknown>, field: string) => (typeof input[field] === 'string' ? (input[field] as string) : '')
+
+// What the session's tool calls say about the band: the tests last run, the definitions an edit created or
+// removed, and the known names the new code calls. Folded from every call, so a turn's end sees the same
+// board the whole session would have built. The band reads it from the transcript because a mod that hooks
+// tool.call stops Code Mode from starting.
+export function toolsSummary(calls: ToolCall[], root: string, known: Map<string, string>): Pick<Band, 'created' | 'removed' | 'reused' | 'tests'> {
+  let created: string[] = []
+  let removed: string[] = []
+  let reused: string[] = []
+  let tests: Band['tests'] = { state: 'none' }
+  for (const call of calls) {
+    if (call.name === 'Bash') {
+      // A failing test run is the answer, not a tool that did nothing.
+      if (isTestCommand(str(call.input, 'command'))) tests = { state: call.failed ? 'fail' : 'pass', ...testCounts(call.text) }
+      continue
+    }
+    if ((call.name !== 'Edit' && call.name !== 'Write') || call.failed) continue
+    const file = str(call.input, 'file_path')
+    if (!inProject(file, root)) continue
+    // shortcut: a transcript keeps a Write's new content only, so an overwrite counts all its definitions as created; read the prior content if that matters.
+    const write = call.name === 'Write'
+    const before = write ? '' : str(call.input, 'old_string')
+    const after = str(call.input, write ? 'content' : 'new_string')
+    const own = defsIn(file, after)
+    const old = defsIn(file, before)
+    if (isSource(file)) {
+      created = union(created, own.filter(n => !old.includes(n)))
+      reused = union(reused, callsIn(addedLines(before, after), known, own))
+    }
+    removed = union(removed, old.filter(n => !own.includes(n)))
+    if (isCode(file) && tests.state !== 'none') tests = { ...tests, state: 'stale' }
+  }
+  return { created, removed, reused, tests }
+}
+
 const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 const fit = (s: string, max: number) => (s.length > max ? `${s.slice(0, Math.max(1, max - 1))}…` : s)
 
@@ -158,6 +231,9 @@ export const testsLabel = (t: Band['tests']) =>
 
 // Claude Code writes the session's sidebar name into its transcript on every rename.
 export const TITLE_RECORD = '"type":"custom-title"'
+// grep -F patterns for the two records a tool call leaves in the transcript.
+export const TOOL_USE_RECORD = '"type":"tool_use"'
+export const TOOL_RESULT_RECORD = '"type":"tool_result"'
 // grep -o pattern for the model of every reply in a transcript.
 export const MODEL_PATTERN = '"model":"claude-[^"]*"'
 

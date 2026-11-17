@@ -8,16 +8,10 @@ import {
   GREP_DEFS,
   NO_TOKENS,
   addTokens,
-  addedLines,
-  callsIn,
   defsIn,
   elapsed,
   fmtTokens,
   hits,
-  inProject,
-  isCode,
-  isSource,
-  isTestCommand,
   mainModel,
   markdown,
   metricsSvg,
@@ -26,11 +20,14 @@ import {
   percent,
   resume,
   snapshot,
-  testCounts,
   sessionTitle,
   taskKey,
   testsLabel,
   TITLE_RECORD,
+  toolCalls,
+  TOOL_RESULT_RECORD,
+  TOOL_USE_RECORD,
+  toolsSummary,
   totalTokens,
   upsertCsv,
   webhookRequest,
@@ -76,7 +73,6 @@ const band = atom({ plugin: 'ponytail', key: 'band' } as const, EMPTY)
 // State kept from an older version of the band lacks newer fields.
 const load = async ($: EngineInterface): Promise<Band> => ({ ...EMPTY, ...(await read($, band)) })
 
-const union = (a: string[], b: string[]) => [...new Set([...a, ...b])]
 const base = (path: string) => path.replace(/\/+$/, '').split('/').pop() ?? path
 
 // Windows sets USERPROFILE, not HOME.
@@ -123,6 +119,16 @@ async function readModel($: EngineInterface, transcript: string): Promise<string
   if (transcript === '') return ''
   const grep = await $.process.run(['grep', '-o', MODEL_PATTERN, transcript]).catch(() => undefined)
   return grep?.exitCode === 0 ? mainModel(grep.stdout) : ''
+}
+
+// What the session's tools did to the board: the tests they ran, the definitions they wrote, the known names they call.
+// From the transcript, because a mod that hooks tool.call stops Code Mode (experimental) from starting at all.
+// shortcut: replays every tool call each turn, so a long session re-reads itself; a saved byte offset would lift that.
+async function readTools($: EngineInterface, transcript: string, known: Map<string, string>, root: string) {
+  if (transcript === '') return undefined
+  const grep = await $.process.run(['grep', '-F', '-e', TOOL_USE_RECORD, '-e', TOOL_RESULT_RECORD, transcript]).catch(() => undefined)
+  if (grep === undefined || grep.exitCode > 1) return undefined
+  return toolsSummary(toolCalls(grep.stdout), root, known)
 }
 
 // Where Claude Code keeps the session's transcript: on managed, Team and Enterprise machines its cc-plugin-sec-default skips every classic.* hook, so no hook hands the path over.
@@ -251,44 +257,6 @@ export const register: Register = (on, options) => {
     return next(e)
   }).catch(($, e, next) => next(e))
 
-  on('tool.call', async ($, e, next) => {
-    if (e.tool === 'Bash') {
-      const ran = await next(e)
-      if (ran.deny === undefined && isTestCommand(e.command)) {
-        const tests = { state: ran.isError ? ('fail' as const) : ('pass' as const), ...testCounts(ran.text ?? '') }
-        await update($, band, b => ({ ...b, tests }))
-      }
-      return ran
-    }
-
-    if (e.tool !== 'Edit' && e.tool !== 'Write') return next(e)
-
-    const file = e.file_path
-    // A scratch script outside the project is never reused or called by it (#1300).
-    const repo = await $.session.repo().catch(() => null)
-    if (!inProject(file, repo?.root ?? (await $.session.cwd()))) return next(e)
-    const before = e.tool === 'Write' ? await $.fs.read(file).catch(() => '') : e.old_string
-    const after = e.tool === 'Write' ? e.content : e.new_string
-    const ran = await next(e)
-    if (ran.deny !== undefined || ran.isError) return ran
-
-    const oldDefs = defsIn(file, before)
-    const newDefs = defsIn(file, after)
-    const created = isSource(file) ? newDefs.filter(n => !oldDefs.includes(n)) : []
-    const removed = oldDefs.filter(n => !newDefs.includes(n))
-    const reused = isSource(file) ? callsIn(addedLines(before, after), known, newDefs) : []
-
-    await update($, band, b => ({
-      ...b,
-      reused: union(b.reused, reused),
-      created: union(b.created, created),
-      removed: union(b.removed, removed),
-      tests: isCode(file) && b.tests.state !== 'none' ? { ...b.tests, state: 'stale' as const } : b.tests,
-    }))
-
-    return ran
-  }).catch(($, e, next) => next(e))
-
   on('turn.complete', async ($, e, next) => {
     const used = e.usage
     if (e.agentId !== undefined) {
@@ -300,13 +268,15 @@ export const register: Register = (on, options) => {
     const usage = await $.session.usage()
     const turns = await $.session.turns()
     const level = await readLevel($)
-    const { removed, transcript: saved } = await load($)
+    const { removed: stored, transcript: saved } = await load($)
     const session = await $.session.id()
     // Here, not at start: the first turn writes the file, and a new id (/clear, /resume) or a move (/cd, a worktree) changes it.
     const kept = base(saved) === `${session}.jsonl` && (await $.fs.exists(saved).catch(() => false))
     const transcript = kept ? saved : await findTranscript($, session)
     const title = await readTitle($, transcript)
     const model = await readModel($, transcript)
+    const tools = await readTools($, transcript, known, (await $.session.repo().catch(() => null))?.root ?? (await $.session.cwd()))
+    const removed = tools?.removed ?? stored
 
     // A removed or renamed definition that is not defined again but still called somewhere.
     // shortcut: name match with git grep, so a same-named call in another module counts too.
@@ -331,6 +301,7 @@ export const register: Register = (on, options) => {
       const turn = cost >= b.cost ? cost - b.cost : cost
       return {
         ...b,
+        ...tools,
         level,
         transcript,
         cost,

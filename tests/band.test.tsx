@@ -1,5 +1,7 @@
 import { describe, expect, mock, test } from 'claude-code/testing'
 
+import { BAND_SESSION } from './fixtures/band-session'
+
 import { boardHtml, parseCsv, tasksFrom } from '../hooks/band/board'
 import type { Band } from '../hooks/band/types'
 import {
@@ -22,6 +24,10 @@ import {
   sessionTitle,
   snapshot,
   testCounts,
+  toolCalls,
+  toolsSummary,
+  TOOL_RESULT_RECORD,
+  TOOL_USE_RECORD,
   totalTokens,
   upsertCsv,
   CSV_HEADER,
@@ -500,21 +506,77 @@ test('copy hands the task to the clipboard as Markdown', async ($, on) => {
   await ui.unmount()
 })
 
-test('a test run shows its count, and an edit in the project after it marks the tests stale', async ($, on) => {
+test('the transcript alone says which tests ran, what an edit made and what it reused', () => {
+  const calls = toolCalls(BAND_SESSION)
+  // A Read and the prompt are not tool calls that change the board.
+  expect(calls.map(c => c.name)).toEqual(['Bash', 'Edit', 'Read', 'Write', 'Bash'])
+  const known = new Map([['lineTotal', 'src/money.ts:1'], ['formatPrice', 'src/money.ts:9']])
+
+  // The first run says how it went, before any edit.
+  expect(toolsSummary(calls.slice(0, 1), '/repo', known).tests).toEqual({ state: 'pass', passed: 14, failed: 0 })
+
+  // An edit swapping a definition for one that calls an existing helper: new, gone, reused, and the tests stale.
+  expect(toolsSummary(calls.slice(0, 2), '/repo', known)).toEqual({
+    created: ['send'],
+    removed: ['legacy'],
+    reused: ['lineTotal'],
+    tests: { state: 'stale', passed: 14, failed: 0 },
+  })
+
+  // A new source file counts every definition it holds as new.
+  const written = toolsSummary(calls.slice(0, 4), '/repo', known)
+  expect(written.created).toEqual(['send', 'lineTotal'])
+  expect(written.reused).toEqual(['lineTotal'])
+  expect(written.tests.state).toBe('stale')
+
+  // The second run is what the session ends on.
+  expect(toolsSummary(calls, '/repo', known).tests).toEqual({ state: 'pass', passed: 15, failed: 0 })
+
+  // A scratch script outside the project is never the project's code (#1300).
+  const scratch = [{ name: 'Edit', input: { file_path: '/tmp/scratch/drive.py', old_string: 'a = 1', new_string: 'def send():\n  pass' }, failed: false, text: 'ok' }]
+  expect(toolsSummary(scratch, '/repo', known)).toEqual({ created: [], removed: [], reused: [], tests: { state: 'none' } })
+})
+
+test('a turn reads the tests, reuse and stale tests out of its transcript', async ($, on) => {
   mock.clock(on)
+  mock.store(on)
+  const transcript = '/home/u/.claude/projects/-repo/s1.jsonl'
+  // What grep -F -e TOOL_USE_RECORD -e TOOL_RESULT_RECORD leaves of the fixture.
+  const toolLines = BAND_SESSION.split('\n').filter(line => line.includes(TOOL_USE_RECORD) || line.includes(TOOL_RESULT_RECORD)).join('\n')
+
+  on('env.get', ($, e) => ({ value: e.name === 'HOME' ? '/home/u' : undefined }))
   on('session.repo', () => ({ value: { root: '/repo' } }) as never)
-  on('tool.call', { tool: 'Bash' }, () => ({ result: { stdout: 'ℹ pass 14', stderr: '', interrupted: false }, text: 'ℹ pass 14' }) as never)
-  on('tool.call', { tool: 'Edit' }, () => ({ result: {}, text: 'ok' }) as never)
+  on('session.root', () => ({ value: '-repo' }))
+  on('session.id', () => ({ value: 's1' }))
+  on('session.turns', () => ({ value: 1 }))
+  on('session.usage', () => ({ value: { startedAt: 0, cost: { usd: 0.5 } } }) as never)
+  on('fs.exists', ($, e) => ({ value: e.path === transcript }))
+  on('fs.read', () => ({ value: '' }))
+  on('fs.list', () => ({ value: [] }) as never)
+  const rows: string[] = []
+  on('fs.write', ($, e) => {
+    if (e.path.endsWith('repo.csv')) rows.push(e.text)
+    return { value: undefined }
+  })
+  on('process.run', ($, e) => {
+    const argv = e.argv
+    if (argv.includes(TOOL_USE_RECORD)) return { value: { exitCode: 0, stdout: toolLines, stderr: '' } }
+    if (argv.includes('-nE')) return { value: { exitCode: 0, stdout: '/repo/src/money.ts:1:export function lineTotal(items: number[]) {\n', stderr: '' } }
+    if (argv[0] === 'git') return { value: { exitCode: 0, stdout: '/repo/src/app.ts:3:  legacy(cart)', stderr: '' } }
+    return { value: { exitCode: 1, stdout: '', stderr: '' } }
+  })
+  on('session.start', ($, e) => ({ cwd: e.cwd }))
+  on('turn.complete', () => ({ text: '' }))
+
   const ui = await $.ui.mount({ plugin: 'ponytail', surface: 'terminal', ...BAND })
+  await $.session.start({ cwd: '/repo', surface: null } as never)
+  await $.turn.complete({ answer: '', durationMs: 1000 } as never)
 
-  await $.tool.call({ tool: 'Bash', command: 'npm test' } as never)
-  expect(await ui.find({ type: 'Text', text: /✓ 14 tests/ })).toBeDefined()
-
-  // A scratch script outside the project changes nothing (#1300).
-  await $.tool.call({ tool: 'Edit', file_path: '/tmp/scratch/drive.py', old_string: 'a = 1', new_string: 'def send():\n  pass', replace_all: false } as never)
-  expect(await ui.find({ type: 'Text', text: /✓ 14 tests/ })).toBeDefined()
-
-  await $.tool.call({ tool: 'Edit', file_path: '/repo/cart.py', old_string: 'a = 1', new_string: 'a = 2', replace_all: false } as never)
-  expect(await ui.find({ type: 'Text', text: /no test since change/ })).toBeDefined()
+  // The tests, the reuse and the callers the edit left open, all without a tool.call hook.
+  expect(await ui.find({ type: 'Text', text: /✓ 15 tests/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /33% reuse/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /⚠ 1 callers open/ })).toBeDefined()
+  // reuse_pct, reused, new, callers_open in the ledger: 1 of 3 functions reused.
+  expect(rows.at(-1)).toContain(',33,1,2,1,')
   await ui.unmount()
 })
