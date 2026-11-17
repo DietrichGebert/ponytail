@@ -251,6 +251,7 @@ export const register: Register = (on, options) => {
     return next(e)
   }).catch(($, e, next) => next(e))
 
+  // The one hook Claude Code refuses Code Mode for, and it reads the mod before running it: the band ships as its own plugin.
   on('tool.call', async ($, e, next) => {
     if (e.tool === 'Bash') {
       const ran = await next(e)

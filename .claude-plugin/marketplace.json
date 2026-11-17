@@ -12,6 +12,12 @@
       "description": "Forces the laziest solution that works. YAGNI, stdlib first, one line over fifty.",
       "source": "./",
       "category": "productivity"
+    },
+    {
+      "name": "ponytail-band",
+      "description": "The band above the prompt and the board page: task cost, reused code, tests. Enable it with ponytail; leave it off to keep Claude Code's Code Mode (experimental), which won't start with a mod that inspects tool calls.",
+      "source": "./hooks/band",
+      "category": "productivity"
     }
   ]
 }

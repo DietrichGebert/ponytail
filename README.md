@@ -129,6 +129,8 @@ In Claude Code, ponytail now shows a band above the prompt: what the current tas
 
 **Board** opens a local page with every task across your projects: cost, agent time and tokens over time, every session with its tests, and the days you worked. By default, everything stays on your machine, in `~/.config/ponytail/band/`. `/ponytail band import` adds your past Claude Code sessions to it, with their cost, agent time and tokens.
 
+The band is a plugin of its own, `ponytail-band`, in this marketplace: `/plugin install ponytail-band@ponytail` for the band and the board, and leave it off for Code Mode (experimental, `CLAUDE_CODE_EXPERIMENTAL_CODE_MODE=1`). Claude Code won't start Code Mode with an installed mod that inspects tool calls, and the band's mod hooks `tool.call` because that is how it counts tests and reused code; it reads the mod before running it, so no check inside the mod can stand it down for one session. Upgrading from 5.3: the band, and its settings (ledger, webhook URL, webhook token, task names), moved into `ponytail-band`, so turn it on in `/plugin` and set them there.
+
 ## How it works
 
 <p align="center">

@@ -20,6 +20,7 @@ const PINNED_SEMVER = /^\d+\.\d+\.\d+$/;
 // manifests here so a future ecosystem can't drift unnoticed.
 const VERSION_FILES = [
   '.claude-plugin/plugin.json',  // Claude Code plugin — what users install
+  'hooks/band/.claude-plugin/plugin.json', // ponytail-band, the band's own plugin
   '.codex-plugin/plugin.json',   // Codex plugin
   '.devin-plugin/plugin.json',   // Devin CLI plugin
   '.github/plugin/plugin.json',  // Copilot plugin

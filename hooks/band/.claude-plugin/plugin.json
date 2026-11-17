@@ -1,0 +1,39 @@
+{
+  "name": "ponytail-band",
+  "version": "5.3.3",
+  "description": "The ponytail band above the prompt and the board page: what the task costs, how much code it reused, whether the tests passed. Its mod inspects tool calls, which Claude Code's Code Mode (experimental) refuses to start with.",
+  "author": {
+    "name": "Dietrich Gebert",
+    "url": "https://github.com/DietrichGebert"
+  },
+  "hooks": [
+    "./claude-band.json"
+  ],
+  "types": "./types.d.ts",
+  "userConfig": {
+    "ledger": {
+      "type": "boolean",
+      "title": "Task board",
+      "description": "After every turn, write this task's row (cost, turns, agent time, tokens, reuse, tests) to ~/.config/ponytail/band/<project>.csv for the board.",
+      "default": true
+    },
+    "webhookUrl": {
+      "type": "string",
+      "title": "Webhook URL",
+      "description": "Optional: an https address that gets this task's row as JSON after every turn (a team board, n8n, a sheet script). Empty: nothing leaves this machine.",
+      "default": ""
+    },
+    "webhookToken": {
+      "type": "string",
+      "title": "Webhook token",
+      "sensitive": true,
+      "description": "Optional: sent to the webhook as a Bearer token. Kept in the system keychain, never in a settings file or a repo."
+    },
+    "sendNames": {
+      "type": "boolean",
+      "title": "Send task names",
+      "default": true,
+      "description": "Send each task's name (its name in the Claude Code sidebar, or its first prompt) to the webhook. Off: the board shows the task without a name."
+    }
+  }
+}

@@ -133,15 +133,30 @@ for (const script of ['ponytail-mode-tracker.js', 'ponytail-activate.js']) {
 }
 
 test('Claude and Codex manifests point at the shared host-specific hook config', () => {
-  // Claude Code also loads the band's hooks module, from a file of its own the other hosts never read.
   const expected = {
-    '.claude-plugin/plugin.json': [`./${HOOKS_JSON}`, './hooks/claude-band.json'],
+    '.claude-plugin/plugin.json': [`./${HOOKS_JSON}`],
     '.codex-plugin/plugin.json': `./${HOOKS_JSON}`,
   };
   for (const rel of HOST_PLUGIN_MANIFESTS) {
     const manifest = JSON.parse(fs.readFileSync(path.join(root, rel), 'utf8'));
     assert.deepEqual(manifest.hooks, expected[rel], `${rel} must not rely on root hooks auto-discovery`);
   }
+});
+
+// Claude Code refuses to start Code Mode (experimental) when an enabled plugin has a mod that
+// inspects tool calls, and it decides that from the mod itself before any of it runs — so the
+// band's mod, the one that hooks tool.call, has to live in a plugin of its own (ponytail-band).
+test('the ponytail plugin declares no mod, so Code Mode can start with it', () => {
+  const manifest = JSON.parse(fs.readFileSync(path.join(root, '.claude-plugin/plugin.json'), 'utf8'));
+  for (const rel of manifest.hooks) {
+    const declared = JSON.parse(fs.readFileSync(path.join(root, rel), 'utf8'));
+    assert.equal(declared.modules, undefined, `${rel} is declared from ponytail, so it would block Code Mode`);
+  }
+
+  const band = JSON.parse(fs.readFileSync(path.join(root, 'hooks/band/.claude-plugin/plugin.json'), 'utf8'));
+  assert.deepEqual(band.hooks, ['./claude-band.json'], 'the band plugin must declare its mod');
+  const mods = JSON.parse(fs.readFileSync(path.join(root, 'hooks/band/claude-band.json'), 'utf8'));
+  assert.deepEqual(mods.modules, ['./register.tsx'], 'the band mod must resolve inside the band plugin');
 });
 
 // #824: lifecycle hook commands must not interpolate the plugin-root
