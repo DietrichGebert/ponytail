@@ -129,6 +129,8 @@ In Claude Code, ponytail now shows a band above the prompt: what the current tas
 
 **Board** opens a local page with every task across your projects: cost, agent time and tokens over time, every session with its tests, and the days you worked. By default, everything stays on your machine, in `~/.config/ponytail/band/`. `/ponytail band import` adds your past Claude Code sessions to it, with their cost, agent time and tokens.
 
+Code Mode (experimental, `CLAUDE_CODE_EXPERIMENTAL_CODE_MODE=1`) does not start while ponytail is on: Claude Code refuses it for an installed mod that hooks `tool.call`, and the band's mod is one, because that hook is how it counts tests and reused code. Claude Code reads a mod's source to decide this before the mod runs, so a mod cannot stand down for a Code Mode session; turn ponytail off with `/plugin` for those sessions and back on after.
+
 ## How it works
 
 <p align="center">

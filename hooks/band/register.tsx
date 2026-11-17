@@ -251,6 +251,8 @@ export const register: Register = (on, options) => {
     return next(e)
   }).catch(($, e, next) => next(e))
 
+  // Code Mode won't start with a mod that hooks tool.call, and this hook is ponytail's only one: Claude Code reads the
+  // mod's source to decide that, so no runtime check here can stand it down for a Code Mode session.
   on('tool.call', async ($, e, next) => {
     if (e.tool === 'Bash') {
       const ran = await next(e)
