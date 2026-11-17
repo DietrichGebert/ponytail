@@ -45,9 +45,9 @@ const statePath = path.join(stateDir, STATE_FILE);
 
 // Claude Code hands every hook its project dir, so the live mode is kept per
 // project and concurrent sessions in different repos stop overwriting each other
-// (#662, #809). Hosts without it keep the single shared flag.
-// ponytail: sessions in the SAME repo still share one mode, and the statusline
-// scripts read the shared flag (last write wins); key by session_id if either matters.
+// (#662, #809). Hosts without it keep the single shared flag. A session id from
+// the hook payload narrows this further (bindSession below).
+// ponytail: the statusline scripts read the shared flag (last write wins).
 const projectDir = (process.env.CLAUDE_PROJECT_DIR || '').trim();
 // Replacing separators with '_' aliases e.g. /work/a/b and /work/a_b (#662).
 // Do not read old sanitized keys: they cannot be assigned to one project safely.
@@ -56,9 +56,22 @@ const projectStatePath = projectDir
     createHash('sha256').update(path.normalize(projectDir)).digest('hex'))
   : null;
 
+// The live level belongs to one conversation: hosts that pass the session id on
+// stdin (Claude Code, Codex) key the flag by it, so /ponytail in one session never
+// reaches another session's compaction or subagents, even in the same repo.
+// Each hook calls bindSession before reading or writing the mode.
+let sessionStatePath = null;
+
+function bindSession(sessionId) {
+  const id = typeof sessionId === 'string' ? sessionId.trim() : '';
+  if (!id) return;
+  sessionStatePath = path.join(stateDir, 'ponytail-sessions',
+    createHash('sha256').update(id).digest('hex'));
+}
+
 // The shared flag is still written, for the statusline and project-less hosts.
 function setMode(mode) {
-  for (const file of [projectStatePath, statePath]) {
+  for (const file of [sessionStatePath || projectStatePath, statePath]) {
     if (!file) continue;
     fs.mkdirSync(path.dirname(file), { recursive: true });
     fs.writeFileSync(file, mode);
@@ -66,7 +79,7 @@ function setMode(mode) {
 }
 
 function clearMode() {
-  for (const file of [projectStatePath, statePath]) {
+  for (const file of [sessionStatePath || projectStatePath, statePath]) {
     if (file) try { fs.unlinkSync(file); } catch (e) {}
   }
 }
@@ -74,7 +87,7 @@ function clearMode() {
 // Live mode written by activate/mode-tracker. Absent flag = ponytail off.
 function readMode() {
   try {
-    return fs.readFileSync(projectStatePath || statePath, 'utf8').trim() || null;
+    return fs.readFileSync(sessionStatePath || projectStatePath || statePath, 'utf8').trim() || null;
   } catch (e) {
     return null;
   }
@@ -168,6 +181,7 @@ function writeHookOutput(event, mode, context = '') {
 }
 
 module.exports = {
+  bindSession,
   clearMode,
   cursorRuleNotice,
   cursorRulePath,

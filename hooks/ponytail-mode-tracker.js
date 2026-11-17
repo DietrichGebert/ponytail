@@ -7,6 +7,7 @@ const path = require('path');
 const { spawn } = require('child_process');
 const { getClaudeDir, getDefaultMode, isDeactivationCommand, writeDefaultMode } = require('./ponytail-config');
 const {
+  bindSession,
   clearMode,
   cursorRuleNotice,
   cursorRulePath,
@@ -30,6 +31,7 @@ function finish() {
   try {
     // Strip UTF-8 BOM some shells prepend when piping (breaks JSON.parse)
     const data = JSON.parse(input.replace(/^\uFEFF/, ''));
+    bindSession(data.session_id);
     const prompt = (data.prompt || '').trim().toLowerCase();
 
     // Cursor with the always-on rule in the workspace: no hook can change or
