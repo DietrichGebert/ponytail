@@ -28,3 +28,21 @@ assert.ok(!/NOTICE|asking|leaked|outside/.test(map), map);
 assert.ok(map.includes('src/: Foo, Bar, baz'), map);
 assert.ok(map.includes('self.helper'), map);
 fs.rmSync(dir, { recursive: true, force: true });
+
+// UTF-8 BOMs must not hide the first declaration in a source file.
+const bomDir = fs.mkdtempSync(path.join(os.tmpdir(), 'ponytail-map-bom-'));
+try {
+  for (const [folder, file, source, expected] of [
+    ['js', 'util.js', 'export function firstJs() {}\nexport const secondJs = 1;\n', 'firstJs, secondJs'],
+    ['py', 'util.py', 'def firstPy(): pass\ndef secondPy(): pass\n', 'firstPy, secondPy'],
+  ]) {
+    fs.mkdirSync(path.join(bomDir, folder));
+    fs.writeFileSync(path.join(bomDir, folder, file), source);
+    const withoutBom = buildMap(bomDir);
+    assert.ok(withoutBom.includes(`${folder}/: ${expected}`), withoutBom);
+    fs.writeFileSync(path.join(bomDir, folder, file), '\uFEFF' + source);
+    assert.strictEqual(buildMap(bomDir), withoutBom);
+  }
+} finally {
+  fs.rmSync(bomDir, { recursive: true, force: true });
+}

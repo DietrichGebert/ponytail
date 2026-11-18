@@ -83,7 +83,7 @@ function buildMap(root = process.cwd()) {
     let text;
     try {
       if (!fs.lstatSync(path.join(root, f)).isFile()) continue;
-      text = fs.readFileSync(path.join(root, f), 'utf8').slice(0, 65536);
+      text = fs.readFileSync(path.join(root, f), 'utf8').replace(/^\uFEFF/, '').slice(0, 65536);
     } catch (e) { continue; }
     const names = namesIn(f, text);
     if (!names.length) continue;
