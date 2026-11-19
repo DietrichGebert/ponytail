@@ -372,6 +372,15 @@ export const register: Register = (on, options) => {
       await update($, band, x => ({ ...x, details: !x.details }))
       await $.store.set('details', !b.details)
     }
+    const hide = async () => {
+      try {
+        await $.fs.write(`${await claudeDir($)}/.ponytail-band`, 'off')
+        // Refresh the current view after changing the persisted visibility flag.
+        await update($, band, x => ({ ...x }))
+      } catch {
+        $.ui.toast('ponytail band: could not hide the band')
+      }
+    }
     const review = () => run($, 'ponytail:ponytail-review')
     const audit = () => run($, 'ponytail:ponytail-audit')
     const board = () => openBoard($).catch(() => $.ui.toast('ponytail band: could not open the board'))
@@ -418,6 +427,7 @@ export const register: Register = (on, options) => {
           <Button key="audit" plain label="Audit" onPress={audit} />
           <Button key="board" plain label="Board" onPress={board} />
           <Button key="details" plain label="Details" onPress={toggle} />
+          <Button key="hide" plain label="Hide" onPress={hide} />
         </Box>
       )
     }
@@ -487,6 +497,7 @@ export const register: Register = (on, options) => {
           <Button key="audit" plain label="Audit" onPress={audit} />
           <Button key="board" plain label="Board" onPress={board} />
           <Button key="details" plain label="Compact" onPress={toggle} />
+          <Button key="hide" plain label="Hide" onPress={hide} />
         </Box>
         {metrics}
       </Box>
