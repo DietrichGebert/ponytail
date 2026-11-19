@@ -113,6 +113,10 @@ const STYLE = `.l,.s{fill:#87867f;font:12px ${FONT}}.v{fill:#1f1e1d;font:600 16p
 // shortcut: by rank, not by the row's theme key, since an SVG cannot read the theme; map keys if the panel changes.
 const SEG_COLORS = ['#4f8ef7', '#e8743b', '#14a38b', '#d4a017']
 
+// The bar's SVG height; the 4px bar sits 8px down, clear of the selected level button above it.
+export const BAR_H = 14
+const BAR_Y = 8
+
 // Tokens as the Context panel prints them: 733, 6.6K, 44K.
 export const panelTokens = (n: number) => (n < 1000 ? String(n) : `${(n / 1000).toFixed(1).replace(/\.0$/, '')}K`)
 
@@ -123,7 +127,7 @@ const SEG_ORDER = { used: 0, buffer: 1, free: 2, deferred: 3 }
 // Each segment carries a <title>, so an interactive Svg shows its name, tokens and share on hover.
 // It stretches to the slot (preserveAspectRatio none): only rects, nothing that would distort.
 export function contextBar(segs: Seg[], width = 1000): string {
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${width * 2}" height="10" viewBox="0 0 ${width} 10" preserveAspectRatio="none"><style>${STYLE}</style>${contextRects(segs, width)}</svg>`
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${width * 2}" height="${BAR_H}" viewBox="0 0 ${width} ${BAR_H}" preserveAspectRatio="none"><style>${STYLE}</style>${contextRects(segs, width)}</svg>`
 }
 
 function contextRects(segs: Seg[], width: number): string {
@@ -132,7 +136,7 @@ function contextRects(segs: Seg[], width: number): string {
     .filter(s => s.kind !== 'deferred' && s.tokens > 0)
     .sort((a, b) => SEG_ORDER[a.kind] - SEG_ORDER[b.kind] || (a.kind === 'used' ? b.tokens - a.tokens : 0))
   const total = shown.reduce((n, s) => n + s.tokens, 0)
-  let out = `<rect class="t" x="0" y="3" width="${width}" height="4"/>`
+  let out = `<rect class="t" x="0" y="${BAR_Y}" width="${width}" height="4"/>`
   if (total === 0) return out
   let x = 0
   let used = 0
@@ -141,12 +145,12 @@ function contextRects(segs: Seg[], width: number): string {
     const title = `<title>${esc(s.name)} · ${panelTokens(s.tokens)} · ${((s.tokens / total) * 100).toFixed(1)}%</title>`
     const bar =
       s.kind === 'used'
-        ? `<rect x="${x.toFixed(1)}" y="3" width="${Math.max(1, w).toFixed(1)}" height="4" fill="${SEG_COLORS[used++] ?? '#9a9893'}"/>`
+        ? `<rect x="${x.toFixed(1)}" y="${BAR_Y}" width="${Math.max(1, w).toFixed(1)}" height="4" fill="${SEG_COLORS[used++] ?? '#9a9893'}"/>`
         : s.kind === 'buffer'
-          ? `<rect class="u" x="${x.toFixed(1)}" y="3" width="${w.toFixed(1)}" height="4"/>`
+          ? `<rect class="u" x="${x.toFixed(1)}" y="${BAR_Y}" width="${w.toFixed(1)}" height="4"/>`
           : ''
-    // A 4px bar is too thin to hover: the full 10px strip holds the tooltip.
-    out += `<g>${title}${bar}<rect x="${x.toFixed(1)}" y="0" width="${Math.max(1, w).toFixed(1)}" height="10" fill="transparent"/></g>`
+    // A 4px bar is too thin to hover: the full-height strip holds the tooltip.
+    out += `<g>${title}${bar}<rect x="${x.toFixed(1)}" y="0" width="${Math.max(1, w).toFixed(1)}" height="${BAR_H}" fill="transparent"/></g>`
     x += w
   }
   return out

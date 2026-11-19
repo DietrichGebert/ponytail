@@ -22,6 +22,7 @@ import {
   markdown,
   metricsSvg,
   contextBar,
+  BAR_H,
   MODEL_PATTERN,
   parseDefs,
   percent,
@@ -509,7 +510,7 @@ export const register: Register = (on, options) => {
           numbers
         ) : (
           <Box flexDirection="column">
-            <Svg isInteractive height={10} source={contextBar(segs)} alt={`context ${segs.filter(s => s.kind === 'used').map(s => `${s.name} ${s.tokens}`).join(', ')}`} />
+            <Svg isInteractive height={BAR_H} source={contextBar(segs)} alt={`context ${segs.filter(s => s.kind === 'used').map(s => `${s.name} ${s.tokens}`).join(', ')}`} />
             {numbers}
           </Box>
         )
@@ -517,7 +518,7 @@ export const register: Register = (on, options) => {
 
     return stack(
       // The desktop's SVG draws its own line at the top, which would touch the buttons without the gap.
-      // The context bar carries its own 3px margin, so it needs no gap; the plain line does.
+      // The context bar carries its own top margin, so it needs no gap; the plain line does.
       <Box flexDirection="column" width={width} gap={e.surface === 'desktop' && segTotal === 0 ? 1 : 0}>
         <Box flexDirection="row" alignItems="center" gap={1}>
           {LEVELS.map(level => (
