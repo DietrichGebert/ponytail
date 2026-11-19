@@ -25,7 +25,8 @@ const SHARED = /(util|helper|lib|common|shared|service|component|hook|core|model
 const PATTERNS = {
   py: [/^(?:async\s+)?def\s+([A-Za-z]\w*)/gm, /^class\s+([A-Za-z]\w*)/gm],
   js: [/^export\s+(?:default\s+)?(?:async\s+)?(?:function\*?|class|const|let|var|interface|type|enum)\s+([A-Za-z_$][\w$]*)/gm,
-       /^export\s*\{([^}]*)\}/gm],
+       /^export\s*\{([^}]*)\}/gm,
+       /^export\s+\*\s+as\s+([A-Za-z_$][\w$]*)\s+from\b/gm],
   go: [/^func\s+(?:\([^)]*\)\s*)?([A-Z]\w*)/gm, /^type\s+([A-Z]\w*)/gm],
   rs: [/^pub\s+(?:async\s+)?(?:fn|struct|enum|trait|type)\s+(\w+)/gm],
   rb: [/^\s*(?:def|class|module)\s+([A-Za-z][\w.]*)/gm],
