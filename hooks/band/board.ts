@@ -211,8 +211,13 @@ const APP = `(function () {
     tokens: { label: 'Tokens', pick: function (t) { return t.tokens }, fmt: tok }
   }
   function total(list, pick) { return list.map(pick).reduce(add, 0) }
-  function latest(name) { return tasks.filter(function (t) { return t.project === name }).reduce(function (m, t) { return t.started > m ? t.started : m }, '') }
-  var names = Array.from(new Set(tasks.map(function (t) { return t.project }))).sort(function (a, b) { return latest(b).localeCompare(latest(a)) })
+  var projectInfo = new Map()
+  tasks.forEach(function (t) {
+    var info = projectInfo.get(t.project)
+    if (info) { info.count++; if (t.started > info.latest) info.latest = t.started }
+    else projectInfo.set(t.project, { count: 1, latest: t.started })
+  })
+  var names = Array.from(projectInfo.keys()).sort(function (a, b) { return projectInfo.get(b).latest.localeCompare(projectInfo.get(a).latest) })
   function colorOf(name) { return PALETTE[names.indexOf(name) % PALETTE.length] }
   function scope() { return state.project ? tasks.filter(function (t) { return t.project === state.project }) : tasks }
   function first(list) { return list.reduce(function (m, t) { return !m || t.started < m ? t.started : m }, '') }
@@ -250,7 +255,7 @@ const APP = `(function () {
 
   function sidebar() {
     var nav = byId('projects'); nav.textContent = ''
-    ;[['', 'All projects', tasks.length]].concat(names.map(function (n) { return [n, n, tasks.filter(function (t) { return t.project === n }).length] })).forEach(function (p) {
+    ;[['', 'All projects', tasks.length]].concat(names.map(function (n) { return [n, n, projectInfo.get(n).count] })).forEach(function (p) {
       var b = h('button', 'nav-item' + (state.project === p[0] ? ' on' : '')); b.type = 'button'; b.title = p[1]
       if (p[0]) { var d = h('span', 'dot'); d.style.setProperty('--c', colorOf(p[0])); b.append(d) }
       b.append(h('span', 'name', p[1]), h('span', 'n', String(p[2])))
