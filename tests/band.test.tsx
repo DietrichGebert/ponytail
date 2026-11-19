@@ -528,9 +528,9 @@ test('clear needs a second press within 5 s, then runs /clear once', async ($, o
   // One press only arms it; it falls back to Clear after 5 s.
   await ui.press({ key: 'clear' })
   expect(sent).toEqual([])
-  expect(await ui.find({ text: 'Sure?' })).toBeDefined()
+  expect(await ui.find({ text: '⚠ Sure?' })).toBeDefined()
   await clock.advance(5000)
-  expect(await ui.find({ text: 'Sure?' })).toBeUndefined()
+  expect(await ui.find({ text: '⚠ Sure?' })).toBeUndefined()
   // Two presses in a row clear.
   await ui.press({ key: 'clear' })
   await ui.press({ key: 'clear' })

@@ -406,10 +406,11 @@ export const register: Register = (on, options) => {
     }
 
     const { Box, Text, Button } = $.ui.resolve(e)
-    // Same key armed or not, so the surface keeps it as one control.
+    // Same key armed or not, so the surface keeps it as one control. The desktop draws its own button and drops the
+    // red, so the ⚠ carries the warning there.
     const clearButton = b.clearArmed ? (
       <Button key="clear" plain onPress={clear}>
-        <Text color="error">Sure?</Text>
+        <Text color="error">⚠ Sure?</Text>
       </Button>
     ) : (
       <Button key="clear" plain label="Clear" onPress={clear} />
