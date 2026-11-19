@@ -209,6 +209,10 @@ describe('metrics', () => {
     expect(svg).toContain('<title>Messages &amp; more')
     expect(svg).toContain('<title>Free space · 250 · 50.0%</title>')
     expect(svg).not.toContain('deferred')
+    // The largest used row comes first and takes the first color, as in the panel.
+    const ranked = metricsSvg([{ key: 'cost', label: 'cost', value: '$1', sub: '' }], [], 100, [row('Small', 10, 'used'), row('Big', 90, 'used')])
+    expect(ranked.indexOf('<title>Big')).toBeLessThan(ranked.indexOf('<title>Small'))
+    expect(ranked).toContain('width="90.0" height="4" fill="#4f8ef7"')
     // No breakdown yet: the plain divider stays.
     expect(metricsSvg([{ key: 'cost', label: 'cost', value: '$1', sub: '' }], [], 500)).toContain('<line ')
   })
