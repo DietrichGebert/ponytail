@@ -107,14 +107,38 @@ const fit = (s: string, max: number) => (s.length > max ? `${s.slice(0, Math.max
 const FONT = "-apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif"
 // The image cannot read the app's theme, so it follows the system's.
 // shortcut: an app theme that differs from the system theme gets the wrong text color; pass the theme in if that bites.
-const STYLE = `.l,.s{fill:#87867f;font:12px ${FONT}}.v{fill:#1f1e1d;font:600 16px ${FONT}}.d{stroke:#1f1e1d;stroke-opacity:.12}.b{fill:#87867f}.warning{fill:#a86400}.success{fill:#2e7d32}.error{fill:#c62828}@media (prefers-color-scheme:dark){.v{fill:#ecebe6}.d{stroke:#fff;stroke-opacity:.14}.warning{fill:#e3a03d}.success{fill:#6abf69}.error{fill:#ef6a5a}}`
+const STYLE = `.l,.s{fill:#87867f;font:12px ${FONT}}.v{fill:#1f1e1d;font:600 16px ${FONT}}.d{stroke:#1f1e1d;stroke-opacity:.12}.b{fill:#87867f}.t{fill:#1f1e1d;fill-opacity:.08}.u{fill:#1f1e1d;fill-opacity:.2}.warning{fill:#a86400}.success{fill:#2e7d32}.error{fill:#c62828}@media (prefers-color-scheme:dark){.v{fill:#ecebe6}.d{stroke:#fff;stroke-opacity:.14}.t{fill:#fff;fill-opacity:.1}.u{fill:#fff;fill-opacity:.25}.warning{fill:#e3a03d}.success{fill:#6abf69}.error{fill:#ef6a5a}}`
 
 // The details row as one SVG for surfaces that draw it: real 1px dividers and exact columns.
-export function metricsSvg(cols: Col[], turnCosts: number[], width = 720): string {
+// One row of /context's breakdown: what the context bar draws.
+export type Seg = { tokens: number; kind: 'used' | 'free' | 'buffer' | 'deferred' }
+
+// The Context panel's colors, in its row order; later used rows are grey.
+// shortcut: by position, not by the row's theme key, since an SVG cannot read the theme; map keys if the order changes.
+const SEG_COLORS = ['#4f8ef7', '#e8743b', '#14a38b', '#d4a017']
+
+// The context window as one bar: used rows in color, the compaction buffer faint, free space empty.
+export function contextBar(segs: Seg[], width: number): string {
+  const shown = segs.filter(s => s.kind !== 'deferred' && s.tokens > 0)
+  const total = shown.reduce((n, s) => n + s.tokens, 0)
+  let out = `<rect class="t" x="0" y="0" width="${width}" height="4" rx="2"/>`
+  if (total === 0) return out
+  let x = 0
+  let used = 0
+  for (const s of shown) {
+    const w = (s.tokens / total) * width
+    if (s.kind === 'used') out += `<rect x="${x.toFixed(1)}" y="0" width="${Math.max(1, w).toFixed(1)}" height="4" fill="${SEG_COLORS[used++] ?? '#9a9893'}"/>`
+    else if (s.kind === 'buffer') out += `<rect class="u" x="${x.toFixed(1)}" y="0" width="${w.toFixed(1)}" height="4"/>`
+    x += w
+  }
+  return out
+}
+
+export function metricsSvg(cols: Col[], turnCosts: number[], width = 720, ctx: Seg[] = []): string {
   const height = 64
   const colW = width / Math.max(1, cols.length)
   const max = Math.max(...turnCosts, 0)
-  let body = `<line class="d" x1="0" y1="0.5" x2="${width}" y2="0.5"/>`
+  let body = ctx.length > 0 ? contextBar(ctx, width) : `<line class="d" x1="0" y1="0.5" x2="${width}" y2="0.5"/>`
   cols.forEach((c, i) => {
     const x = i * colW + (i === 0 ? 0 : 12)
     const tone = c.tone ? ` ${c.tone}` : ''

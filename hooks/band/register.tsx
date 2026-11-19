@@ -374,6 +374,11 @@ export const register: Register = (on, options) => {
     }
     const review = () => run($, 'ponytail:ponytail-review')
     const audit = () => run($, 'ponytail:ponytail-audit')
+    // /clear drops the whole conversation, so one stray click must not do it; a dismissed dialog clears nothing.
+    const clear = async () => {
+      const answer = await $.ui.ask('Clear the conversation and start over?', ['Clear', 'Cancel']).catch(() => 'Cancel')
+      if (answer === 'Clear') await run($, 'clear')
+    }
     const board = () => openBoard($).catch(() => $.ui.toast('ponytail band: could not open the board'))
     const copy = async () => {
       const done = await $.ui.copy({ text: markdown(snapshot(await load($), startedAt)), surface: e.surface })
@@ -418,6 +423,7 @@ export const register: Register = (on, options) => {
           <Button key="audit" plain label="Audit" onPress={audit} />
           <Button key="board" plain label="Board" onPress={board} />
           <Button key="details" plain label="Details" onPress={toggle} />
+          <Button key="clear" plain label="Clear" onPress={clear} />
         </Box>
       )
     }
@@ -442,11 +448,29 @@ export const register: Register = (on, options) => {
       })
     }
 
+    // The context window by category, as the Context panel draws it; a plain line until the first response.
+    const segs = (await $.session.usage({ breakdown: 'summary' }).catch(() => undefined))?.context.breakdown?.categories ?? []
+    const cells = e.props.bodyColumns
+    const segTotal = segs.reduce((n, s) => n + (s.kind === 'deferred' ? 0 : s.tokens), 0)
+    const line =
+      segTotal === 0 ? (
+        <Text dimColor wrap="truncate-end">
+          {'─'.repeat(cells)}
+        </Text>
+      ) : (
+        <Box flexDirection="row">
+          {segs
+            .filter(s => s.kind !== 'deferred' && s.tokens > 0)
+            .map((s, i) => (
+              <Text key={`seg-${i}`} color={s.kind === 'used' ? s.color : undefined} dimColor={s.kind !== 'used'}>
+                {(s.kind === 'free' ? '─' : '━').repeat(Math.max(s.kind === 'used' ? 1 : 0, Math.round((s.tokens / segTotal) * cells)))}
+              </Text>
+            ))}
+        </Box>
+      )
     let metrics = (
       <Box flexDirection="column">
-        <Text dimColor wrap="truncate-end">
-          {'─'.repeat(e.props.bodyColumns)}
-        </Text>
+        {line}
         <Box flexDirection="row" gap={2}>
           {cols.map(c => (
             // Off the terminal the columns share the row; a width in cells would leave most of it empty and cut the text.
@@ -466,7 +490,7 @@ export const register: Register = (on, options) => {
     // Text glyphs make broken lines in the desktop's proportional font; an SVG draws real ones.
     if (e.surface === 'desktop') {
       const { Svg } = $.ui.resolve(e)
-      metrics = <Svg source={metricsSvg(cols, b.turnCosts)} alt={cols.map(c => `${c.label} ${c.value}`).join(', ')} />
+      metrics = <Svg source={metricsSvg(cols, b.turnCosts, 720, segs)}alt={cols.map(c => `${c.label} ${c.value}`).join(', ')} />
     }
 
     return stack(
@@ -487,6 +511,7 @@ export const register: Register = (on, options) => {
           <Button key="audit" plain label="Audit" onPress={audit} />
           <Button key="board" plain label="Board" onPress={board} />
           <Button key="details" plain label="Compact" onPress={toggle} />
+          <Button key="clear" plain label="Clear" onPress={clear} />
         </Box>
         {metrics}
       </Box>

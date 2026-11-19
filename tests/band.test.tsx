@@ -188,6 +188,25 @@ describe('metrics', () => {
     expect(svg.match(/<rect /g)?.length).toBe(2)
   })
 
+  test('the top line becomes a context bar: used rows colored, buffer faint, deferred left out', () => {
+    const ctx = [
+      { tokens: 100, kind: 'used' as const },
+      { tokens: 100, kind: 'used' as const },
+      { tokens: 50, kind: 'buffer' as const },
+      { tokens: 250, kind: 'free' as const },
+      { tokens: 9999, kind: 'deferred' as const },
+    ]
+    const svg = metricsSvg([{ key: 'cost', label: 'cost', value: '$1', sub: '' }], [], 500, ctx)
+    expect(svg).not.toContain('<line ')
+    expect(svg).toContain('class="t"')
+    // 500 tokens shown over 500px: each used row is 100px wide, the buffer 50px from x=200.
+    expect(svg).toContain('x="0.0" y="0" width="100.0" height="4" fill="#4f8ef7"')
+    expect(svg).toContain('x="100.0" y="0" width="100.0" height="4" fill="#e8743b"')
+    expect(svg).toContain('class="u" x="200.0" y="0" width="50.0"')
+    // No breakdown yet: the plain divider stays.
+    expect(metricsSvg([{ key: 'cost', label: 'cost', value: '$1', sub: '' }], [], 500)).toContain('<line ')
+  })
+
   test('finds top-level definitions per language', () => {
     expect(defsIn('a.py', 'def to_cents(x):\n    pass\nclass Cart:\n    def total(self): pass')).toEqual(['to_cents', 'Cart'])
     expect(defsIn('a.ts', 'export function formatMoney() {}\nfunction local() {}\nconst x = 1')).toEqual(['formatMoney', 'local'])
