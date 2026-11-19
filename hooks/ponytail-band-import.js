@@ -252,13 +252,15 @@ function run() {
   fs.mkdirSync(dir, { recursive: true });
   const have = new Set();
   for (const f of fs.readdirSync(dir).filter(f => f.endsWith('.csv'))) {
-    try { fs.readFileSync(path.join(dir, f), 'utf8').split('\n').forEach(l => l && !l.startsWith('key,') && have.add(sessionOf(l))); } catch (e) {}
+    try { fs.readFileSync(path.join(dir, f), 'utf8').split('\n').forEach(l => l && !l.startsWith('key,') && have.add(sessionOf(l))); }
+    catch (e) { if (e.code !== 'ENOENT') throw e; }
   }
   let added = 0;
   for (const [project, rows] of byProject) {
     const file = path.join(dir, `${project.replace(/[^\w.-]/g, '_')}.csv`);
     let existing = '';
-    try { existing = fs.readFileSync(file, 'utf8'); } catch (e) {}
+    try { existing = fs.readFileSync(file, 'utf8'); }
+    catch (e) { if (e.code !== 'ENOENT') throw e; }
     const merged = mergeRows(existing, rows, have);
     if (merged.added > 0) fs.writeFileSync(file, merged.text);
     added += merged.added;
