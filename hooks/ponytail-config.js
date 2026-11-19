@@ -149,7 +149,9 @@ function writeDefaultMode(mode) {
   try {
     config = JSON.parse(fs.readFileSync(configPath, 'utf8').replace(/^\uFEFF/, ''));
     if (!config || typeof config !== 'object' || Array.isArray(config)) config = {};
-  } catch (_) {}
+  } catch (error) {
+    if (!(error instanceof SyntaxError) && error.code !== 'ENOENT') throw error;
+  }
   config.defaultMode = normalized;
   let existing;
   try { existing = fs.lstatSync(configPath); }

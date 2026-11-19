@@ -94,3 +94,52 @@ test('updating a symlinked config preserves the link and private target permissi
   assert.equal(fs.statSync(target).mode & 0o777, 0o600);
   assert.deepEqual(fs.readdirSync(root).sort(), ['managed-config.json', 'ponytail']);
 });
+
+for (const code of ['EACCES', 'EIO', 'EMFILE']) {
+  test(`a ${code} config read failure leaves saved settings intact`, (t) => {
+    const { file } = fixture(t);
+    const original = '{"defaultMode":"lite","quietStartup":true,"customSetting":42}\n';
+    fs.writeFileSync(file, original);
+    const read = fs.readFileSync;
+    const failure = Object.assign(new Error('config could not be read'), { code });
+    t.mock.method(fs, 'readFileSync', (target, ...args) => {
+      if (target === file) throw failure;
+      return read(target, ...args);
+    });
+    assert.throws(() => writeDefaultMode('ultra'), (error) => error === failure);
+    assert.equal(read(file, 'utf8'), original);
+    assert.deepEqual(fs.readdirSync(path.dirname(file)), ['config.json']);
+    t.mock.restoreAll();
+    assert.equal(writeDefaultMode('ultra'), 'ultra');
+    assert.deepEqual(JSON.parse(fs.readFileSync(file, 'utf8')), {
+      defaultMode: 'ultra', quietStartup: true, customSetting: 42,
+    });
+  });
+}
+
+test('a writable but unreadable config is not replaced', {
+  skip: process.platform === 'win32' || process.getuid?.() === 0
+    ? 'POSIX read permissions require an unprivileged process'
+    : false,
+}, (t) => {
+  const { file } = fixture(t);
+  const original = '{"defaultMode":"lite","hideStatus":true}\n';
+  fs.writeFileSync(file, original, { mode: 0o200 });
+  fs.accessSync(file, fs.constants.W_OK);
+  try {
+    assert.throws(() => writeDefaultMode('ultra'), { code: 'EACCES' });
+  } finally {
+    fs.chmodSync(file, 0o600);
+  }
+  assert.equal(fs.readFileSync(file, 'utf8'), original);
+  assert.deepEqual(fs.readdirSync(path.dirname(file)), ['config.json']);
+});
+
+test('readable malformed configs keep the existing reset behavior', (t) => {
+  const { file } = fixture(t);
+  for (const content of ['{invalid', 'null', '[]']) {
+    fs.writeFileSync(file, content);
+    assert.equal(writeDefaultMode('full'), 'full');
+    assert.deepEqual(JSON.parse(fs.readFileSync(file, 'utf8')), { defaultMode: 'full' });
+  }
+});
