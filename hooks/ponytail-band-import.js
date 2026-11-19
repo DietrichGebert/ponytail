@@ -106,8 +106,9 @@ function sessionStats(records, subagentRecords = [], sessionId = '') {
   const prompts = records.filter(human);
   if (prompts.length === 0) return null;
 
-  // Usage repeats on every record of one message: count each message id once, subagents included.
-  const seen = new Set();
+  // Keep one whole usage snapshot per message: early chunks can be partial, later replays zeroed.
+  const usages = new Map();
+  const total = u => (u.input_tokens || 0) + (u.output_tokens || 0) + (u.cache_read_input_tokens || 0) + (u.cache_creation_input_tokens || 0);
   const replies = {};
   let tokens = 0;
   let output = 0;
@@ -116,10 +117,13 @@ function sessionStats(records, subagentRecords = [], sessionId = '') {
   for (const r of records) if (reply(r)) replies[r.message.model] = (replies[r.message.model] || 0) + 1;
   for (const r of [...records, ...subagentRecords]) {
     if (!reply(r)) continue;
-    const { id, model, usage } = r.message;
-    if (!usage || !id || seen.has(id)) continue;
-    seen.add(id);
-    tokens += (usage.input_tokens || 0) + (usage.output_tokens || 0) + (usage.cache_read_input_tokens || 0) + (usage.cache_creation_input_tokens || 0);
+    const { id, usage } = r.message;
+    if (!usage || !id) continue;
+    const previous = usages.get(id);
+    if (!previous || total(usage) >= total(previous.usage)) usages.set(id, r.message);
+  }
+  for (const { model, usage } of usages.values()) {
+    tokens += total(usage);
     output += usage.output_tokens || 0;
     const c = replyCost(model, usage);
     estimate = estimate === null || c === null ? null : estimate + c;
