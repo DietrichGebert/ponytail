@@ -59,6 +59,7 @@ const EMPTY: Band = {
   tests: { state: 'none' },
   details: false,
   ctx: [],
+  clearArmed: false,
 }
 // The counters of one task: what a new session or /clear starts over.
 const TASK = {
@@ -387,10 +388,16 @@ export const register: Register = (on, options) => {
     }
     const review = () => run($, 'ponytail:ponytail-review')
     const audit = () => run($, 'ponytail:ponytail-audit')
-    // /clear drops the whole conversation, so one stray click must not do it; a dismissed dialog clears nothing.
+    // /clear drops the whole conversation, so one stray click must not do it: the first press arms the button
+    // ("Sure?" in red), a second within 5 s clears, and after 5 s it is plain Clear again.
     const clear = async () => {
-      const answer = await $.ui.ask('Clear the conversation and start over?', ['Clear', 'Cancel']).catch(() => 'Cancel')
-      if (answer === 'Clear') await run($, 'clear')
+      if (!(await load($)).clearArmed) {
+        await update($, band, x => ({ ...EMPTY, ...x, clearArmed: true }))
+        $.clock.after(5000, () => void update($, band, x => ({ ...EMPTY, ...x, clearArmed: false })))
+        return
+      }
+      await update($, band, x => ({ ...EMPTY, ...x, clearArmed: false }))
+      await run($, 'clear')
     }
     const board = () => openBoard($).catch(() => $.ui.toast('ponytail band: could not open the board'))
     const copy = async () => {
@@ -399,6 +406,14 @@ export const register: Register = (on, options) => {
     }
 
     const { Box, Text, Button } = $.ui.resolve(e)
+    // Same key armed or not, so the surface keeps it as one control.
+    const clearButton = b.clearArmed ? (
+      <Button key="clear" plain onPress={clear}>
+        <Text color="error">Sure?</Text>
+      </Button>
+    ) : (
+      <Button key="clear" plain label="Clear" onPress={clear} />
+    )
     // bodyColumns counts terminal cells; a graphical surface draws Buttons wider than their cells, so a row sized to it wraps there.
     const width = e.surface === 'terminal' ? e.props.bodyColumns : undefined
     const stack =(mine: NonNullable<typeof below>) => (below ? <Box flexDirection="column">{mine}{below}</Box> : mine)
@@ -436,7 +451,7 @@ export const register: Register = (on, options) => {
           <Button key="audit" plain label="Audit" onPress={audit} />
           <Button key="board" plain label="Board" onPress={board} />
           <Button key="details" plain label="Details" onPress={toggle} />
-          <Button key="clear" plain label="Clear" onPress={clear} />
+          {clearButton}
         </Box>
       )
     }
@@ -535,7 +550,7 @@ export const register: Register = (on, options) => {
           <Button key="audit" plain label="Audit" onPress={audit} />
           <Button key="board" plain label="Board" onPress={board} />
           <Button key="details" plain label="Compact" onPress={toggle} />
-          <Button key="clear" plain label="Clear" onPress={clear} />
+          {clearButton}
         </Box>
         {metrics}
       </Box>

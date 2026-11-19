@@ -29,6 +29,7 @@ export type Band = {
   tests: Tests
   details: boolean
   ctx: Seg[]
+  clearArmed: boolean
 }
 
 declare module 'claude-code' {
