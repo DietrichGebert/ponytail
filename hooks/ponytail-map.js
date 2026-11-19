@@ -31,8 +31,10 @@ const PATTERNS = {
   rb: [/^\s*(?:def|class|module)\s+([A-Za-z][\w.]*)/gm],
   jvm: [/^\s*(?:public\s+)?(?:static\s+)?(?:final\s+)?(?:class|interface|enum|record)\s+(\w+)/gm],
 };
+PATTERNS.swift = [...PATTERNS.jvm,
+  /^(?:(?:public|internal)\s+)?(?:func|struct|protocol|typealias|actor)\s+([A-Za-z_]\w*)/gm];
 const LANG = { py: 'py', js: 'js', jsx: 'js', mjs: 'js', cjs: 'js', ts: 'js', tsx: 'js', go: 'go', rs: 'rs',
-               rb: 'rb', java: 'jvm', kt: 'jvm', swift: 'jvm', cs: 'jvm', php: 'jvm' };
+               rb: 'rb', java: 'jvm', kt: 'jvm', swift: 'swift', cs: 'jvm', php: 'jvm' };
 
 function listFiles(root) {
   try {
