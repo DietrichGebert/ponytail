@@ -19,6 +19,7 @@ const SRC = /\.(py|js|jsx|mjs|cjs|ts|tsx|go|rs|rb|java|kt|php|swift|cs)$/;
 const SKIP_DIR = /(^|\/)(node_modules|\.git|dist|build|out|vendor|venv|\.venv|__pycache__|coverage|\.next|target|migrations|versions|fixtures|tests?|__tests__|spec)(\/|$)/;
 const SKIP_FILE = /(^|\/)(test_[^/]*|[^/]*(_test|\.test|\.spec|\.gen|\.min|\.d)\.[a-z]+)$/;
 const NAME = /^(?:type\s+)?(?:[\w$]+\s+as\s+)?([A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*)?)$/;
+const RUBY_NAME = /^((?:[A-Za-z]\w*::)*[A-Za-z]\w*(?:\.[A-Za-z]\w*)?[?!=]?)$/;
 const SAFE_PATH = /^[\w.@+$()[\]\/-]+$/;
 const SHARED = /(util|helper|lib|common|shared|service|component|hook|core|model|schema|api)/i;
 
@@ -28,7 +29,7 @@ const PATTERNS = {
        /^export\s*\{([^}]*)\}/gm],
   go: [/^func\s+(?:\([^)]*\)\s*)?([A-Z]\w*)/gm, /^type\s+([A-Z]\w*)/gm],
   rs: [/^pub\s+(?:async\s+)?(?:fn|struct|enum|trait|type)\s+(\w+)/gm],
-  rb: [/^\s*(?:def|class|module)\s+([A-Za-z][\w.]*)/gm],
+  rb: [/^\s*(?:def|class|module)\s+([A-Za-z][\w.:]*[?!=]?)/gm],
   jvm: [/^\s*(?:public\s+)?(?:static\s+)?(?:final\s+)?(?:class|interface|enum|record)\s+(\w+)/gm],
 };
 const LANG = { py: 'py', js: 'js', jsx: 'js', mjs: 'js', cjs: 'js', ts: 'js', tsx: 'js', go: 'go', rs: 'rs',
@@ -61,10 +62,11 @@ function listFiles(root) {
 
 function namesIn(file, text) {
   const lang = LANG[path.extname(file).slice(1)];
+  const identifier = lang === 'rb' ? RUBY_NAME : NAME;
   const names = [];
   for (const re of PATTERNS[lang] || []) {
     for (const m of text.matchAll(re)) {
-      for (const n of m[1].split(',').map((s) => (s.trim().match(NAME) || [])[1]).filter(Boolean)) {
+      for (const n of m[1].split(',').map((s) => (s.trim().match(identifier) || [])[1]).filter(Boolean)) {
         if (!n.startsWith('_') && !names.includes(n)) names.push(n);
       }
     }
