@@ -93,6 +93,9 @@ fs.mkdirSync(path.join(projects, 'abcd1234-0000', 'subagents'), { recursive: tru
 const withCwd = r => ({ ...r, cwd: '/work/shop/.claude/worktrees/brave-otter' });
 fs.writeFileSync(path.join(projects, 'abcd1234-0000.jsonl'), records.map(withCwd).map(r => JSON.stringify(r)).join('\n') + '\n');
 fs.writeFileSync(path.join(projects, 'abcd1234-0000', 'subagents', 'agent-1.jsonl'), sub.map(r => JSON.stringify(r)).join('\n'));
+fs.mkdirSync(path.join(projects, 'abcd1234-0000', 'subagents', 'agent-unreadable.jsonl'));
+fs.writeFileSync(path.join(projects, 'abcd1234-0000', 'subagents', 'agent-z.jsonl'),
+  JSON.stringify(reply('00:25', 's2', u(7000, 700))));
 fs.writeFileSync(path.join(projects, 'beef0000-1111.jsonl'), records.filter(r => !r.origin).map(withCwd).map(r => JSON.stringify(r)).join('\n'));
 const env = { CLAUDE_CONFIG_DIR: process.env.CLAUDE_CONFIG_DIR, XDG_CONFIG_HOME: process.env.XDG_CONFIG_HOME };
 process.env.CLAUDE_CONFIG_DIR = path.join(temp, 'claude');
@@ -102,6 +105,12 @@ try {
   const csv = fs.readFileSync(path.join(temp, 'config', 'ponytail', 'band', 'shop.csv'), 'utf8');
   assert.equal(csv.split('\n')[0], CSV_HEADER, 'a desktop worktree counts for its repo');
   assert.ok(csv.includes(',shop,Fix the cart totals,'));
+  const row = csv.split('\n')[1].split(',');
+  assert.equal(Number(row[CSV_HEADER.split(',').indexOf('tokens_total')]), s.tokens + 7700,
+    'one unreadable subagent transcript does not discard the other subagents');
+  assert.equal(Number(row[CSV_HEADER.split(',').indexOf('tokens_output')]), s.output + 700);
+  assert.equal(Number(row[CSV_HEADER.split(',').indexOf('cost_usd')]),
+    Number((s.cost + replyCost('claude-opus-5-5', u(7000, 700))).toFixed(2)));
   assert.deepEqual(run(), { sessions: 1, added: 0 }, 'a second import adds nothing');
 } finally {
   for (const [k, v] of Object.entries(env)) if (v === undefined) delete process.env[k]; else process.env[k] = v;
