@@ -2,7 +2,7 @@ import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register } from 'claude-code'
 
 import { boardHtml, tasksFrom } from './board'
-import type { Band } from './types'
+import type { Band, Seg } from './types'
 import type { Col } from './metrics'
 import {
   GREP_DEFS,
@@ -21,6 +21,10 @@ import {
   mainModel,
   markdown,
   metricsSvg,
+  contextBar,
+  barCells,
+  barRows,
+  BAR_H,
   MODEL_PATTERN,
   parseDefs,
   percent,
@@ -56,7 +60,13 @@ const EMPTY: Band = {
   openCallers: [],
   tests: { state: 'none' },
   details: false,
+  ctx: [],
+  ctxMax: 0,
+  clearArmedAt: null,
 }
+// How long a first press on Clear waits for the second.
+const CLEAR_ARM_MS = 5000
+const isArmed = (at: number | null, now: number) => at !== null && now - at < CLEAR_ARM_MS
 // The counters of one task: what a new session or /clear starts over.
 const TASK = {
   spent: 0,
@@ -71,6 +81,7 @@ const TASK = {
   removed: [],
   openCallers: [],
   tests: { state: 'none' as const },
+  clearArmedAt: null,
 }
 const band = atom({ plugin: 'ponytail', key: 'band' } as const, EMPTY)
 // State kept from an older version of the band lacks newer fields.
@@ -101,6 +112,17 @@ async function readLevel($: EngineInterface): Promise<string> {
     return LEVELS.includes(level) ? level : 'off'
   } catch {
     return 'off'
+  }
+}
+
+// The context window by category and the window it measures against. 'summary' estimates locally and sends no
+// request; 'full' (what /context sends) costs one token-count request per tool and memory file.
+async function readCtx($: EngineInterface): Promise<{ ctx: Seg[]; ctxMax: number } | undefined> {
+  const breakdown = (await $.session.usage({ breakdown: 'summary' }).catch(() => undefined))?.context?.breakdown
+  if (!breakdown) return undefined
+  return {
+    ctx: breakdown.categories.map(({ name, tokens, color, kind }) => ({ name, tokens, color, kind })),
+    ctxMax: breakdown.rawMaxTokens,
   }
 }
 
@@ -209,7 +231,9 @@ async function start($: EngineInterface): Promise<Map<string, string>> {
   const usage = await $.session.usage().catch(() => undefined)
   const csv = usage ? await $.fs.read(ledgerFile(await ledgerDir($), project)).catch(() => '') : ''
   const key = usage ? taskKey(session, usage.startedAt) : ''
-  await update($, band, b => resume({ ...EMPTY, ...b, level, details, project, session, cost: usage?.cost?.usd ?? b.cost }, csv, key))
+  // A new session id (/clear, /resume) must not keep the old window's bar: no breakdown yet draws the plain line.
+  const ctx = (await readCtx($)) ?? { ctx: [], ctxMax: 0 }
+  await update($, band, b => resume({ ...EMPTY, ...b, level, details, project, session, cost: usage?.cost?.usd ?? b.cost, ...ctx }, csv, key))
   return grep?.exitCode === 0 ? parseDefs(grep.stdout) : new Map()
 }
 
@@ -238,6 +262,15 @@ export const register: Register = (on, options) => {
   // /clear starts a new task: the counters start over, the cost baseline stays.
   on('session.end', async ($, e, next) => {
     if (e.reason === 'clear') await update($, band, b => ({ ...EMPTY, ...b, ...TASK }))
+    return next(e)
+  }).catch(($, e, next) => next(e))
+
+  // The context bar follows the window as it fills; the 'summary' breakdown sends no request, so every change can redraw it.
+  on('session.measure', async ($, e, next) => {
+    if (e.changed.includes('context')) {
+      const ctx = await readCtx($)
+      if (ctx) await update($, band, b => ({ ...EMPTY, ...b, ...ctx }))
+    }
     return next(e)
   }).catch(($, e, next) => next(e))
 
@@ -374,6 +407,19 @@ export const register: Register = (on, options) => {
     }
     const review = () => run($, 'ponytail:ponytail-review')
     const audit = () => run($, 'ponytail:ponytail-audit')
+    // /clear drops the whole conversation, so one stray click must not do it: the first press arms the button
+    // ("⚠ Sure?"), a second within 5 s clears. Armed is a time, not a flag, so a timer lost to a reload or one left
+    // from an earlier arm can never leave it armed or cut a new arm short; the timer only redraws.
+    const clear = async () => {
+      const at = await $.clock.now()
+      if (!isArmed((await load($)).clearArmedAt, at)) {
+        await update($, band, x => ({ ...EMPTY, ...x, clearArmedAt: at }))
+        $.clock.after(CLEAR_ARM_MS, () => void update($, band, x => (x.clearArmedAt === at ? { ...EMPTY, ...x, clearArmedAt: null } : x)))
+        return
+      }
+      await update($, band, x => ({ ...EMPTY, ...x, clearArmedAt: null }))
+      await run($, 'clear')
+    }
     const board = () => openBoard($).catch(() => $.ui.toast('ponytail band: could not open the board'))
     const copy = async () => {
       const done = await $.ui.copy({ text: markdown(snapshot(await load($), startedAt)), surface: e.surface })
@@ -381,6 +427,15 @@ export const register: Register = (on, options) => {
     }
 
     const { Box, Text, Button } = $.ui.resolve(e)
+    // Same key armed or not, so the surface keeps it as one control. The desktop draws its own button and drops the
+    // red, so the ⚠ carries the warning there.
+    const clearButton = isArmed(b.clearArmedAt, now) ? (
+      <Button key="clear" plain onPress={clear}>
+        <Text color="error">⚠ Sure?</Text>
+      </Button>
+    ) : (
+      <Button key="clear" plain label="Clear" onPress={clear} />
+    )
     // bodyColumns counts terminal cells; a graphical surface draws Buttons wider than their cells, so a row sized to it wraps there.
     const width = e.surface === 'terminal' ? e.props.bodyColumns : undefined
     const stack =(mine: NonNullable<typeof below>) => (below ? <Box flexDirection="column">{mine}{below}</Box> : mine)
@@ -418,6 +473,7 @@ export const register: Register = (on, options) => {
           <Button key="audit" plain label="Audit" onPress={audit} />
           <Button key="board" plain label="Board" onPress={board} />
           <Button key="details" plain label="Details" onPress={toggle} />
+          {clearButton}
         </Box>
       )
     }
@@ -442,11 +498,29 @@ export const register: Register = (on, options) => {
       })
     }
 
+    // The context window by category, kept fresh by session.measure; a plain line until the first breakdown.
+    const segs = b.ctx
+    const cells = e.props.bodyColumns
+    const hasBar = barRows(segs).length > 0
+    const line = !hasBar ? (
+      <Text dimColor wrap="truncate-end">
+        {'─'.repeat(cells)}
+      </Text>
+    ) : (
+      // Same order as the desktop bar; the cells add up to the row's width exactly, so it never wraps.
+      <Box flexDirection="row">
+        {barCells(segs, cells)
+          .filter(({ n }) => n > 0)
+          .map(({ seg, n }, i) => (
+            <Text key={`seg-${i}`} color={seg.kind === 'used' ? seg.color : undefined} dimColor={seg.kind !== 'used'}>
+              {(seg.kind === 'free' ? '─' : '━').repeat(n)}
+            </Text>
+          ))}
+      </Box>
+    )
     let metrics = (
       <Box flexDirection="column">
-        <Text dimColor wrap="truncate-end">
-          {'─'.repeat(e.props.bodyColumns)}
-        </Text>
+        {line}
         <Box flexDirection="row" gap={2}>
           {cols.map(c => (
             // Off the terminal the columns share the row; a width in cells would leave most of it empty and cut the text.
@@ -466,12 +540,22 @@ export const register: Register = (on, options) => {
     // Text glyphs make broken lines in the desktop's proportional font; an SVG draws real ones.
     if (e.surface === 'desktop') {
       const { Svg } = $.ui.resolve(e)
-      metrics = <Svg source={metricsSvg(cols, b.turnCosts)} alt={cols.map(c => `${c.label} ${c.value}`).join(', ')} />
+      const numbers = <Svg source={metricsSvg(cols, b.turnCosts, 720, !hasBar)} alt={cols.map(c => `${c.label} ${c.value}`).join(', ')} />
+      // Only the thin bar is interactive (for its <title> tooltips): a framed Svg needs its height given, the numbers keep the image's own.
+      metrics = !hasBar ? (
+        numbers
+      ) : (
+        <Box flexDirection="column">
+          <Svg isInteractive height={BAR_H} source={contextBar(segs, b.ctxMax)} alt={`context ${barRows(segs).map(s => `${s.name} ${s.tokens}`).join(', ')}`} />
+          {numbers}
+        </Box>
+      )
     }
 
     return stack(
       // The desktop's SVG draws its own line at the top, which would touch the buttons without the gap.
-      <Box flexDirection="column" width={width} gap={e.surface === 'desktop' ? 1 : 0}>
+      // The context bar carries its own top margin, so it needs no gap; the plain line does.
+      <Box flexDirection="column" width={width} gap={e.surface === 'desktop' && !hasBar ? 1 : 0}>
         <Box flexDirection="row" alignItems="center" gap={1}>
           {LEVELS.map(level => (
             <Button
@@ -487,6 +571,7 @@ export const register: Register = (on, options) => {
           <Button key="audit" plain label="Audit" onPress={audit} />
           <Button key="board" plain label="Board" onPress={board} />
           <Button key="details" plain label="Compact" onPress={toggle} />
+          {clearButton}
         </Box>
         {metrics}
       </Box>

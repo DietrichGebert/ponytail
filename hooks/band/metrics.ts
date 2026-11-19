@@ -1,7 +1,7 @@
 // Pure helpers for the band: no `$`, so the tests call them directly.
 
 import { duration, elapsed, fmtTokens, parseCsv } from './board'
-import type { Band, Tokens } from './types'
+import type { Band, Seg, Tokens } from './types'
 
 export { duration, elapsed, fmtTokens }
 
@@ -107,14 +107,78 @@ const fit = (s: string, max: number) => (s.length > max ? `${s.slice(0, Math.max
 const FONT = "-apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif"
 // The image cannot read the app's theme, so it follows the system's.
 // shortcut: an app theme that differs from the system theme gets the wrong text color; pass the theme in if that bites.
-const STYLE = `.l,.s{fill:#87867f;font:12px ${FONT}}.v{fill:#1f1e1d;font:600 16px ${FONT}}.d{stroke:#1f1e1d;stroke-opacity:.12}.b{fill:#87867f}.warning{fill:#a86400}.success{fill:#2e7d32}.error{fill:#c62828}@media (prefers-color-scheme:dark){.v{fill:#ecebe6}.d{stroke:#fff;stroke-opacity:.14}.warning{fill:#e3a03d}.success{fill:#6abf69}.error{fill:#ef6a5a}}`
+const STYLE = `.l,.s{fill:#87867f;font:12px ${FONT}}.v{fill:#1f1e1d;font:600 16px ${FONT}}.d{stroke:#1f1e1d;stroke-opacity:.12}.b{fill:#87867f}.t{fill:#1f1e1d;fill-opacity:.08}.u{fill:#1f1e1d;fill-opacity:.2}.warning{fill:#a86400}.success{fill:#2e7d32}.error{fill:#c62828}@media (prefers-color-scheme:dark){.v{fill:#ecebe6}.d{stroke:#fff;stroke-opacity:.14}.t{fill:#fff;fill-opacity:.1}.u{fill:#fff;fill-opacity:.25}.warning{fill:#e3a03d}.success{fill:#6abf69}.error{fill:#ef6a5a}}`
+
+// The Context panel's colors for its largest used rows; the rest are grey.
+// shortcut: by rank, not by the row's theme key, since an SVG cannot read the theme; map keys if the panel changes.
+const SEG_COLORS = ['#4f8ef7', '#e8743b', '#14a38b', '#d4a017']
+
+// The bar's SVG height; the 4px bar sits 8px down, clear of the selected level button above it.
+export const BAR_H = 14
+const BAR_Y = 8
+
+// Tokens as the Context panel prints them: 733, 6.6K, 44K.
+export const panelTokens = (n: number) => (n < 1000 ? String(n) : `${(n / 1000).toFixed(1).replace(/\.0$/, '')}K`)
+
+// The rows the bar draws, in the Context panel's order: used rows largest first (the panel colors them by that
+// rank), then the compaction buffer, then free space. Deferred tool schemas sit outside the window.
+const rank = (s: Seg) => (s.kind === 'used' ? 0 : s.kind === 'buffer' ? 1 : 2)
+export const barRows = (segs: Seg[]) =>
+  segs.filter(s => s.kind !== 'deferred' && s.tokens > 0).sort((a, b) => rank(a) - rank(b) || (a.kind === 'used' ? b.tokens - a.tokens : 0))
+
+// Terminal cells per row, rounded on the running sum so they add up to exactly `cells`.
+export function barCells(segs: Seg[], cells: number): { seg: Seg; n: number }[] {
+  const rows = barRows(segs)
+  const total = rows.reduce((n, s) => n + s.tokens, 0)
+  let sum = 0
+  let prev = 0
+  return rows.map(seg => {
+    sum += seg.tokens
+    const end = total === 0 ? 0 : Math.round((sum / total) * cells)
+    const n = end - prev
+    prev = end
+    return { seg, n }
+  })
+}
+
+// The context window as its own thin SVG, as wide as the numbers below it: used rows in color, the compaction
+// buffer faint, free space empty. Each segment carries a <title> (name, tokens, share of the window `max`, as the
+// panel counts it), so an interactive Svg shows it on hover.
+export function contextBar(segs: Seg[], max = 0, width = 720): string {
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${BAR_H}" viewBox="0 0 ${width} ${BAR_H}" preserveAspectRatio="none"><style>${STYLE}</style>${contextRects(segs, max, width)}</svg>`
+}
+
+function contextRects(segs: Seg[], max: number, width: number): string {
+  const shown = barRows(segs)
+  const total = shown.reduce((n, s) => n + s.tokens, 0)
+  const window = max > 0 ? max : total
+  let out = `<rect class="t" x="0" y="${BAR_Y}" width="${width}" height="4"/>`
+  if (total === 0) return out
+  let x = 0
+  let used = 0
+  for (const s of shown) {
+    const w = (s.tokens / total) * width
+    const title = `<title>${esc(s.name)} · ${panelTokens(s.tokens)} · ${((s.tokens / window) * 100).toFixed(1)}%</title>`
+    const bar =
+      s.kind === 'used'
+        ? `<rect x="${x.toFixed(1)}" y="${BAR_Y}" width="${Math.max(1, w).toFixed(1)}" height="4" fill="${SEG_COLORS[used++] ?? '#9a9893'}"/>`
+        : s.kind === 'buffer'
+          ? `<rect class="u" x="${x.toFixed(1)}" y="${BAR_Y}" width="${w.toFixed(1)}" height="4"/>`
+          : ''
+    // A 4px bar is too thin to hover: the full-height strip holds the tooltip.
+    out += `<g>${title}${bar}<rect x="${x.toFixed(1)}" y="0" width="${Math.max(1, w).toFixed(1)}" height="${BAR_H}" fill="transparent"/></g>`
+    x += w
+  }
+  return out
+}
 
 // The details row as one SVG for surfaces that draw it: real 1px dividers and exact columns.
-export function metricsSvg(cols: Col[], turnCosts: number[], width = 720): string {
+// `topLine` false when the context bar stands in for the divider above it.
+export function metricsSvg(cols: Col[], turnCosts: number[], width = 720, topLine = true): string {
   const height = 64
   const colW = width / Math.max(1, cols.length)
   const max = Math.max(...turnCosts, 0)
-  let body = `<line class="d" x1="0" y1="0.5" x2="${width}" y2="0.5"/>`
+  let body = topLine ? `<line class="d" x1="0" y1="0.5" x2="${width}" y2="0.5"/>` : ''
   cols.forEach((c, i) => {
     const x = i * colW + (i === 0 ? 0 : 12)
     const tone = c.tone ? ` ${c.tone}` : ''
