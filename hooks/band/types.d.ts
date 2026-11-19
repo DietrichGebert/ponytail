@@ -29,7 +29,10 @@ export type Band = {
   tests: Tests
   details: boolean
   ctx: Seg[]
-  clearArmed: boolean
+  // The window the breakdown measures against, in tokens (the panel's "/ 1M"); 0 before the first one.
+  ctxMax: number
+  // When Clear was pressed once, in $.clock.now() ms; armed for 5 s after, null when not.
+  clearArmedAt: number | null
 }
 
 declare module 'claude-code' {

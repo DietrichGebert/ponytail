@@ -120,29 +120,45 @@ const BAR_Y = 8
 // Tokens as the Context panel prints them: 733, 6.6K, 44K.
 export const panelTokens = (n: number) => (n < 1000 ? String(n) : `${(n / 1000).toFixed(1).replace(/\.0$/, '')}K`)
 
-// The Context panel's order: used rows, then the compaction buffer, then free space.
-const SEG_ORDER = { used: 0, buffer: 1, free: 2, deferred: 3 }
+// The rows the bar draws, in the Context panel's order: used rows largest first (the panel colors them by that
+// rank), then the compaction buffer, then free space. Deferred tool schemas sit outside the window.
+const rank = (s: Seg) => (s.kind === 'used' ? 0 : s.kind === 'buffer' ? 1 : 2)
+export const barRows = (segs: Seg[]) =>
+  segs.filter(s => s.kind !== 'deferred' && s.tokens > 0).sort((a, b) => rank(a) - rank(b) || (a.kind === 'used' ? b.tokens - a.tokens : 0))
 
-// The context window as its own thin SVG: used rows in color, the compaction buffer faint, free space empty.
-// Each segment carries a <title>, so an interactive Svg shows its name, tokens and share on hover.
-// It stretches to the slot (preserveAspectRatio none): only rects, nothing that would distort.
-export function contextBar(segs: Seg[], width = 1000): string {
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${width * 2}" height="${BAR_H}" viewBox="0 0 ${width} ${BAR_H}" preserveAspectRatio="none"><style>${STYLE}</style>${contextRects(segs, width)}</svg>`
+// Terminal cells per row, rounded on the running sum so they add up to exactly `cells`.
+export function barCells(segs: Seg[], cells: number): { seg: Seg; n: number }[] {
+  const rows = barRows(segs)
+  const total = rows.reduce((n, s) => n + s.tokens, 0)
+  let sum = 0
+  let prev = 0
+  return rows.map(seg => {
+    sum += seg.tokens
+    const end = total === 0 ? 0 : Math.round((sum / total) * cells)
+    const n = end - prev
+    prev = end
+    return { seg, n }
+  })
 }
 
-function contextRects(segs: Seg[], width: number): string {
-  // The panel ranks used rows by size and colors the largest first, so the same row gets the same color here.
-  const shown = segs
-    .filter(s => s.kind !== 'deferred' && s.tokens > 0)
-    .sort((a, b) => SEG_ORDER[a.kind] - SEG_ORDER[b.kind] || (a.kind === 'used' ? b.tokens - a.tokens : 0))
+// The context window as its own thin SVG, as wide as the numbers below it: used rows in color, the compaction
+// buffer faint, free space empty. Each segment carries a <title> (name, tokens, share of the window `max`, as the
+// panel counts it), so an interactive Svg shows it on hover.
+export function contextBar(segs: Seg[], max = 0, width = 720): string {
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${BAR_H}" viewBox="0 0 ${width} ${BAR_H}" preserveAspectRatio="none"><style>${STYLE}</style>${contextRects(segs, max, width)}</svg>`
+}
+
+function contextRects(segs: Seg[], max: number, width: number): string {
+  const shown = barRows(segs)
   const total = shown.reduce((n, s) => n + s.tokens, 0)
+  const window = max > 0 ? max : total
   let out = `<rect class="t" x="0" y="${BAR_Y}" width="${width}" height="4"/>`
   if (total === 0) return out
   let x = 0
   let used = 0
   for (const s of shown) {
     const w = (s.tokens / total) * width
-    const title = `<title>${esc(s.name)} · ${panelTokens(s.tokens)} · ${((s.tokens / total) * 100).toFixed(1)}%</title>`
+    const title = `<title>${esc(s.name)} · ${panelTokens(s.tokens)} · ${((s.tokens / window) * 100).toFixed(1)}%</title>`
     const bar =
       s.kind === 'used'
         ? `<rect x="${x.toFixed(1)}" y="${BAR_Y}" width="${Math.max(1, w).toFixed(1)}" height="4" fill="${SEG_COLORS[used++] ?? '#9a9893'}"/>`

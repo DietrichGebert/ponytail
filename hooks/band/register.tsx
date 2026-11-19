@@ -22,6 +22,8 @@ import {
   markdown,
   metricsSvg,
   contextBar,
+  barCells,
+  barRows,
   BAR_H,
   MODEL_PATTERN,
   parseDefs,
@@ -59,8 +61,12 @@ const EMPTY: Band = {
   tests: { state: 'none' },
   details: false,
   ctx: [],
-  clearArmed: false,
+  ctxMax: 0,
+  clearArmedAt: null,
 }
+// How long a first press on Clear waits for the second.
+const CLEAR_ARM_MS = 5000
+const isArmed = (at: number | null, now: number) => at !== null && now - at < CLEAR_ARM_MS
 // The counters of one task: what a new session or /clear starts over.
 const TASK = {
   spent: 0,
@@ -75,6 +81,7 @@ const TASK = {
   removed: [],
   openCallers: [],
   tests: { state: 'none' as const },
+  clearArmedAt: null,
 }
 const band = atom({ plugin: 'ponytail', key: 'band' } as const, EMPTY)
 // State kept from an older version of the band lacks newer fields.
@@ -108,10 +115,15 @@ async function readLevel($: EngineInterface): Promise<string> {
   }
 }
 
-// The context window by category, counted the way the Context panel counts it ('full', the token-count API).
-async function readCtx($: EngineInterface): Promise<Seg[] | undefined> {
-  const rows = (await $.session.usage({ breakdown: 'full' }).catch(() => undefined))?.context?.breakdown?.categories
-  return rows?.map(({ name, tokens, color, kind }) => ({ name, tokens, color, kind }))
+// The context window by category and the window it measures against. 'summary' estimates locally and sends no
+// request; 'full' (what /context sends) costs one token-count request per tool and memory file.
+async function readCtx($: EngineInterface): Promise<{ ctx: Seg[]; ctxMax: number } | undefined> {
+  const breakdown = (await $.session.usage({ breakdown: 'summary' }).catch(() => undefined))?.context?.breakdown
+  if (!breakdown) return undefined
+  return {
+    ctx: breakdown.categories.map(({ name, tokens, color, kind }) => ({ name, tokens, color, kind })),
+    ctxMax: breakdown.rawMaxTokens,
+  }
 }
 
 // The same commands a person types, so ponytail's own skills and hooks stay the only logic.
@@ -219,8 +231,9 @@ async function start($: EngineInterface): Promise<Map<string, string>> {
   const usage = await $.session.usage().catch(() => undefined)
   const csv = usage ? await $.fs.read(ledgerFile(await ledgerDir($), project)).catch(() => '') : ''
   const key = usage ? taskKey(session, usage.startedAt) : ''
-  const ctx = await readCtx($)
-  await update($, band, b => resume({ ...EMPTY, ...b, level, details, project, session, cost: usage?.cost?.usd ?? b.cost, ctx: ctx ?? b.ctx }, csv, key))
+  // A new session id (/clear, /resume) must not keep the old window's bar: no breakdown yet draws the plain line.
+  const ctx = (await readCtx($)) ?? { ctx: [], ctxMax: 0 }
+  await update($, band, b => resume({ ...EMPTY, ...b, level, details, project, session, cost: usage?.cost?.usd ?? b.cost, ...ctx }, csv, key))
   return grep?.exitCode === 0 ? parseDefs(grep.stdout) : new Map()
 }
 
@@ -249,6 +262,15 @@ export const register: Register = (on, options) => {
   // /clear starts a new task: the counters start over, the cost baseline stays.
   on('session.end', async ($, e, next) => {
     if (e.reason === 'clear') await update($, band, b => ({ ...EMPTY, ...b, ...TASK }))
+    return next(e)
+  }).catch(($, e, next) => next(e))
+
+  // The context bar follows the window as it fills; the 'summary' breakdown sends no request, so every change can redraw it.
+  on('session.measure', async ($, e, next) => {
+    if (e.changed.includes('context')) {
+      const ctx = await readCtx($)
+      if (ctx) await update($, band, b => ({ ...EMPTY, ...b, ...ctx }))
+    }
     return next(e)
   }).catch(($, e, next) => next(e))
 
@@ -318,8 +340,6 @@ export const register: Register = (on, options) => {
     const transcript = kept ? saved : await findTranscript($, session)
     const title = await readTitle($, transcript)
     const model = await readModel($, transcript)
-    // Counted when the turn ends, as the Context panel refreshes, so both show the same figures.
-    const ctx = await readCtx($)
 
     // A removed or renamed definition that is not defined again but still called somewhere.
     // shortcut: name match with git grep, so a same-named call in another module counts too.
@@ -357,7 +377,6 @@ export const register: Register = (on, options) => {
         model: model || b.model,
         removed: stillRemoved,
         openCallers: open,
-        ctx: ctx ?? b.ctx,
       }
     })
     await record($, b, options).catch(() => $.ui.status('ponytail band: could not write the task ledger'))
@@ -389,14 +408,16 @@ export const register: Register = (on, options) => {
     const review = () => run($, 'ponytail:ponytail-review')
     const audit = () => run($, 'ponytail:ponytail-audit')
     // /clear drops the whole conversation, so one stray click must not do it: the first press arms the button
-    // ("Sure?" in red), a second within 5 s clears, and after 5 s it is plain Clear again.
+    // ("⚠ Sure?"), a second within 5 s clears. Armed is a time, not a flag, so a timer lost to a reload or one left
+    // from an earlier arm can never leave it armed or cut a new arm short; the timer only redraws.
     const clear = async () => {
-      if (!(await load($)).clearArmed) {
-        await update($, band, x => ({ ...EMPTY, ...x, clearArmed: true }))
-        $.clock.after(5000, () => void update($, band, x => ({ ...EMPTY, ...x, clearArmed: false })))
+      const at = await $.clock.now()
+      if (!isArmed((await load($)).clearArmedAt, at)) {
+        await update($, band, x => ({ ...EMPTY, ...x, clearArmedAt: at }))
+        $.clock.after(CLEAR_ARM_MS, () => void update($, band, x => (x.clearArmedAt === at ? { ...EMPTY, ...x, clearArmedAt: null } : x)))
         return
       }
-      await update($, band, x => ({ ...EMPTY, ...x, clearArmed: false }))
+      await update($, band, x => ({ ...EMPTY, ...x, clearArmedAt: null }))
       await run($, 'clear')
     }
     const board = () => openBoard($).catch(() => $.ui.toast('ponytail band: could not open the board'))
@@ -408,7 +429,7 @@ export const register: Register = (on, options) => {
     const { Box, Text, Button } = $.ui.resolve(e)
     // Same key armed or not, so the surface keeps it as one control. The desktop draws its own button and drops the
     // red, so the ⚠ carries the warning there.
-    const clearButton = b.clearArmed ? (
+    const clearButton = isArmed(b.clearArmedAt, now) ? (
       <Button key="clear" plain onPress={clear}>
         <Text color="error">⚠ Sure?</Text>
       </Button>
@@ -477,26 +498,26 @@ export const register: Register = (on, options) => {
       })
     }
 
-    // The context window by category, kept fresh by session.measure; a plain line until the first response.
+    // The context window by category, kept fresh by session.measure; a plain line until the first breakdown.
     const segs = b.ctx
     const cells = e.props.bodyColumns
-    const segTotal = segs.reduce((n, s) => n + (s.kind === 'deferred' ? 0 : s.tokens), 0)
-    const line =
-      segTotal === 0 ? (
-        <Text dimColor wrap="truncate-end">
-          {'─'.repeat(cells)}
-        </Text>
-      ) : (
-        <Box flexDirection="row">
-          {segs
-            .filter(s => s.kind !== 'deferred' && s.tokens > 0)
-            .map((s, i) => (
-              <Text key={`seg-${i}`} color={s.kind === 'used' ? s.color : undefined} dimColor={s.kind !== 'used'}>
-                {(s.kind === 'free' ? '─' : '━').repeat(Math.max(s.kind === 'used' ? 1 : 0, Math.round((s.tokens / segTotal) * cells)))}
-              </Text>
-            ))}
-        </Box>
-      )
+    const hasBar = barRows(segs).length > 0
+    const line = !hasBar ? (
+      <Text dimColor wrap="truncate-end">
+        {'─'.repeat(cells)}
+      </Text>
+    ) : (
+      // Same order as the desktop bar; the cells add up to the row's width exactly, so it never wraps.
+      <Box flexDirection="row">
+        {barCells(segs, cells)
+          .filter(({ n }) => n > 0)
+          .map(({ seg, n }, i) => (
+            <Text key={`seg-${i}`} color={seg.kind === 'used' ? seg.color : undefined} dimColor={seg.kind !== 'used'}>
+              {(seg.kind === 'free' ? '─' : '━').repeat(n)}
+            </Text>
+          ))}
+      </Box>
+    )
     let metrics = (
       <Box flexDirection="column">
         {line}
@@ -519,23 +540,22 @@ export const register: Register = (on, options) => {
     // Text glyphs make broken lines in the desktop's proportional font; an SVG draws real ones.
     if (e.surface === 'desktop') {
       const { Svg } = $.ui.resolve(e)
-      const numbers = <Svg source={metricsSvg(cols, b.turnCosts, 720, segTotal === 0)} alt={cols.map(c => `${c.label} ${c.value}`).join(', ')} />
+      const numbers = <Svg source={metricsSvg(cols, b.turnCosts, 720, !hasBar)} alt={cols.map(c => `${c.label} ${c.value}`).join(', ')} />
       // Only the thin bar is interactive (for its <title> tooltips): a framed Svg needs its height given, the numbers keep the image's own.
-      metrics =
-        segTotal === 0 ? (
-          numbers
-        ) : (
-          <Box flexDirection="column">
-            <Svg isInteractive height={BAR_H} source={contextBar(segs)} alt={`context ${segs.filter(s => s.kind === 'used').map(s => `${s.name} ${s.tokens}`).join(', ')}`} />
-            {numbers}
-          </Box>
-        )
+      metrics = !hasBar ? (
+        numbers
+      ) : (
+        <Box flexDirection="column">
+          <Svg isInteractive height={BAR_H} source={contextBar(segs, b.ctxMax)} alt={`context ${barRows(segs).map(s => `${s.name} ${s.tokens}`).join(', ')}`} />
+          {numbers}
+        </Box>
+      )
     }
 
     return stack(
       // The desktop's SVG draws its own line at the top, which would touch the buttons without the gap.
       // The context bar carries its own top margin, so it needs no gap; the plain line does.
-      <Box flexDirection="column" width={width} gap={e.surface === 'desktop' && segTotal === 0 ? 1 : 0}>
+      <Box flexDirection="column" width={width} gap={e.surface === 'desktop' && !hasBar ? 1 : 0}>
         <Box flexDirection="row" alignItems="center" gap={1}>
           {LEVELS.map(level => (
             <Button
