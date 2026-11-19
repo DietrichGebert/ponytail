@@ -185,7 +185,7 @@ main{padding:16px}.search{width:160px}.big{font-size:32px}}
 const APP = `(function () {
   var D = JSON.parse(document.getElementById('board-data').textContent)
   var tasks = D.tasks, now = D.now, DAY = 86400000, NS = 'http://www.w3.org/2000/svg'
-  var state = { project: '', metric: 'time', q: '', period: 30, hidden: {} }
+  var state = { project: '', metric: 'time', q: '', period: 30, hidden: Object.create(null) }
   var MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
   var PALETTE = ${JSON.stringify(PALETTE)}
   // Each KPI its own colour pair, apart from the project colours: the line runs from one to the other.
@@ -254,7 +254,7 @@ const APP = `(function () {
       var b = h('button', 'nav-item' + (state.project === p[0] ? ' on' : '')); b.type = 'button'; b.title = p[1]
       if (p[0]) { var d = h('span', 'dot'); d.style.setProperty('--c', colorOf(p[0])); b.append(d) }
       b.append(h('span', 'name', p[1]), h('span', 'n', String(p[2])))
-      b.addEventListener('click', function () { state.project = p[0]; state.hidden = {}; render() })
+      b.addEventListener('click', function () { state.project = p[0]; state.hidden = Object.create(null); render() })
       nav.append(b)
     })
   }
