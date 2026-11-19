@@ -16,6 +16,8 @@ import {
   mainModel,
   markdown,
   metricsSvg,
+  contextBar,
+  panelTokens,
   parseDefs,
   percent,
   resume,
@@ -198,23 +200,27 @@ describe('metrics', () => {
       row('Autocompact buffer', 50, 'buffer'),
       row('MCP tools (deferred)', 9999, 'deferred'),
     ]
-    const svg = metricsSvg([{ key: 'cost', label: 'cost', value: '$1', sub: '' }], [], 500, ctx)
-    expect(svg).not.toContain('<line ')
+    const svg = contextBar(ctx, 500)
+    expect(svg.startsWith('<svg')).toBe(true)
+    expect(svg).toContain('preserveAspectRatio="none"')
     expect(svg).toContain('class="t"')
-    // 500 tokens shown over 500px: each used row is 100px wide, the buffer 50px from x=200.
-    expect(svg).toContain('x="0.0" y="0" width="100.0" height="4" fill="#4f8ef7"')
-    expect(svg).toContain('x="100.0" y="0" width="100.0" height="4" fill="#e8743b"')
-    expect(svg).toContain('class="u" x="200.0" y="0" width="50.0"')
+    // 500 tokens shown over 500 units: each used row is 100 wide, the buffer 50 from x=200.
+    expect(svg).toContain('x="0.0" y="3" width="100.0" height="4" fill="#4f8ef7"')
+    expect(svg).toContain('x="100.0" y="3" width="100.0" height="4" fill="#e8743b"')
+    expect(svg).toContain('class="u" x="200.0" y="3" width="50.0"')
     expect(svg).toContain('<title>System tools · 100 · 20.0%</title>')
     expect(svg).toContain('<title>Messages &amp; more')
     expect(svg).toContain('<title>Free space · 250 · 50.0%</title>')
     expect(svg).not.toContain('deferred')
     // The largest used row comes first and takes the first color, as in the panel.
-    const ranked = metricsSvg([{ key: 'cost', label: 'cost', value: '$1', sub: '' }], [], 100, [row('Small', 10, 'used'), row('Big', 90, 'used')])
+    const ranked = contextBar([row('Small', 10, 'used'), row('Big', 90, 'used')], 100)
     expect(ranked.indexOf('<title>Big')).toBeLessThan(ranked.indexOf('<title>Small'))
     expect(ranked).toContain('width="90.0" height="4" fill="#4f8ef7"')
-    // No breakdown yet: the plain divider stays.
-    expect(metricsSvg([{ key: 'cost', label: 'cost', value: '$1', sub: '' }], [], 500)).toContain('<line ')
+    expect([733, 6600, 44000, 862900].map(panelTokens)).toEqual(['733', '6.6K', '44K', '862.9K'])
+    // The numbers below drop their own divider only when the bar stands in for it.
+    const cols = [{ key: 'cost', label: 'cost', value: '$1', sub: '' }]
+    expect(metricsSvg(cols, [], 500)).toContain('<line ')
+    expect(metricsSvg(cols, [], 500, false)).not.toContain('<line ')
   })
 
   test('finds top-level definitions per language', () => {

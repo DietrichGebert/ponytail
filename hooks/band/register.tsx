@@ -21,6 +21,7 @@ import {
   mainModel,
   markdown,
   metricsSvg,
+  contextBar,
   MODEL_PATTERN,
   parseDefs,
   percent,
@@ -105,9 +106,9 @@ async function readLevel($: EngineInterface): Promise<string> {
   }
 }
 
-// The context window by category, as the Context panel lists it; undefined before the first response.
+// The context window by category, counted the way the Context panel counts it ('full', the token-count API).
 async function readCtx($: EngineInterface): Promise<Seg[] | undefined> {
-  const rows = (await $.session.usage({ breakdown: 'summary' }).catch(() => undefined))?.context.breakdown?.categories
+  const rows = (await $.session.usage({ breakdown: 'full' }).catch(() => undefined))?.context.breakdown?.categories
   return rows?.map(({ name, tokens, color, kind }) => ({ name, tokens, color, kind }))
 }
 
@@ -216,7 +217,8 @@ async function start($: EngineInterface): Promise<Map<string, string>> {
   const usage = await $.session.usage().catch(() => undefined)
   const csv = usage ? await $.fs.read(ledgerFile(await ledgerDir($), project)).catch(() => '') : ''
   const key = usage ? taskKey(session, usage.startedAt) : ''
-  await update($, band, b => resume({ ...EMPTY, ...b, level, details, project, session, cost: usage?.cost?.usd ?? b.cost }, csv, key))
+  const ctx = await readCtx($)
+  await update($, band, b => resume({ ...EMPTY, ...b, level, details, project, session, cost: usage?.cost?.usd ?? b.cost, ctx: ctx ?? b.ctx }, csv, key))
   return grep?.exitCode === 0 ? parseDefs(grep.stdout) : new Map()
 }
 
@@ -245,15 +247,6 @@ export const register: Register = (on, options) => {
   // /clear starts a new task: the counters start over, the cost baseline stays.
   on('session.end', async ($, e, next) => {
     if (e.reason === 'clear') await update($, band, b => ({ ...EMPTY, ...b, ...TASK }))
-    return next(e)
-  }).catch(($, e, next) => next(e))
-
-  // The context bar follows the window as it fills, not only when the band happens to redraw.
-  on('session.measure', async ($, e, next) => {
-    if (e.changed.includes('context')) {
-      const ctx = await readCtx($)
-      if (ctx) await update($, band, b => ({ ...EMPTY, ...b, ctx }))
-    }
     return next(e)
   }).catch(($, e, next) => next(e))
 
@@ -323,6 +316,8 @@ export const register: Register = (on, options) => {
     const transcript = kept ? saved : await findTranscript($, session)
     const title = await readTitle($, transcript)
     const model = await readModel($, transcript)
+    // Counted when the turn ends, as the Context panel refreshes, so both show the same figures.
+    const ctx = await readCtx($)
 
     // A removed or renamed definition that is not defined again but still called somewhere.
     // shortcut: name match with git grep, so a same-named call in another module counts too.
@@ -360,6 +355,7 @@ export const register: Register = (on, options) => {
         model: model || b.model,
         removed: stillRemoved,
         openCallers: open,
+        ctx: ctx ?? b.ctx,
       }
     })
     await record($, b, options).catch(() => $.ui.status('ponytail band: could not write the task ledger'))
@@ -506,13 +502,23 @@ export const register: Register = (on, options) => {
     // Text glyphs make broken lines in the desktop's proportional font; an SVG draws real ones.
     if (e.surface === 'desktop') {
       const { Svg } = $.ui.resolve(e)
-      // Interactive so the bar's <title> tooltips show on hover.
-      metrics = <Svg isInteractive source={metricsSvg(cols, b.turnCosts, 720, segs)} alt={cols.map(c => `${c.label} ${c.value}`).join(', ')} />
+      const numbers = <Svg source={metricsSvg(cols, b.turnCosts, 720, segTotal === 0)} alt={cols.map(c => `${c.label} ${c.value}`).join(', ')} />
+      // Only the thin bar is interactive (for its <title> tooltips): a framed Svg needs its height given, the numbers keep the image's own.
+      metrics =
+        segTotal === 0 ? (
+          numbers
+        ) : (
+          <Box flexDirection="column">
+            <Svg isInteractive height={10} source={contextBar(segs)} alt={`context ${segs.filter(s => s.kind === 'used').map(s => `${s.name} ${s.tokens}`).join(', ')}`} />
+            {numbers}
+          </Box>
+        )
     }
 
     return stack(
       // The desktop's SVG draws its own line at the top, which would touch the buttons without the gap.
-      <Box flexDirection="column" width={width} gap={e.surface === 'desktop' ? 1 : 0}>
+      // The context bar carries its own 3px margin, so it needs no gap; the plain line does.
+      <Box flexDirection="column" width={width} gap={e.surface === 'desktop' && segTotal === 0 ? 1 : 0}>
         <Box flexDirection="row" alignItems="center" gap={1}>
           {LEVELS.map(level => (
             <Button
