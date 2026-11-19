@@ -134,6 +134,17 @@ test('V2 commands keep attachments without offsets into the replaced prompt text
   assert.deepEqual(prompt.files[0].mention, { start: 0, end: 9 }, 'original input is unchanged');
 });
 
+test('V2 command placeholders preserve literal dollar sequences in user input', async () => {
+  const { added, prompts } = await setupV2();
+  const { template } = parseCommandFile(path.join(__dirname, '..', '.opencode', 'command', 'ponytail.md'));
+  for (const text of ['full', '$$', '$&', '$`', "$'", '$1', '$<name>', '$ARGUMENTS']) {
+    const prompt = { text };
+    await added.commands.ponytail.execute({ sessionID: 's', prompt, delivery: 'steer' });
+    assert.equal(prompts.at(-1).text, template.split('$ARGUMENTS').join(text), text);
+    assert.equal(prompt.text, text, 'original input is unchanged');
+  }
+});
+
 test('V2 command without $ARGUMENTS appends the typed input instead of dropping it (#1087)', async () => {
   const { added, prompts } = await setupV2();
   assert.ok(added.commands['ponytail-review'], 'ponytail-review is registered');
