@@ -188,13 +188,15 @@ describe('metrics', () => {
     expect(svg.match(/<rect /g)?.length).toBe(2)
   })
 
-  test('the top line becomes a context bar: used rows colored, buffer faint, deferred left out', () => {
+  test('the top line becomes a context bar in the panel order, each segment with a tooltip', () => {
+    const row = (name: string, tokens: number, kind: 'used' | 'free' | 'buffer' | 'deferred') => ({ name, tokens, color: 'x', kind })
+    // Free space listed before the buffer still draws after it, as the Context panel does.
     const ctx = [
-      { tokens: 100, kind: 'used' as const },
-      { tokens: 100, kind: 'used' as const },
-      { tokens: 50, kind: 'buffer' as const },
-      { tokens: 250, kind: 'free' as const },
-      { tokens: 9999, kind: 'deferred' as const },
+      row('System tools', 100, 'used'),
+      row('Messages & more', 100, 'used'),
+      row('Free space', 250, 'free'),
+      row('Autocompact buffer', 50, 'buffer'),
+      row('MCP tools (deferred)', 9999, 'deferred'),
     ]
     const svg = metricsSvg([{ key: 'cost', label: 'cost', value: '$1', sub: '' }], [], 500, ctx)
     expect(svg).not.toContain('<line ')
@@ -203,6 +205,10 @@ describe('metrics', () => {
     expect(svg).toContain('x="0.0" y="0" width="100.0" height="4" fill="#4f8ef7"')
     expect(svg).toContain('x="100.0" y="0" width="100.0" height="4" fill="#e8743b"')
     expect(svg).toContain('class="u" x="200.0" y="0" width="50.0"')
+    expect(svg).toContain('<title>System tools · 100 · 20.0%</title>')
+    expect(svg).toContain('<title>Messages &amp; more')
+    expect(svg).toContain('<title>Free space · 250 · 50.0%</title>')
+    expect(svg).not.toContain('deferred')
     // No breakdown yet: the plain divider stays.
     expect(metricsSvg([{ key: 'cost', label: 'cost', value: '$1', sub: '' }], [], 500)).toContain('<line ')
   })

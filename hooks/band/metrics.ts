@@ -1,7 +1,7 @@
 // Pure helpers for the band: no `$`, so the tests call them directly.
 
 import { duration, elapsed, fmtTokens, parseCsv } from './board'
-import type { Band, Tokens } from './types'
+import type { Band, Seg, Tokens } from './types'
 
 export { duration, elapsed, fmtTokens }
 
@@ -110,16 +110,17 @@ const FONT = "-apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-ser
 const STYLE = `.l,.s{fill:#87867f;font:12px ${FONT}}.v{fill:#1f1e1d;font:600 16px ${FONT}}.d{stroke:#1f1e1d;stroke-opacity:.12}.b{fill:#87867f}.t{fill:#1f1e1d;fill-opacity:.08}.u{fill:#1f1e1d;fill-opacity:.2}.warning{fill:#a86400}.success{fill:#2e7d32}.error{fill:#c62828}@media (prefers-color-scheme:dark){.v{fill:#ecebe6}.d{stroke:#fff;stroke-opacity:.14}.t{fill:#fff;fill-opacity:.1}.u{fill:#fff;fill-opacity:.25}.warning{fill:#e3a03d}.success{fill:#6abf69}.error{fill:#ef6a5a}}`
 
 // The details row as one SVG for surfaces that draw it: real 1px dividers and exact columns.
-// One row of /context's breakdown: what the context bar draws.
-export type Seg = { tokens: number; kind: 'used' | 'free' | 'buffer' | 'deferred' }
-
 // The Context panel's colors, in its row order; later used rows are grey.
 // shortcut: by position, not by the row's theme key, since an SVG cannot read the theme; map keys if the order changes.
 const SEG_COLORS = ['#4f8ef7', '#e8743b', '#14a38b', '#d4a017']
 
+// The Context panel's order: used rows, then the compaction buffer, then free space.
+const SEG_ORDER = { used: 0, buffer: 1, free: 2, deferred: 3 }
+
 // The context window as one bar: used rows in color, the compaction buffer faint, free space empty.
+// Each segment carries a <title>, so an interactive Svg shows its name, tokens and share on hover.
 export function contextBar(segs: Seg[], width: number): string {
-  const shown = segs.filter(s => s.kind !== 'deferred' && s.tokens > 0)
+  const shown = segs.filter(s => s.kind !== 'deferred' && s.tokens > 0).sort((a, b) => SEG_ORDER[a.kind] - SEG_ORDER[b.kind])
   const total = shown.reduce((n, s) => n + s.tokens, 0)
   let out = `<rect class="t" x="0" y="0" width="${width}" height="4" rx="2"/>`
   if (total === 0) return out
@@ -127,8 +128,15 @@ export function contextBar(segs: Seg[], width: number): string {
   let used = 0
   for (const s of shown) {
     const w = (s.tokens / total) * width
-    if (s.kind === 'used') out += `<rect x="${x.toFixed(1)}" y="0" width="${Math.max(1, w).toFixed(1)}" height="4" fill="${SEG_COLORS[used++] ?? '#9a9893'}"/>`
-    else if (s.kind === 'buffer') out += `<rect class="u" x="${x.toFixed(1)}" y="0" width="${w.toFixed(1)}" height="4"/>`
+    const title = `<title>${esc(s.name)} · ${fmtTokens(s.tokens)} · ${((s.tokens / total) * 100).toFixed(1)}%</title>`
+    const bar =
+      s.kind === 'used'
+        ? `<rect x="${x.toFixed(1)}" y="0" width="${Math.max(1, w).toFixed(1)}" height="4" fill="${SEG_COLORS[used++] ?? '#9a9893'}"/>`
+        : s.kind === 'buffer'
+          ? `<rect class="u" x="${x.toFixed(1)}" y="0" width="${w.toFixed(1)}" height="4"/>`
+          : ''
+    // A 4px bar is too thin to hover: a taller invisible strip holds the tooltip.
+    out += `<g>${title}${bar}<rect x="${x.toFixed(1)}" y="0" width="${Math.max(1, w).toFixed(1)}" height="10" fill="transparent"/></g>`
     x += w
   }
   return out

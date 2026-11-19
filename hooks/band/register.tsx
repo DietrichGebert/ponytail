@@ -2,7 +2,7 @@ import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register } from 'claude-code'
 
 import { boardHtml, tasksFrom } from './board'
-import type { Band } from './types'
+import type { Band, Seg } from './types'
 import type { Col } from './metrics'
 import {
   GREP_DEFS,
@@ -56,6 +56,7 @@ const EMPTY: Band = {
   openCallers: [],
   tests: { state: 'none' },
   details: false,
+  ctx: [],
 }
 // The counters of one task: what a new session or /clear starts over.
 const TASK = {
@@ -102,6 +103,12 @@ async function readLevel($: EngineInterface): Promise<string> {
   } catch {
     return 'off'
   }
+}
+
+// The context window by category, as the Context panel lists it; undefined before the first response.
+async function readCtx($: EngineInterface): Promise<Seg[] | undefined> {
+  const rows = (await $.session.usage({ breakdown: 'summary' }).catch(() => undefined))?.context.breakdown?.categories
+  return rows?.map(({ name, tokens, color, kind }) => ({ name, tokens, color, kind }))
 }
 
 // The same commands a person types, so ponytail's own skills and hooks stay the only logic.
@@ -238,6 +245,15 @@ export const register: Register = (on, options) => {
   // /clear starts a new task: the counters start over, the cost baseline stays.
   on('session.end', async ($, e, next) => {
     if (e.reason === 'clear') await update($, band, b => ({ ...EMPTY, ...b, ...TASK }))
+    return next(e)
+  }).catch(($, e, next) => next(e))
+
+  // The context bar follows the window as it fills, not only when the band happens to redraw.
+  on('session.measure', async ($, e, next) => {
+    if (e.changed.includes('context')) {
+      const ctx = await readCtx($)
+      if (ctx) await update($, band, b => ({ ...EMPTY, ...b, ctx }))
+    }
     return next(e)
   }).catch(($, e, next) => next(e))
 
@@ -448,8 +464,8 @@ export const register: Register = (on, options) => {
       })
     }
 
-    // The context window by category, as the Context panel draws it; a plain line until the first response.
-    const segs = (await $.session.usage({ breakdown: 'summary' }).catch(() => undefined))?.context.breakdown?.categories ?? []
+    // The context window by category, kept fresh by session.measure; a plain line until the first response.
+    const segs = b.ctx
     const cells = e.props.bodyColumns
     const segTotal = segs.reduce((n, s) => n + (s.kind === 'deferred' ? 0 : s.tokens), 0)
     const line =
@@ -490,7 +506,8 @@ export const register: Register = (on, options) => {
     // Text glyphs make broken lines in the desktop's proportional font; an SVG draws real ones.
     if (e.surface === 'desktop') {
       const { Svg } = $.ui.resolve(e)
-      metrics = <Svg source={metricsSvg(cols, b.turnCosts, 720, segs)}alt={cols.map(c => `${c.label} ${c.value}`).join(', ')} />
+      // Interactive so the bar's <title> tooltips show on hover.
+      metrics = <Svg isInteractive source={metricsSvg(cols, b.turnCosts, 720, segs)} alt={cols.map(c => `${c.label} ${c.value}`).join(', ')} />
     }
 
     return stack(
