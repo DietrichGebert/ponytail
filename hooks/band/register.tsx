@@ -108,7 +108,7 @@ async function readLevel($: EngineInterface): Promise<string> {
 
 // The context window by category, counted the way the Context panel counts it ('full', the token-count API).
 async function readCtx($: EngineInterface): Promise<Seg[] | undefined> {
-  const rows = (await $.session.usage({ breakdown: 'full' }).catch(() => undefined))?.context.breakdown?.categories
+  const rows = (await $.session.usage({ breakdown: 'full' }).catch(() => undefined))?.context?.breakdown?.categories
   return rows?.map(({ name, tokens, color, kind }) => ({ name, tokens, color, kind }))
 }
 
