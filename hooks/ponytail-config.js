@@ -151,7 +151,23 @@ function writeDefaultMode(mode) {
     if (!config || typeof config !== 'object' || Array.isArray(config)) config = {};
   } catch (_) {}
   config.defaultMode = normalized;
-  fs.writeFileSync(configPath, JSON.stringify(config, null, 2), 'utf8');
+  let existing;
+  try { existing = fs.lstatSync(configPath); }
+  catch (error) { if (error.code !== 'ENOENT') throw error; }
+  // Follow an existing managed config link instead of replacing the link itself.
+  const targetPath = existing && existing.isSymbolicLink() ? fs.realpathSync(configPath) : configPath;
+  const permissions = existing ? fs.statSync(targetPath).mode & 0o777 : 0o666;
+  if (existing) fs.accessSync(targetPath, fs.constants.W_OK);
+  // Write beside the target so a partial write or failed rename cannot truncate it.
+  const temporaryDir = fs.mkdtempSync(path.join(path.dirname(targetPath), '.ponytail-config-'));
+  const temporaryFile = path.join(temporaryDir, 'config.json');
+  try {
+    fs.writeFileSync(temporaryFile, JSON.stringify(config, null, 2), { encoding: 'utf8', flag: 'wx', mode: permissions });
+    if (existing) fs.chmodSync(temporaryFile, permissions);
+    fs.renameSync(temporaryFile, targetPath);
+  } finally {
+    fs.rmSync(temporaryDir, { recursive: true, force: true });
+  }
   return normalized;
 }
 
