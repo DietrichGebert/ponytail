@@ -190,7 +190,13 @@ function csvRow(sessionId, project, s) {
 const sessionOf = row => row.slice(0, 9);
 function mergeRows(existing, rows, have = new Set()) {
   const kept = existing.split('\n').filter(l => l !== '' && !l.startsWith('key,'));
-  const added = rows.filter(r => !have.has(sessionOf(r)) && !kept.some(l => sessionOf(l) === sessionOf(r)));
+  const seen = new Set([...have, ...kept.map(sessionOf)]);
+  const added = rows.filter(r => {
+    const session = sessionOf(r);
+    if (seen.has(session)) return false;
+    seen.add(session);
+    return true;
+  });
   return { text: [CSV_HEADER, ...kept, ...added].join('\n') + '\n', added: added.length };
 }
 
@@ -261,6 +267,7 @@ function run() {
     try { existing = fs.readFileSync(file, 'utf8'); } catch (e) {}
     const merged = mergeRows(existing, rows, have);
     if (merged.added > 0) fs.writeFileSync(file, merged.text);
+    rows.forEach(row => have.add(sessionOf(row)));
     added += merged.added;
   }
   return { sessions, added };
