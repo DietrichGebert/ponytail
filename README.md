@@ -129,6 +129,8 @@ In Claude Code, ponytail now shows a band above the prompt: what the current tas
 
 **Board** opens a local page with every task across your projects: cost, agent time and tokens over time, every session with its tests, and the days you worked. By default, everything stays on your machine, in `~/.config/ponytail/band/`. `/ponytail band import` adds your past Claude Code sessions to it, with their cost, agent time and tokens.
 
+The session table shows 100 rows per page. Search, project and period filters cover the full history; use Previous and Next to read the remaining rows. Changing pages keeps the chart totals and filtered session count.
+
 ## How it works
 
 <p align="center">
