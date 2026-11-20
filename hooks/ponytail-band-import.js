@@ -86,14 +86,21 @@ function readRecords(file) {
   const fd = fs.openSync(file, 'r');
   const buf = Buffer.alloc(1 << 20);
   const dec = new StringDecoder('utf8');
-  let rest = '';
+  // Keep an incomplete line in chunks instead of rescanning its prefix on every read.
+  let rest = [];
   try {
     for (let n; (n = fs.readSync(fd, buf, 0, buf.length, null)) > 0;) {
-      const parts = (rest + dec.write(buf.subarray(0, n))).split('\n');
-      rest = parts.pop();
-      parts.forEach(take);
+      const text = dec.write(buf.subarray(0, n));
+      let start = 0;
+      for (let end; (end = text.indexOf('\n', start)) >= 0; start = end + 1) {
+        rest.push(text.slice(start, end));
+        take(rest.join(''));
+        rest = [];
+      }
+      rest.push(text.slice(start));
     }
-    take(rest + dec.end());
+    rest.push(dec.end());
+    take(rest.join(''));
   } finally {
     fs.closeSync(fd);
   }
