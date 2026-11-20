@@ -164,6 +164,7 @@ td.name{white-space:normal;min-width:140px;width:100%;max-width:0}.task{overflow
 .pill i{width:6px;height:6px;border-radius:50%;background:currentColor}
 .pill.ok{background:var(--okbg);color:var(--ok)}.pill.bad{background:var(--badbg);color:var(--bad)}.pill.warn{background:var(--warnbg);color:var(--warn)}
 td.empty{text-align:center;color:var(--faint);padding:32px}
+.pager{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;padding:12px 22px}.pager[hidden]{display:none}.pager .btn:disabled{opacity:.4;cursor:default}.pager .sub{white-space:nowrap}
 .heat{padding:20px 22px}.heat .sub{margin:2px 0 14px}
 #heat{display:block;width:100%;height:auto}.cell-empty{fill:var(--empty)}.glow-cell{opacity:calc(var(--glow) * .45)}.day{fill:var(--faint);font:12px ${MONO_CSS}}
 .heroes{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:20px}.hero-label{display:flex;align-items:center;gap:7px;color:var(--muted);font-size:12px}.hero-label i{font-style:normal;font-size:11px}.hero-value{font-size:30px;margin-top:4px;white-space:nowrap}.hero-sub{font-size:12px;color:var(--faint);margin-top:2px}.hero-sub b{color:var(--ok);font-weight:500;margin-right:6px}
@@ -185,7 +186,8 @@ main{padding:16px}.search{width:160px}.big{font-size:32px}}
 const APP = `(function () {
   var D = JSON.parse(document.getElementById('board-data').textContent)
   var tasks = D.tasks, now = D.now, DAY = 86400000, NS = 'http://www.w3.org/2000/svg'
-  var state = { project: '', metric: 'time', q: '', period: 30, hidden: {} }
+  var state = { project: '', metric: 'time', q: '', period: 30, hidden: {}, page: 0 }
+  var PAGE_SIZE = 100
   var MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
   var PALETTE = ${JSON.stringify(PALETTE)}
   // Each KPI its own colour pair, apart from the project colours: the line runs from one to the other.
@@ -254,7 +256,7 @@ const APP = `(function () {
       var b = h('button', 'nav-item' + (state.project === p[0] ? ' on' : '')); b.type = 'button'; b.title = p[1]
       if (p[0]) { var d = h('span', 'dot'); d.style.setProperty('--c', colorOf(p[0])); b.append(d) }
       b.append(h('span', 'name', p[1]), h('span', 'n', String(p[2])))
-      b.addEventListener('click', function () { state.project = p[0]; state.hidden = {}; render() })
+      b.addEventListener('click', function () { state.project = p[0]; state.hidden = {}; state.page = 0; render() })
       nav.append(b)
     })
   }
@@ -361,12 +363,18 @@ const APP = `(function () {
     var list = inDays(scope(), days(span())).filter(function (t) { return !q || (t.name + ' ' + t.project + ' ' + modelName(t.model)).toLowerCase().indexOf(q) >= 0 })
       .sort(function (a, b) { return b.started.localeCompare(a.started) })
     byId('count').textContent = String(list.length)
+    state.page = Math.max(0, Math.min(state.page, Math.ceil(list.length / PAGE_SIZE) - 1))
+    var start = state.page * PAGE_SIZE, end = Math.min(start + PAGE_SIZE, list.length)
+    byId('pager').hidden = list.length <= PAGE_SIZE
+    byId('page-prev').disabled = start === 0
+    byId('page-next').disabled = end === list.length
+    byId('page-range').textContent = list.length ? (start + 1) + '–' + end + ' of ' + list.length : '0 sessions'
     if (!list.length) {
       var tr = h('tr'), td = h('td', 'empty', q ? 'No session matches.' : tasks.length ? 'No sessions in this period.' : 'No sessions yet. The band records a session after its first turn.')
       td.colSpan = 6; tr.append(td); body.append(tr); return
     }
-    var max = Math.max.apply(null, list.map(function (t) { return t.agentMinutes })) || 1
-    list.forEach(function (t) {
+    var max = list.reduce(function (m, t) { return Math.max(m, t.agentMinutes) }, 0) || 1
+    list.slice(start, end).forEach(function (t) {
       var tr = h('tr'), name = h('td', 'name'), task = h('div', 'task', t.name || 'Untitled session'), bar = h('div', 'bar'), tests = h('td')
       task.title = t.name; bar.style.setProperty('--c', colorOf(t.project)); bar.style.width = Math.max(4, t.agentMinutes / max * 100) + '%'
       name.append(task, h('div', 'sub', (state.project ? '' : t.project + ' · ') + shortDate(t.started.slice(0, 10)) + ', ' + t.started.slice(11) + (t.model ? ' · ' + modelName(t.model) : '')), bar)
@@ -471,12 +479,14 @@ const APP = `(function () {
     img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(cardText())
   }
 
-  byId('q').addEventListener('input', function (e) { state.q = e.target.value; table() })
+  byId('q').addEventListener('input', function (e) { state.q = e.target.value; state.page = 0; table() })
+  byId('page-prev').addEventListener('click', function () { state.page--; table() })
+  byId('page-next').addEventListener('click', function () { state.page++; table() })
   document.querySelectorAll('[data-metric]').forEach(function (b) {
     b.addEventListener('click', function () { state.metric = b.getAttribute('data-metric'); document.querySelectorAll('[data-metric]').forEach(function (x) { x.classList.toggle('on', x === b) }); chart() })
   })
   document.querySelectorAll('[data-period]').forEach(function (b) {
-    b.addEventListener('click', function () { state.period = +b.getAttribute('data-period'); document.querySelectorAll('[data-period]').forEach(function (x) { x.classList.toggle('on', x === b) }); render() })
+    b.addEventListener('click', function () { state.period = +b.getAttribute('data-period'); state.page = 0; document.querySelectorAll('[data-period]').forEach(function (x) { x.classList.toggle('on', x === b) }); render() })
   })
   var resizing; window.addEventListener('resize', function () { clearTimeout(resizing); resizing = setTimeout(chart, 120) })
   byId('share').addEventListener('click', function () { byId('share-dialog').showModal() })
@@ -547,7 +557,7 @@ export function boardHtml(tasks: Task[], now: number): string {
 <div class="chart-wrap"><svg id="stream" role="img" aria-label="Per project and day"></svg><div class="tip" id="tip" hidden></div></div><div class="legend" id="legend"></div></section>
 <div class="grid2">
 <section class="card list"><div class="list-head"><h3>Sessions<span class="n" id="count"></span></h3><label class="search">${SEARCH_ICON}<input id="q" type="search" placeholder="Search sessions" aria-label="Search sessions"></label></div>
-<div class="table-wrap"><table><thead><tr><th>Session</th><th class="r">Agent time</th><th class="r">Cost</th><th class="r">Tokens</th><th class="r">Turns</th><th>Tests</th></tr></thead><tbody id="rows"></tbody></table></div></section>
+<div class="table-wrap"><table><thead><tr><th>Session</th><th class="r">Agent time</th><th class="r">Cost</th><th class="r">Tokens</th><th class="r">Turns</th><th>Tests</th></tr></thead><tbody id="rows"></tbody></table></div><nav class="pager" id="pager" aria-label="Session pages" hidden><button type="button" class="btn" id="page-prev">Previous</button><span class="sub" id="page-range" role="status"></span><button type="button" class="btn" id="page-next">Next</button></nav></section>
 <section class="card heat"><h3>Activity</h3><div class="sub">Agent time per day, last 12 weeks</div><svg id="heat" role="img" aria-label="Agent time per day, last 12 weeks"></svg>
 <div class="heroes"><div><div class="hero-label"><i style="color:#5fe08a">✦</i>Active days</div><div class="hero-value num" id="h-active"></div><div class="hero-sub" id="h-active-sub"></div></div>
 <div><div class="hero-label"><i style="color:#ffd166">◆</i>Streak</div><div class="hero-value num" id="h-streak"></div><div class="hero-sub" id="h-streak-sub"></div></div></div><div id="facts"></div></section>
