@@ -82,7 +82,17 @@ function slim(r) {
 // A JSONL file line by line, so no transcript is too big to read (one string stops at 512 MB).
 function readRecords(file) {
   const out = [];
-  const take = l => { if (l.startsWith('{')) try { out.push(slim(JSON.parse(l))); } catch (e) {} };
+  const needed = new Set(['user', 'assistant', 'cost-state', 'custom-title']);
+  let haveTimestamp = false;
+  const take = l => {
+    if (l.startsWith('{')) try {
+      const r = JSON.parse(l);
+      // Other record types only contribute the session's first valid timestamp.
+      const firstTimestamp = !haveTimestamp && Number.isFinite(ms(r));
+      haveTimestamp ||= firstTimestamp;
+      if (firstTimestamp || needed.has(r.type)) out.push(slim(r));
+    } catch (e) {}
+  };
   const fd = fs.openSync(file, 'r');
   const buf = Buffer.alloc(1 << 20);
   const dec = new StringDecoder('utf8');
