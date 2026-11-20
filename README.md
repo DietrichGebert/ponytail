@@ -190,6 +190,9 @@ Commands need a skill-capable host (Claude Code, Codex, Devin CLI, OpenCode, Gem
 
 ## FAQ
 
+**Does a Ruby file with many blank lines slow the codebase map?**
+Ruby declaration scans keep indentation on its current line. They do not retry the remaining blank-line suffix at every newline; the map and Band retain their existing declaration matching and scan limits.
+
 **Does it need a config file?**
 No. An optional `~/.config/ponytail/config.json` or `PONYTAIL_DEFAULT_MODE` env var can set the default level, but nothing is required.
 
