@@ -88,7 +88,9 @@ function buildMap(root = process.cwd()) {
     const names = namesIn(f, text);
     if (!names.length) continue;
     const dir = path.dirname(f) === '.' ? '.' : path.dirname(f);
-    dirs.set(dir, [...(dirs.get(dir) || []), names]);
+    const group = dirs.get(dir);
+    if (group) group.push(names);
+    else dirs.set(dir, [names]);
   }
   const lines = [];
   let used = 0;
