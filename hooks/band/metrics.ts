@@ -41,12 +41,15 @@ export function defsIn(file: string, text: string): string[] {
 
 export type Hit = { file: string; line: string; text: string }
 
-// `git grep -n` output, one "file:line:text" row each.
-export const hits = (stdout: string): Hit[] =>
-  stdout.split('\n').flatMap(row => {
+// `git grep -n -z` separates raw filenames from line numbers and source text.
+export const hits = (stdout: string): Hit[] => {
+  if (stdout.includes('\0')) return [...stdout.matchAll(/([^\0]+)\0(\d+)\0([^\n]*)(?:\n|$)/g)]
+    .map(m => ({ file: m[1] ?? '', line: m[2] ?? '', text: m[3] ?? '' }))
+  return stdout.split('\n').flatMap(row => {
     const m = /^(.+?):(\d+):(.*)$/.exec(row)
     return m ? [{ file: m[1] ?? '', line: m[2] ?? '', text: m[3] ?? '' }] : []
   })
+}
 
 // Existing definitions, name -> "file:line".
 export function parseDefs(stdout: string): Map<string, string> {
