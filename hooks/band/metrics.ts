@@ -53,7 +53,7 @@ export function parseDefs(stdout: string): Map<string, string> {
   const known = new Map<string, string>()
   for (const hit of hits(stdout)) {
     if (!isSource(hit.file)) continue
-    for (const name of defsIn(hit.file, hit.text.trimStart())) {
+    for (const name of defsIn(hit.file, hit.text)) {
       if (!known.has(name)) known.set(name, `${hit.file}:${hit.line}`)
     }
   }
