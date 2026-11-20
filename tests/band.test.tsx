@@ -166,7 +166,7 @@ describe('metrics', () => {
     expect(lines[1]).toContain('"Fix the cart | totals, again"')
     const again = upsertCsv(first, snapshot({ ...BASE, spent: 4.2, turns: 7 }, at))
     expect(again.trim().split('\n').length).toBe(2)
-    expect(again).toContain(',4.20,7,')
+    expect(tasksFrom(again)[0]).toMatchObject({ cost: 4.2, turns: 7 })
     const other = upsertCsv(again, snapshot({ ...BASE, session: 'ffff0000' }, at + 1))
     expect(other.trim().split('\n').length).toBe(3)
   })

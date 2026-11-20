@@ -236,7 +236,7 @@ export function snapshot(b: Band, startedAt: number): Snapshot {
     level: b.level,
     model: b.model,
     // The session's cost as /cost totals it, since its start or the last /clear.
-    cost: +b.spent.toFixed(4),
+    cost: b.spent,
     lastTurn: b.turnCosts[b.turnCosts.length - 1] ?? null,
     turns: b.turns,
     agentMs: b.busyMs,
@@ -279,7 +279,7 @@ const csvField = (v: string | number | null) => {
 }
 
 export const csvRow = (s: Snapshot) =>
-  [s.key, s.started, s.project, s.name, s.cost.toFixed(2), s.turns, (s.agentMs / 60000).toFixed(1), totalTokens(s.tokens), s.tokens.output, s.reuse, s.reused, s.created, s.callersOpen, s.tests, s.level, s.model]
+  [s.key, s.started, s.project, s.name, s.cost, s.turns, (s.agentMs / 60000).toFixed(1), totalTokens(s.tokens), s.tokens.output, s.reuse, s.reused, s.created, s.callersOpen, s.tests, s.level, s.model]
     .map(csvField)
     .join(',')
 
