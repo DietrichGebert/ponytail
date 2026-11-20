@@ -8,6 +8,7 @@ const os = require('os');
 const path = require('path');
 const { spawnSync } = require('child_process');
 const { StringDecoder } = require('string_decoder');
+const { randomUUID } = require('crypto');
 const { getClaudeDir } = require('./ponytail-config');
 
 // The band's columns (CSV_HEADER in hooks/band/metrics.ts; a test keeps the two equal).
@@ -260,7 +261,17 @@ function run() {
     let existing = '';
     try { existing = fs.readFileSync(file, 'utf8'); } catch (e) {}
     const merged = mergeRows(existing, rows, have);
-    if (merged.added > 0) fs.writeFileSync(file, merged.text);
+    if (merged.added > 0) {
+      const temp = `${file}.${randomUUID()}.tmp`;
+      const mode = fs.statSync(file, { throwIfNoEntry: false })?.mode ?? 0o666;
+      const fd = fs.openSync(temp, 'wx', mode);
+      try {
+        try { fs.writeFileSync(fd, merged.text); } finally { fs.closeSync(fd); }
+        fs.renameSync(temp, file);
+      } finally {
+        try { fs.unlinkSync(temp); } catch (e) { /* already published */ }
+      }
+    }
     added += merged.added;
   }
   return { sessions, added };
