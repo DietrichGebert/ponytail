@@ -16,6 +16,7 @@ import {
   hits,
   inProject,
   isCode,
+  isScratch,
   isSource,
   isTestCommand,
   mainModel,
@@ -151,11 +152,15 @@ async function ledgerDir($: EngineInterface) {
 
 const ledgerFile = (dir: string, project: string) => `${dir}/${project.replace(/[^\w.-]/g, '_')}.csv`
 
+// A session in a temp dir, such as a tool running `claude -p` in `mktemp -d`, is no project: import skips these too.
+const inTemp = async ($: EngineInterface) =>
+  isScratch((await $.session.repo().catch(() => null))?.root ?? (await $.session.cwd()), [await $.env.get('TMPDIR'), await $.env.get('TMP'), await $.env.get('TEMP')])
+
 // After every turn: the task's row in a CSV per project, and the same row to a webhook if one is set.
 async function record($: EngineInterface, b: Band, options: Options) {
   const startedAt = (await $.session.usage()).startedAt
   const row = snapshot(b, startedAt)
-  if (options.ledger !== false && b.project !== '') {
+  if (options.ledger !== false && b.project !== '' && !(await inTemp($))) {
     const dir = await ledgerDir($)
     const file = ledgerFile(dir, b.project)
     const existing = await $.fs.read(file).catch(() => '')

@@ -83,6 +83,13 @@ export function inProject(file: string, root: string): boolean {
   return f === r || f.startsWith(`${r}/`)
 }
 
+// Scratch and temp dirs are never real projects, the same rule as ponytail-band-import.js. An unset or root-only
+// temp variable is skipped, or every path would count.
+export const isScratch = (cwd: string, tmp: (string | undefined)[] = []) =>
+  [...tmp, '/tmp', '/private/tmp', '/var/folders', '/private/var/folders'].some(
+    t => t !== undefined && t.replace(/[\\/]+$/, '') !== '' && inProject(cwd, t),
+  )
+
 const TEST_CMD = /\b(npm (run )?test|pnpm (run )?test|yarn test|bun test|npx (jest|vitest)|jest|vitest|pytest|python3? -m pytest|go test|cargo test|mvn test|gradle test|rspec|phpunit|dotnet test|node --test|deno test|make test)\b/
 
 export const isTestCommand = (command: string) => TEST_CMD.test(command)

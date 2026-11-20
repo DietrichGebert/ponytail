@@ -12,6 +12,7 @@ import {
   elapsed,
   fmtTokens,
   inProject,
+  isScratch,
   isTestCommand,
   mainModel,
   markdown,
@@ -210,6 +211,15 @@ describe('metrics', () => {
     expect(inProject('C:\\Users\\a\\shop\\cart.py', 'C:/Users/a/shop')).toBe(true)
   })
 
+  test('treats temp dirs as scratch, never as a project', () => {
+    expect(isScratch('/tmp')).toBe(true)
+    expect(isScratch('/private/var/folders/sk/x/T/te-side-ab12')).toBe(true)
+    expect(isScratch('C:\\Users\\u\\AppData\\Local\\Temp\\run', [undefined, 'C:/Users/u/AppData/Local/Temp'])).toBe(true)
+    expect(isScratch('/repo/shop')).toBe(false)
+    expect(isScratch('/tmpfiles/shop')).toBe(false)
+    expect(isScratch('/repo/shop', ['/'])).toBe(false)
+  })
+
   test('recognises test runs and their counts', () => {
     expect(isTestCommand('npm test')).toBe(true)
     expect(isTestCommand('cd api && python -m pytest -q')).toBe(true)
@@ -367,6 +377,30 @@ test('the ledger is written on Windows, where there is no mkdir', async ($, on) 
   expect(written.length).toBe(2)
   expect(written[0]?.endsWith('C:/Users/u/.config/ponytail/band/shop.csv')).toBe(true)
   expect(written[1]?.endsWith('C:/Users/u/.config/ponytail/band/board.html')).toBe(true)
+})
+
+test('a session in a temp dir writes no ledger row', async ($, on) => {
+  mock.clock(on)
+  mock.store(on)
+  on('env.get', ($, e) => ({ value: { HOME: '/home/u', TMP: '/scratch/' }[e.name] }))
+  on('session.repo', () => ({ deny: 'not a repo' }) as never)
+  on('session.cwd', () => ({ value: '/scratch/te-side-ab12' }))
+  on('session.id', () => ({ value: 's1' }))
+  on('session.turns', () => ({ value: 1 }))
+  on('session.usage', () => ({ value: { startedAt: 0, cost: { usd: 0.01 } } }) as never)
+  on('process.run', () => ({ value: { exitCode: 1, stdout: '', stderr: '' } }) as never)
+  on('fs.read', () => ({ deny: 'missing' }) as never)
+  on('fs.list', () => ({ value: [] }))
+  const written: string[] = []
+  on('fs.write', ($, e) => {
+    written.push(e.path)
+    return { value: undefined }
+  })
+  on('session.start', ($, e) => ({ cwd: e.cwd }))
+  on('turn.complete', () => ({ text: '' }))
+  await $.session.start({ cwd: '/scratch/te-side-ab12', surface: null } as never)
+  await $.turn.complete({ answer: '', durationMs: 1000 } as never)
+  expect(written.filter(f => f.includes('/ponytail/band/'))).toEqual([])
 })
 
 test('the transcript is found with no classic hook, in its named folder or any other', async ($, on) => {
