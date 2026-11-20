@@ -82,7 +82,7 @@ function slim(r) {
 // A JSONL file line by line, so no transcript is too big to read (one string stops at 512 MB).
 function readRecords(file) {
   const out = [];
-  const take = l => { if (l.startsWith('{')) try { out.push(slim(JSON.parse(l))); } catch (e) {} };
+  const take = l => { try { out.push(slim(JSON.parse(l))); } catch (e) {} };
   const fd = fs.openSync(file, 'r');
   const buf = Buffer.alloc(1 << 20);
   const dec = new StringDecoder('utf8');
@@ -228,12 +228,12 @@ function run() {
       // The working dir sits in the first records; scratch and temp dirs are never real projects.
       let head = '';
       try { const fd = fs.openSync(p, 'r'); const b = Buffer.alloc(65536); head = b.toString('utf8', 0, fs.readSync(fd, b, 0, b.length, 0)); fs.closeSync(fd); } catch (e) { continue; }
-      const m = /"cwd":"((?:[^"\\]|\\.)*)"/.exec(head);
+      const m = /"cwd"\s*:\s*"((?:[^"\\]|\\.)*)"/.exec(head);
       if (!m) continue;
       const cwd = JSON.parse(`"${m[1]}"`);
       if (TEMP.some(t => cwd.startsWith(t)) || cwd === '/tmp') continue;
       // A session's first prompt is typed by a person; automated runs (benchmarks, `claude -p`) never are.
-      if (head.includes('"type":"user"') && !/"turnOrigin":"human"|"origin":\{"kind":"human"/.test(head)) continue;
+      if (/"type"\s*:\s*"user"/.test(head) && !/"turnOrigin"\s*:\s*"human"|"origin"\s*:\s*\{\s*"kind"\s*:\s*"human"/.test(head)) continue;
       const id = file.slice(0, -'.jsonl'.length);
       let records;
       try { records = readRecords(p); } catch (e) { continue; }
