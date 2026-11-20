@@ -61,15 +61,15 @@ function listFiles(root) {
 
 function namesIn(file, text) {
   const lang = LANG[path.extname(file).slice(1)];
-  const names = [];
+  const names = new Set();
   for (const re of PATTERNS[lang] || []) {
     for (const m of text.matchAll(re)) {
       for (const n of m[1].split(',').map((s) => (s.trim().match(NAME) || [])[1]).filter(Boolean)) {
-        if (!n.startsWith('_') && !names.includes(n)) names.push(n);
+        if (!n.startsWith('_')) names.add(n);
       }
     }
   }
-  return names;
+  return [...names];
 }
 
 function buildMap(root = process.cwd()) {
