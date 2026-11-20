@@ -181,16 +181,27 @@ const stamp = t => { const d = new Date(t); return `${d.getFullYear()}-${two(d.g
 const field = v => { const s = v === null || v === undefined ? '' : String(v); return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; };
 
 function csvRow(sessionId, project, s) {
-  return [`${sessionId.slice(0, 8)}-${s.startedMs}`, stamp(s.startedMs), project, s.name, s.cost === null ? '' : s.cost.toFixed(2), s.turns,
+  return [`${sessionId}-${s.startedMs}`, stamp(s.startedMs), project, s.name, s.cost === null ? '' : s.cost.toFixed(2), s.turns,
     (s.agentMs / 60000).toFixed(1), s.tokens, s.output, '', '', '', '', '', 'import', s.model].map(field).join(',');
 }
 
 // New rows go in after the ledger's own: a newer header replaces an older one, and a session
-// already recorded anywhere in the ledger (same session id prefix) is never imported twice.
-const sessionOf = row => row.slice(0, 9);
+// already recorded anywhere in the ledger is never imported twice. Old short keys remain
+// conservative markers: their full session id cannot be recovered from a ledger alone.
+const sessionOf = row => {
+  const key = row.split(',', 1)[0];
+  return key.slice(0, key.lastIndexOf('-') + 1);
+};
 function mergeRows(existing, rows, have = new Set()) {
   const kept = existing.split('\n').filter(l => l !== '' && !l.startsWith('key,'));
-  const added = rows.filter(r => !have.has(sessionOf(r)) && !kept.some(l => sessionOf(l) === sessionOf(r)));
+  const added = rows.filter(r => {
+    const id = sessionOf(r);
+    const legacy = id.slice(0, 9);
+    return !have.has(id) && !have.has(legacy) && !kept.some(l => {
+      const recorded = sessionOf(l);
+      return recorded === id || recorded === legacy;
+    });
+  });
   return { text: [CSV_HEADER, ...kept, ...added].join('\n') + '\n', added: added.length };
 }
 

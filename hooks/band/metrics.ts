@@ -206,14 +206,20 @@ export type Snapshot = {
 }
 
 // A task's row in the ledger: the session and when it started (a /clear starts a new one).
-export const taskKey = (session: string, startedAt: number) => `${session.slice(0, 8)}-${startedAt}`
+export const taskKey = (session: string, startedAt: number) => `${session}-${startedAt}`
+
+const legacyTaskKey = (key: string) => {
+  const at = key.lastIndexOf('-')
+  return at < 0 ? key : key.slice(0, Math.min(at, 8)) + key.slice(at)
+}
 
 // A band that starts again mid-session (a reload, an update, a second copy) picks up the session's
 // row, so what only the band counts (tokens, agent time, the name) goes on instead of starting at zero.
 // shortcut: the ledger keeps only the token total and output, so a resumed band books the rest as input.
 export function resume(b: Band, csv: string, key: string): Band {
   const [head, ...rows] = parseCsv(csv)
-  const row = head ? rows.find(r => r[head.indexOf('key')] === key) : undefined
+  const row = head ? rows.find(r => r[head.indexOf('key')] === key)
+    ?? rows.find(r => r[head.indexOf('key')] === legacyTaskKey(key)) : undefined
   if (!head || !row) return b
   const at = (col: string) => row[head.indexOf(col)] ?? ''
   const total = Number(at('tokens_total')) || 0
@@ -285,7 +291,8 @@ export const csvRow = (s: Snapshot) =>
 
 // One row per session, replaced on every turn, so the file stays a table of tasks.
 export function upsertCsv(existing: string, s: Snapshot): string {
-  const rows = existing.split('\n').filter(line => line !== '' && !line.startsWith('key,') && !line.startsWith(`${s.key},`))
+  const legacy = legacyTaskKey(s.key)
+  const rows = existing.split('\n').filter(line => line !== '' && !line.startsWith('key,') && !line.startsWith(`${s.key},`) && !line.startsWith(`${legacy},`))
   return [CSV_HEADER, ...rows, csvRow(s)].join('\n') + '\n'
 }
 
