@@ -123,6 +123,8 @@ More survivors in [examples/](examples/).
 
 In Claude Code, ponytail now shows a band above the prompt: what the current task costs, how many tokens and how much agent time it used, how often it reused existing code instead of writing new code, and whether the tests passed after the last change. Its buttons switch the level, run `/ponytail-review` or `/ponytail-audit`, copy the task as Markdown, and fold the band into one line. Don't want it? `/ponytail band` hides it, the same command brings it back. Needs Claude Code 2.1.290 or later, in the terminal or the desktop app. It does not show in the VS Code chat panel, cloud sessions or `claude -p`.
 
+Copied Markdown keeps task names, project paths and model names as literal text, including markup punctuation and line breaks.
+
 <p align="center">
   <img src="assets/band/board.png" width="880" alt="The ponytail board, a local page: 61 sessions, 20h 13m agent time, $285.30 and 492.5M tokens in the last 30 days; agent time per project over time; the latest sessions with their tests; active days and streak.">
 </p>
