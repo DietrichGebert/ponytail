@@ -188,6 +188,8 @@ Only install ponytail from `DietrichGebert/ponytail` on GitHub or `@dietrichgebe
 
 Commands need a skill-capable host (Claude Code, Codex, Devin CLI, OpenCode, Gemini, Antigravity CLI, pi, Hermes Agent, Qoder, Grok Build). In Codex CLI and the IDE extension they're skills under the plugin's namespace; invoke with `$ponytail:ponytail-review`. Cursor with the [hooks](INSTALL.md#cursor) gets `/ponytail` level switching only, typed as a plain message. The instruction-only adapters (Cursor's rule file, Windsurf, Cline, Copilot, Kiro, Antigravity's `AGENTS.md` fallback) load the always-on ruleset without the commands.
 
+The Band history importer assembles each JSONL record once when its line ends, so a long prompt or tool record does not rescan the growing prefix on every file read. UTF-8 characters split across reads and the final line without a newline are preserved; each individual JSON record still has to fit in memory.
+
 ## FAQ
 
 **Does it need a config file?**
