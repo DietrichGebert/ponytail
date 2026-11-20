@@ -27,4 +27,11 @@ const map = buildMap(dir);
 assert.ok(!/NOTICE|asking|leaked|outside/.test(map), map);
 assert.ok(map.includes('src/: Foo, Bar, baz'), map);
 assert.ok(map.includes('self.helper'), map);
+// A folder switches from three names per file to one once it has nine files.
+const group = path.join(dir, 'group');
+fs.mkdirSync(group);
+for (let i = 0; i < 9; i++) {
+  fs.writeFileSync(path.join(group, i + '.js'), `export const name${i} = 1;\nexport const other${i} = 2;\n`);
+}
+assert.ok(buildMap(dir).split('\n').includes('group/: name0, name1, name2, name3, name4, name5, name6, name7, name8'));
 fs.rmSync(dir, { recursive: true, force: true });
