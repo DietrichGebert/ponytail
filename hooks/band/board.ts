@@ -33,6 +33,7 @@ export type Task = {
 
 // RFC 4180 rows: quoted fields may hold commas, doubled quotes and line breaks.
 export function parseCsv(text: string): string[][] {
+  text = text.replace(/^\uFEFF/, '')
   const rows: string[][] = []
   let row: string[] = []
   let field = ''
