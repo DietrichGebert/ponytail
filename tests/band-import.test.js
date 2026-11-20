@@ -79,7 +79,7 @@ assert.equal(sessionStats(records.filter(r => !r.origin)), null);
 
 // CSV: the band's format, an older header replaced, a recorded session never imported twice.
 const row = csvRow('abcd1234-0000', 'shop', s);
-assert.ok(row.startsWith(`abcd1234-${s.startedMs},`) && row.endsWith(',import,claude-opus-5-5'));
+assert.ok(row.startsWith(`abcd1234-0000-${s.startedMs},`) && row.endsWith(',import,claude-opus-5-5'));
 const old = 'key,started,project,name\nabcd1234-1,2026-10-01 10:00,shop,Live\n';
 const merged = mergeRows(old, [row, csvRow('ffff0000-0000', 'shop', s)]);
 assert.equal(merged.added, 1);
