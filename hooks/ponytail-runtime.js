@@ -2,7 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const { createHash } = require('crypto');
-const { getClaudeDir, getQoderDir } = require('./ponytail-config');
+const { getClaudeDir, getQoderDir, isShellSafe } = require('./ponytail-config');
 
 const STATE_FILE = '.ponytail-active';
 
@@ -94,7 +94,9 @@ function cursorRulePath() {
 }
 
 function cursorRuleNotice(rule) {
-  return 'PONYTAIL: the always-on Cursor rule ' + rule + ' is active in this workspace and ' +
+  // isShellSafe keeps newlines and quotes from a hostile clone path out of the model's context (#1311).
+  const name = isShellSafe(rule) ? rule : '.cursor/rules/ponytail.mdc';
+  return 'PONYTAIL: the always-on Cursor rule ' + name + ' is active in this workspace and ' +
     'already carries the ponytail ruleset, so the ponytail hooks injected nothing further. ' +
     'Mode switching (/ponytail lite|full|ultra|off, "stop ponytail") is unavailable while ' +
     'that rule exists. When the user tries to switch or turn off ponytail, tell them to ' +
