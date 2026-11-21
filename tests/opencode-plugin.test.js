@@ -16,7 +16,8 @@ const { pathToFileURL } = require('url');
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'ponytail-opencode-'));
 process.env.XDG_CONFIG_HOME = tmp;
 delete process.env.PONYTAIL_DEFAULT_MODE;
-const statePath = path.join(tmp, 'opencode', '.ponytail-active');
+// The level is kept per session; these tests use session 's'.
+const statePath = path.join(tmp, 'opencode', 'ponytail-sessions', 's');
 
 let loadPlugin, parseCommandFile, parseSkillFile;
 test.before(async () => {
@@ -150,7 +151,7 @@ test('V2 command without $ARGUMENTS appends the typed input instead of dropping 
 test('V2 context hook injects the ruleset, and stays silent when off', async () => {
   try { fs.unlinkSync(statePath); } catch (e) {}
   let { hooks } = await setupV2();
-  const event = { system: [] };
+  const event = { sessionID: 's', system: [] };
   await hooks.context(event);
   assert.equal(event.system.length, 1);
   assert.equal(event.system[0].type, 'text', 'V2 system entries are typed parts');
@@ -160,7 +161,7 @@ test('V2 context hook injects the ruleset, and stays silent when off', async () 
   const { added } = await setupV2();
   await added.commands.ponytail.execute({ sessionID: 's', prompt: { text: 'off' }, delivery: 'steer' });
   ({ hooks } = await setupV2());
-  const quiet = { system: [] };
+  const quiet = { sessionID: 's', system: [] };
   await hooks.context(quiet);
   assert.deepEqual(quiet.system, []);
 });
@@ -168,8 +169,8 @@ test('V2 context hook injects the ruleset, and stays silent when off', async () 
 test('V2 compaction hook injects the same ruleset as context, and stays silent when off (#1086)', async () => {
   try { fs.unlinkSync(statePath); } catch (e) {}
   let { hooks } = await setupV2();
-  const fromContext = { system: [] };
-  const fromCompaction = { system: [] };
+  const fromContext = { sessionID: 's', system: [] };
+  const fromCompaction = { sessionID: 's', system: [] };
   await hooks.context(fromContext);
   await hooks.compaction(fromCompaction);
   assert.equal(fromCompaction.system.length, 1);
@@ -177,7 +178,7 @@ test('V2 compaction hook injects the same ruleset as context, and stays silent w
 
   fs.writeFileSync(statePath, 'off');
   ({ hooks } = await setupV2());
-  const quiet = { system: [] };
+  const quiet = { sessionID: 's', system: [] };
   await hooks.compaction(quiet);
   assert.deepEqual(quiet.system, []);
 });
@@ -200,27 +201,48 @@ test('V2 bare /ponytail keeps a running level and switches an off session on (#6
   assert.equal(fs.readFileSync(statePath, 'utf8'), 'full');
 });
 
-test('V1 and V2 share one mode file, so a level set under either API applies to both', async () => {
+test('V1 and V2 share the session\'s mode file, so a level set under either API applies to both', async () => {
   const { added } = await setupV2();
   await added.commands.ponytail.execute({ sessionID: 's', prompt: { text: 'lite' }, delivery: 'steer' });
   const v1 = await loadPlugin.server({});
   const output = { system: [] };
-  await v1['experimental.chat.system.transform']({ model: {} }, output);
+  await v1['experimental.chat.system.transform']({ model: {}, sessionID: 's' }, output);
   assert.match(output.system.join(''), /PONYTAIL MODE ACTIVE — level: lite/);
 
   // ...and the reverse: a level set by the V1 hook reaches the V2 injection.
   await v1['command.execute.before']({ command: 'ponytail', arguments: 'ultra', sessionID: 's' });
   const { hooks } = await setupV2();
-  const event = { system: [] };
+  const event = { sessionID: 's', system: [] };
   await hooks.context(event);
   assert.match(event.system[0].text, /PONYTAIL MODE ACTIVE — level: ultra/);
+});
+
+test('V2 a level set in one session never reaches another, and a new session starts at the default', async () => {
+  const configPath = path.join(tmp, 'ponytail', 'config.json');
+  fs.mkdirSync(path.dirname(configPath), { recursive: true });
+  fs.writeFileSync(configPath, JSON.stringify({ defaultMode: 'off' }));
+  try {
+    const { added, hooks } = await setupV2();
+    const context = async (sessionID) => {
+      const event = { sessionID, system: [] };
+      await hooks.context(event);
+      return event.system.map((part) => part.text).join('');
+    };
+    assert.equal(await context('ses_a'), '', 'a fresh session is off');
+    await added.commands.ponytail.execute({ sessionID: 'ses_b', prompt: { text: 'ultra' }, delivery: 'steer' });
+    assert.match(await context('ses_b'), /PONYTAIL MODE ACTIVE — level: ultra/);
+    assert.equal(await context('ses_a'), '', 'an older session stays off');
+    assert.equal(await context('ses_c'), '', 'a newer session starts off');
+  } finally {
+    fs.unlinkSync(configPath);
+  }
 });
 
 // ---------------------------------------------------------------- V1 ------
 
 function transform(hooks) {
   const output = { system: [] };
-  return hooks['experimental.chat.system.transform']({ model: {} }, output).then(() => output.system);
+  return hooks['experimental.chat.system.transform']({ model: {}, sessionID: 's' }, output).then(() => output.system);
 }
 
 test('system.transform injects the ruleset at the default mode (full)', async () => {
