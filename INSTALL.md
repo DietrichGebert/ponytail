@@ -56,6 +56,8 @@ Copilot CLI namespaces plugin commands by plugin name. For example:
 pi install git:github.com/DietrichGebert/ponytail
 ```
 
+Subagents started by the pi-code `subagent` tool (child `pi` processes) start in the parent's current mode, not the saved default, so `/ponytail off` also covers them. `PONYTAIL_SUBAGENT_MATCHER` (regex on the agent name, same rules as above) turns ponytail off for the agents that do not match.
+
 ## Kimi Code
 
 In Kimi Code, run `/plugins install https://github.com/DietrichGebert/ponytail`, then `/reload` or start a new session. The plugin puts [`AGENTS.md`](AGENTS.md) into the system prompt every turn and adds the six skills, which Kimi also offers as `/ponytail`, `/ponytail-review`, `/ponytail-audit`, `/ponytail-debt`, `/ponytail-gain` and `/ponytail-help`. Level switching (`/ponytail lite`) loads the skill for that turn; there is no persistent mode flag in Kimi.

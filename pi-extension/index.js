@@ -1,4 +1,5 @@
 import { createRequire } from "node:module";
+import vm from "node:vm";
 
 const require = createRequire(import.meta.url);
 const {
@@ -42,6 +43,29 @@ export function resolveSessionMode(entries, fallbackMode = DEFAULT_MODE) {
   }
 
   return fallback;
+}
+
+// Subagent name from the `--system-prompt <dir>/prompt-<safeName>.md` argument that pi-code passes to child pi
+// processes; null when absent or unparseable.
+export function subagentName(argv) {
+  const i = Array.isArray(argv) ? argv.indexOf("--system-prompt") : -1;
+  const m = i >= 0 ? /^prompt-(.+)\.md$/.exec(String(argv[i + 1] || "").split(/[\\/]/).pop()) : null;
+  return m ? m[1] : null;
+}
+
+// Mode of a child (subagent) pi process: the parent's mode, then PONYTAIL_SUBAGENT_MATCHER (unanchored,
+// case-insensitive, like the SubagentStart hook) turns it off for agents that do not match.
+// An unparseable name, a bad regex or a matcher that times out (#658) fail open: the mode is kept.
+export function childMode({ parentMode, matcher, argv, fallback }) {
+  const mode = normalizePersistedMode(parentMode) || fallback;
+  if (mode === "off" || !matcher) return mode;
+  const name = subagentName(argv);
+  if (name === null) return mode;
+  try {
+    return vm.runInNewContext("re.test(s)", { re: new RegExp(matcher, "i"), s: name }, { timeout: 100 }) ? mode : "off";
+  } catch {
+    return mode;
+  }
 }
 
 export function parsePonytailCommand(text, defaultMode = DEFAULT_MODE, currentMode = null) {
@@ -103,6 +127,7 @@ export default function ponytailExtension(pi) {
     if (!normalized) return;
 
     currentMode = normalized;
+    process.env.PONYTAIL_PARENT_MODE = currentMode;
     pi.appendEntry("ponytail-mode", { mode: normalized });
     syncStatus(ctx);
     ctx?.ui?.notify?.(`Ponytail mode set to ${normalized}.`, "info");
@@ -204,6 +229,18 @@ export default function ponytailExtension(pi) {
     configuredDefaultMode = getDefaultMode();
     hideStatus = getHideStatus();
     restoreSessionMode(ctx);
+    if (process.env.PI_CODE_SUBAGENT) {
+      // Child: inherit the parent's mode (not the persisted default) and honor the matcher; never persisted.
+      currentMode = childMode({
+        parentMode: process.env.PONYTAIL_PARENT_MODE,
+        matcher: process.env.PONYTAIL_SUBAGENT_MATCHER,
+        argv: process.argv,
+        fallback: currentMode,
+      });
+      syncStatus(ctx);
+    }
+    // Children spawned later inherit the mode through process.env.
+    process.env.PONYTAIL_PARENT_MODE = currentMode;
     if (!getQuietStartup()) {
       ctx?.ui?.notify?.(`Ponytail loaded: ${currentMode}`, "info");
     }
