@@ -12,6 +12,7 @@ import {
   elapsed,
   fmtTokens,
   inProject,
+  isSource,
   isTestCommand,
   mainModel,
   markdown,
@@ -192,6 +193,67 @@ describe('metrics', () => {
     expect(defsIn('a.py', 'def to_cents(x):\n    pass\nclass Cart:\n    def total(self): pass')).toEqual(['to_cents', 'Cart'])
     expect(defsIn('a.ts', 'export function formatMoney() {}\nfunction local() {}\nconst x = 1')).toEqual(['formatMoney', 'local'])
     expect(defsIn('README.md', 'def nope():')).toEqual([])
+    const dart = [
+      "import 'package:flutter/material.dart';",
+      "part 'cart.g.dart';",
+      'const maxItems = 10;',
+      'final void Function(int) onTap = (x) {};',
+      'void Function(String) logger = print;',
+      'class Cart {',
+      '  void addItem(String id) {',
+      '    if (id.isEmpty) return;',
+      '  }',
+      '}',
+      'abstract class PricingRule {}',
+      'sealed class Discount {}',
+      'final class Config {}',
+      'base class BaseService {}',
+      'interface class ApiClient {}',
+      'mixin class Loggable {}',
+      'abstract base mixin class FullMix {}',
+      'mixin Auditable on Object {}',
+      'enum Currency { usd, eur }',
+      'extension MoneyX on int {}',
+      'extension on String {}',
+      'extension type UserId(int value) {}',
+      'extension type const OrderId(int value) {}',
+      'typedef TaxFn = int Function(int);',
+      'String formatPrice(int cents) => cents.toString();',
+      'Future<List<Cart>> loadCarts<T>(String id) async => [];',
+      'computeTotal(int a, int b) => a + b;',
+      'PriceTag(cents: 100),',
+      'CartHeader(',
+      'formatPrice(42);',
+      'if (ready) {}',
+      'for (final x in xs) {}',
+      'while (ok) {}',
+      'switch (state) {}',
+      'catch (e) {}',
+      'return (a, b);',
+      'return formatPrice(1);',
+    ].join('\n')
+    expect(defsIn('lib/cart.dart', dart)).toEqual([
+      'Cart',
+      'PricingRule',
+      'Discount',
+      'Config',
+      'BaseService',
+      'ApiClient',
+      'Loggable',
+      'FullMix',
+      'Auditable',
+      'Currency',
+      'MoneyX',
+      'UserId',
+      'OrderId',
+      'TaxFn',
+      'formatPrice',
+      'loadCarts',
+      'computeTotal',
+    ])
+    expect(defsIn('lib/widget.dart', 'PriceTag(cents: 100),')).toEqual([])
+    expect(defsIn('lib/widget.dart', 'CartHeader(')).toEqual([])
+    expect(defsIn('lib/widget.dart', 'formatPrice(42);')).toEqual([])
   })
 
   test('counts calls of existing helpers, never new ones, test files or generic names', () => {
@@ -200,6 +262,23 @@ describe('metrics', () => {
     const added = addedLines('x = 1', 'x = 1\ny = to_cents(p)\nz = load(f)\nw = parse_price(s)')
     expect(added).not.toContain('x = 1')
     expect(callsIn(added, known, ['parse_price'])).toEqual(['to_cents'])
+
+    expect(isSource('lib/cart.dart')).toBe(true)
+    expect(isSource('lib/cart.g.dart')).toBe(false)
+    expect(isSource('lib/cart.freezed.dart')).toBe(false)
+    expect(isSource('lib/src/generated/protocol.dart')).toBe(false)
+    expect(isSource('test/cart_test.dart')).toBe(false)
+    const dartKnown = parseDefs([
+      'lib/money.dart:1:String formatPrice(int cents) => cents.toString();',
+      'lib/cart.dart:1:sealed class Discount {}',
+      'lib/cart.g.dart:1:class _$CartGen {}',
+      'lib/cart.freezed.dart:1:class _$CartFreezed {}',
+      'lib/src/generated/api.dart:1:class ApiDto {}',
+      'test/cart_test.dart:1:void fakeHelper() {}',
+    ].join('\n'))
+    expect([...dartKnown.keys()]).toEqual(['formatPrice', 'Discount'])
+    const dartAdded = addedLines('final a = 1;', 'final a = 1;\nfinal s = formatPrice(42);\nfinal b = newHelper();')
+    expect(callsIn(dartAdded, dartKnown, ['newHelper'])).toEqual(['formatPrice'])
   })
 
   test('only files under the project root count, with either slash', () => {
@@ -213,9 +292,22 @@ describe('metrics', () => {
   test('recognises test runs and their counts', () => {
     expect(isTestCommand('npm test')).toBe(true)
     expect(isTestCommand('cd api && python -m pytest -q')).toBe(true)
+    expect(isTestCommand('dart test -r failures-only')).toBe(true)
+    expect(isTestCommand('dart run test test/cart_test.dart')).toBe(true)
+    expect(isTestCommand('flutter test --timeout 90s')).toBe(true)
     expect(isTestCommand('npm install')).toBe(false)
+    expect(isTestCommand('dart pub get')).toBe(false)
+    expect(isTestCommand('flutter build apk')).toBe(false)
     expect(testCounts('===== 14 passed, 1 failed in 0.31s =====')).toEqual({ passed: 14, failed: 1 })
     expect(testCounts('ℹ pass 141\nℹ fail 1')).toEqual({ passed: 141, failed: 1 })
+    expect(testCounts('00:02 +80: All tests passed!')).toEqual({ passed: 80, failed: 0 })
+    expect(testCounts('00:10 +643 -1: Some tests failed.')).toEqual({ passed: 643, failed: 1 })
+    expect(testCounts('00:01 +12 ~2: All tests passed!')).toEqual({ passed: 12, failed: 0 })
+    expect(testCounts('00:05 +12 ~2 -3: Some tests failed.')).toEqual({ passed: 12, failed: 3 })
+    expect(testCounts('00:01 +0 -3: Some tests failed.')).toEqual({ passed: 0, failed: 3 })
+    expect(testCounts('00:01 -3: Some tests failed.')).toEqual({ passed: 0, failed: 3 })
+    expect(testCounts('00:01 ~2 -1: Some tests failed.')).toEqual({ passed: 0, failed: 1 })
+    expect(testCounts('00:00 +0: loading...\n00:01 +5: All tests passed!\n00:02 +12 ~1 -2: Some tests failed.')).toEqual({ passed: 12, failed: 2 })
     expect(testCounts('ok')).toEqual({ passed: undefined, failed: undefined })
   })
 

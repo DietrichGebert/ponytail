@@ -15,9 +15,9 @@ const { execFileSync } = require('child_process');
 
 const BUDGET = Number(process.env.PONYTAIL_MAP_CHARS || 2000);
 const MAX_FILES = 4000;
-const SRC = /\.(py|js|jsx|mjs|cjs|ts|tsx|go|rs|rb|java|kt|php|swift|cs)$/;
-const SKIP_DIR = /(^|\/)(node_modules|\.git|dist|build|out|vendor|venv|\.venv|__pycache__|coverage|\.next|target|migrations|versions|fixtures|tests?|__tests__|spec)(\/|$)/;
-const SKIP_FILE = /(^|\/)(test_[^/]*|[^/]*(_test|\.test|\.spec|\.gen|\.min|\.d)\.[a-z]+)$/;
+const SRC = /\.(py|js|jsx|mjs|cjs|ts|tsx|go|rs|rb|java|kt|php|swift|cs|dart)$/;
+const SKIP_DIR = /(^|\/)(node_modules|\.git|dist|build|out|vendor|venv|\.venv|__pycache__|coverage|\.next|target|migrations|versions|fixtures|generated|tests?|__tests__|spec)(\/|$)/;
+const SKIP_FILE = /(^|\/)(test_[^/]*|[^/]*(_test|\.test|\.spec|\.gen|\.g|\.freezed|\.min|\.d)\.[a-z]+)$/;
 const NAME = /^(?:type\s+)?(?:[\w$]+\s+as\s+)?([A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*)?)$/;
 const SAFE_PATH = /^[\w.@+$()[\]\/-]+$/;
 const SHARED = /(util|helper|lib|common|shared|service|component|hook|core|model|schema|api)/i;
@@ -30,9 +30,14 @@ const PATTERNS = {
   rs: [/^pub\s+(?:async\s+)?(?:fn|struct|enum|trait|type)\s+(\w+)/gm],
   rb: [/^\s*(?:def|class|module)\s+([A-Za-z][\w.]*)/gm],
   jvm: [/^\s*(?:public\s+)?(?:static\s+)?(?:final\s+)?(?:class|interface|enum|record)\s+(\w+)/gm],
+  dart: [
+    /^(?:(?:abstract|sealed|final|base|interface|mixin)\s+)*(?:class|mixin|enum|extension(?:\s+type(?:\s+const)?)?|typedef)\s+(?!on\b)([A-Za-z_$][\w$]*)/gm,
+    /^(?!(?:if|else|for|while|switch|catch|return|await|throw|yield|case|assert|new|const|final|late|var|class|mixin|enum|extension|typedef|import|export|part|super|this)\b)[A-Za-z_$][\w$<>?,. ]*?[ \t]+(?!(?:if|for|while|switch|catch|return|assert|super|this|Function)\b)([A-Za-z_$][\w$]*)[ \t]*(?:<[^>()\r\n]*>)?[ \t]*\(/gm,
+    /^(?!(?:if|else|for|while|switch|catch|return|await|throw|yield|case|assert|new|const|final|late|var|class|mixin|enum|extension|typedef|import|export|part|super|this|do|Function)\b)([A-Za-z_$][\w$]*)[ \t]*(?:<[^>()\r\n]*>)?[ \t]*\([^()\r\n]*\)[ \t]*(?:async\*?|sync\*?)?[ \t]*(?:\{|=>)/gm,
+  ],
 };
 const LANG = { py: 'py', js: 'js', jsx: 'js', mjs: 'js', cjs: 'js', ts: 'js', tsx: 'js', go: 'go', rs: 'rs',
-               rb: 'rb', java: 'jvm', kt: 'jvm', swift: 'jvm', cs: 'jvm', php: 'jvm' };
+               rb: 'rb', java: 'jvm', kt: 'jvm', swift: 'jvm', cs: 'jvm', php: 'jvm', dart: 'dart' };
 
 function listFiles(root) {
   try {
