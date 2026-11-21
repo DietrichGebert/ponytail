@@ -207,7 +207,10 @@ describe('metrics', () => {
     expect(inProject('/repo/shop/cart.py', '/repo/shop/')).toBe(true)
     expect(inProject('/tmp/scratch/drive.py', '/repo/shop')).toBe(false)
     expect(inProject('/repo/shop-old/cart.py', '/repo/shop')).toBe(false)
+    expect(inProject('/repo/Shop/cart.py', '/repo/shop')).toBe(false)
     expect(inProject('C:\\Users\\a\\shop\\cart.py', 'C:/Users/a/shop')).toBe(true)
+    expect(inProject('C:\\Users\\A\\shop\\cart.py', 'c:/users/a/shop')).toBe(true)
+    expect(inProject('\\\\Server\\Share\\Shop\\cart.py', '//server/share/shop')).toBe(true)
   })
 
   test('recognises test runs and their counts', () => {
