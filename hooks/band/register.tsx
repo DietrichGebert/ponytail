@@ -31,6 +31,7 @@ import {
   taskKey,
   testsLabel,
   TITLE_RECORD,
+  AI_TITLE_RECORD,
   totalTokens,
   upsertCsv,
   webhookRequest,
@@ -113,7 +114,7 @@ type Options = { readonly [field: string]: unknown }
 // shortcut: without grep (Windows) only a transcript under 4 MiB is read; findstr would lift that.
 async function readTitle($: EngineInterface, transcript: string): Promise<string | undefined> {
   if (transcript === '') return undefined
-  const grep = await $.process.run(['grep', '-F', TITLE_RECORD, transcript]).catch(() => undefined)
+  const grep = await $.process.run(['grep', '-F', '-e', TITLE_RECORD, '-e', AI_TITLE_RECORD, transcript]).catch(() => undefined)
   const text = grep !== undefined && grep.exitCode <= 1 ? grep.stdout : await $.fs.read(transcript).catch(() => '')
   return sessionTitle(text)
 }
