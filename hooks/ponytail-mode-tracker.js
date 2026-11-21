@@ -30,6 +30,7 @@ function finish() {
   try {
     // Strip UTF-8 BOM some shells prepend when piping (breaks JSON.parse)
     const data = JSON.parse(input.replace(/^\uFEFF/, ''));
+    const sessionId = data && typeof data.session_id === 'string' ? data.session_id.trim() : '';
     const prompt = (data.prompt || '').trim().toLowerCase();
 
     // Cursor with the always-on rule in the workspace: no hook can change or
@@ -39,7 +40,7 @@ function finish() {
     if (isCursor && (/^[/@$]ponytail/.test(prompt) || isDeactivationCommand(prompt))) {
       const rule = cursorRulePath();
       if (rule) {
-        writeHookOutput('UserPromptSubmit', readMode() || 'off', cursorRuleNotice(rule));
+        writeHookOutput('UserPromptSubmit', readMode(sessionId) || 'off', cursorRuleNotice(rule));
         return;
       }
     }
@@ -84,7 +85,7 @@ function finish() {
           // process.exit below.
           if (parts[2] === 'import') {
             spawn(process.execPath, [path.join(__dirname, 'ponytail-band-import.js')], { detached: true, stdio: 'ignore' });
-            writeHookOutput('UserPromptSubmit', readMode() || 'off', 'PONYTAIL BAND IMPORT: past Claude Code sessions (cost, agent time, tokens) are being added to the board in the background. Open the board in a minute. Confirm in one short line.');
+            writeHookOutput('UserPromptSubmit', readMode(sessionId) || 'off', 'PONYTAIL BAND IMPORT: past Claude Code sessions (cost, agent time, tokens) are being added to the board in the background. Open the board in a minute. Confirm in one short line.');
             return;
           }
           const flag = path.join(getClaudeDir(), '.ponytail-band');
@@ -97,7 +98,7 @@ function finish() {
             fs.mkdirSync(path.dirname(flag), { recursive: true });
             fs.writeFileSync(flag, 'off');
           }
-          writeHookOutput('UserPromptSubmit', readMode() || 'off', show
+          writeHookOutput('UserPromptSubmit', readMode(sessionId) || 'off', show
             ? 'PONYTAIL BAND ON: the band shows above the prompt again. The ponytail level is unchanged. Confirm in one short line.'
             : 'PONYTAIL BAND OFF: the band above the prompt is hidden, `/ponytail band` brings it back. The ponytail level is unchanged. Confirm in one short line.');
           return;
@@ -109,7 +110,7 @@ function finish() {
         else if (arg === '') {
           // Bare /ponytail switches ponytail on: off → the default level (full if
           // the default is off too); already on → keep the level, report it (#639).
-          const live = readMode();
+          const live = readMode(sessionId);
           if (live && live !== 'off') {
             isReportOnly = true;
             mode = live;
@@ -130,7 +131,7 @@ function finish() {
           );
         }
       } else if (mode && mode !== 'off') {
-        setMode(mode);
+        setMode(mode, sessionId);
         modeSwitched = true;
         // ponytail: Qoder needs the full ruleset every turn, so when a mode
         // switch happens we fold the confirmation into the ruleset output
@@ -148,8 +149,8 @@ function finish() {
           );
         }
       } else if (mode === 'off') {
-        if (isQoder) setMode('off');
-        else clearMode();
+        if (isQoder) setMode('off', sessionId);
+        else clearMode(sessionId);
 
         deactivated = true;
         writeHookOutput('UserPromptSubmit', 'off', 'PONYTAIL MODE OFF');
@@ -158,8 +159,8 @@ function finish() {
 
     // Detect deactivation
     if (!modeSwitched && !deactivated && isDeactivationCommand(prompt)) {
-      if (isQoder) setMode('off');
-      else clearMode();
+      if (isQoder) setMode('off', sessionId);
+      else clearMode(sessionId);
 
       deactivated = true;
       writeHookOutput('UserPromptSubmit', 'off', 'PONYTAIL MODE OFF');
@@ -171,12 +172,12 @@ function finish() {
     // SessionStart via ponytail-activate.js; Qoder can't, so we do it here.
     // Skip when deactivated — user just turned ponytail off.
     if (isQoder && !deactivated) {
-      let currentMode = readMode();
+      let currentMode = readMode(sessionId);
       if (!currentMode) {
         // First prompt in session — initialize from config/env default
         currentMode = getDefaultMode();
         if (currentMode !== 'off') {
-          try { setMode(currentMode); } catch (e) {}
+          try { setMode(currentMode, sessionId); } catch (e) {}
         }
       }
       if (currentMode && currentMode !== 'off') {
