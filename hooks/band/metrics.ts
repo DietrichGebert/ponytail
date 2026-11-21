@@ -158,6 +158,8 @@ export const testsLabel = (t: Band['tests']) =>
 
 // Claude Code writes the session's sidebar name into its transcript on every rename.
 export const TITLE_RECORD = '"type":"custom-title"'
+// ...and its own generated name, shown until the session is renamed.
+export const AI_TITLE_RECORD = '"type":"ai-title"'
 // grep -o pattern for the model of every reply in a transcript.
 export const MODEL_PATTERN = '"model":"claude-[^"]*"'
 
@@ -168,20 +170,23 @@ export function mainModel(grepOut: string): string {
   return [...count].sort((a, b) => b[1] - a[1])[0]?.[0] ?? ''
 }
 
-// The newest sidebar name in transcript lines, or undefined when the session has none.
+// The newest sidebar name in transcript lines: a rename wins over Claude Code's generated name. Undefined when the session has neither.
 export function sessionTitle(jsonl: string): string | undefined {
+  let generated: string | undefined
   for (const line of jsonl.split('\n').reverse()) {
-    if (!line.includes(TITLE_RECORD)) continue
+    if (!line.includes(TITLE_RECORD) && !line.includes(AI_TITLE_RECORD)) continue
     try {
-      const r = JSON.parse(line) as { type?: unknown; customTitle?: unknown }
-      if (r.type !== 'custom-title') continue
-      const title = typeof r.customTitle === 'string' ? r.customTitle.trim() : ''
-      return title === '' ? undefined : title.slice(0, 60)
+      const r = JSON.parse(line) as { type?: unknown; customTitle?: unknown; aiTitle?: unknown }
+      const raw = r.type === 'custom-title' ? r.customTitle : r.type === 'ai-title' ? r.aiTitle : undefined
+      const title = typeof raw === 'string' ? raw.trim().slice(0, 60) : ''
+      if (title === '') continue
+      if (r.type === 'custom-title') return title
+      generated ??= title
     } catch {
       continue
     }
   }
-  return undefined
+  return generated
 }
 
 // One session (one task) as it is exported, copied and sent.
