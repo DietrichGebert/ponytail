@@ -6,8 +6,8 @@ import type { Band, Tokens } from './types'
 export { duration, elapsed, fmtTokens }
 
 // Same skip rules as ponytail-map.js: tests, vendored and generated code are not "reuse".
-const SKIP_DIR = /(^|\/)(node_modules|\.git|dist|build|out|vendor|venv|\.venv|__pycache__|coverage|\.next|target|migrations|fixtures|tests?|__tests__|spec)(\/|$)/
-const SKIP_FILE = /(^|\/)(test_[^/]*|[^/]*(_test|\.test|\.spec|\.gen|\.min|\.d)\.[a-z]+)$/
+const SKIP_DIR = /(^|\/)(node_modules|\.git|dist|build|out|vendor|venv|\.venv|__pycache__|coverage|\.next|target|migrations|fixtures|generated|tests?|__tests__|spec)(\/|$)/
+const SKIP_FILE = /(^|\/)(test_[^/]*|[^/]*(_test|\.test|\.spec|\.gen|\.g|\.freezed|\.min|\.d)\.[a-z]+)$/
 
 // Top-level definitions per language, close to ponytail-map.js, plus plain JS functions.
 // shortcut: regex, not a parser; nested and dynamic definitions are missed. Use tree-sitter if it matters.
@@ -20,10 +20,15 @@ const DEFS: [RegExp, RegExp[]][] = [
   [/\.go$/, [/^func\s+(?:\([^)]*\)\s*)?([A-Za-z]\w*)/gm]],
   [/\.rs$/, [/^(?:pub\s+)?(?:async\s+)?fn\s+(\w+)/gm]],
   [/\.rb$/, [/^\s*def\s+(?:self\.)?([A-Za-z]\w*[?!]?)/gm]],
+  [/\.dart$/, [
+    /^(?:(?:abstract|sealed|final|base|interface|mixin)\s+)*(?:class|mixin|enum|extension(?:\s+type(?:\s+const)?)?|typedef)\s+(?!on\b)([A-Za-z_$][\w$]*)/gm,
+    /^(?!(?:if|else|for|while|switch|catch|return|await|throw|yield|case|assert|new|const|final|late|var|class|mixin|enum|extension|typedef|import|export|part|super|this)\b)[A-Za-z_$][\w$<>?,. ]*?[ \t]+(?!(?:if|for|while|switch|catch|return|assert|super|this|Function)\b)([A-Za-z_$][\w$]*)[ \t]*(?:<[^>()\r\n]*>)?[ \t]*\(/gm,
+    /^(?!(?:if|else|for|while|switch|catch|return|await|throw|yield|case|assert|new|const|final|late|var|class|mixin|enum|extension|typedef|import|export|part|super|this|do|Function)\b)([A-Za-z_$][\w$]*)[ \t]*(?:<[^>()\r\n]*>)?[ \t]*\([^()\r\n]*\)[ \t]*(?:async\*?|sync\*?)?[ \t]*(?:\{|=>)/gm,
+  ]],
 ]
 
 // Lines worth a closer look; the per-language regexes above decide.
-export const GREP_DEFS = '^[[:space:]]*(export|async|def|class|function|func|pub|fn)[[:space:]]'
+export const GREP_DEFS = '^[[:space:]]*(export|async|def|class|function|func|pub|fn)[[:space:]]|^(abstract|sealed|final|base|interface|mixin|enum|extension|typedef)[[:space:]]|^[A-Za-z_$]([[:alnum:]_$<>?,. ]*[[:alnum:]_$>])?\\('
 
 // Names too generic to say anything about reuse.
 const GENERIC = new Set(['main', 'init', 'run', 'get', 'set', 'test', 'setup', 'open', 'close', 'read', 'write', 'start', 'stop', 'load', 'save', 'update', 'create', 'delete', 'handle', 'render', 'index', 'new', 'call', 'apply'])
@@ -83,12 +88,14 @@ export function inProject(file: string, root: string): boolean {
   return f === r || f.startsWith(`${r}/`)
 }
 
-const TEST_CMD = /\b(npm (run )?test|pnpm (run )?test|yarn test|bun test|npx (jest|vitest)|jest|vitest|pytest|python3? -m pytest|go test|cargo test|mvn test|gradle test|rspec|phpunit|dotnet test|node --test|deno test|make test)\b/
+const TEST_CMD = /\b(npm (run )?test|pnpm (run )?test|yarn test|bun test|npx (jest|vitest)|jest|vitest|pytest|python3? -m pytest|go test|cargo test|mvn test|gradle test|rspec|phpunit|dotnet test|node --test|deno test|make test|dart (run )?test|flutter test)\b/
 
 export const isTestCommand = (command: string) => TEST_CMD.test(command)
 
-// Pass and fail counts from common runners: pytest, jest/vitest, cargo, node --test, TAP.
+// Pass and fail counts from common runners: pytest, jest/vitest, cargo, node --test, TAP, dart/flutter.
 export function testCounts(output: string): { passed?: number; failed?: number } {
+  const dart = [...output.matchAll(/(?:^|\s)(?=[+~-]\d)(?:\+(\d+))?(?:\s*~\d+)?(?:\s*-(\d+))?:\s*(?:All tests passed|Some tests failed)/g)].at(-1)
+  if (dart) return { passed: Number(dart[1] ?? 0), failed: Number(dart[2] ?? 0) }
   const num = (re: RegExp) => {
     const m = re.exec(output)
     return m ? Number(m[1]) : undefined

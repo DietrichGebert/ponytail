@@ -28,3 +28,34 @@ assert.ok(!/NOTICE|asking|leaked|outside/.test(map), map);
 assert.ok(map.includes('src/: Foo, Bar, baz'), map);
 assert.ok(map.includes('self.helper'), map);
 fs.rmSync(dir, { recursive: true, force: true });
+
+// Dart definitions: public top-level types & functions are mapped; private, control-flow, and generated files are skipped.
+const dartDir = fs.mkdtempSync(path.join(os.tmpdir(), 'ponytail-map-dart-'));
+fs.mkdirSync(path.join(dartDir, 'lib', 'src', 'generated'), { recursive: true });
+fs.mkdirSync(path.join(dartDir, 'test'), { recursive: true });
+fs.writeFileSync(path.join(dartDir, 'lib', 'cart.dart'), [
+  "import 'dart:async';",
+  'sealed class CartState {}',
+  'String formatPrice(int cents) => cents.toString();',
+  'computeTotal(int a, int b) => a + b;',
+  'void _privateHelper() {}',
+  'PriceTag(cents: 100),',
+  'CartHeader(',
+  'formatPrice(42);',
+  'if (ready) {}',
+  'for (final x in xs) {}',
+].join('\n') + '\n');
+fs.writeFileSync(path.join(dartDir, 'lib', 'types.dart'), [
+  'extension type UserId(int value) {}',
+  'extension on String {}',
+  'typedef TaxFn = int Function(int);',
+  'enum Currency { usd, eur }',
+].join('\n') + '\n');
+fs.writeFileSync(path.join(dartDir, 'lib', 'cart.g.dart'), 'class GenCart {}\n');
+fs.writeFileSync(path.join(dartDir, 'lib', 'cart.freezed.dart'), 'class FreezedCart {}\n');
+fs.writeFileSync(path.join(dartDir, 'lib', 'src', 'generated', 'api.dart'), 'class GeneratedApi {}\n');
+fs.writeFileSync(path.join(dartDir, 'test', 'cart_test.dart'), 'void testHelper() {}\n');
+const dartMap = buildMap(dartDir);
+assert.ok(dartMap.includes('lib/: CartState, formatPrice, computeTotal, UserId, TaxFn, Currency'), dartMap);
+assert.ok(!/_privateHelper|PriceTag|CartHeader|\bif\b|\bfor\b|\bon\b|GenCart|FreezedCart|GeneratedApi|testHelper/.test(dartMap), dartMap);
+fs.rmSync(dartDir, { recursive: true, force: true });
