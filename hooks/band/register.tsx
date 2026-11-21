@@ -5,6 +5,7 @@ import { boardHtml, tasksFrom } from './board'
 import type { Band } from './types'
 import type { Col } from './metrics'
 import {
+  DEF_PATHS,
   GREP_DEFS,
   NO_TOKENS,
   addTokens,
@@ -199,7 +200,7 @@ async function openBoard($: EngineInterface) {
 
 // Sets the band up for a session (level, project, task row, cost baseline); returns the definitions that exist now.
 async function start($: EngineInterface): Promise<Map<string, string>> {
-  const grep = await $.process.run(['git', 'grep', '--untracked', '-nE', GREP_DEFS]).catch(() => undefined)
+  const grep = await $.process.run(['git', 'grep', '--untracked', '-nE', GREP_DEFS, '--', ...DEF_PATHS]).catch(() => undefined)
   const level = await readLevel($)
   const details = (await $.store.get('details')) === true
   const repo = await $.session.repo().catch(() => null)

@@ -25,6 +25,12 @@ const DEFS: [RegExp, RegExp[]][] = [
 // Lines worth a closer look; the per-language regexes above decide.
 export const GREP_DEFS = '^[[:space:]]*(export|async|def|class|function|func|pub|fn)[[:space:]]'
 
+// Pathspecs for that grep: only the files DEFS reads, so saved HTML and minified bundles are never scanned (#1443).
+export const DEF_PATHS = [
+  '*.py', '*.js', '*.jsx', '*.ts', '*.tsx', '*.mjs', '*.cjs', '*.mts', '*.cts', '*.go', '*.rs', '*.rb',
+  ':(exclude)*.min.*', ':(exclude,glob)**/node_modules/**', ':(exclude,glob)**/vendor/**', ':(exclude,glob)**/dist/**',
+]
+
 // Names too generic to say anything about reuse.
 const GENERIC = new Set(['main', 'init', 'run', 'get', 'set', 'test', 'setup', 'open', 'close', 'read', 'write', 'start', 'stop', 'load', 'save', 'update', 'create', 'delete', 'handle', 'render', 'index', 'new', 'call', 'apply'])
 
