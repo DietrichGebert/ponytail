@@ -3,8 +3,9 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
+import { pathToFileURL } from "node:url";
 
-import ponytailExtension, { parsePonytailCommand } from "../index.js";
+import ponytailExtension, { parsePonytailCommand, readHideStatus } from "../index.js";
 
 function createPiHarness() {
   const events = new Map();
@@ -45,6 +46,9 @@ function withTempConfig(fn) {
   const previousXdg = process.env.XDG_CONFIG_HOME;
   const previousHide = process.env.PONYTAIL_HIDE_STATUS;
   const previousDefault = process.env.PONYTAIL_DEFAULT_MODE;
+  const previousAgentDir = process.env.PI_CODING_AGENT_DIR;
+  process.env.PI_CODING_AGENT_DIR = join(tempConfigHome, "agent");
+  mkdirSync(process.env.PI_CODING_AGENT_DIR);
   process.env.XDG_CONFIG_HOME = tempConfigHome;
   delete process.env.PONYTAIL_HIDE_STATUS;
   delete process.env.PONYTAIL_DEFAULT_MODE;
@@ -58,6 +62,8 @@ function withTempConfig(fn) {
       else process.env.PONYTAIL_HIDE_STATUS = previousHide;
       if (previousDefault === undefined) delete process.env.PONYTAIL_DEFAULT_MODE;
       else process.env.PONYTAIL_DEFAULT_MODE = previousDefault;
+      if (previousAgentDir === undefined) delete process.env.PI_CODING_AGENT_DIR;
+      else process.env.PI_CODING_AGENT_DIR = previousAgentDir;
       rmSync(tempConfigHome, { recursive: true, force: true });
     });
 }
@@ -330,6 +336,83 @@ test("config.hideStatus hides the indicator but keeps ponytail active (#324)", a
 
   assert.deepEqual(statusWrites, [], "config.hideStatus must suppress the status bar");
   assert.match(injected.systemPrompt, /PONYTAIL MODE ACTIVE/, "ruleset must still inject while status is hidden");
+}));
+
+test("Pi settings hide the status without disabling instructions", async () => withTempConfig(async () => {
+  const { events } = createPiHarness();
+  // Read on session_start too, not just when the extension factory runs.
+  writeFileSync(join(process.env.PI_CODING_AGENT_DIR, "settings.json"), JSON.stringify({ ponytail: { hideStatus: true } }));
+  const statusWrites = [];
+  const ctx = createCommandContext({
+    ui: { notify() {}, setStatus: (key, text) => statusWrites.push({ key, text }), theme: { fg: (_c, t) => t } },
+  });
+
+  await events.get("session_start")({ reason: "startup" }, ctx);
+  await events.get("agent_start")({}, ctx);
+  const injected = await events.get("before_agent_start")({ systemPrompt: "BASE" }, ctx);
+
+  assert.deepEqual(statusWrites, []);
+  assert.match(injected.systemPrompt, /PONYTAIL MODE ACTIVE/);
+}));
+
+test("hideStatus resolves env, Pi settings, Ponytail config, then false", async () => withTempConfig(async () => {
+  const settingsPath = join(process.env.PI_CODING_AGENT_DIR, "settings.json");
+  assert.equal(readHideStatus(), false);
+  mkdirSync(join(process.env.XDG_CONFIG_HOME, "ponytail"));
+  writeFileSync(join(process.env.XDG_CONFIG_HOME, "ponytail", "config.json"), JSON.stringify({ hideStatus: true }));
+  assert.equal(readHideStatus(), true, "missing Pi settings fall back to Ponytail config");
+
+  for (const content of ["{", "null", "[]", "{}", '{"ponytail":null}', '{"ponytail":{"hideStatus":"false"}}']) {
+    writeFileSync(settingsPath, content);
+    assert.equal(readHideStatus(), true, `invalid or missing setting falls back: ${content}`);
+  }
+  writeFileSync(settingsPath, '\uFEFF{"ponytail":{"hideStatus":false}}');
+  assert.equal(readHideStatus(), false, "explicit false overrides Ponytail config, including with a BOM");
+  process.env.PONYTAIL_HIDE_STATUS = "1";
+  assert.equal(readHideStatus(), true, "env true overrides Pi false");
+  writeFileSync(settingsPath, '{"ponytail":{"hideStatus":true}}');
+  for (const value of ["0", "false", "no", ""]) {
+    process.env.PONYTAIL_HIDE_STATUS = value;
+    assert.equal(readHideStatus(), false, `env ${JSON.stringify(value)} overrides Pi true`);
+  }
+}));
+
+test("Pi agent directory accepts file URLs with escaped path characters", async () => withTempConfig(async () => {
+  const agentDir = join(process.env.XDG_CONFIG_HOME, "agent #1");
+  mkdirSync(agentDir);
+  writeFileSync(join(agentDir, "settings.json"), '{"ponytail":{"hideStatus":true}}');
+  process.env.PI_CODING_AGENT_DIR = pathToFileURL(agentDir).href;
+  assert.equal(readHideStatus(), true);
+
+  process.env.PI_CODING_AGENT_DIR = "file:///%ZZ";
+  assert.equal(readHideStatus(), false, "invalid file URLs fall back safely");
+}));
+
+test("Pi agent directory expands tilde without interpreting home path characters", async () => withTempConfig(async () => {
+  const previousHome = process.env.HOME;
+  const previousUserProfile = process.env.USERPROFILE;
+  const home = join(process.env.XDG_CONFIG_HOME, "home-$&");
+  process.env.HOME = home;
+  process.env.USERPROFILE = home;
+  try {
+    for (const dir of [home, join(home, "agent"), `${home}\\agent`, join(home, ".pi", "agent")]) {
+      mkdirSync(dir, { recursive: true });
+      writeFileSync(join(dir, "settings.json"), '{"ponytail":{"hideStatus":true}}');
+    }
+    for (const dir of ["~", "~/agent"]) {
+      process.env.PI_CODING_AGENT_DIR = dir;
+      assert.equal(readHideStatus(), true, `expands ${dir}`);
+    }
+    process.env.PI_CODING_AGENT_DIR = "~\\agent";
+    assert.equal(readHideStatus(), process.platform === "win32", "backslash expands only on Windows");
+    delete process.env.PI_CODING_AGENT_DIR;
+    assert.equal(readHideStatus(), true, "defaults to ~/.pi/agent");
+  } finally {
+    if (previousHome === undefined) delete process.env.HOME;
+    else process.env.HOME = previousHome;
+    if (previousUserProfile === undefined) delete process.env.USERPROFILE;
+    else process.env.USERPROFILE = previousUserProfile;
+  }
 }));
 
 test("PONYTAIL_HIDE_STATUS=0 does not hide the indicator", async () => withTempConfig(async () => {
