@@ -135,6 +135,8 @@ In Claude Code, ponytail now shows a band above the prompt: what the current tas
 
 **Board** opens a local page with every task across your projects: cost, agent time and tokens over time, every session with its tests, and the days you worked. By default, everything stays on your machine, in `~/.config/ponytail/band/`. `/ponytail band import` adds your past Claude Code sessions to it, with their cost, agent time and tokens.
 
+New ledger rows identify a session by its full ID. Older rows with an eight-character ID prefix still restore when the task starts at the same time, and a live update replaces that matching short key. Import keeps an older short key as a conservative duplicate marker because the ledger alone cannot recover its full ID. Newly written full keys distinguish sessions that share a prefix; older plugin versions can display those rows on the board but cannot restore them by their former short key.
+
 ## How it works
 
 <p align="center">
