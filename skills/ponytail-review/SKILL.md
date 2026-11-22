@@ -31,7 +31,8 @@ This is a report the user asked for, so give it in full.
 
 1. **Bug:** wrong result, crash, missed edge case (empty, zero, last item,
    rounding, time zones), a caller broken by the change, a fix applied in one
-   caller while the shared function stays broken.
+   caller while the shared function stays broken, a wrong value guarded at the
+   leaf that noticed it while the code that makes it still produces it.
 2. **Risk:** security holes (injection, weak randomness, secrets, missing
    checks on input from users), data loss (errors swallowed, writes in the
    wrong order, no transaction).
