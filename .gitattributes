@@ -1,0 +1,2 @@
+# Same LF line endings on every checkout, Windows included (#1124 failed on CRLF).
+* text=auto eol=lf
