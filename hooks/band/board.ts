@@ -296,6 +296,7 @@ const APP = `(function () {
 
   function chart() {
     var list = scope(), n = span(), keys = days(n), M = METRICS[state.metric], box = byId('stream'), tip = byId('tip'); tip.hidden = true
+    box.onmousemove = null; box.onmouseleave = null
     var W = Math.max(320, Math.round(box.getBoundingClientRect().width) || 900), H = 340, top = 66, base = 282
     box.setAttribute('viewBox', '0 0 ' + W + ' ' + H); box.textContent = ''
     var defs = svg('defs', {}, box); blur(defs, 'sglow', 10)
