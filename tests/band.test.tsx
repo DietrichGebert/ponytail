@@ -16,6 +16,7 @@ import {
   mainModel,
   markdown,
   metricsSvg,
+  pace,
   parseDefs,
   percent,
   resume,
@@ -83,7 +84,7 @@ describe('metrics', () => {
   const BASE: Band = {
     level: 'full', model: 'claude-opus-5-5', cost: 31.9, spent: 3.1, turns: 6, turnCosts: [0.42], tokens: { input: 5000, output: 85_000, cacheRead: 1_100_000, cacheWrite: 10_000 },
     busyMs: 1_560_000, name: 'Fix the cart | totals, again', project: 'shop', session: '4c69e3db-57a0', transcript: '', reused: ['to_cents'], created: [],
-    removed: [], openCallers: [], tests: { state: 'pass', passed: 14 }, details: false,
+    removed: [], openCallers: [], tests: { state: 'pass', passed: 14 }, details: false, limits: [],
   }
 
   test('a band that starts again mid-session goes on from its row instead of from zero', () => {
@@ -225,6 +226,20 @@ describe('metrics', () => {
     expect(percent(0, 0)).toBeUndefined()
     expect(duration(45)).toBe('45m')
     expect(duration(210)).toBe('3h 30m')
+  })
+
+  test('a rate-limit window reads as used% and its gap to the clock', () => {
+    const now = Date.parse('2026-10-31T12:00:00Z')
+    // 2h left of 5h: 60% of the window gone.
+    const at = (percentUsed: number) => pace({ kind: 'five_hour', percentUsed, resetsAt: '2026-10-31T14:00:00Z' }, now)
+    expect(at(70)).toMatchObject({ label: '5h', used: 70, delta: 10, sign: '+10', tone: 'warning' })
+    expect(at(80)?.tone).toBe('error')
+    expect(at(50)).toMatchObject({ delta: -10, sign: '−10', tone: 'success' })
+    expect(at(60)).toMatchObject({ sign: '±0', tone: undefined })
+    expect(at(92)?.tone).toBe('error')
+    expect(pace({ kind: 'five_hour', percentUsed: 10 }, now)).toBeUndefined()
+    expect(pace({ kind: 'five_hour', percentUsed: 10, resetsAt: '2026-10-31T11:00:00Z' }, now)).toBeUndefined()
+    expect(pace({ kind: 'opus_week', percentUsed: 10, resetsAt: '2026-10-31T14:00:00Z' }, now)).toBeUndefined()
   })
 })
 
