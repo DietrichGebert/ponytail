@@ -28,10 +28,12 @@ const {
 const claudeDir = getClaudeDir();
 const settingsPath = path.join(claudeDir, 'settings.json');
 
-function activate(mode) {
+function activate(mode, sessionId = '') {
   // "off" mode — skip activation entirely, don't write flag or emit rules
   if (mode === 'off') {
-    clearMode();
+    // With session_id, clear only this session's file so an off SessionStart
+    // never blanks the shared statusline flag for another active session (#1528).
+    clearMode(sessionId, { clearShared: !sessionId });
     process.exit(0);
   }
 
@@ -52,7 +54,7 @@ function activate(mode) {
 
   // 1. Write flag file
   try {
-    setMode(mode);
+    setMode(mode, sessionId);
   } catch (e) {
     // Silent fail -- flag is best-effort, don't block the hook
   }
@@ -184,13 +186,18 @@ function finish() {
   if (done) return;
   done = true;
   let source = '';
+  let sessionId = '';
   try {
     // Strip UTF-8 BOM some shells prepend when piping (breaks JSON.parse)
-    source = JSON.parse(input.replace(/^\uFEFF/, '')).source;
+    const data = JSON.parse(input.replace(/^\uFEFF/, ''));
+    if (data && typeof data === 'object') {
+      source = data.source || '';
+      sessionId = typeof data.session_id === 'string' ? data.session_id.trim() : '';
+    }
   } catch (e) {
     // No payload, or an unparseable one: treat it as a fresh session
   }
-  activate(source === 'compact' ? (readMode() || 'off') : getDefaultMode());
+  activate(source === 'compact' ? (readMode(sessionId) || 'off') : getDefaultMode(), sessionId);
 }
 
 process.stdin.on('data', chunk => { input += chunk; });

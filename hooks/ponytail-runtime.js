@@ -43,11 +43,10 @@ if (isCursor) stateDir = path.join(os.homedir(), '.cursor');
 
 const statePath = path.join(stateDir, STATE_FILE);
 
-// Claude Code hands every hook its project dir, so the live mode is kept per
-// project and concurrent sessions in different repos stop overwriting each other
-// (#662, #809). Hosts without it keep the single shared flag.
-// ponytail: sessions in the SAME repo still share one mode, and the statusline
-// scripts read the shared flag (last write wins); key by session_id if either matters.
+// Claude Code hands every hook session_id on stdin and CLAUDE_PROJECT_DIR in env,
+// so live mode is kept per session first, falling back to per-project when
+// session_id is absent (#662, #809, #1528), then to the single shared flag.
+// shortcut: the statusline scripts still read the shared flag (last write wins); key statusline by session_id if that matters.
 const projectDir = (process.env.CLAUDE_PROJECT_DIR || '').trim();
 // Replacing separators with '_' aliases e.g. /work/a/b and /work/a_b (#662).
 // Do not read old sanitized keys: they cannot be assigned to one project safely.
@@ -56,25 +55,35 @@ const projectStatePath = projectDir
     createHash('sha256').update(path.normalize(projectDir)).digest('hex'))
   : null;
 
+function modeFilePath(sessionId) {
+  const sid = typeof sessionId === 'string' ? sessionId.trim() : '';
+  if (sid) {
+    return path.join(stateDir, 'ponytail-modes',
+      createHash('sha256').update('session:' + sid).digest('hex'));
+  }
+  return projectStatePath;
+}
+
 // The shared flag is still written, for the statusline and project-less hosts.
-function setMode(mode) {
-  for (const file of [projectStatePath, statePath]) {
+function setMode(mode, sessionId) {
+  for (const file of [modeFilePath(sessionId), statePath]) {
     if (!file) continue;
     fs.mkdirSync(path.dirname(file), { recursive: true });
     fs.writeFileSync(file, mode);
   }
 }
 
-function clearMode() {
-  for (const file of [projectStatePath, statePath]) {
+function clearMode(sessionId, { clearShared = true } = {}) {
+  const files = clearShared ? [modeFilePath(sessionId), statePath] : [modeFilePath(sessionId)];
+  for (const file of files) {
     if (file) try { fs.unlinkSync(file); } catch (e) {}
   }
 }
 
 // Live mode written by activate/mode-tracker. Absent flag = ponytail off.
-function readMode() {
+function readMode(sessionId) {
   try {
-    return fs.readFileSync(projectStatePath || statePath, 'utf8').trim() || null;
+    return fs.readFileSync(modeFilePath(sessionId) || statePath, 'utf8').trim() || null;
   } catch (e) {
     return null;
   }

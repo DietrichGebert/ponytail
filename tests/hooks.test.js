@@ -956,6 +956,81 @@ assert.equal(
   assert.equal(subagentLevel(siblingEnv), 'lite');
 }
 
+// #1528: concurrent sessions in the same project keep their own mode when
+// session_id is present; an off SessionStart clears only its own session.
+{
+  const sessHome = path.join(temp, 'per-session-home');
+  const sharedFlag = path.join(sessHome, '.claude', '.ponytail-active');
+  fs.mkdirSync(sessHome, { recursive: true });
+  const env = { HOME: sessHome, USERPROFILE: sessHome, CLAUDE_PROJECT_DIR: '/work/shared-repo' };
+  const subagentLevel = (payload, extraEnv = {}) => {
+    const r = run('ponytail-subagent.js', { ...env, ...extraEnv }, JSON.stringify(payload));
+    assert.equal(r.status, 0, r.stderr);
+    if (!r.stdout) return null;
+    return JSON.parse(r.stdout).hookSpecificOutput.additionalContext.match(/level: (\w+)/)[1];
+  };
+
+  // Session A starts off, then enables ponytail with /ponytail.
+  let r = run('ponytail-activate.js', { ...env, PONYTAIL_DEFAULT_MODE: 'off' }, JSON.stringify({ session_id: 'sess-a', source: 'startup' }));
+  assert.equal(r.status, 0, r.stderr);
+  assert.equal(r.stdout, '');
+
+  r = run('ponytail-mode-tracker.js', { ...env, PONYTAIL_DEFAULT_MODE: 'off' }, JSON.stringify({ session_id: 'sess-a', prompt: '/ponytail' }));
+  assert.equal(r.status, 0, r.stderr);
+  assert.match(r.stdout, /PONYTAIL MODE CHANGED — level: full/);
+  assert.equal(fs.readFileSync(sharedFlag, 'utf8'), 'full');
+
+  // Session B (different session_id in the same project) never asked for ponytail.
+  assert.equal(subagentLevel({ session_id: 'sess-b', agent_type: 'Explore' }), null,
+    'Session B subagent must not inherit Session A mode');
+
+  // Session C starts with PONYTAIL_DEFAULT_MODE=off: must not wipe A or the statusline flag.
+  r = run('ponytail-activate.js', { ...env, PONYTAIL_DEFAULT_MODE: 'off' }, JSON.stringify({ session_id: 'sess-c', source: 'startup' }));
+  assert.equal(r.status, 0, r.stderr);
+  assert.equal(r.stdout, '');
+  assert.equal(fs.readFileSync(sharedFlag, 'utf8'), 'full', 'off SessionStart in C must leave shared statusline flag intact');
+  assert.equal(subagentLevel({ session_id: 'sess-a', agent_type: 'Explore' }), 'full',
+    'Session A subagent must still see A mode after Session C starts off');
+
+  // Independent switches and deactivation per session.
+  run('ponytail-mode-tracker.js', env, JSON.stringify({ session_id: 'sess-b', prompt: '/ponytail lite' }));
+  assert.equal(subagentLevel({ session_id: 'sess-b' }), 'lite');
+  assert.equal(subagentLevel({ session_id: 'sess-a' }), 'full');
+
+  run('ponytail-mode-tracker.js', env, JSON.stringify({ session_id: 'sess-a', prompt: '/ponytail ultra' }));
+  r = run('ponytail-mode-tracker.js', env, JSON.stringify({ session_id: 'sess-a', prompt: '/ponytail' }));
+  assert.match(r.stdout, /PONYTAIL MODE ACTIVE — level: ultra/);
+  assert.equal(subagentLevel({ session_id: 'sess-a' }), 'ultra');
+  assert.equal(subagentLevel({ session_id: 'sess-b' }), 'lite');
+
+  run('ponytail-mode-tracker.js', env, JSON.stringify({ session_id: 'sess-b', prompt: '/ponytail off' }));
+  assert.equal(subagentLevel({ session_id: 'sess-b' }), null, '/ponytail off in B clears B');
+  assert.equal(subagentLevel({ session_id: 'sess-a' }), 'ultra', '/ponytail off in B leaves A alone');
+
+  // Compaction preserves each session's own mode independently.
+  const compactA = run('ponytail-activate.js', { ...env, PONYTAIL_DEFAULT_MODE: 'off' }, JSON.stringify({ session_id: 'sess-a', source: 'compact' }));
+  assert.match(compactA.stdout, /PONYTAIL MODE ACTIVE — level: ultra/);
+  const compactB = run('ponytail-activate.js', { ...env, PONYTAIL_DEFAULT_MODE: 'full' }, JSON.stringify({ session_id: 'sess-b', source: 'compact' }));
+  assert.equal(compactB.stdout, '', 'compaction in stopped Session B must stay off even when default is full');
+
+  // PONYTAIL_SUBAGENT_MATCHER composes with session_id isolation.
+  assert.equal(subagentLevel({ session_id: 'sess-a', agent_type: 'Explore' }, { PONYTAIL_SUBAGENT_MATCHER: 'explore' }), 'ultra');
+  assert.equal(subagentLevel({ session_id: 'sess-a', agent_type: 'Plan' }, { PONYTAIL_SUBAGENT_MATCHER: 'explore' }), null);
+  assert.equal(subagentLevel({ session_id: 'sess-b', agent_type: 'Explore' }, { PONYTAIL_SUBAGENT_MATCHER: 'explore' }), null);
+
+  // Whitespace-only session_id falls back to the project key without colliding with named sessions.
+  run('ponytail-mode-tracker.js', env, JSON.stringify({ session_id: '   ', prompt: '/ponytail lite' }));
+  assert.equal(subagentLevel({ session_id: '' }), 'lite');
+  assert.equal(subagentLevel({ session_id: 'sess-a' }), 'ultra');
+
+  // Qoder sessions in the same project also isolate by session_id when provided.
+  const qEnv = { HOME: sessHome, USERPROFILE: sessHome, CLAUDE_PROJECT_DIR: '/work/shared-repo', QODER_SESSION_ID: 'q-env', PONYTAIL_DEFAULT_MODE: 'off' };
+  run('ponytail-mode-tracker.js', qEnv, JSON.stringify({ session_id: 'q-1', prompt: '/ponytail ultra' }));
+  run('ponytail-mode-tracker.js', qEnv, JSON.stringify({ session_id: 'q-2', prompt: '/ponytail lite' }));
+  assert.equal(subagentLevel({ session_id: 'q-1' }, qEnv), 'ultra');
+  assert.equal(subagentLevel({ session_id: 'q-2' }, qEnv), 'lite');
+}
+
 // #639: bare /ponytail switches ponytail on when it is off, and only reports
 // (never resets) the level when it is already on.
 {
