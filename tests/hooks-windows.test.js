@@ -203,3 +203,22 @@ test('a hostile plugin root cannot inject shell commands via host-side textual s
   }
   fs.rmSync(marker, { force: true });
 });
+
+test('PowerShell statusline reads a config directory containing brackets', { skip: process.platform !== 'win32' }, () => {
+  const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'ponytail-statusline-'));
+  const script = path.join(root, 'hooks', 'ponytail-statusline.ps1');
+  try {
+    for (const name of ['plain', 'config[dev]']) {
+      const configDir = path.join(temp, name);
+      fs.mkdirSync(configDir);
+      fs.writeFileSync(path.join(configDir, '.ponytail-active'), 'ultra');
+      const output = execFileSync('powershell', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', script], {
+        encoding: 'utf8',
+        env: { ...process.env, CLAUDE_CONFIG_DIR: configDir },
+      });
+      assert.ok(output.includes('[PONYTAIL:ULTRA]'), `missing statusline for ${name}`);
+    }
+  } finally {
+    fs.rmSync(temp, { recursive: true, force: true });
+  }
+});
