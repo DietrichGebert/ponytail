@@ -6,9 +6,12 @@ import type { Band } from './types'
 import type { Col } from './metrics'
 import {
   GREP_DEFS,
+  KIND_COLORS,
   NO_TOKENS,
   addTokens,
   addedLines,
+  breakdown,
+  legendText,
   callsIn,
   defsIn,
   elapsed,
@@ -422,10 +425,28 @@ export const register: Register = (on, options) => {
       )
     }
 
+    // The cost and token cells split by token type, one color each, named in the legend row.
+    // shortcut: a band resumed from the ledger books all but output as input (see resume), so its split is wrong until /clear; store the split in the ledger if that bites.
+    const parts = breakdown(b.tokens, b.spent)
+    const tokenTotal = totalTokens(b.tokens)
+    const legend = tokenTotal > 0 ? parts.map(legendText) : []
+
     // Only columns that say something; callers and tests appear once there is something to report.
     const cols: Col[] = [
-      { key: 'cost', label: 'cost', value: `$${b.spent.toFixed(2)}`, sub: last === undefined ? '' : `last $${last.toFixed(2)} · ⌀ $${avg.toFixed(2)}` },
-      { key: 'tokens', label: 'tokens', value: fmtTokens(totalTokens(b.tokens)), sub: `${b.turns} ${b.turns === 1 ? 'turn' : 'turns'}` },
+      {
+        key: 'cost',
+        label: 'cost',
+        value: `$${b.spent.toFixed(2)}`,
+        sub: last === undefined ? '' : `last $${last.toFixed(2)} · ⌀ $${avg.toFixed(2)}`,
+        ...(b.spent > 0 && tokenTotal > 0 ? { split: parts.map(p => p.usd / b.spent) } : {}),
+      },
+      {
+        key: 'tokens',
+        label: 'tokens',
+        value: fmtTokens(tokenTotal),
+        sub: `${b.turns} ${b.turns === 1 ? 'turn' : 'turns'}`,
+        ...(tokenTotal > 0 ? { split: parts.map(p => p.tokens / tokenTotal) } : {}),
+      },
       { key: 'time', label: 'agent time', value: elapsed(b.busyMs), sub: b.turns > 0 ? `⌀ ${elapsed(b.busyMs / b.turns)} / turn` : '' },
     ]
     if (reuse !== undefined) cols.push({ key: 'reuse', label: 'reuse', value: `${reuse}%`, sub: '' })
@@ -448,25 +469,53 @@ export const register: Register = (on, options) => {
           {'─'.repeat(e.props.bodyColumns)}
         </Text>
         <Box flexDirection="row" gap={2}>
-          {cols.map(c => (
+          {cols.map(c => {
             // Off the terminal the columns share the row; a width in cells would leave most of it empty and cut the text.
-            <Box key={c.key} flexDirection="column" {...(width === undefined ? { flexGrow: 1 } : { width: Math.max(10, Math.floor(width / cols.length) - 2) })}>
-              <Text dimColor>{c.label}</Text>
-              <Text bold color={c.tone}>
-                {c.value}
-              </Text>
-              <Text dimColor wrap="truncate-end">
-                {c.sub}
-              </Text>
-            </Box>
-          ))}
+            const colCells = width === undefined ? 20 : Math.max(10, Math.floor(width / cols.length) - 2)
+            return (
+              <Box key={c.key} flexDirection="column" {...(width === undefined ? { flexGrow: 1 } : { width: colCells })}>
+                <Text dimColor>{c.label}</Text>
+                <Text bold color={c.tone}>
+                  {c.value}
+                </Text>
+                {c.split && (
+                  <Box flexDirection="row">
+                    {c.split.map((f, k) => (
+                      <Box key={`bar-${c.key}-${k}`}>
+                        <Text color={KIND_COLORS[k]}>{'█'.repeat(Math.round(f * (colCells - 2)))}</Text>
+                      </Box>
+                    ))}
+                  </Box>
+                )}
+                <Text dimColor wrap="truncate-end">
+                  {c.sub}
+                </Text>
+              </Box>
+            )
+          })}
         </Box>
+        {legend.length > 0 && (
+          <Text dimColor wrap="truncate-end">
+            {'─'.repeat(e.props.bodyColumns)}
+          </Text>
+        )}
+        {legend.length > 0 && (
+          <Box flexDirection="row" gap={2}>
+            {legend.map((text, k) => (
+              <Box key={`legend-${k}`} flexDirection="row" gap={1}>
+                <Text color={KIND_COLORS[k]}>■</Text>
+                <Text dimColor>{text}</Text>
+              </Box>
+            ))}
+          </Box>
+        )}
       </Box>
     )
     // Text glyphs make broken lines in the desktop's proportional font; an SVG draws real ones.
     if (e.surface === 'desktop') {
       const { Svg } = $.ui.resolve(e)
-      metrics = <Svg source={metricsSvg(cols, b.turnCosts)} alt={cols.map(c => `${c.label} ${c.value}`).join(', ')} />
+      const alt = [...cols.map(c => `${c.label} ${c.value}`), ...legend].join(', ')
+      metrics = <Svg source={metricsSvg(cols, b.turnCosts, 720, legend)} alt={alt} />
     }
 
     return stack(

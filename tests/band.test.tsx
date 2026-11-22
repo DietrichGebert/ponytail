@@ -5,6 +5,8 @@ import type { Band } from '../hooks/band/types'
 import {
   NO_TOKENS,
   addTokens,
+  breakdown,
+  legendText,
   addedLines,
   callsIn,
   defsIn,
@@ -188,6 +190,37 @@ describe('metrics', () => {
     expect(svg.match(/<rect /g)?.length).toBe(2)
   })
 
+  test('the cost and token split add up to the cells they sit in', () => {
+    // A real first turn: 12 requests, $1.78.
+    const tokens = { input: 28, output: 15_519, cacheRead: 1_185_396, cacheWrite: 71_870 }
+    const parts = breakdown(tokens, 1.78)
+    expect(parts.map(legendText)).toEqual(['cache read $0.62 · 1.2M', 'cache write $0.75 · 71.9k', 'output $0.41 · 15.5k', 'input $0.00 · 28'])
+    expect(Math.abs(parts.reduce((s, p) => s + p.usd, 0) - 1.78) < 1e-9).toBe(true)
+    expect(parts.reduce((s, p) => s + p.tokens, 0)).toBe(totalTokens(tokens))
+    expect(breakdown(NO_TOKENS, 0).every(p => p.usd === 0)).toBe(true)
+    // Rounded per part, these would show $1.67 + $1.67 + $1.67 against a $5.00 cell.
+    const even = breakdown({ input: 0, output: 1, cacheRead: 50, cacheWrite: 2.5 }, 5)
+    expect(Math.round(even.reduce((s, p) => s + p.usd, 0) * 100)).toBe(500)
+  })
+
+  test('the desktop row draws a colored bar per split cell and a legend under its own divider', () => {
+    const svg = metricsSvg(
+      [
+        { key: 'cost', label: 'cost', value: '$1.78', sub: '', split: [0.35, 0.42, 0.23, 0] },
+        { key: 'tokens', label: 'tokens', value: '1.3M', sub: '', split: [0.93, 0.06, 0.01, 0] },
+      ],
+      [],
+      720,
+      ['cache read $0.62 · 1.2M', 'cache write $0.75 · 71.9k', 'output $0.41 · 15.5k', 'input $0.00 · 28'],
+    )
+    // 3 segments per cell (the zero one is skipped) and 4 legend swatches.
+    expect(svg.match(/<rect class="k/g)?.length).toBe(10)
+    // Top line, one divider between the cells, and the legend's divider.
+    expect(svg.match(/<line /g)?.length).toBe(3)
+    expect(svg).toContain('cache write $0.75 · 71.9k')
+    expect(svg).toContain('height="102"')
+  })
+
   test('finds top-level definitions per language', () => {
     expect(defsIn('a.py', 'def to_cents(x):\n    pass\nclass Cart:\n    def total(self): pass')).toEqual(['to_cents', 'Cart'])
     expect(defsIn('a.ts', 'export function formatMoney() {}\nfunction local() {}\nconst x = 1')).toEqual(['formatMoney', 'local'])
@@ -285,6 +318,26 @@ test('the details view has its line without empty rows, and off the terminal its
   await ui.press({ key: 'details' })
   expect((await ui.find({ type: 'Box' }))?.props.gap).toBe(1)
   await ui.unmount()
+})
+
+test('details split the cost and token cells by color, with a legend that adds up, on every surface', async ($, on) => {
+  mock.clock(on)
+  mock.store(on)
+  const tokens = { input: 28, output: 15_519, cacheRead: 1_185_396, cacheWrite: 71_870 }
+  on('state.get', () => ({ value: { value: { spent: 1.78, turns: 1, turnCosts: [1.78], tokens, details: true, level: 'full' }, version: 1 } }))
+  for (const surface of ['terminal', 'desktop', 'vscode', 'mobile'] as const) {
+    const ui = await $.ui.mount({ plugin: 'ponytail', surface, ...BAND })
+    expect(await ui.find({ key: 'level-ultra' })).toBeDefined()
+    if (surface === 'desktop') {
+      const alt = String((await ui.find({ type: 'Svg' }))?.props.alt)
+      expect(alt).toContain('cache write $0.75 · 71.9k')
+    } else {
+      expect(await ui.find({ key: 'bar-cost-0' })).toBeDefined()
+      expect(await ui.find({ key: 'bar-tokens-1' })).toBeDefined()
+      expect((await ui.find({ type: 'Text', text: /^cache read \$/ }))?.text).toBe('cache read $0.62 · 1.2M')
+    }
+    await ui.unmount()
+  }
 })
 
 test('after /ponytail band the band draws nothing', async ($, on) => {
