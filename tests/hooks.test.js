@@ -996,8 +996,8 @@ assert.equal(
   assert.equal(compact().stdout, '', 'compaction must not switch a stopped session back on');
   assert.equal(fs.existsSync(compactFlag), false);
 
-  // Every other source still starts at the default level.
-  for (const source of ['startup', 'resume', 'clear']) {
+  // Fresh sessions still start at the default level.
+  for (const source of ['startup', 'clear']) {
     assert.match(start(source).stdout, /PONYTAIL MODE ACTIVE — level: full/, `${source} must start at the default level`);
   }
 }
