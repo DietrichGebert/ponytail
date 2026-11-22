@@ -1,0 +1,12 @@
+{
+  "name": "ponytail-dsh",
+  "version": "5.3.2",
+  "private": true,
+  "description": "Ponytail for DeepSeek Harness: the six skills as native /name invocations, a /ponytail level command, and the level-filtered ruleset injected as a system-prompt section on every session.",
+  "type": "module",
+  "main": "index.js",
+  "exports": { ".": "./index.js", "./package.json": "./package.json" },
+  "files": ["index.js", "cordis.patch.yml", "plugin.json", "README.md"],
+  "dsh": { "bundle": { "patch": "./cordis.patch.yml" } },
+  "license": "MIT"
+}

@@ -28,6 +28,7 @@
     ".opencode/",
     ".qoder/",
     ".qoder-plugin/",
+    ".dsh-plugin/",
     "pi-extension/",
     "!pi-extension/test/",
     "scripts/uninstall.js",
