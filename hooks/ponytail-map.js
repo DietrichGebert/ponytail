@@ -13,7 +13,8 @@ const fs = require('fs');
 const path = require('path');
 const { execFileSync } = require('child_process');
 
-const BUDGET = Number(process.env.PONYTAIL_MAP_CHARS || 2000);
+const CHARS = Number(process.env.PONYTAIL_MAP_CHARS);
+const BUDGET = Number.isFinite(CHARS) && CHARS > 0 ? CHARS : 2000;
 const MAX_FILES = 4000;
 const SRC = /\.(py|js|jsx|mjs|cjs|ts|tsx|go|rs|rb|java|kt|php|swift|cs)$/;
 const SKIP_DIR = /(^|\/)(node_modules|\.git|dist|build|out|vendor|venv|\.venv|__pycache__|coverage|\.next|target|migrations|versions|fixtures|tests?|__tests__|spec)(\/|$)/;
