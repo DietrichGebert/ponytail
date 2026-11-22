@@ -113,7 +113,14 @@ function sessionStats(records, subagentRecords = [], sessionId = '') {
   let output = 0;
   let estimate = 0;
   const reply = r => r.type === 'assistant' && r.message && r.message.model && r.message.model !== '<synthetic>';
-  for (const r of records) if (reply(r)) replies[r.message.model] = (replies[r.message.model] || 0) + 1;
+  // One reply can span several transcript records; it still casts one model vote.
+  const modeled = new Set();
+  for (const r of records) if (reply(r)) {
+    const { id, model } = r.message;
+    if (id && modeled.has(id)) continue;
+    if (id) modeled.add(id);
+    replies[model] = (replies[model] || 0) + 1;
+  }
   for (const r of [...records, ...subagentRecords]) {
     if (!reply(r)) continue;
     const { id, model, usage } = r.message;

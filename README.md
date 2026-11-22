@@ -135,6 +135,8 @@ In Claude Code, ponytail now shows a band above the prompt: what the current tas
 
 **Board** opens a local page with every task across your projects: cost, agent time and tokens over time, every session with its tests, and the days you worked. By default, everything stays on your machine, in `~/.config/ponytail/band/`. `/ponytail band import` adds your past Claude Code sessions to it, with their cost, agent time and tokens.
 
+Imported sessions name the model that wrote the most distinct main-session replies. Repeated streamed records count once per message ID; subagent replies do not change that model.
+
 ## How it works
 
 <p align="center">
