@@ -17,6 +17,13 @@ export const elapsed = (ms: number) => {
 export const fmtTokens = (n: number) =>
   n < 1000 ? `${n}` : n < 1e6 ? `${+(n / 1e3).toFixed(1)}k` : `${+(n / 1e6).toFixed(1)}M`
 
+// Position of a session's dot within its day slot: hour/24. Ledger rows whose
+// started value has no time part fall back to noon; midnight stays midnight.
+export const dayFraction = (started: string) => {
+  const h = +started.slice(11, 13)
+  return (started.length >= 13 && Number.isFinite(h) ? h : 12) / 24
+}
+
 export type Task = {
   started: string
   project: string
@@ -326,8 +333,10 @@ const APP = `(function () {
     shapes.forEach(function (s) { svg('path', { d: s.d, fill: s.fill }, box) })
     svg('path', { d: last.top, 'class': 'top-line', 'stroke-width': 1.2 }, box)
     // One dot per session on the axis, at its hour of the day.
+    // dayFraction keeps midnight at 0: the old "+h || 12" caught both the
+    // no-time NaN and the falsy 0, plotting 00:xx sessions at noon (#1287).
     cur.forEach(function (t) {
-      var k = keys.indexOf(t.started.slice(0, 10)), hour = (+t.started.slice(11, 13) || 12) / 24
+      var k = keys.indexOf(t.started.slice(0, 10)), hour = dayFraction(t.started)
       svg('circle', { cx: Math.min(W - 4, Math.max(4, x(k) + (hour - .5) * W / n)), cy: base + 22, r: 3.2, fill: colorOf(t.project) }, box)
     })
     var hover = svg('line', { y1: top - 12, y2: base, 'class': 'hover-line', visibility: 'hidden' }, box)

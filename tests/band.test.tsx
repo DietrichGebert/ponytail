@@ -1,6 +1,6 @@
 import { describe, expect, mock, test } from 'claude-code/testing'
 
-import { boardHtml, parseCsv, tasksFrom } from '../hooks/band/board'
+import { boardHtml, dayFraction, parseCsv, tasksFrom } from '../hooks/band/board'
 import type { Band } from '../hooks/band/types'
 import {
   NO_TOKENS,
@@ -129,6 +129,14 @@ describe('metrics', () => {
       expect(quiet.init.headers.authorization).toBeUndefined()
       expect(JSON.parse(quiet.init.body).name).toBe('')
     }
+  })
+
+  test('chart dot position: midnight is not noon, no-time falls back to noon (#1287)', () => {
+    expect(dayFraction('2026-10-25 00:15')).toBe(0)
+    expect(dayFraction('2026-10-25 12:15')).toBe(0.5)
+    expect(dayFraction('2026-10-25')).toBe(0.5)
+    expect(dayFraction('2026-10-25 23:59')).toBeCloseTo(23 / 24)
+    expect(dayFraction('2026-10-25 09:30')).toBeCloseTo(9 / 24)
   })
 
   test('agent time reads in seconds, minutes, hours', () => {

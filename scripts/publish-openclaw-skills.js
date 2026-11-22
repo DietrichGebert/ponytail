@@ -33,7 +33,7 @@ const slugs = fs.readdirSync(skillsDir, { withFileTypes: true })
   .map((e) => e.name)
   .sort();
 
-if (slugs.length === 0) {
+if (slugs.length === 0 && require.main === module) {
   console.error(`No skills under ${path.relative(root, skillsDir)}; run build-openclaw-skills.js first.`);
   process.exit(1);
 }
@@ -42,14 +42,29 @@ if (slugs.length === 0) {
 const displayName = (slug) =>
   slug.split('-').map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
 
+// shell:true is needed for clawhub's .cmd shim on Windows, so every arg is
+// validated against a safe-character allowlist BEFORE it reaches a shell:
+// double quotes do not stop $(), backticks or %VAR% expansion, and slugs come
+// from directory names a third-party PR could influence. Anything outside
+// [A-Za-z0-9 ._./:=,-] refuses the publish instead of executing.
+const SAFE_ARG = /^[A-Za-z0-9 ._\/:=,-]+$/;
+const assertSafeArg = (a) => {
+  if (!SAFE_ARG.test(a)) {
+    throw new Error(`refusing to publish: argument contains shell metacharacters: ${JSON.stringify(a)}`);
+  }
+  return a;
+};
 // Minimal quoting that satisfies both POSIX sh and cmd.exe: only display names
 // (which contain a space) need wrapping; slugs, versions, paths, and flags don't.
 const quote = (a) => (/[^\w./-]/.test(a) ? `"${a}"` : a);
 
 const passthrough = process.argv.slice(2);
-const extra = passthrough.length ? ` (${passthrough.join(' ')})` : '';
-console.log(`Publishing ${slugs.length} skills to ClawHub at version ${version}${extra}:`);
+if (require.main === module) {
+  const extra = passthrough.length ? ` (${passthrough.join(' ')})` : '';
+  console.log(`Publishing ${slugs.length} skills to ClawHub at version ${version}${extra}:`);
+}
 
+function publishAll() {
 for (const slug of slugs) {
   const args = [
     'clawhub', 'skill', 'publish', `.openclaw/skills/${slug}`,
@@ -59,6 +74,7 @@ for (const slug of slugs) {
     '--tags', 'latest',
     ...passthrough,
   ];
+  args.forEach(assertSafeArg);
   const cmdline = args.map(quote).join(' ');
   console.log(`\n$ ${cmdline}`);
   const res = spawnSync(cmdline, { stdio: 'inherit', cwd: root, shell: true });
@@ -71,5 +87,11 @@ for (const slug of slugs) {
     process.exit(res.status || 1);
   }
 }
+}
 
-console.log(`\nDone. Published ${slugs.length} skills at ${version}.`);
+if (require.main === module) {
+  publishAll();
+} else {
+  // Tests import the arg validator without publishing anything.
+  module.exports = { SAFE_ARG, assertSafeArg, displayName, quote };
+}
