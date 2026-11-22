@@ -113,6 +113,11 @@ describe('metrics', () => {
     expect(markdown(snapshot(BASE, Date.UTC(2026, 9, 15, 12, 0)))).toContain('| Model | claude-opus-5-5 |')
   })
 
+  test('a name with a carriage return stays in one ledger row', () => {
+    const csv = upsertCsv('', snapshot({ ...BASE, name: 'Fix it\r' }, Date.UTC(2026, 9, 15, 12, 0)))
+    expect(tasksFrom(csv).map(t => t.name)).toEqual(['Fix it\r'])
+  })
+
   test('the webhook sends the token only over https, or to this machine', () => {
     const row = snapshot(BASE, Date.UTC(2026, 9, 15, 12, 0))
     const sent = webhookRequest('https://board.example.com/tasks', 'ptb_x', true, row)

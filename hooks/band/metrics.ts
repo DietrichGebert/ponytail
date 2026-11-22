@@ -275,7 +275,7 @@ export const CSV_HEADER = 'key,started,project,name,cost_usd,turns,agent_minutes
 
 const csvField = (v: string | number | null) => {
   const s = v === null ? '' : String(v)
-  return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s
+  return /[",\r\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s
 }
 
 export const csvRow = (s: Snapshot) =>
