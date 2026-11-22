@@ -98,17 +98,26 @@ def _count(p: Path, with_comments: bool):
 _SELFCHECK_DEFS = ("def demo(", "def _demo(", "def selfcheck(", "def _selfcheck(",
                    "def _check(", "def _smoke(", "def smoke(")
 def _selfcheck_split(p: Path):
-    """Split a produced .py file at the first TOP-LEVEL self-check marker (a `__main__` guard or a
-    demo()/selfcheck() function) through end of file. Returns (src_total, src_code, sc_total,
-    sc_code), counted like _count. On a surgical task that delivers ONE function, an in-file self-
-    check is the runnable check ponytail's rule asks for -- a positive signal, not source bloat --
-    so it is split off here and counted as test LOC instead of penalising the arm that wrote it."""
+    """Split a produced .py file at its TOP-LEVEL self-check block through end of file. Returns
+    (src_total, src_code, sc_total, sc_code), counted like _count. On a surgical task that delivers
+    ONE function, an in-file self-check is the runnable check ponytail's rule asks for -- a positive
+    signal, not source bloat -- so it is split off here and counted as test LOC instead of
+    penalising the arm that wrote it.
+
+    A self-check block is code that only runs when the file is the script: the `__main__` guard,
+    plus any demo()/selfcheck() helper that guard calls. A helper NAMED _check()/_smoke() is not
+    evidence of a self-check -- a production guard clause is often called exactly that, and
+    splitting on the name alone hid a whole 22-line fix behind a 1-line source count."""
     try: lines = p.read_text(encoding="utf-8", errors="ignore").splitlines()
     except Exception: return 0, 0, 0, 0
+    top = [i for i, ln in enumerate(lines) if ln[:1] not in (" ", "\t")]
+    guard = next((i for i in top if lines[i].startswith("if __name__")), None)
     start = None
-    for i, ln in enumerate(lines):
-        if ln[:1] not in (" ", "\t") and (ln.startswith("if __name__") or ln.startswith(_SELFCHECK_DEFS)):
-            start = i; break
+    if guard is not None:
+        body = "\n".join(lines[guard:])                      # what actually runs as a script
+        called = [i for i in top if lines[i].startswith(_SELFCHECK_DEFS)
+                  and lines[i].split("(")[0].split()[-1] in body]
+        start = min(called) if called else guard             # helper defined above the guard still counts
     def cnt(seq):
         t = c = 0
         for ln in seq:
@@ -225,6 +234,7 @@ def selftest():
     failures += 0 if ok else 1
     failures += _selftest_plugin_dir()
     failures += _selftest_kill()
+    failures += _selftest_selfcheck_split()
     print(f"\nselftest: {'all instruments valid' if not failures else str(failures) + ' BROKEN'}")
     return failures
 
@@ -252,6 +262,32 @@ def _selftest_plugin_dir():
         ok_miss = True
     print(f"{'ok ' if ok_miss else 'XX '} plugin_dir   miss clear error (sys.exit)")
     return fails + (0 if ok_miss else 1)
+
+def _selftest_selfcheck_split():
+    """A production helper named _check() must not be mistaken for a self-check block: on
+    trace-transfer that turned a 22-line fix into a 1-line source count."""
+    cases = [
+        # (name, source, expected src_total, expected sc_total)
+        ("prod _check, no guard",
+         "def _check(c):\n    if c < 0:\n        raise ValueError(c)\n\n"
+         "def deposit(a, c):\n    _check(c)\n", 5, 0),
+        ("helper called under guard",
+         "def f(x):\n    return x\n\ndef _selfcheck():\n    assert f(1) == 1\n\n"
+         "if __name__ == '__main__':\n    _selfcheck()\n", 2, 4),
+        ("prod _check + plain guard",
+         "def _check(c):\n    return c\n\ndef main():\n    _check(1)\n\n"
+         "if __name__ == '__main__':\n    main()\n", 4, 2),
+    ]
+    fails = 0
+    for name, src, want_src, want_sc in cases:
+        with tempfile.TemporaryDirectory() as d:
+            p = Path(d) / "m.py"; p.write_text(src, encoding="utf-8")
+            got_src, _, got_sc, _ = _selfcheck_split(p)
+        ok = got_src == want_src and got_sc == want_sc
+        print(f"{'ok ' if ok else 'XX '} selfcheck    {name}: src={got_src} sc={got_sc}"
+              f" (want {want_src}/{want_sc})")
+        fails += 0 if ok else 1
+    return fails
 
 def _tree_kill(proc):
     """Tree-kill one timed-out cell, never a blanket kill (that would also take down this
