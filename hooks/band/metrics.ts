@@ -19,7 +19,7 @@ const DEFS: [RegExp, RegExp[]][] = [
   ]],
   [/\.go$/, [/^func\s+(?:\([^)]*\)\s*)?([A-Za-z]\w*)/gm]],
   [/\.rs$/, [/^(?:pub\s+)?(?:async\s+)?fn\s+(\w+)/gm]],
-  [/\.rb$/, [/^\s*def\s+(?:self\.)?([A-Za-z]\w*[?!]?)/gm]],
+  [/\.rb$/, [/^[ \t]*def\s+(?:self\.)?([A-Za-z]\w*[?!]?)/gm]],
 ]
 
 // Lines worth a closer look; the per-language regexes above decide.
