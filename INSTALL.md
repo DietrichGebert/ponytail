@@ -189,6 +189,16 @@ node ponytail/scripts/cursor-hooks.js install
 
 Merges two native hooks into `~/.cursor/hooks.json` (add `--project` to write `<project>/.cursor/hooks.json` instead) and keeps any hooks you already have there. The entries run `node` from that checkout, so leave it where it is or re-run the install after moving it. Cursor reloads the file on save; open a new chat and the ruleset for your default level arrives through `sessionStart`. Send `/ponytail lite`, `/ponytail full`, `/ponytail ultra` or `/ponytail off` as a plain message to switch the level for the rest of the conversation; `/ponytail` reports it. Cursor's `subagentStart` cannot inject context, so subagents run without the ruleset, and cloud agents never fire `sessionStart`. The always-on rule (`.cursor/rules/ponytail.mdc`) and the hooks are alternatives: while the rule is in a workspace the hooks inject nothing and the mode commands answer with a notice, so delete the rule to let the hooks manage the level. Contract, verification record and limitations: [docs/cursor-hooks.md](docs/cursor-hooks.md). Uninstall: `node ponytail/scripts/cursor-hooks.js uninstall`.
 
+## Command Code
+
+```bash
+cmd skills add https://github.com/DietrichGebert/ponytail --global
+```
+
+Installs the six skills into `~/.commandcode/skills/`; drop `--global` to install into the current project's `.commandcode/skills/` instead. The skills work as prompts: `/ponytail`, `/ponytail-review`, `/ponytail-audit`, `/ponytail-debt`, `/ponytail-gain`, `/ponytail-help`.
+
+For always-on rules, copy [`AGENTS.md`](AGENTS.md) into the project (Command Code reads it as project memory every session) or into `~/.commandcode/AGENTS.md` for every project. Instruction-tier: levels don't persist across sessions and there is no mode tracking, so say `/ponytail lite` (or any level) when a task needs a different one. Uninstall: `cmd skills remove ponytail --global` (and the other five skills), and delete the copied `AGENTS.md` if you added one.
+
 ## Settings
 
 Set the level for every new session with the `PONYTAIL_DEFAULT_MODE` env var (`lite`/`full`/`ultra`/`off`), or a `defaultMode` field in `~/.config/ponytail/config.json` (`%APPDATA%\ponytail\config.json` on Windows). The default is `full`.
