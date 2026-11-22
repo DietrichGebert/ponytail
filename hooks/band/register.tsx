@@ -197,9 +197,14 @@ async function openBoard($: EngineInterface) {
   await $.process.run(windows ? ['cmd', '/c', 'start', '', file] : [mac ? 'open' : 'xdg-open', file])
 }
 
-// Sets the band up for a session (level, project, task row, cost baseline); returns the definitions that exist now.
-async function start($: EngineInterface): Promise<Map<string, string>> {
+// The definitions that exist now: a repo-wide git grep, seconds in a large repo.
+async function defs($: EngineInterface): Promise<Map<string, string>> {
   const grep = await $.process.run(['git', 'grep', '--untracked', '-nE', GREP_DEFS]).catch(() => undefined)
+  return grep?.exitCode === 0 ? parseDefs(grep.stdout) : new Map()
+}
+
+// Sets the band up for a session (level, project, task row, cost baseline).
+async function start($: EngineInterface) {
   const level = await readLevel($)
   const details = (await $.store.get('details')) === true
   const repo = await $.session.repo().catch(() => null)
@@ -210,15 +215,16 @@ async function start($: EngineInterface): Promise<Map<string, string>> {
   const csv = usage ? await $.fs.read(ledgerFile(await ledgerDir($), project)).catch(() => '') : ''
   const key = usage ? taskKey(session, usage.startedAt) : ''
   await update($, band, b => resume({ ...EMPTY, ...b, level, details, project, session, cost: usage?.cost?.usd ?? b.cost }, csv, key))
-  return grep?.exitCode === 0 ? parseDefs(grep.stdout) : new Map()
 }
 
 export const register: Register = (on, options) => {
   // Definitions that existed when the session started: what new code can reuse.
-  let known = new Map<string, string>()
+  // Awaited at the first edit, not at session.start, which holds the SDK's initialize reply.
+  let known: Promise<Map<string, string>> = Promise.resolve(new Map())
 
   on('session.start', async ($, e, next) => {
-    known = await start($)
+    known = defs($)
+    await start($)
     return next(e)
   }).catch(($, e, next) => next(e))
 
@@ -231,7 +237,10 @@ export const register: Register = (on, options) => {
   on('command.run', { command: ['clear', 'resume', 'branch'] }, async ($, e, next) => {
     const session = await $.session.id()
     const result = await next(e)
-    if ((await $.session.id()) !== session) known = await start($).catch(() => known)
+    if ((await $.session.id()) !== session) {
+      known = defs($)
+      await start($).catch(() => undefined)
+    }
     return result
   }).catch(($, e, next) => next(e))
 
@@ -276,7 +285,7 @@ export const register: Register = (on, options) => {
     const newDefs = defsIn(file, after)
     const created = isSource(file) ? newDefs.filter(n => !oldDefs.includes(n)) : []
     const removed = oldDefs.filter(n => !newDefs.includes(n))
-    const reused = isSource(file) ? callsIn(addedLines(before, after), known, newDefs) : []
+    const reused = isSource(file) ? callsIn(addedLines(before, after), await known, newDefs) : []
 
     await update($, band, b => ({
       ...b,
