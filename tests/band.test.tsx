@@ -375,6 +375,8 @@ test('the transcript is found with no classic hook, in its named folder or any o
   let session = 's1'
   const projects = '/home/u/.claude/projects'
   let titles: Record<string, string> = { [`${projects}/-repo-shop-v2/s1.jsonl`]: 'Cart totals' }
+  // Windows fs events add a drive and backslashes to the fixture's POSIX paths.
+  const titleAt = (file: string) => Object.entries(titles).find(([name]) => file.replaceAll('\\', '/').endsWith(name))?.[1]
   on('env.get', ($, e) => ({ value: e.name === 'HOME' ? '/home/u' : undefined }))
   on('session.repo', () => ({ value: { root: '/repo/shop' } }) as never)
   on('session.root', () => ({ value: '/repo/shop.v2' }))
@@ -383,12 +385,12 @@ test('the transcript is found with no classic hook, in its named folder or any o
   on('session.usage', () => ({ value: { startedAt: 0, cost: { usd: 0.5 } } }) as never)
   const listed: string[] = []
   on('fs.list', ($, e) => {
-    listed.push(e.path)
-    return { value: e.path === projects ? [{ name: '-repo-shop-v2', kind: 'dir' }, { name: 'notes.txt', kind: 'file' }, { name: '-wt', kind: 'dir' }] : [] } as never
+    listed.push(e.path.replaceAll('\\', '/'))
+    return { value: listed.at(-1)?.endsWith(projects) ? [{ name: '-repo-shop-v2', kind: 'dir' }, { name: 'notes.txt', kind: 'file' }, { name: '-wt', kind: 'dir' }] : [] } as never
   })
-  on('fs.exists', ($, e) => ({ value: e.path in titles }))
+  on('fs.exists', ($, e) => ({ value: titleAt(e.path) !== undefined }))
   on('process.run', ($, e) => {
-    const title = e.argv[0] === 'grep' && e.argv[1] === '-F' ? titles[e.argv.at(-1) ?? ''] : undefined
+    const title = e.argv[0] === 'grep' && e.argv[1] === '-F' ? titleAt(e.argv.at(-1) ?? '') : undefined
     return { value: { exitCode: title ? 0 : 1, stdout: title ? `${JSON.stringify({ type: 'custom-title', customTitle: title })}\n` : '', stderr: '' } } as never
   })
   on('fs.read', () => ({ deny: 'missing' }) as never)
@@ -404,7 +406,7 @@ test('the transcript is found with no classic hook, in its named folder or any o
   await $.turn.complete({ answer: '', durationMs: 1000 } as never)
   expect(rows.at(-1)).toContain('Cart totals')
   // The folder its rule names held the file, so no folder was listed.
-  expect(listed).not.toContain(projects)
+  expect(listed.some(file => file.endsWith(projects))).toBe(false)
   // A worktree moves the file under the same id, and the session is renamed there.
   titles = { [`${projects}/-wt/s1.jsonl`]: 'Cart totals, split' }
   await $.turn.complete({ answer: '', durationMs: 1000 } as never)
