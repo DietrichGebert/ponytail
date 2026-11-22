@@ -181,7 +181,7 @@ const stamp = t => { const d = new Date(t); return `${d.getFullYear()}-${two(d.g
 const field = v => { const s = v === null || v === undefined ? '' : String(v); return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; };
 
 function csvRow(sessionId, project, s) {
-  return [`${sessionId.slice(0, 8)}-${s.startedMs}`, stamp(s.startedMs), project, s.name, s.cost === null ? '' : s.cost.toFixed(2), s.turns,
+  return [`${sessionId.slice(0, 8)}-${s.startedMs}`, stamp(s.startedMs), project, s.name, s.cost, s.turns,
     (s.agentMs / 60000).toFixed(1), s.tokens, s.output, '', '', '', '', '', 'import', s.model].map(field).join(',');
 }
 

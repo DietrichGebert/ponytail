@@ -134,6 +134,7 @@ In Claude Code, ponytail now shows a band above the prompt: what the current tas
 </p>
 
 **Board** opens a local page with every task across your projects: cost, agent time and tokens over time, every session with its tests, and the days you worked. By default, everything stays on your machine, in `~/.config/ponytail/band/`. `/ponytail band import` adds your past Claude Code sessions to it, with their cost, agent time and tokens.
+The ledger keeps each recorded cost's precision, including fractions of a cent; the board rounds the summed amounts for display.
 
 ## How it works
 
