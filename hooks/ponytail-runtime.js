@@ -157,9 +157,13 @@ function writeHookOutput(event, mode, context = '') {
     writeOut(JSON.stringify(output));
     return;
   }
-  // Native Claude: SessionStart accepts raw stdout, but SubagentStart needs the
-  // hookSpecificOutput JSON form or the context is dropped.
-  if (event === 'SubagentStart') {
+  // Native Claude: raw SessionStart stdout is recorded by Claude Code as a
+  // hook_success transcript attachment, and that attachment is enough to persist
+  // and title a session the user never touched (#1421). SessionStart therefore
+  // needs the same hookSpecificOutput JSON form as SubagentStart, and must write
+  // nothing at all when there is no context.
+  if (event === 'SessionStart' || event === 'SubagentStart') {
+    if (!context) return;
     writeOut(JSON.stringify(
       { hookSpecificOutput: { hookEventName: event, additionalContext: context } }));
     return;
