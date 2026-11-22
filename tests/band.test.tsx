@@ -518,3 +518,75 @@ test('a test run shows its count, and an edit in the project after it marks the 
   expect(await ui.find({ type: 'Text', text: /no test since change/ })).toBeDefined()
   await ui.unmount()
 })
+
+test('the task cost starts over on /clear and stays the session total on /resume and /branch', async ($, on) => {
+  mock.clock(on)
+  mock.store(on)
+  let session = 's1'
+  let n = 1
+  let usd: number | undefined = 0
+  on('env.get', ($, e) => ({ value: e.name === 'HOME' ? '/home/u' : e.name === 'XDG_CONFIG_HOME' ? '/home/u/.config' : undefined }))
+  on('session.repo', () => ({ value: { root: '/repo/shop' } }) as never)
+  on('session.id', () => ({ value: session }))
+  on('session.turns', () => ({ value: 1 }))
+  on('session.usage', () => ({ value: { startedAt: 0, ...(usd === undefined ? {} : { cost: { usd } }) } }) as never)
+  on('session.start', ($, e) => ({ cwd: e.cwd }))
+  on('session.end', () => ({ sessionId: session }))
+  on('command.run', ($, e) => {
+    if (e.command === 'clear' || e.command === 'resume' || e.command === 'branch') session = 's' + ++n
+    return { text: '' }
+  })
+  on('process.run', () => ({ value: { exitCode: 1, stdout: '', stderr: '' } } as never))
+  on('fs.read', () => ({ deny: 'missing' }) as never)
+  on('fs.list', () => ({ value: [] }))
+  on('fs.exists', () => ({ value: false }))
+  const rows: string[] = []
+  on('fs.write', ($, e) => {
+    if (e.path.endsWith('shop.csv')) rows.push(e.text)
+    return { value: undefined }
+  })
+  on('turn.complete', () => ({ text: '' }))
+  const ui = await $.ui.mount({ plugin: 'ponytail', surface: 'terminal', ...BAND })
+  const taskCost = () => tasksFrom(rows.at(-1) ?? '').at(-1)?.cost
+
+  await $.session.start({ cwd: '/repo/shop', surface: null } as never)
+  // Two turns with no /clear: the band shows the session total, not only the last turn.
+  usd = 0.5
+  await $.turn.complete({ answer: '', durationMs: 1000 } as never)
+  expect(taskCost()).toBe(0.5)
+  usd = 0.75
+  await $.turn.complete({ answer: '', durationMs: 1000 } as never)
+  expect(taskCost()).toBe(0.75)
+
+  // /clear keeps the engine's cumulative cost. The new task must not inherit it.
+  await $.session.end({ reason: 'clear' } as never)
+  await $.command.run({ command: 'clear', args: '' })
+  usd = 1
+  await $.turn.complete({ answer: '', durationMs: 1000 } as never)
+  expect(taskCost()).toBe(0.25)
+  expect(await ui.find({ type: 'Text', text: /^\$0\.25$/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /^\$1\.00$/ })).toBeUndefined()
+
+  // /resume and /branch show the session total they joined, then the turns after it.
+  usd = 2
+  await $.session.end({ reason: 'resume' } as never)
+  await $.command.run({ command: 'resume', args: '' })
+  usd = 2.5
+  await $.turn.complete({ answer: '', durationMs: 1000 } as never)
+  expect(taskCost()).toBe(2.5)
+  usd = 3
+  await $.command.run({ command: 'branch', args: '' })
+  usd = 3.25
+  await $.turn.complete({ answer: '', durationMs: 1000 } as never)
+  expect(taskCost()).toBe(3.25)
+
+  // The engine starts its ledger over: the new total replaces the task cost.
+  usd = 0.25
+  await $.turn.complete({ answer: '', durationMs: 1000 } as never)
+  expect(taskCost()).toBe(0.25)
+  // No cost from the engine: keep the last figure.
+  usd = undefined
+  await $.turn.complete({ answer: '', durationMs: 1000 } as never)
+  expect(taskCost()).toBe(0.25)
+  await ui.unmount()
+})
