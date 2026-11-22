@@ -62,24 +62,56 @@ export function parseCsv(text: string): string[][] {
   return rows
 }
 
-export function tasksFrom(text: string): Task[] {
+export type LedgerParse = { tasks: Task[]; warnings: string[] }
+
+// The numeric columns a ledger row must carry to count. A missing or malformed
+// value is not a zero: the row is skipped and reported instead of silently
+// bending the board's totals.
+const NUMERIC_COLUMNS = ['cost_usd', 'turns', 'agent_minutes', 'tokens_total']
+
+export function parseLedger(text: string): LedgerParse {
   const [head, ...rows] = parseCsv(text)
-  if (!head?.includes('key')) return []
+  if (!head?.includes('key')) return { tasks: [], warnings: [] }
   const at = (row: string[], col: string) => row[head.indexOf(col)] ?? ''
-  const num = (row: string[], col: string) => Number(at(row, col)) || 0
-  return rows.map(row => ({
-    started: at(row, 'started'),
-    project: at(row, 'project'),
-    name: at(row, 'name'),
-    cost: num(row, 'cost_usd'),
-    turns: num(row, 'turns'),
-    agentMinutes: num(row, 'agent_minutes'),
-    tokens: num(row, 'tokens_total'),
-    reuse: at(row, 'reuse_pct') === '' ? null : num(row, 'reuse_pct'),
-    tests: at(row, 'tests'),
-    level: at(row, 'level'),
-    model: at(row, 'model'),
-  }))
+  // Null for anything that is not a finite number: an empty cell, a column the
+  // ledger does not have, a truncated row, or junk like 'oops'. A real '0'
+  // parses to 0 and stays valid.
+  const num = (row: string[], col: string) => {
+    const raw = at(row, col).trim()
+    if (raw === '') return null
+    const value = Number(raw)
+    return Number.isFinite(value) ? value : null
+  }
+  const tasks: Task[] = []
+  const warnings: string[] = []
+  rows.forEach((row, i) => {
+    const values = NUMERIC_COLUMNS.map(col => num(row, col))
+    const bad = NUMERIC_COLUMNS.filter((_, j) => values[j] === null)
+    const reuse = at(row, 'reuse_pct') === '' ? null : num(row, 'reuse_pct')
+    if (at(row, 'reuse_pct') !== '' && reuse === null) bad.push('reuse_pct')
+    if (bad.length) {
+      warnings.push(`line ${i + 2}: invalid ${bad.join(', ')}`)
+      return
+    }
+    tasks.push({
+      started: at(row, 'started'),
+      project: at(row, 'project'),
+      name: at(row, 'name'),
+      cost: values[0]!,
+      turns: values[1]!,
+      agentMinutes: values[2]!,
+      tokens: values[3]!,
+      reuse,
+      tests: at(row, 'tests'),
+      level: at(row, 'level'),
+      model: at(row, 'model'),
+    })
+  })
+  return { tasks, warnings }
+}
+
+export function tasksFrom(text: string): Task[] {
+  return parseLedger(text).tasks
 }
 
 const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
