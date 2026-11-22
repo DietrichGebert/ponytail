@@ -199,7 +199,7 @@ async function openBoard($: EngineInterface) {
 
 // Sets the band up for a session (level, project, task row, cost baseline); returns the definitions that exist now.
 async function start($: EngineInterface): Promise<Map<string, string>> {
-  const grep = await $.process.run(['git', 'grep', '--untracked', '-nE', GREP_DEFS]).catch(() => undefined)
+  const grep = await $.process.run(['git', 'grep', '-I', '--untracked', '-nE', GREP_DEFS]).catch(() => undefined)
   const level = await readLevel($)
   const details = (await $.store.get('details')) === true
   const repo = await $.session.repo().catch(() => null)
@@ -313,7 +313,7 @@ export const register: Register = (on, options) => {
     const stillRemoved: string[] = []
     const open: string[] = []
     for (const name of removed) {
-      const grep = await $.process.run(['git', 'grep', '--untracked', '-nw', '-e', name]).catch(() => undefined)
+      const grep = await $.process.run(['git', 'grep', '-I', '--untracked', '-nw', '-e', name]).catch(() => undefined)
       const rows = hits(grep?.stdout ?? '')
       if (rows.some(r => defsIn(r.file, r.text.trimStart()).includes(name))) continue
       const call = new RegExp(`(?<![\\w$])${name.replace(/\$/g, '\\$')}\\s*\\(`)
