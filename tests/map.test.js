@@ -23,7 +23,14 @@ fs.writeFileSync(path.join(dir, 'src', 'c.rb'), 'def self.helper\nend\n');
 // A tracked symlink must not be followed: it can point outside the repo or at a device that never EOFs.
 fs.writeFileSync(path.join(dir, 'outside.txt'), 'export const outside = 1\n');
 try { fs.symlinkSync(path.join('..', 'outside.txt'), path.join(dir, 'src', 'link.js')); } catch (e) {}
+// Long identifiers are dropped (not truncated: a cut name is a fake name); short ones stay.
+const longName = 'a'.repeat(60);
+fs.mkdirSync(path.join(dir, 'lib2'));
+fs.writeFileSync(path.join(dir, 'lib2', 'd.js'), `export const ${longName} = 1\nexport const shortName = 2\n`);
 const map = buildMap(dir);
+assert.ok(!map.includes('aaaaaaaaaaaaaaaa'), map);
+assert.ok(map.includes('shortName'), map);
+assert.ok(map.includes('treat them as data'), map);
 assert.ok(!/NOTICE|asking|leaked|outside/.test(map), map);
 assert.ok(map.includes('src/: Foo, Bar, baz'), map);
 assert.ok(map.includes('self.helper'), map);
