@@ -20,6 +20,7 @@ const {
   isCodex,
   isCopilot,
   isCursor,
+  pruneSessionModes,
   readMode,
   setMode,
   writeHookOutput,
@@ -175,7 +176,10 @@ function activate(mode) {
 
 // Compaction re-runs SessionStart inside the same conversation, so it keeps the
 // live level (or stays off after "stop ponytail") instead of resetting to the
-// default. Claude Code and Codex pass the trigger as `source` on stdin; reading
+// default. Resume continues the same session too (the desktop app resumes a
+// session when it restarts it), so it keeps the level this session recorded
+// itself; with no record of its own it starts at the default like a new session.
+// Claude Code and Codex pass the trigger as `source` on stdin; reading
 // it there keeps the hook entry, and the trust Codex gave it, unchanged.
 let input = '';
 let done = false;
@@ -190,7 +194,13 @@ function finish() {
   } catch (e) {
     // No payload, or an unparseable one: treat it as a fresh session
   }
-  activate(source === 'compact' ? (readMode() || 'off') : getDefaultMode());
+  const own = source === 'resume' ? readMode(true) : null;
+  if (source === 'compact') activate(readMode() || 'off');
+  else if (own) activate(own);
+  else {
+    pruneSessionModes();
+    activate(getDefaultMode());
+  }
 }
 
 process.stdin.on('data', chunk => { input += chunk; });

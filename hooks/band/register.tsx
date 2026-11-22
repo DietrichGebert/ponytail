@@ -92,16 +92,20 @@ async function bandHidden($: EngineInterface): Promise<boolean> {
   }
 }
 
-// The level ponytail's own hooks write. Absent flag = off.
-// shortcut: the shared flag the statusline reads, so two sessions in different repos show the last switch; read the per-project flag if that matters.
+// The level ponytail's own hooks write for this session (hooks/ponytail-runtime.js), so another
+// session starting, switching or stopping never changes it. No session file: the shared flag,
+// which hooks without a session id still write. Absent both = off.
 async function readLevel($: EngineInterface): Promise<string> {
   const dir = await claudeDir($)
-  try {
-    const level = (await $.fs.read(`${dir}/.ponytail-active`)).trim()
-    return LEVELS.includes(level) ? level : 'off'
-  } catch {
-    return 'off'
+  const id = (await $.session.id().catch(() => '')).replace(/[^A-Za-z0-9_-]/g, '')
+  for (const file of [id && `${dir}/ponytail-modes/session-${id}`, `${dir}/.ponytail-active`]) {
+    if (!file) continue
+    try {
+      const level = (await $.fs.read(file)).trim()
+      return LEVELS.includes(level) ? level : 'off'
+    } catch {}
   }
+  return 'off'
 }
 
 // The same commands a person types, so ponytail's own skills and hooks stay the only logic.
