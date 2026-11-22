@@ -43,6 +43,13 @@ describe('board', () => {
     expect(tasksFrom('not,a,ledger\n1,2,3')).toEqual([])
   })
 
+  test('a malformed or truncated ledger row is dropped, a zero-cost row is kept', () => {
+    const head = CSV.split('\n')[0]
+    const csv = `${head}\nz-1,2026-10-15 12:00,shop,Free,0.00,0,0.0,0,0,,0,0,0,not run,full\n` +
+      'x-1,2026-10-15 12:00,shop,Bad,oops,2,1.0,500,50,,0,0,0,not run,full\nt-1,2026-10-15 12:00,shop\n'
+    expect(tasksFrom(csv).map(t => [t.name, t.cost])).toEqual([['Free', 0]])
+  })
+
   const dataOf = (html: string) => JSON.parse(/<script type="application\/json" id="board-data">([\s\S]*?)<\/script>/.exec(html)?.[1] ?? 'null')
 
   test('the board carries every task as data no name can break out of', () => {
