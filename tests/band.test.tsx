@@ -11,7 +11,9 @@ import {
   duration,
   elapsed,
   fmtTokens,
+  GREP_DEFS,
   inProject,
+  isSource,
   isTestCommand,
   mainModel,
   markdown,
@@ -192,6 +194,67 @@ describe('metrics', () => {
     expect(defsIn('a.py', 'def to_cents(x):\n    pass\nclass Cart:\n    def total(self): pass')).toEqual(['to_cents', 'Cart'])
     expect(defsIn('a.ts', 'export function formatMoney() {}\nfunction local() {}\nconst x = 1')).toEqual(['formatMoney', 'local'])
     expect(defsIn('README.md', 'def nope():')).toEqual([])
+  })
+
+  test('finds PHP functions and methods behind any modifiers', () => {
+    const php = [
+      '<?php',
+      'function to_cents($v) {}',
+      'class Cart {',
+      '    public function total() {}',
+      '    protected static function fromArray(array $a) {}',
+      '    private function &items() {}',
+      '    abstract public function tax();',
+      '    final public static function make() {}',
+      '}',
+    ].join('\n')
+    expect(defsIn('src/Cart.php', php)).toEqual(['to_cents', 'total', 'fromArray', 'items', 'tax', 'make', 'Cart'])
+  })
+
+  test('finds PHP classes, interfaces, traits and enums, not closures or calls', () => {
+    const php = [
+      'abstract class Shape {}',
+      'final class Square extends Shape {}',
+      'readonly class Point {}',
+      'interface Priced {}',
+      'trait Loggable {}',
+      'enum Suit: string {}',
+      '$f = function ($x) { return $x; };',
+      '$y = fn($x) => $x;',
+      'echo total();',
+    ].join('\n')
+    expect(defsIn('src/shapes.php', php)).toEqual(['Shape', 'Square', 'Point', 'Priced', 'Loggable', 'Suit'])
+  })
+
+  test('finds Java, Kotlin, Swift and C# type definitions', () => {
+    expect(defsIn('src/Money.java', 'package shop;\npublic final class Money {\n  public static final class Cents {}\n}\ninterface Priced {}\nenum Currency { EUR }\npublic record Price(int cents) {}')).toEqual(['Money', 'Cents', 'Priced', 'Currency', 'Price'])
+    expect(defsIn('src/Cart.kt', 'class Cart(val items: List<Item>)\ninterface Store')).toEqual(['Cart', 'Store'])
+    expect(defsIn('Sources/Cart.swift', 'public class Cart {}\nenum Coin {}')).toEqual(['Cart', 'Coin'])
+    expect(defsIn('src/Ext.cs', 'public static class MoneyExt {}\npublic interface IPriced {}')).toEqual(['MoneyExt', 'IPriced'])
+    expect(defsIn('src/Main.java', 'Money m = new Money();\nreturn classes;')).toEqual([])
+  })
+
+  test('PHP, Java, Kotlin, Swift and C# files count as source, their tests do not', () => {
+    for (const f of ['src/Cart.php', 'src/Money.java', 'app/Cart.kt', 'Sources/Cart.swift', 'src/Ext.cs']) expect(isSource(f)).toBe(true)
+    expect(isSource('tests/CartTest.php')).toBe(false)
+    expect(isSource('vendor/lib/Thing.php')).toBe(false)
+    expect(isSource('src/main.c')).toBe(false)
+  })
+
+  test('the grep pattern keeps lines that start with PHP and Java modifiers', () => {
+    const grep = new RegExp(GREP_DEFS.replace(/\[\[:space:\]\]/g, '\\s'))
+    for (const line of ['    public function total() {', '  private static function x()', 'protected function y()', 'abstract class Shape', 'final class Square', 'readonly class Point', 'interface Priced', 'trait Loggable', 'enum Suit', 'record Price(int c)', 'static class Ext']) {
+      expect(grep.test(line)).toBe(true)
+    }
+    for (const line of ['$x = total();', 'echo "public";', 'return enum;']) expect(grep.test(line)).toBe(false)
+  })
+
+  test('PHP methods from git grep become known helpers, so calling them counts as reuse', () => {
+    const known = parseDefs('src/Money.php:7:    public static function toCents($v) {\nsrc/Money.php:2:final class Money {\ntests/MoneyTest.php:5:    public function testIt() {')
+    expect(known.get('toCents')).toBe('src/Money.php:7')
+    expect(known.get('Money')).toBe('src/Money.php:2')
+    expect(known.has('testIt')).toBe(false)
+    expect(callsIn('$c = Money::toCents($p);', known, [])).toEqual(['toCents'])
   })
 
   test('counts calls of existing helpers, never new ones, test files or generic names', () => {
