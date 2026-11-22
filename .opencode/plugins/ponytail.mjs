@@ -113,7 +113,7 @@ function readSkills() {
 // command (/ponytail-review feature/login), so append it instead.
 function withArguments(template, input) {
   const text = String(input == null ? '' : input);
-  if (template.includes('$ARGUMENTS')) return template.replaceAll('$ARGUMENTS', text);
+  if (template.includes('$ARGUMENTS')) return template.replaceAll('$ARGUMENTS', () => text);
   return text.trim() ? template + '\n\n' + text.trim() : template;
 }
 
