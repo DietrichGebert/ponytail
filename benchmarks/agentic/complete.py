@@ -33,7 +33,6 @@ from judge import load_key, source_text, judge_call, parse_score, RUNS_DIR, JUDG
 
 SCORE_KEY = "completeness"
 FLAG_AT = 1                 # cells scoring <= this are under-delivery (stub/partial) and get listed
-ARMS_ORDER = ["baseline", "caveman", "ponytail", "ponytail2", "yagni", "yagni-oneliner"]
 # the tasks scored on LOC alone (no deterministic check): the only ones this pass is for
 LOC_ONLY = ("vibe-", "open-", "tmpl-")
 
@@ -146,9 +145,9 @@ def run(run_dir, key, model=JUDGE_MODEL, arms=None, workers=6):
         if isinstance(r[SCORE_KEY], int): by_arm[r["arm"]].append(r[SCORE_KEY])
     print(f"\n=== completeness by arm (judge: {model}, 0=stub .. 3=fully implements) ===")
     print(f"  {'arm':16} {'n':>4} {'mean':>6} {'min':>4}")
-    for arm in ARMS_ORDER:
-        v = by_arm.get(arm, [])
-        if v: print(f"  {arm:16} {len(v):>4} {sum(v)/len(v):>6.2f} {min(v):>4}")
+    for arm in sorted(by_arm):
+        v = by_arm[arm]
+        print(f"  {arm:16} {len(v):>4} {sum(v)/len(v):>6.2f} {min(v):>4}")
     under = sorted([r for r in scored if isinstance(r[SCORE_KEY], int) and r[SCORE_KEY] <= FLAG_AT],
                    key=lambda r: r[SCORE_KEY])
     print(f"\n=== under-delivered (completeness <= {FLAG_AT}): {len(under)} cells ===")

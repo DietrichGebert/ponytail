@@ -173,7 +173,9 @@ setTimeout(() => {
   console.log("PASS");
 }, 120);
 `;
-    const f = tmpFile('.mjs', harness);
+    // CommonJS submissions need .cjs: `module` is undefined in .mjs and a
+    // correct module.exports answer would score 0.
+    const f = tmpFile(/module\.exports|require\s*\(/.test(code.code) ? '.cjs' : '.mjs', harness);
     const result = exec(`node "${f}"`);
     fs.unlinkSync(f);
     if (result.ok) return { pass: true, reason: 'Debounce passes all checks' };

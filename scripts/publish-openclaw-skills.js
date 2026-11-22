@@ -19,23 +19,30 @@
 const fs = require('fs');
 const path = require('path');
 const { spawnSync } = require('child_process');
+const { NAMES } = require('./build-openclaw-skills');
 
 const root = path.join(__dirname, '..');
-const skillsDir = path.join(root, '.openclaw', 'skills');
+const skillsDir = path.join(root, 'skills');
 
 const version = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8')).version;
 
-// Every generated skill dir with a SKILL.md is publishable. Reading the dir
-// (instead of a hardcoded list) covers whatever build-openclaw-skills emits,
-// with nothing to keep in sync.
-const slugs = fs.readdirSync(skillsDir, { withFileTypes: true })
-  .filter((e) => e.isDirectory() && fs.existsSync(path.join(skillsDir, e.name, 'SKILL.md')))
-  .map((e) => e.name)
-  .sort();
+// Publish the source skill list, not whatever happens to sit in .openclaw:
+// a stale generated dir must never reach ClawHub.
+const slugs = NAMES;
 
 if (slugs.length === 0) {
   console.error(`No skills under ${path.relative(root, skillsDir)}; run build-openclaw-skills.js first.`);
   process.exit(1);
+}
+
+// Directory names land in a shell:true command line; refuse anything but a
+// plain slug so a PR cannot smuggle $(...) into the publish run. Checked for
+// every skill before any publish, so a bad name never leaves a half-done run.
+for (const slug of slugs) {
+  if (!/^[a-z0-9-]+$/.test(slug)) {
+    console.error(`Refusing to publish skill with unsafe directory name: ${slug} (letters, digits, dashes only)`);
+    process.exit(1);
+  }
 }
 
 // "ponytail-review" -> "Ponytail Review"

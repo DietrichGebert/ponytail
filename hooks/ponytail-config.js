@@ -38,7 +38,7 @@ function normalizePersistedMode(mode) {
 // for ordinary requests like "add a normal mode toggle" — so require the whole
 // message to be the command, ignoring case and trailing punctuation.
 function isDeactivationCommand(text) {
-  const t = String(text || '').trim().toLowerCase().replace(/[.!?\s]+$/, '');
+  const t = String(text || '').trim().toLowerCase().replace(/\s+/g, ' ').replace(/[.!?\s]+$/, '');
   return t === 'stop ponytail' || t === 'normal mode';
 }
 

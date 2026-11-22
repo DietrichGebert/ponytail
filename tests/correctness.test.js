@@ -86,6 +86,22 @@ test('debounce: bare unfenced arrow function is still scored (#65)', () => {
   assert.equal(result.pass, true);
 });
 
+test('debounce: CommonJS module.exports passes', () => {
+  const result = check(
+    'Add debounce to a search input in vanilla JavaScript.',
+    'javascript',
+    `module.exports = function debounce(fn, delay) {
+  let timer;
+  return function(...args) {
+    clearTimeout(timer);
+    timer = setTimeout(() => fn.apply(this, args), delay);
+  };
+};`,
+  );
+  assert.equal(result.pass, true);
+  assert.equal(result.score, 1);
+});
+
 // --- CSV sum ---
 
 test('csv: correct pandas one-liner passes', () => {

@@ -94,15 +94,25 @@ const withCwd = r => ({ ...r, cwd: '/work/shop/.claude/worktrees/brave-otter' })
 fs.writeFileSync(path.join(projects, 'abcd1234-0000.jsonl'), records.map(withCwd).map(r => JSON.stringify(r)).join('\n') + '\n');
 fs.writeFileSync(path.join(projects, 'abcd1234-0000', 'subagents', 'agent-1.jsonl'), sub.map(r => JSON.stringify(r)).join('\n'));
 fs.writeFileSync(path.join(projects, 'beef0000-1111.jsonl'), records.filter(r => !r.origin).map(withCwd).map(r => JSON.stringify(r)).join('\n'));
+// A project whose path merely shares a temp-dir prefix (/tmpfoo, not /tmp/…) is real.
+const notTemp = (process.platform === 'win32' ? os.tmpdir() : '/tmp').replace(/[\\/]+$/, '') + 'extra-shop';
+fs.writeFileSync(path.join(projects, 'cafe0000-2222.jsonl'),
+  records.map(r => ({ ...r, cwd: notTemp })).map(r => JSON.stringify(r)).join('\n') + '\n');
+// A corrupt cwd escape must not abort the whole import.
+fs.writeFileSync(path.join(projects, 'dead0000-3333.jsonl'),
+  '{"type":"user","cwd":"\\q","origin":{"kind":"human"}}\n');
 const env = { CLAUDE_CONFIG_DIR: process.env.CLAUDE_CONFIG_DIR, XDG_CONFIG_HOME: process.env.XDG_CONFIG_HOME };
 process.env.CLAUDE_CONFIG_DIR = path.join(temp, 'claude');
 process.env.XDG_CONFIG_HOME = path.join(temp, 'config');
 try {
-  assert.deepEqual(run(), { sessions: 1, added: 1 }, 'the typed session is imported, the automated one is not');
+  assert.deepEqual(run(), { sessions: 2, added: 2 }, 'the typed sessions are imported, the automated one is not');
   const csv = fs.readFileSync(path.join(temp, 'config', 'ponytail', 'band', 'shop.csv'), 'utf8');
   assert.equal(csv.split('\n')[0], CSV_HEADER, 'a desktop worktree counts for its repo');
-  assert.ok(csv.includes(',shop,Fix the cart totals,'));
-  assert.deepEqual(run(), { sessions: 1, added: 0 }, 'a second import adds nothing');
+  assert.ok(csv.includes(',shop,Fix the cart totals,'), 'the worktree session is under its repo name');
+  const notTempName = path.basename(notTemp);
+  const notTempCsv = fs.readFileSync(path.join(temp, 'config', 'ponytail', 'band', `${notTempName}.csv`), 'utf8');
+  assert.ok(notTempCsv.includes(`,${notTempName},`), 'a path sharing only a temp-dir prefix is a real project');
+  assert.deepEqual(run(), { sessions: 2, added: 0 }, 'a second import adds nothing');
 } finally {
   for (const [k, v] of Object.entries(env)) if (v === undefined) delete process.env[k]; else process.env[k] = v;
   fs.rmSync(temp, { recursive: true, force: true });

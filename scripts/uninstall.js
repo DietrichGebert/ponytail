@@ -25,9 +25,10 @@ function removeIfExists(filePath, label) {
 
 removeIfExists(path.join(getClaudeDir(), '.ponytail-active'), 'mode flag');
 removeIfExists(path.join(getClaudeDir(), '.ponytail-statusline-nudged'), 'statusline nudge flag');
+removeIfExists(path.join(getClaudeDir(), '.ponytail-band'), 'band flag');
 removeIfExists(path.join(os.homedir(), '.cursor', '.ponytail-active'), 'Cursor mode flag');
 removeIfExists(path.join(getQoderDir(), '.ponytail-active'), 'Qoder mode flag');
-for (const dir of [path.join(getClaudeDir(), 'ponytail-modes'), path.join(os.homedir(), '.cursor', 'ponytail-modes'), path.join(process.env.CODEBUDDY_CONFIG_DIR || path.join(os.homedir(), '.codebuddy'), 'ponytail-modes')]) {
+for (const dir of [path.join(getClaudeDir(), 'ponytail-modes'), path.join(getQoderDir(), 'ponytail-modes'), path.join(os.homedir(), '.cursor', 'ponytail-modes'), path.join(process.env.CODEBUDDY_CONFIG_DIR || path.join(os.homedir(), '.codebuddy'), 'ponytail-modes')]) {
   if (fs.existsSync(dir)) {
     fs.rmSync(dir, { recursive: true });
     console.log(`Removed per-project mode flags: ${dir}`);
@@ -47,15 +48,21 @@ try {
   const hooksFile = cursorHooks.uninstall('user');
   if (hooksFile) console.log(`Removed ponytail hooks from ${hooksFile}`);
 } catch (e) {
-  if (e instanceof SyntaxError) {
-    // ponytail: malformed hooks.json — can't safely edit it; leave intact, warn
-    console.warn(`~/.cursor/hooks.json is malformed — could not remove the ponytail hook entries. Remove them manually from: ${cursorHooks.hooksPath('user')} (${e.message})`);
+  if (e instanceof SyntaxError || e.code === 'EINVALID') {
+    // ponytail: can't safely edit this hooks.json; leave intact, warn
+    console.warn(`~/.cursor/hooks.json is malformed or has an unexpected shape — could not remove the ponytail hook entries. Remove them manually from: ${cursorHooks.hooksPath('user')} (${e.message})`);
   } else {
     throw e;
   }
 }
 
 const settingsPath = path.join(getClaudeDir(), 'settings.json');
+// Write-then-rename so an interrupted write cannot truncate the user's settings.json.
+function writeSettings(settings) {
+  const tmp = settingsPath + '.tmp';
+  fs.writeFileSync(tmp, JSON.stringify(settings, null, 2), 'utf8');
+  fs.renameSync(tmp, settingsPath);
+}
 try {
   const raw = fs.readFileSync(settingsPath, 'utf8').replace(/^\uFEFF/, '');
   const settings = JSON.parse(raw);
@@ -72,11 +79,11 @@ try {
     const others = parts.filter((s) => !STATUSLINE_SCRIPT.test(s));
     if (others.length === 0) {
       delete settings.statusLine;
-      fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2), 'utf8');
+      writeSettings(settings);
       console.log(`Removed ponytail statusLine entry from ${settingsPath}`);
     } else {
       settings.statusLine.command = others.join(' && ');
-      fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2), 'utf8');
+      writeSettings(settings);
       console.log(`Removed ponytail statusLine segment from ${settingsPath}`);
     }
   }

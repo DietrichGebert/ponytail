@@ -268,6 +268,18 @@ test('installer merges into an existing ~/.cursor/hooks.json and leaves unrelate
   assert.deepEqual(JSON.parse(fs.readFileSync(file, 'utf8')), theirs);
 });
 
+test('uninstall leaves a hooks.json with only empty (non-ponytail) event arrays alone', () => {
+  const home = path.join(temp, 'empty-arr', 'home');
+  const file = path.join(home, '.cursor', 'hooks.json');
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  const original = { version: 1, hooks: { sessionStart: [] } };
+  fs.writeFileSync(file, JSON.stringify(original, null, 2) + '\n');
+  const result = cli(['uninstall'], { HOME: home, USERPROFILE: home });
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /No ponytail hooks/);
+  assert.deepEqual(JSON.parse(fs.readFileSync(file, 'utf8')), original, 'an empty non-ponytail event array must stay');
+});
+
 test('installer creates the file when absent and removes it again when only ponytail lived there', () => {
   const home = path.join(temp, 'fresh', 'home');
   fs.mkdirSync(home, { recursive: true });
