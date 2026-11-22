@@ -48,6 +48,7 @@ const INVARIANTS = [
   'shortcut: <the limit>, <when to upgrade>',   // shortcut marker comment
   'correct on edge cases',                 // robust-variant rule
   'Lazy code without its check is unfinished', // test reflex
+  'Nothing new since your last disclosure, or the turn is not coding: end without them.', // no repeated or non-coding disclosures
   // the "never cut" carve-outs: pin each so a reword in either file can't silently drop one.
   'validation at trust boundaries',
   'prevents data loss',
