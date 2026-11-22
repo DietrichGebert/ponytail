@@ -79,8 +79,8 @@ const load = async ($: EngineInterface): Promise<Band> => ({ ...EMPTY, ...(await
 const union = (a: string[], b: string[]) => [...new Set([...a, ...b])]
 const base = (path: string) => path.replace(/\/+$/, '').split('/').pop() ?? path
 
-// Windows sets USERPROFILE, not HOME.
-const home = async ($: EngineInterface) => (await $.env.get('HOME')) ?? (await $.env.get('USERPROFILE'))
+// The hooks use os.homedir(), which prefers USERPROFILE on Windows.
+const home = async ($: EngineInterface) => (await $.env.get('OS')) === 'Windows_NT' ? (await $.env.get('USERPROFILE')) ?? (await $.env.get('HOME')) : (await $.env.get('HOME')) ?? (await $.env.get('USERPROFILE'))
 const claudeDir = async ($: EngineInterface) => (await $.env.get('CLAUDE_CONFIG_DIR')) ?? `${await home($)}/.claude`
 
 // `/ponytail band` (the mode tracker) leaves "off" here to hide the band. Absent flag = shown.

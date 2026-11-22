@@ -437,6 +437,28 @@ test('without HOME (Windows) the band reads its flags under USERPROFILE', async 
   await ui.unmount()
 })
 
+for (const [os, expected] of [['Windows_NT', 'C:/Users/u'], ['Linux', '/home/u']] as const) {
+  test(`the band uses the native home on ${os} when HOME and USERPROFILE differ`, async ($, on) => {
+    mock.clock(on)
+    mock.store(on)
+    const env: Record<string, string> = { OS: os, HOME: '/home/u', USERPROFILE: 'C:/Users/u' }
+    on('env.get', ($, e) => ({ value: env[e.name] }))
+    const reads: string[] = []
+    on('fs.read', ($, e, next) => {
+      reads.push(e.path.replaceAll('\\', '/'))
+      return reads.at(-1)?.endsWith(`${expected}/.claude/.ponytail-band`) ? { value: 'off' } : next(e)
+    })
+    on('ui.render', ($, e) => {
+      const { Text } = $.ui.resolve(e)
+      return <Text>prompt only</Text>
+    })
+    const ui = await $.ui.mount({ plugin: 'ponytail', surface: 'terminal', ...BAND })
+    expect(reads.some(path => path.endsWith(`${expected}/.claude/.ponytail-band`))).toBe(true)
+    expect(await ui.find({ key: 'level' })).toBeUndefined()
+    await ui.unmount()
+  })
+}
+
 test('another mod drawing above the prompt shows below the band, in compact and in details', async ($, on) => {
   mock.clock(on)
   mock.store(on)
