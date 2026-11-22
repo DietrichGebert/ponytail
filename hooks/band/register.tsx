@@ -245,7 +245,7 @@ export const register: Register = (on, options) => {
   on('prompt.submit', async ($, e, next) => {
     const text = e.text.trim()
     if (e.origin.kind !== 'plugin' && text !== '' && !text.startsWith('/')) {
-      const name = (text.split('\n')[0] ?? '').slice(0, 60)
+      const name = [...(text.split('\n')[0] ?? '')].slice(0, 60).join('')
       await update($, band, b => (b.name === '' ? { ...EMPTY, ...b, name } : b))
     }
     return next(e)

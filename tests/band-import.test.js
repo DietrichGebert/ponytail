@@ -60,6 +60,19 @@ const early = sessionStats([records[1], { type: 'cost-state', sessionId: 'abcd12
 assert.ok(Math.abs(early.cost - est) < 1e-9, 'a total written before later replies is not final');
 assert.equal(sessionStats([...records, { type: 'custom-title', customTitle: 'Cart totals' }]).name, 'Cart totals', 'the sidebar name wins');
 
+// A supplementary character at the name limit must survive CSV's UTF-8 encoding.
+for (const prefix of ['x'.repeat(59), '😀'.repeat(59)]) {
+  const name = prefix + '😀';
+  for (const titled of [false, true]) {
+    const unicode = [prompt('00:00', name + ' omitted'), reply('00:10', 'unicode', u(1, 1))];
+    if (titled) unicode.push({ type: 'custom-title', customTitle: name + ' omitted' });
+    const stats = sessionStats(unicode);
+    assert.equal(stats.name, name, 'both prompt and sidebar names stop at 60 Unicode code points');
+    const csv = csvRow('unicode-0000', 'shop', stats);
+    assert.equal(Buffer.from(csv, 'utf8').toString('utf8'), csv, 'CSV encoding must not replace half an emoji');
+  }
+}
+
 // A session reopened a day later with a slash command: a new turn, and the day between is not work.
 const later = sessionStats([...records,
   { type: 'user', timestamp: '2026-10-02T10:00:00Z', message: { content: '<command-name>/ponytail</command-name>' } },
