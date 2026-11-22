@@ -152,8 +152,9 @@ export default {
 
     // Append the ruleset to the system prompt every turn. V2 hands over owned
     // system parts, so push one instead of rewriting the tail of another.
-    // Summary compaction runs its own hook with the same event shape; without
-    // it the compaction request misses the ruleset and the provider prompt cache.
+    // Summary compaction and generate requests (a client's keep-warm ping, for
+    // one) run their own hooks with the same event shape; without them those
+    // requests miss the ruleset and the provider prompt cache.
     const addRuleset = (event) => {
       const mode = readMode();
       if (mode === 'off') return;
@@ -161,6 +162,7 @@ export default {
     };
     await ctx.session.hook('context', addRuleset);
     await ctx.session.hook('compaction', addRuleset);
+    await ctx.session.hook('generate', addRuleset);
   },
 
   // OpenCode V1: same three behaviors, as hooks on the V1 hook names.
