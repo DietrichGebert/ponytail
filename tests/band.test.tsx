@@ -171,6 +171,12 @@ describe('metrics', () => {
     expect(other.trim().split('\n').length).toBe(3)
   })
 
+  test('the CSV writes a formula-shaped name as text', () => {
+    const at = Date.UTC(2026, 9, 15, 12, 0)
+    const csv = upsertCsv('', snapshot({ ...BASE, name: '=2+2' }, at))
+    expect(csv).toContain("'=2+2")
+  })
+
   test('the desktop row is one SVG with real dividers, escaped and cut to fit', () => {
     const svg = metricsSvg(
       [
