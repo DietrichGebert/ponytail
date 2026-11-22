@@ -518,3 +518,42 @@ test('a test run shows its count, and an edit in the project after it marks the 
   expect(await ui.find({ type: 'Text', text: /no test since change/ })).toBeDefined()
   await ui.unmount()
 })
+
+test('caller search sees the whole repository and ignores prose', async ($, on) => {
+  mock.clock(on)
+  mock.store(on)
+  on('env.get', () => ({ value: undefined }))
+  on('session.repo', () => ({ value: { root: '/repo' } }) as never)
+  on('session.cwd', () => ({ value: '/repo/area/topic' }))
+  on('session.root', () => ({ value: '/repo' }))
+  on('session.id', () => ({ value: 's1' }))
+  on('session.turns', () => ({ value: 1 }))
+  on('session.usage', () => ({ value: { startedAt: 0, cost: { usd: 0 } } }) as never)
+  on('fs.exists', () => ({ value: false }))
+  on('fs.list', () => ({ value: [] }))
+  on('fs.read', () => ({ deny: 'missing' }) as never)
+  on('fs.write', () => ({ value: undefined }))
+  let definition = true
+  const commands: string[][] = []
+  on('process.run', ($, e) => {
+    commands.push(e.argv)
+    const rooted = e.argv[0] === 'git' && e.argv[1] === '-C' && e.argv[2] === '/repo'
+    const stdout = rooted
+      ? `area/topic/prose.md:1:glm-ocr (26 frames)\n${definition ? 'models/ocr.py:1:def ocr():' : 'tests/test_ocr.py:1:ocr()'}\n`
+      : 'prose.md:1:glm-ocr (26 frames)\n'
+    return { value: { exitCode: 0, stdout, stderr: '' } } as never
+  })
+  on('tool.call', { tool: 'Edit' }, () => ({ result: {}, text: 'ok' }) as never)
+  on('turn.complete', () => ({ text: '' }))
+  const ui = await $.ui.mount({ plugin: 'ponytail', surface: 'terminal', ...BAND })
+  const edit = () => $.tool.call({ tool: 'Edit', file_path: '/repo/area/topic/old.py', old_string: 'def ocr():\n  pass', new_string: '', replace_all: false } as never)
+  await edit()
+  await $.turn.complete({ answer: '', durationMs: 1 } as never)
+  expect(await ui.find({ type: 'Text', text: /callers open/ })).toBeUndefined()
+  definition = false
+  await edit()
+  await $.turn.complete({ answer: '', durationMs: 1 } as never)
+  expect(await ui.find({ type: 'Text', text: /1 callers open/ })).toBeDefined()
+  expect(commands.some(argv => argv[0] === 'git' && argv[1] === '-C' && argv[2] === '/repo')).toBe(true)
+  await ui.unmount()
+})
