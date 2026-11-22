@@ -3,7 +3,7 @@
 // via PowerShell, so the shared `command` field must be cross-platform (plain
 // `node`, no bash-only syntax). commandWindows is not part of the supported
 // hooks schema on the Claude.ai plugin marketplace validator, so it is omitted
-// — plain `node -e "..."` works everywhere without relying on shell-specific
+// — plain `node -e '...'` works everywhere without relying on shell-specific
 // variable syntax (see #824: the command text used to embed a
 // ${CLAUDE_PLUGIN_ROOT} placeholder that the *host* substitutes textually
 // before the shell parses the command, which is unsafe if the substituted
@@ -54,7 +54,7 @@ function copilotCommands() {
 
 // commandWindows is not part of the supported hooks schema on the Claude.ai
 // plugin marketplace validator (#593). Since the shared `command` field
-// already runs cross-platform (plain `node -e "..."`, no shell-specific
+// already runs cross-platform (plain `node -e '...'`, no shell-specific
 // syntax, and VS Code Copilot ignores commandWindows and runs `command`
 // through PowerShell on Windows anyway), it is omitted.
 test('hooks.json omits commandWindows for marketplace validation (#593)', () => {
@@ -162,6 +162,48 @@ test('copilot-hooks.json commands contain no plugin-root placeholder', () => {
   assert.ok(commands.length > 0, 'expected at least one copilot command entry');
   for (const cmd of commands) {
     assert.doesNotMatch(cmd, PLUGIN_ROOT_PLACEHOLDER, `command interpolates the plugin root into shell text: ${cmd}`);
+  }
+});
+
+function copilotPowershellCommands() {
+  const config = JSON.parse(fs.readFileSync(path.join(root, COPILOT_HOOKS_JSON), 'utf8'));
+  return Object.values(config.hooks)
+    .flat()
+    .map((entry) => entry.powershell)
+    .filter(Boolean);
+}
+
+// #1452: Windows PowerShell 5.1 strips unescaped double quotes when passing
+// arguments to native commands (including `powershell -NoProfile -Command`
+// and `node -e`). Single quotes with template literals avoid `"` altogether
+// so the command survives PowerShell 5.1 and POSIX sh unchanged.
+test('PowerShell-executed hook commands avoid double quotes (#1452)', () => {
+  const sharedCommands = commandHooks().map((h) => h.command).filter(Boolean);
+  const psCommands = [...sharedCommands, ...copilotPowershellCommands()];
+  assert.ok(psCommands.length > 0, 'expected at least one PowerShell-executed hook command');
+
+  const home = fs.mkdtempSync(path.join(os.tmpdir(), 'ponytail-ps-quotes-'));
+  try {
+    const env = {
+      ...process.env,
+      HOME: home,
+      USERPROFILE: home,
+      CLAUDE_PLUGIN_ROOT: root,
+      PLUGIN_ROOT: root,
+      PONYTAIL_MAP: '0',
+    };
+    for (const cmd of psCommands) {
+      assert.equal(cmd.includes('"'), false, `PowerShell 5.1 strips double quotes in: ${cmd}`);
+      const match = cmd.match(/\bnode\s+-e\s+'([^']+)'/);
+      assert.ok(match, `expected single-quoted node -e script in: ${cmd}`);
+      assert.doesNotMatch(match[1], /\s/, `avoid whitespace inside node -e script so PS 5.1 needs no re-quoting: ${cmd}`);
+      execFileSync(process.execPath, ['-e', match[1]], { env, input: '{}', stdio: 'pipe' });
+      if (process.platform === 'win32') {
+        execFileSync('powershell', ['-NoProfile', '-Command', cmd], { env, input: '{}', stdio: 'pipe' });
+      }
+    }
+  } finally {
+    fs.rmSync(home, { recursive: true, force: true });
   }
 });
 
