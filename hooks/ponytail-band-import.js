@@ -38,7 +38,7 @@ const PRICES = {
 const HAIKU_55_LONG = [0.5, 0.625, 1, 0.05, 2.5];
 const WEB_SEARCH = 10 / 1000;
 const IDLE_MS = 30 * 60000;
-const modelId = m => m.replace(/\[.*\]$/, '').replace(/-\d{8}$/, '');
+const modelId = m => (typeof m === 'string' ? m.replace(/\[.*\]$/, '').replace(/-\d{8}$/, '') : '');
 
 // One reply's price from its usage, or null when the price is not known.
 function replyCost(model, u) {
