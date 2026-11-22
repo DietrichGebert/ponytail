@@ -227,7 +227,7 @@ result = run(
   JSON.stringify({ prompt: 'normal mode' }),
 );
 assert.equal(result.status, 0, result.stderr);
-assert.equal(fs.existsSync(codexState), false);
+assert.equal(fs.readFileSync(codexState, 'utf8'), 'off');
 output = JSON.parse(result.stdout);
 assert.equal(output.systemMessage, undefined, 'Codex must not emit systemMessage (#605)');
 assert.match(
@@ -315,14 +315,18 @@ assert.ok(
 // #1032: the plugin root is a versioned cache dir that Claude Code deletes on
 // update, so the nudge points at a copy of the script in the config dir.
 const copyPath = path.join(customConfigDir, process.platform === 'win32' ? 'ponytail-statusline.ps1' : 'ponytail-statusline.sh');
+const helperCopyPath = path.join(customConfigDir, 'ponytail-statusline.js');
 assert.ok(fs.existsSync(copyPath), 'nudge must copy the statusline script into the config dir (#1032)');
+assert.ok(fs.existsSync(helperCopyPath), 'nudge must copy the statusline helper into the config dir (#1162)');
 // The snippet is JSON-encoded, which doubles Windows backslashes.
 assert.ok(result.stdout.includes(JSON.stringify(copyPath).slice(1, -1)), 'nudge must point at the config-dir copy, not the plugin cache (#1032)');
 assert.ok(!result.stdout.includes(path.join(root, 'hooks')), 'nudge must not point into the versioned plugin dir (#1032)');
 // Later sessions refresh the copy, so script fixes ship with plugin updates.
 fs.writeFileSync(copyPath, 'old');
+fs.writeFileSync(helperCopyPath, 'old');
 run('ponytail-activate.js', { HOME: home2, USERPROFILE: home2, CLAUDE_CONFIG_DIR: customConfigDir, PONYTAIL_DEFAULT_MODE: 'lite' });
 assert.notEqual(fs.readFileSync(copyPath, 'utf8'), 'old', 'activate must refresh the statusline copy (#1032)');
+assert.notEqual(fs.readFileSync(helperCopyPath, 'utf8'), 'old', 'activate must refresh the statusline helper (#1162)');
 
 // A statusLine set up before #1032 can point at a plugin version that no
 // longer exists. Nudge once per broken path, even after the setup nudge.
@@ -994,7 +998,8 @@ assert.equal(
 
   run('ponytail-mode-tracker.js', compactEnv, JSON.stringify({ prompt: 'stop ponytail' }));
   assert.equal(compact().stdout, '', 'compaction must not switch a stopped session back on');
-  assert.equal(fs.existsSync(compactFlag), false);
+  assert.equal(fs.readFileSync(compactFlag, 'utf8'), 'off',
+    'an explicit stop must remain distinguishable from missing state');
 
   // Every other source still starts at the default level.
   for (const source of ['startup', 'resume', 'clear']) {

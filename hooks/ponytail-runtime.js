@@ -46,8 +46,8 @@ const statePath = path.join(stateDir, STATE_FILE);
 // Claude Code hands every hook its project dir, so the live mode is kept per
 // project and concurrent sessions in different repos stop overwriting each other
 // (#662, #809). Hosts without it keep the single shared flag.
-// ponytail: sessions in the SAME repo still share one mode, and the statusline
-// scripts read the shared flag (last write wins); key by session_id if either matters.
+// ponytail: sessions in the SAME repo still share one mode (last write wins).
+// The statusline resolves the per-project flag from its workspace payload.
 const projectDir = (process.env.CLAUDE_PROJECT_DIR || '').trim();
 // Replacing separators with '_' aliases e.g. /work/a/b and /work/a_b (#662).
 // Do not read old sanitized keys: they cannot be assigned to one project safely.
@@ -56,22 +56,29 @@ const projectStatePath = projectDir
     createHash('sha256').update(path.normalize(projectDir)).digest('hex'))
   : null;
 
-// The shared flag is still written, for the statusline and project-less hosts.
-function setMode(mode) {
-  for (const file of [projectStatePath, statePath]) {
+// The shared flag remains a compatibility mirror for project-less and older hosts.
+function setMode(mode, { shared = true } = {}) {
+  // Project-scoped off is a local decision. Do not overwrite another
+  // project's compatibility mirror with "off" (#1162).
+  const files = shared || !projectStatePath ? [projectStatePath, statePath] : [projectStatePath];
+  for (const file of files) {
     if (!file) continue;
     fs.mkdirSync(path.dirname(file), { recursive: true });
     fs.writeFileSync(file, mode);
   }
 }
 
-function clearMode() {
-  for (const file of [projectStatePath, statePath]) {
+function clearMode({ preserveSharedForProject = false } = {}) {
+  // A project-scoped session starting with defaultMode=off must not remove the
+  // shared mirror. It may belong to a live session in another project (#1162).
+  const preserveShared = preserveSharedForProject && projectStatePath;
+  const files = preserveShared ? [projectStatePath] : [projectStatePath, statePath];
+  for (const file of files) {
     if (file) try { fs.unlinkSync(file); } catch (e) {}
   }
 }
 
-// Live mode written by activate/mode-tracker. Absent flag = ponytail off.
+// Live mode written by activate/mode-tracker. Absent or literal "off" = ponytail off.
 function readMode() {
   try {
     return fs.readFileSync(projectStatePath || statePath, 'utf8').trim() || null;

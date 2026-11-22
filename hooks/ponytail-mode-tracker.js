@@ -7,7 +7,6 @@ const path = require('path');
 const { spawn } = require('child_process');
 const { getClaudeDir, getDefaultMode, isDeactivationCommand, writeDefaultMode } = require('./ponytail-config');
 const {
-  clearMode,
   cursorRuleNotice,
   cursorRulePath,
   isCodeBuddy,
@@ -148,8 +147,7 @@ function finish() {
           );
         }
       } else if (mode === 'off') {
-        if (isQoder) setMode('off');
-        else clearMode();
+        setMode('off', { shared: false });
 
         deactivated = true;
         writeHookOutput('UserPromptSubmit', 'off', 'PONYTAIL MODE OFF');
@@ -158,8 +156,7 @@ function finish() {
 
     // Detect deactivation
     if (!modeSwitched && !deactivated && isDeactivationCommand(prompt)) {
-      if (isQoder) setMode('off');
-      else clearMode();
+      setMode('off', { shared: false });
 
       deactivated = true;
       writeHookOutput('UserPromptSubmit', 'off', 'PONYTAIL MODE OFF');

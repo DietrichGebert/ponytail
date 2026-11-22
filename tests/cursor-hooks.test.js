@@ -14,6 +14,7 @@ const assert = require('node:assert/strict');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
+const { createHash } = require('crypto');
 const { spawnSync } = require('child_process');
 
 const root = path.join(__dirname, '..');
@@ -84,6 +85,15 @@ function cursorEnv(name, extra = {}) {
 function writeFlag(c, mode) {
   fs.mkdirSync(path.dirname(c.flag), { recursive: true });
   fs.writeFileSync(c.flag, mode);
+}
+
+function projectFlag(c) {
+  return path.join(
+    c.home,
+    '.cursor',
+    'ponytail-modes',
+    createHash('sha256').update(path.normalize(c.project)).digest('hex'),
+  );
 }
 
 test('cursor hooks template is a valid hooks.json with the two events that can inject context', () => {
@@ -180,15 +190,15 @@ test('beforeSubmitPrompt tracks /ponytail commands and delivers the new level ru
   assert.equal(JSON.parse(fs.readFileSync(path.join(c.home, '.config', 'ponytail', 'config.json'), 'utf8')).defaultMode, 'ultra');
   assert.equal(fs.readFileSync(c.flag, 'utf8'), 'lite');
 
-  // /ponytail off and the plain-language deactivations clear the flag and tell the model.
+  // /ponytail off and the plain-language deactivations persist off and tell the model.
   const off = parse(run('ponytail-mode-tracker.js', c.env, JSON.stringify({ prompt: '/ponytail off' })));
   assert.deepEqual(off, { continue: true, additional_context: 'PONYTAIL MODE OFF' });
-  assert.equal(fs.existsSync(c.flag), false);
+  assert.equal(fs.readFileSync(projectFlag(c), 'utf8'), 'off');
 
   writeFlag(c, 'full');
   const stop = parse(run('ponytail-mode-tracker.js', c.env, JSON.stringify({ prompt: 'Stop ponytail.' })));
   assert.equal(stop.additional_context, 'PONYTAIL MODE OFF');
-  assert.equal(fs.existsSync(c.flag), false);
+  assert.equal(fs.readFileSync(projectFlag(c), 'utf8'), 'off');
 
   // Ordinary prompts produce no output at all: Cursor treats empty stdout as "carry on".
   writeFlag(c, 'full');

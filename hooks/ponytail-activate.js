@@ -3,7 +3,7 @@
 // Grok, CodeBuddy and Cursor sessionStart)
 //
 // Runs on every session start:
-//   1. Writes flag file at $CLAUDE_CONFIG_DIR/.ponytail-active (defaults to ~/.claude; statusline reads this)
+//   1. Writes mode state under $CLAUDE_CONFIG_DIR (defaults to ~/.claude)
 //   2. Emits ponytail ruleset as hidden SessionStart context
 //   3. Detects missing statusline config and emits setup nudge
 
@@ -28,10 +28,22 @@ const {
 const claudeDir = getClaudeDir();
 const settingsPath = path.join(claudeDir, 'settings.json');
 
-function activate(mode) {
-  // "off" mode — skip activation entirely, don't write flag or emit rules
+function activate(mode, source = '') {
+  // "off" mode — skip activation entirely, don't emit rules. A project-scoped
+  // default-off startup only clears its own project state; the shared mirror
+  // may belong to another live project (#1162).
   if (mode === 'off') {
-    clearMode();
+    try {
+      if (source === 'compact') {
+        // An explicit stop is persisted as "off", so compaction can distinguish
+        // it from a state missing because another session cleared its mirror.
+        setMode('off', { shared: false });
+      } else {
+        clearMode({ preserveSharedForProject: true });
+      }
+    } catch (e) {
+      // Silent fail -- mode state is best-effort, and off must never block a hook.
+    }
     process.exit(0);
   }
 
@@ -105,6 +117,7 @@ function activate(mode) {
     const usePs1 = refPath ? refPath.endsWith('.ps1') : isWindows;
     const scriptName = usePs1 ? 'ponytail-statusline.ps1' : 'ponytail-statusline.sh';
     const scriptPath = path.join(claudeDir, scriptName);
+    const helperPath = path.join(claudeDir, 'ponytail-statusline.js');
 
     // Nudge at most once — the flag file marks that the user has already seen
     // (and implicitly declined) the statusline setup offer. Repeating it every
@@ -120,13 +133,18 @@ function activate(mode) {
     // scriptPath instead of writing through it, and a concurrent session never
     // runs a half-written script.
     if (nudge || fs.existsSync(scriptPath)) {
-      const tmpPath = scriptPath + '.' + process.pid + '.tmp';
-      try {
-        fs.copyFileSync(path.join(__dirname, scriptName), tmpPath, fs.constants.COPYFILE_EXCL);
-        fs.chmodSync(tmpPath, 0o644);
-        fs.renameSync(tmpPath, scriptPath);
-      } finally {
-        try { fs.unlinkSync(tmpPath); } catch (e) { /* renamed */ }
+      for (const [source, destination] of [
+        [path.join(__dirname, scriptName), scriptPath],
+        [path.join(__dirname, 'ponytail-statusline.js'), helperPath],
+      ]) {
+        const tmpPath = destination + '.' + process.pid + '.tmp';
+        try {
+          fs.copyFileSync(source, tmpPath, fs.constants.COPYFILE_EXCL);
+          fs.chmodSync(tmpPath, 0o644);
+          fs.renameSync(tmpPath, destination);
+        } finally {
+          try { fs.unlinkSync(tmpPath); } catch (e) { /* renamed */ }
+        }
       }
     }
 
@@ -190,7 +208,7 @@ function finish() {
   } catch (e) {
     // No payload, or an unparseable one: treat it as a fresh session
   }
-  activate(source === 'compact' ? (readMode() || 'off') : getDefaultMode());
+  activate(source === 'compact' ? (readMode() || getDefaultMode()) : getDefaultMode(), source);
 }
 
 process.stdin.on('data', chunk => { input += chunk; });
