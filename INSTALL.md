@@ -50,6 +50,8 @@ Copilot CLI namespaces plugin commands by plugin name. For example:
 /ponytail:ponytail-review
 ```
 
+Copilot CLI injects the default ruleset at `sessionStart`. Because Copilot drops `userPromptSubmitted` hook output, mid-session mode commands (like `/ponytail:ponytail ultra` or `/ponytail off`) update local state tracking but cannot dynamically replace instructions in an active session. To change the level for Copilot sessions, configure `defaultMode` in `~/.config/ponytail/config.json` (Windows: `%APPDATA%\ponytail\config.json`) or set `PONYTAIL_DEFAULT_MODE=<level>` before starting a session.
+
 ## Pi agent harness
 
 ```
