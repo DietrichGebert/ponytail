@@ -252,7 +252,7 @@ export const register: Register = (on, options) => {
   }).catch(($, e, next) => next(e))
 
   on('tool.call', async ($, e, next) => {
-    if (e.tool === 'Bash') {
+    if (e.tool === 'Bash' || e.tool === 'PowerShell') {
       const ran = await next(e)
       if (ran.deny === undefined && isTestCommand(e.command)) {
         const tests = { state: ran.isError ? ('fail' as const) : ('pass' as const), ...testCounts(ran.text ?? '') }
