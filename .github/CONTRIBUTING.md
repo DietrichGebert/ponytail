@@ -42,9 +42,9 @@ PONYTAIL_PLUGIN_DIR=/abs/path/to/your-branch python run.py --task <task> --arms 
 If your task isn't in `tasks.py` yet, add it with a `good` and a `bad` reference, so `--selftest`
 proves the scorer catches the difference.
 
-Rule text lives in `AGENTS.md` and `skills/ponytail/SKILL.md`. Keep the copies in sync
-(`node scripts/check-rule-copies.js`) and regenerate `.openclaw/` with
-`node scripts/build-openclaw-skills.js`.
+Rule text lives in `skills/ponytail/SKILL.md`. Regenerate `AGENTS.md` and the host
+copies with `node scripts/generate-rule-copies.js` (CI checks they match), and
+regenerate `.openclaw/` with `node scripts/build-openclaw-skills.js`.
 
 ## Everything else
 
@@ -60,9 +60,10 @@ Keep the PR to one change and link the issue it fixes.
 
 ## Development
 
-When changing the compact rule text, keep the agent copies aligned:
+When changing the ruleset, edit `skills/ponytail/SKILL.md` only, then regenerate:
 
 ```bash
+node scripts/generate-rule-copies.js
 node scripts/check-rule-copies.js
 npm test
 ```

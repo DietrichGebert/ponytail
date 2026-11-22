@@ -2,6 +2,11 @@
 // No server and no network: inline CSS, inline SVG and a few lines of script.
 
 import { LOGO_PATHS, LOGO_VIEWBOX } from './logo'
+import {
+  escapeJsonForScript,
+  parseCsv as parseCsvJs,
+  tasksFrom as tasksFromJs,
+} from './csv.js'
 
 export const duration = (minutes: number) =>
   minutes < 60 ? `${minutes}m` : `${Math.floor(minutes / 60)}h ${minutes % 60}m`
@@ -31,56 +36,9 @@ export type Task = {
   model: string
 }
 
-// RFC 4180 rows: quoted fields may hold commas, doubled quotes and line breaks.
-export function parseCsv(text: string): string[][] {
-  const rows: string[][] = []
-  let row: string[] = []
-  let field = ''
-  let quoted = false
-  for (let i = 0; i < text.length; i++) {
-    const c = text[i]
-    if (quoted) {
-      if (c === '"' && text[i + 1] === '"') {
-        field += '"'
-        i++
-      } else if (c === '"') quoted = false
-      else field += c
-    } else if (c === '"') quoted = true
-    else if (c === ',') {
-      row.push(field)
-      field = ''
-    } else if (c === '\n' || c === '\r') {
-      if (c === '\r' && text[i + 1] === '\n') i++
-      row.push(field)
-      if (row.some(f => f !== '')) rows.push(row)
-      row = []
-      field = ''
-    } else field += c
-  }
-  row.push(field)
-  if (row.some(f => f !== '')) rows.push(row)
-  return rows
-}
-
-export function tasksFrom(text: string): Task[] {
-  const [head, ...rows] = parseCsv(text)
-  if (!head?.includes('key')) return []
-  const at = (row: string[], col: string) => row[head.indexOf(col)] ?? ''
-  const num = (row: string[], col: string) => Number(at(row, col)) || 0
-  return rows.map(row => ({
-    started: at(row, 'started'),
-    project: at(row, 'project'),
-    name: at(row, 'name'),
-    cost: num(row, 'cost_usd'),
-    turns: num(row, 'turns'),
-    agentMinutes: num(row, 'agent_minutes'),
-    tokens: num(row, 'tokens_total'),
-    reuse: at(row, 'reuse_pct') === '' ? null : num(row, 'reuse_pct'),
-    tests: at(row, 'tests'),
-    level: at(row, 'level'),
-    model: at(row, 'model'),
-  }))
-}
+// Re-export the Node-tested pure helpers so Claude Code and metrics keep one import path.
+export const parseCsv = parseCsvJs as (text: string) => string[][]
+export const tasksFrom = tasksFromJs as (text: string) => Task[]
 
 const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
 const day = (ms: number) => {
@@ -520,8 +478,8 @@ const CARD = `<svg id="card" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120
 ${cardStat(172, 'Cost', 'c-cost')}${cardStat(228, 'Tokens', 'c-tokens')}${cardStat(284, 'Sessions', 'c-sessions')}
 <text x="72" y="621" font-family="${MONO}" font-size="15" fill="#5e5c55">measured in Claude Code</text><text x="1128" y="621" text-anchor="end" font-family="${MONO}" font-size="15" fill="#5fe08a">ponytail.dev</text></svg>`
 
-// JSON inside a script block: "<" is escaped so no name can close the block.
-const json = (value: unknown) => JSON.stringify(value).replace(/</g, '\\u003c').replace(/\u2028/g, '\\u2028').replace(/\u2029/g, '\\u2029')
+// JSON inside a script block: shared helper escapes "<" so no name can close the block.
+const json = escapeJsonForScript
 
 // Dark, light, system: CSS shows the icon of the current choice.
 const THEME_BUTTON = '<button type="button" class="theme" id="theme" data-choice="dark" aria-label="Theme: dark" title="Theme: dark"><svg class="i-system" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></svg><svg class="i-light" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg><svg class="i-dark" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg></button>'
