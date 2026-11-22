@@ -253,10 +253,11 @@ const per = (total: number, n: number) => (n > 0 ? total / n : 0)
 
 export function markdown(s: Snapshot): string {
   const t = s.tokens
+  const literal = (v: string) => v.replace(/[&<>\\`*_[\]|#~]/g, c => `&#${c.charCodeAt(0)};`).replace(/\r\n?|\n/g, '<br>')
   const rows = [
-    ['Project', s.project],
+    ['Project', literal(s.project)],
     ['Started', s.started],
-    ['Model', s.model || '–'],
+    ['Model', literal(s.model || '–')],
     ['Cost', `$${s.cost.toFixed(2)}${s.lastTurn === null ? '' : ` · last turn $${s.lastTurn.toFixed(2)}`} · ⌀ $${per(s.cost, s.turns).toFixed(2)} / turn`],
     ['Turns', `${s.turns}`],
     ['Agent time', `${elapsed(s.agentMs)} · ⌀ ${elapsed(per(s.agentMs, s.turns))} / turn`],
@@ -268,7 +269,7 @@ export function markdown(s: Snapshot): string {
     ['Session', `\`${s.session}\``],
   ]
   const cell = (v: string) => v.replace(/\|/g, '\\|')
-  return [`## ${cell(s.name || 'Untitled session')}`, '', '| | |', '|---|---|', ...rows.map(([k, v]) => `| ${k} | ${cell(v ?? '')} |`)].join('\n')
+  return [`## ${literal(s.name || 'Untitled session')}`, '', '| | |', '|---|---|', ...rows.map(([k, v]) => `| ${k} | ${cell(v ?? '')} |`)].join('\n')
 }
 
 export const CSV_HEADER = 'key,started,project,name,cost_usd,turns,agent_minutes,tokens_total,tokens_output,reuse_pct,reused,new,callers_open,tests,level,model'
