@@ -61,7 +61,7 @@ for (const slug of slugs) {
   ];
   const cmdline = args.map(quote).join(' ');
   console.log(`\n$ ${cmdline}`);
-  const res = spawnSync(cmdline, { stdio: 'inherit', cwd: root, shell: true });
+  const res = spawnSync(args[0], args.slice(1), { stdio: 'inherit', cwd: root });
   if (res.status !== 0) {
     console.error(
       `\nPublish failed for "${slug}" (exit ${res.status}). ` +
