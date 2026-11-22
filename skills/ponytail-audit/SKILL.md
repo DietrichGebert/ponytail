@@ -68,29 +68,14 @@ tested and fixed later. This is a report the user asked for, so give it in full.
 
 ## 4. Output
 
-Very simple English: short sentences, everyday words. Explain a technical
-term the first time you use it. The reader may never have seen this code.
+Read `references/finding-format.md` in this skill folder and follow it for
+plain-English wording, the Must/Should/Nice groups, numbering, and the four
+parts of every finding (including the worked billing example).
 
 Start with `What this repo does:` in two or three sentences, and the load
 you assumed.
-
-Then the findings in three groups, most important first, skip empty groups:
-- **Must fix:** bug, security, data loss, breaks at the expected load.
-- **Should fix:** risky code without a test, real slowness, duplication, a
-  function that mixes jobs, code that should not exist.
-- **Nice to have:** small speed-ups, shorter forms.
-
-Number findings across all groups, so the user can say "fix 2 and 5". At
-most 20 findings; if you left smaller ones out, say how many.
-Every finding has all four parts, each one or two short sentences:
-
-2. **Orders land on the wrong day** (`billing/close_day.py:L40-52`)
-   - **What this is:** At midnight this job closes the day and bills all orders of that day.
-   - **Problem:** It takes "today" from the server clock, which runs in UTC. An order placed
-     at 00:30 in Berlin is billed on the day before.
-   - **Fix:** Compute the day once in the shop's time zone:
-     `datetime.now(ZoneInfo("Europe/Berlin")).date()`. One line, nothing else changes.
-   - **If we skip it:** Late orders show the wrong date, and accounting fixes them by hand.
+Then the findings using that shared format, most important first. At most 20
+findings; if you left smaller ones out, say how many.
 
 End with:
 - `Verdict:` one line: healthy, or what to fix first.
