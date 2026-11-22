@@ -83,7 +83,9 @@ export function inProject(file: string, root: string): boolean {
   return f === r || f.startsWith(`${r}/`)
 }
 
-const TEST_CMD = /\b(npm (run )?test|pnpm (run )?test|yarn test|bun test|npx (jest|vitest)|jest|vitest|pytest|python3? -m pytest|go test|cargo test|mvn test|gradle test|rspec|phpunit|dotnet test|node --test|deno test|make test)\b/
+// The runner must be in command position (start, after a separator or path, or behind run/exec/npx/env/time/VAR=),
+// so `cat jest.config.js` or `pip install pytest` do not count as a test run and overwrite its result.
+const TEST_CMD = /(?:^|[;&|(/]\s*|\b(?:run|exec|npx|bunx|pnpx|time|env|nice|timeout \S+)\s+|\b\w+=\S*\s+)(npm (run )?test|pnpm (run )?test|yarn test|bun test|npx (jest|vitest)|jest|vitest|pytest|python3? -m pytest|go test|cargo test|mvn test|gradle test|rspec|phpunit|dotnet test|node --test|deno test|make test)(?![\w.-])/
 
 export const isTestCommand = (command: string) => TEST_CMD.test(command)
 
