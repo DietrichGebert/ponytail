@@ -62,7 +62,7 @@ function activate(mode) {
 
   // 2b. Codebase map: what already exists, so "reuse first" costs no search. Fail open: the map
   // gets 3 s, well inside the 15 s hook limit, so a stalled map never costs the rules (#1079, #1157).
-  // shortcut: a map slower than 3 s is still dropped; a cached per-repo map would lift that if it shows up.
+  // shortcut: on a slow disk the map lists only what it read in 2 s; a cached per-repo map would lift that if it shows up.
   if (mode !== 'review' && process.env.PONYTAIL_MAP !== '0') try {
     const map = execFileSync(process.execPath, [path.join(__dirname, 'ponytail-map.js')], {
       encoding: 'utf8', timeout: 3000, maxBuffer: 64 * 1024, stdio: ['ignore', 'pipe', 'ignore'],
