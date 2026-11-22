@@ -3,7 +3,7 @@
 // Grok, CodeBuddy and Cursor sessionStart)
 //
 // Runs on every session start:
-//   1. Writes flag file at $CLAUDE_CONFIG_DIR/.ponytail-active (defaults to ~/.claude; statusline reads this)
+//   1. Saves legacy mode in the shared flag, or reads the opt-in session snapshot.
 //   2. Emits ponytail ruleset as hidden SessionStart context
 //   3. Detects missing statusline config and emits setup nudge
 
@@ -14,6 +14,8 @@ const { getDefaultMode, getClaudeDir, isShellSafe } = require('./ponytail-config
 const { getPonytailInstructions } = require('./ponytail-instructions');
 const {
   clearMode,
+  setSessionContext,
+  isSessionScoped,
   cursorRuleNotice,
   cursorRulePath,
   isCodeBuddy,
@@ -31,7 +33,7 @@ const settingsPath = path.join(claudeDir, 'settings.json');
 function activate(mode) {
   // "off" mode — skip activation entirely, don't write flag or emit rules
   if (mode === 'off') {
-    clearMode();
+    if (!isSessionScoped()) clearMode();
     process.exit(0);
   }
 
@@ -52,7 +54,7 @@ function activate(mode) {
 
   // 1. Write flag file
   try {
-    setMode(mode);
+    if (!isSessionScoped()) setMode(mode);
   } catch (e) {
     // Silent fail -- flag is best-effort, don't block the hook
   }
@@ -186,11 +188,13 @@ function finish() {
   let source = '';
   try {
     // Strip UTF-8 BOM some shells prepend when piping (breaks JSON.parse)
-    source = JSON.parse(input.replace(/^\uFEFF/, '')).source;
+    const data = JSON.parse(input.replace(/^\uFEFF/, ''));
+    setSessionContext(data);
+    source = data.source;
   } catch (e) {
     // No payload, or an unparseable one: treat it as a fresh session
   }
-  activate(source === 'compact' ? (readMode() || 'off') : getDefaultMode());
+  activate(isSessionScoped() ? readMode() : source === 'compact' ? (readMode() || 'off') : getDefaultMode());
 }
 
 process.stdin.on('data', chunk => { input += chunk; });

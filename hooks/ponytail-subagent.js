@@ -11,17 +11,18 @@
 // "^general$" is exact. Unset means inject into every subagent, as before.
 
 const { getPonytailInstructions } = require('./ponytail-instructions');
-const { readMode, writeHookOutput } = require('./ponytail-runtime');
+const { readMode, writeHookOutput, setSessionContext, wantsSessionScope } = require('./ponytail-runtime');
 const vm = require('vm');
 
-const mode = readMode();
+let mode = readMode();
 
 // Absent flag or off → ponytail isn't active; inject nothing.
-if (!mode || mode === 'off') {
+if (!wantsSessionScope() && (!mode || mode === 'off')) {
   process.exit(0);
 }
 
 function inject() {
+  if (!mode || mode === 'off') return;
   try {
     writeHookOutput('SubagentStart', mode, getPonytailInstructions(mode));
   } catch (e) {
@@ -39,18 +40,17 @@ try {
   matcherRe = null;
 }
 
-// No matcher → keep the original synchronous, stdin-independent path. On Windows
+// No matcher and no session scope → keep the stdin-independent path. On Windows
 // the PowerShell `if {}` wrapper can swallow the piped JSON so stdin 'end' never
 // fires (#443); the default path must not wait on stdin or it would stall every
 // subagent spawn.
-if (!matcherRe) {
+if (!matcherRe && !wantsSessionScope()) {
   inject();
   process.exit(0);
 }
 
-// Matcher set → read agent_type from stdin and skip only on a definite
-// mismatch. Missing/unparseable agent_type, a stdin error, or the timeout all
-// fail open (inject), so scoping never silently drops the persona.
+// Read the matcher and optional session ID. An unavailable ID retains legacy
+// mode, which can be absent or stale. An unknown agent type does not filter it.
 let input = '';
 let done = false;
 
@@ -61,16 +61,19 @@ function finish() {
   let agentType = '';
   try {
     // Strip UTF-8 BOM some shells prepend when piping (breaks JSON.parse)
-    agentType = String(JSON.parse(input.replace(/^\uFEFF/, '')).agent_type || '').trim();
+    const data = JSON.parse(input.replace(/^\uFEFF/, ''));
+    setSessionContext(data);
+    mode = readMode();
+    agentType = String(data.agent_type || '').trim();
   } catch (e) {
-    // Unparseable payload — fall through and inject to be safe.
+    // No usable session ID: retain legacy mode, including its absent/off state.
   }
   // .test() is synchronous, so a backtracking-heavy matcher like (a+)+$ would
   // block the event loop and the fallback timer below could never fire (#658).
   // Run it under a vm timeout; a timeout fails open like every other doubt.
   let matches = true;
   try {
-    if (agentType) {
+    if (matcherRe && agentType) {
       matches = vm.runInNewContext('re.test(s)', { re: matcherRe, s: agentType }, { timeout: 100 });
     }
   } catch (e) {
