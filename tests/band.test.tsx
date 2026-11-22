@@ -1,6 +1,6 @@
 import { describe, expect, mock, test } from 'claude-code/testing'
 
-import { boardHtml, parseCsv, tasksFrom } from '../hooks/band/board'
+import { boardHtml, modelName, parseCsv, tasksFrom } from '../hooks/band/board'
 import type { Band } from '../hooks/band/types'
 import {
   NO_TOKENS,
@@ -63,6 +63,13 @@ describe('board', () => {
     expect(html).toContain('<html lang="en" data-theme="dark">')
     expect(html).toContain(':root[data-theme=light]{')
     expect(html).toContain(':root[data-theme=system]{')
+  })
+
+  test('a model id from any provider reads as a short name', () => {
+    const names = ['claude-opus-5-5', 'claude-haiku-4-5-20251001', 'openai-codex/gpt-6.1-sol', 'anthropic/claude-fable-5.1:batch', 'us.anthropic.claude-sonnet-4-5-20250929-v1:0', 'z-ai/glm-5.2', '~deepseek/deepseek-v4-flash-latest', 'deepseek/deepseek-v4.1-flash-1017-fast', 'deepseek.v3-v1:0', 'flux.2-flex', 'openai/o4-mini', 'us.meta.llama3-1-70b-instruct-v1:0', 'openai/gpt-4o-mini-2024-07-18', 'deepseek-ai/DeepSeek-V3', 'nvidia/nemotron-nano-9b-v2', 'accounts/fireworks/models/qwen3p8-2p4t-a95b', 'openai.gpt-oss-120b-1:0', 'google/gemma-3-12b-it', 'claude-3-5-sonnet-20241022', 'amazon/nova-pro-v1', 'zai-glm-5-2', 'MiniMaxAI/MiniMax-M2.1', 'meta.llama4-scout-17b-instruct-v1:0', 'liquid/lfm2.5-24b-a2b', '']
+      .map(id => modelName(id).replace(/ /g, ' '))
+    expect(names).toEqual(['Opus 5.5', 'Haiku 4.5', 'GPT 6.1 Sol', 'Fable 5.1', 'Sonnet 4.5', 'GLM 5.2', 'DeepSeek V4 Flash', 'DeepSeek V4.1 Flash Fast', 'DeepSeek V3', 'Flux 2 Flex', 'o4 Mini', 'Llama 3.1 70B Instruct', 'GPT 4o Mini', 'DeepSeek V3', 'Nemotron Nano 9B V2', 'Qwen3.8 2.4T A95B', 'GPT OSS 120B', 'Gemma 3 12B IT', 'Sonnet 3.5', 'Nova Pro', 'GLM 5.2', 'MiniMax M2.1', 'Llama 4 Scout 17B Instruct', 'LFM 2.5 24B A2B', ''])
+    expect(boardHtml([], 0)).toContain('var modelName = function modelName(')
   })
 
   test('an empty board still loads and says there are no sessions yet', () => {

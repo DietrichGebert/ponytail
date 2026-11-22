@@ -17,6 +17,44 @@ export const elapsed = (ms: number) => {
 export const fmtTokens = (n: number) =>
   n < 1000 ? `${n}` : n < 1e6 ? `${+(n / 1e3).toFixed(1)}k` : `${+(n / 1e6).toFixed(1)}M`
 
+// Any provider's model id as a short name: openai/gpt-6.1-sol:batch reads as GPT 6.1 Sol, claude-opus-5-5-20251101 as Opus 5.5.
+// Known families get their own spelling; any other id goes through the general rule.
+// The page embeds this function's source, so it uses nothing from outside its own body.
+export function modelName(id: string): string {
+  const brand: Record<string, string> = { deepseek: 'DeepSeek', minimax: 'MiniMax', mimo: 'MiMo', longcat: 'LongCat', oss: 'OSS', fp8: 'FP8' }
+  return id
+    .replace(/^.*\//, '')
+    // Bedrock: a version suffix (-v1:0, -1:0) and region/vendor prefixes, keeping a vendor that is the family name (deepseek.v3.2).
+    .replace(/^((?:[a-z-]+\.)+[a-z][^:]*?)-(?:v1(?::\d+)?|1:\d+)$/i, '$1')
+    .replace(/^~|[:@].*$/g, '')
+    .replace(/^(?:[a-z-]+\.)*([a-z-]+)\.(?=[a-z]?\d)/i, '$1-')
+    .replace(/^(?:[a-z-]+\.)+(?=[a-z])/i, '')
+    // Claude 3 put the version first: claude-3-5-sonnet.
+    .replace(/^claude-((?:\d+-)+)(haiku|sonnet|opus)\b/i, '$2-$1')
+    .replace(/^(?:claude|zai(?=-glm))-/i, '')
+    .replace(/-latest$|^(nova-.*)-v1$/i, '$1')
+    // Date tags: 20251001, 2024-05-13, 08-2024, 02-23, 0613.
+    .replace(/-(?:\d{4}-\d{2}-\d{2}|\d{2}-\d{4}|\d{2}-\d{2}|\d{8}|\d{4})(?=-|$)/g, '')
+    // Fireworks writes a version's dot as p: glm-5p3.
+    .replace(/(\d)p(\d)/g, '$1.$2')
+    .replace(/^(llama|lfm)(?=\d)/i, '$1-')
+    // Versions written as separate numbers: opus-4-5, v4-1, llama-3-1.
+    .replace(/(\d)-(?=\d+(?:-|$))/g, '$1.')
+    .split(/[-_\s]+/)
+    .filter(Boolean)
+    .map((w, i) =>
+      brand[w.toLowerCase()] ??
+      // OpenAI writes its reasoning models lowercase: o4-mini.
+      (/^o\d/.test(w)
+        ? w
+        : // Acronyms (GPT, VL, IT) and sizes (70B, A3B, 2.4T, 256K).
+          /^(?:[a-z]{1,2}|[a-z]?\d+(?:\.\d+)?[bkmt])$/i.test(w) || (i === 0 && /^[a-z]{3}$/i.test(w))
+          ? w.toUpperCase()
+          : w.charAt(0).toUpperCase() + w.slice(1)),
+    )
+    .join(' ')
+}
+
 export type Task = {
   started: string
   project: string
@@ -195,8 +233,7 @@ const APP = `(function () {
   function svg(tag, attrs, parent) { var e = document.createElementNS(NS, tag); for (var k in attrs) e.setAttribute(k, attrs[k]); if (parent) parent.append(e); return e }
   function two(n) { return (n < 10 ? '0' : '') + n }
   function dayKey(ms) { var d = new Date(ms); return d.getFullYear() + '-' + two(d.getMonth() + 1) + '-' + two(d.getDate()) }
-  // claude-opus-5-5 reads as Opus 5.5; a trailing date in the id is dropped.
-  function modelName(m) { var p = m.replace(/^claude-/, '').split('-'); return p[0] ? p[0][0].toUpperCase() + p[0].slice(1) + (p.length > 1 ? '\\u00a0' + p.slice(1).filter(function (x) { return x.length < 3 }).join('.') : '') : '' }
+  var modelName = ${modelName}
   function shortDate(key) { return MONTHS[+key.slice(5, 7) - 1] + ' ' + +key.slice(8, 10) }
   function dur(min) { return min < 60 ? min + 'm' : Math.floor(min / 60) + 'h ' + (min % 60) + 'm' }
   function time(ms) { var s = Math.round(ms / 1000); return s < 60 ? s + 's' : s < 3600 ? Math.floor(s / 60) + 'm ' + (s % 60) + 's' : dur(Math.round(s / 60)) }
@@ -518,7 +555,7 @@ const CARD = `<svg id="card" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120
 <text id="c-scope" x="1128" y="98" text-anchor="end" font-size="20" fill="#8d8b84"></text>
 <text x="72" y="196" font-size="22" fill="#8d8b84">Agent time</text><text id="c-time" x="66" y="292" font-family="${MONO}" font-size="104" font-weight="600" letter-spacing="-5" fill="#f3f2ee"></text>
 ${cardStat(172, 'Cost', 'c-cost')}${cardStat(228, 'Tokens', 'c-tokens')}${cardStat(284, 'Sessions', 'c-sessions')}
-<text x="72" y="621" font-family="${MONO}" font-size="15" fill="#5e5c55">measured in Claude Code</text><text x="1128" y="621" text-anchor="end" font-family="${MONO}" font-size="15" fill="#5fe08a">ponytail.dev</text></svg>`
+<text x="72" y="621" font-family="${MONO}" font-size="15" fill="#5e5c55">measured by ponytail</text><text x="1128" y="621" text-anchor="end" font-family="${MONO}" font-size="15" fill="#5fe08a">ponytail.dev</text></svg>`
 
 // JSON inside a script block: "<" is escaped so no name can close the block.
 const json = (value: unknown) => JSON.stringify(value).replace(/</g, '\\u003c').replace(/\u2028/g, '\\u2028').replace(/\u2029/g, '\\u2029')
@@ -552,7 +589,7 @@ export function boardHtml(tasks: Task[], now: number): string {
 <div class="heroes"><div><div class="hero-label"><i style="color:#5fe08a">✦</i>Active days</div><div class="hero-value num" id="h-active"></div><div class="hero-sub" id="h-active-sub"></div></div>
 <div><div class="hero-label"><i style="color:#ffd166">◆</i>Streak</div><div class="hero-value num" id="h-streak"></div><div class="hero-sub" id="h-streak-sub"></div></div></div><div id="facts"></div></section>
 </div>
-<footer>Measured by ponytail's band in Claude Code. Cost is the API-priced cost Claude Code reports (/cost), not a bill. Nothing here is estimated.</footer>
+<footer>Measured by ponytail. Cost is the API-priced cost the host reports (Claude Code's /cost, pi's /session), not a bill.</footer>
 </main></div>
 <dialog id="share-dialog"><div class="dlg-head"><b>Share card</b><div class="dlg-actions"><button type="button" class="btn" id="save-png">Save PNG</button><button type="button" class="btn" id="save-svg">Save SVG</button><button type="button" class="btn" id="share-close">Close</button></div></div><div class="dlg-body">${CARD}</div></dialog>
 <script type="application/json" id="board-data">${json({ now, tasks })}</script>
