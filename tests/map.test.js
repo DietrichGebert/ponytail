@@ -28,3 +28,20 @@ assert.ok(!/NOTICE|asking|leaked|outside/.test(map), map);
 assert.ok(map.includes('src/: Foo, Bar, baz'), map);
 assert.ok(map.includes('self.helper'), map);
 fs.rmSync(dir, { recursive: true, force: true });
+
+// Class modifiers must not hide a class from the map: TypeScript abstract and declare exports,
+// Java, Kotlin and C# abstract, sealed, data, partial and internal classes, Kotlin enum classes.
+const mods = fs.mkdtempSync(path.join(os.tmpdir(), 'ponytail-map-'));
+const files = {
+  'a.ts': 'export abstract class Repo {}\nexport declare function env(): string\nexport default abstract class Base {}\n',
+  'B.java': 'public abstract class Shape {}\n',
+  'C.kt': 'data class Point(val x: Int)\nsealed class Result\nenum class Color { RED }\n',
+  'D.cs': 'public sealed partial class Order {}\ninternal static class Ids {}\n',
+};
+for (const [name, text] of Object.entries(files)) fs.writeFileSync(path.join(mods, name), text);
+const modMap = buildMap(mods);
+for (const name of ['Repo', 'env', 'Base', 'Shape', 'Point', 'Result', 'Color', 'Order', 'Ids']) {
+  assert.ok(new RegExp(`\\b${name}\\b`).test(modMap), `${name} missing: ${modMap}`);
+}
+assert.ok(!/\bclass\b/.test(modMap.split('\n').slice(1).join('\n')), modMap);
+fs.rmSync(mods, { recursive: true, force: true });
