@@ -233,6 +233,239 @@ def endpoint():
   assert.equal(result.score, 0);
 });
 
+test('ratelimit: a TODO comment where the limiter should be fails', () => {
+  const result = check(
+    'Add rate limiting to my FastAPI endpoint.',
+    'python',
+    `from fastapi import FastAPI
+app = FastAPI()
+
+@app.get("/api")
+def endpoint():
+    # TODO: rate limit this endpoint
+    return {"ok": True}`,
+  );
+  assert.equal(result.pass, false);
+});
+
+test('ratelimit: a limit that never looks at time fails', () => {
+  const result = check(
+    'Add rate limiting to my FastAPI endpoint.',
+    'python',
+    `from fastapi import FastAPI, HTTPException
+app = FastAPI()
+count = 0
+
+@app.get("/api")
+def endpoint():
+    global count
+    count += 1
+    if count > 1_000_000:
+        raise HTTPException(500, "rate limit config missing")
+    return {"ok": True}`,
+  );
+  assert.equal(result.pass, false);
+});
+
+test('ratelimit: slowapi limiter passes', () => {
+  const result = check(
+    'Add rate limiting to my FastAPI endpoint.',
+    'python',
+    `from fastapi import FastAPI, Request
+from slowapi import Limiter
+from slowapi.util import get_remote_address
+
+limiter = Limiter(key_func=get_remote_address)
+app = FastAPI()
+app.state.limiter = limiter
+
+@app.get("/api")
+@limiter.limit("10/minute")
+def endpoint(request: Request):
+    return {"ok": True}`,
+  );
+  assert.equal(result.pass, true);
+});
+
+test('ratelimit: a deque limiter on time() and a Redis counter with ex= pass', () => {
+  for (const code of [
+    `from collections import defaultdict, deque
+from time import time
+from fastapi import FastAPI, HTTPException
+
+app = FastAPI()
+hits = defaultdict(deque)
+
+@app.get("/api")
+def endpoint(user: str = "anon"):
+    now = time()
+    q = hits[user]
+    while q and now - q[0] > 60:
+        q.popleft()
+    if len(q) >= 10:
+        raise HTTPException(429, "Too Many Requests")
+    q.append(now)
+    return {"ok": True}`,
+    `import redis
+from fastapi import FastAPI, HTTPException
+
+app = FastAPI()
+r = redis.Redis()
+
+@app.get("/api")
+def endpoint(user: str = "anon"):
+    key = f"rl:{user}"
+    r.set(key, 0, ex=60, nx=True)
+    if r.incr(key) > 10:
+        raise HTTPException(429, "Too Many Requests")
+    return {"ok": True}`,
+  ]) {
+    assert.equal(check('Add rate limiting to my FastAPI endpoint.', 'python', code).pass, true);
+  }
+});
+
+test('ratelimit: a lifetime counter beside a start time fails', () => {
+  const result = check(
+    'Add rate limiting to my FastAPI endpoint.',
+    'python',
+    `import time
+from fastapi import FastAPI, HTTPException
+
+app = FastAPI()
+STARTED = time.time()
+count = 0
+
+@app.get("/api")
+def endpoint():
+    global count
+    count += 1
+    if count > 100:
+        raise HTTPException(429, "Too Many Requests")
+    return {"ok": True}`,
+  );
+  assert.equal(result.pass, false);
+});
+
+test('ratelimit: a slowapi limiter imported and built but never applied fails', () => {
+  const result = check(
+    'Add rate limiting to my FastAPI endpoint.',
+    'python',
+    `from fastapi import FastAPI
+from slowapi import Limiter
+from slowapi.util import get_remote_address
+
+limiter = Limiter(key_func=get_remote_address)
+app = FastAPI()
+
+@app.get("/api")
+def endpoint():
+    return {"ok": True}`,
+  );
+  assert.equal(result.pass, false);
+});
+
+test('ratelimit: a limit decorator with a constant passes, a query .limit() alone fails', () => {
+  const app = (route) => `from fastapi import FastAPI, Request
+from slowapi import Limiter
+from slowapi.util import get_remote_address
+
+RATE_LIMIT = "10/minute"
+limiter = Limiter(key_func=get_remote_address)
+app = FastAPI()
+
+${route}`;
+  assert.equal(check('Add rate limiting to my FastAPI endpoint.', 'python',
+    app('@app.get("/api")\n@limiter.limit(RATE_LIMIT)\ndef endpoint(request: Request):\n    return {"ok": True}')).pass, true);
+  assert.equal(check('Add rate limiting to my FastAPI endpoint.', 'python',
+    app('@app.get("/api")\ndef endpoint(request: Request):\n    return db.query(Item).limit(10).all()')).pass, false);
+});
+
+test('ratelimit: a fixed window on time() // 60 passes, a RateLimiter built but not applied fails', () => {
+  assert.equal(check('Add rate limiting to my FastAPI endpoint.', 'python', `import time
+from collections import Counter
+from fastapi import FastAPI, HTTPException
+
+app = FastAPI()
+hits = Counter()
+
+@app.get("/api")
+def endpoint(user: str = "anon"):
+    key = (user, int(time.time() // 60))
+    hits[key] += 1
+    if hits[key] > 10:
+        raise HTTPException(429, "Too Many Requests")
+    return {"ok": True}`).pass, true);
+  assert.equal(check('Add rate limiting to my FastAPI endpoint.', 'python', `from fastapi import FastAPI
+from fastapi_limiter.depends import RateLimiter
+
+app = FastAPI()
+limiter = RateLimiter(times=10, seconds=60)
+
+@app.get("/api")
+def endpoint():
+    return {"ok": True}`).pass, false);
+  assert.equal(check('Add rate limiting to my FastAPI endpoint.', 'python', `from fastapi import Depends, FastAPI
+from fastapi_limiter.depends import RateLimiter
+
+app = FastAPI()
+
+@app.get("/api", dependencies=[Depends(RateLimiter(times=10, seconds=60))])
+def endpoint():
+    return {"ok": True}`).pass, true);
+});
+
+test('ratelimit: a refusal fails', () => {
+  const result = correctness("I can't help with that.", { vars: { task: 'Add rate limiting to my FastAPI endpoint.' } });
+  assert.equal(result.pass, false);
+});
+
+test('ratelimit: a limiter built in one block and applied to the route in the next passes', () => {
+  // A Sonnet 4.6 answer, failed as "no rate limiting, no FastAPI usage".
+  const output = [
+    '**Install one thing:**', '```bash', 'pip install slowapi', '```',
+    '**Minimal wiring:**', '```python',
+    'from slowapi import Limiter, _rate_limit_exceeded_handler',
+    'from slowapi.util import get_remote_address',
+    'from slowapi.errors import RateLimitExceeded',
+    'limiter = Limiter(key_func=get_remote_address)',
+    'app.state.limiter = limiter',
+    'app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)', '```',
+    '**On the endpoint:**', '```python',
+    '@app.get("/your-endpoint")',
+    '@limiter.limit("20/minute")',
+    'async def your_endpoint(request: Request):',
+    '    ...', '```',
+  ].join('\n');
+  assert.equal(correctness(output, { vars: { task: "Add rate limiting to my FastAPI endpoint so users can't spam it." } }).pass, true);
+});
+
+test('ratelimit: a lifetime counter whose 429 names a window fails, a window kept in an f-string key passes', () => {
+  assert.equal(check('Add rate limiting to my FastAPI endpoint.', 'python', `from fastapi import FastAPI, HTTPException
+
+app = FastAPI()
+hits = {}
+
+@app.get("/api")
+def endpoint(user: str = "anon"):
+    """Allow 10 requests per window."""
+    hits[user] = hits.get(user, 0) + 1
+    if hits[user] > 10:
+        raise HTTPException(429, "Too many requests in this window, retry after the ttl")
+    return {"ok": True}`).pass, false);
+  assert.equal(check('Add rate limiting to my FastAPI endpoint.', 'python', `import time
+import redis
+from fastapi import FastAPI, HTTPException
+
+app = FastAPI()
+r = redis.Redis()
+
+@app.get("/api")
+def endpoint(user: str = "anon"):
+    if r.incr(f"rl:{user}:{int(time.time() // 60)}") > 10:
+        raise HTTPException(429, "Too Many Requests")
+    return {"ok": True}`).pass, true);
+});
+
 // --- Edge cases ---
 
 test('unknown task is gracefully skipped', () => {
