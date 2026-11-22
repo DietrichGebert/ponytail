@@ -30,9 +30,17 @@ test("parsePonytailCommand rejects review as a default (session-only mode, #377)
   assert.deepEqual(parsePonytailCommand("default review", "full"), { type: "invalid", reason: "invalid-default-mode" });
 });
 
-test("resolveSessionMode still honors review as a session mode (not a default)", () => {
+test("resolveSessionMode drops a review entry saved by an older version (#736)", () => {
   const entries = [{ type: "custom", customType: "ponytail-mode", data: { mode: "review" } }];
-  assert.equal(resolveSessionMode(entries, "full"), "review");
+  assert.equal(resolveSessionMode(entries, "full"), "full");
+});
+
+test("resolveSessionMode skips a stale review entry and keeps the latest level", () => {
+  const entries = [
+    { type: "custom", customType: "ponytail-mode", data: { mode: "lite" } },
+    { type: "custom", customType: "ponytail-mode", data: { mode: "review" } },
+  ];
+  assert.equal(resolveSessionMode(entries, "full"), "lite");
 });
 
 test("resolveSessionMode prefers latest persisted session mode", () => {

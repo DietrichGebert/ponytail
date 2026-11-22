@@ -8,7 +8,6 @@ const {
   getQuietStartup,
   getHideStatus,
   normalizeMode,
-  normalizePersistedMode,
   isDeactivationCommand,
   writeDefaultMode,
 } = require("../hooks/ponytail-config.js");
@@ -30,14 +29,16 @@ export function completePonytailArgs(prefix) {
 }
 
 export function resolveSessionMode(entries, fallbackMode = DEFAULT_MODE) {
-  const fallback = normalizePersistedMode(fallbackMode) || DEFAULT_MODE;
+  const fallback = normalizeMode(fallbackMode) || DEFAULT_MODE;
   if (!Array.isArray(entries)) return fallback;
 
   for (let i = entries.length - 1; i >= 0; i -= 1) {
     const entry = entries[i];
     if (entry?.type !== "custom" || entry?.customType !== "ponytail-mode") continue;
 
-    const mode = normalizePersistedMode(entry?.data?.mode);
+    // review is a one-shot command, never a level (#736); an entry saved by an
+    // older version is skipped, like OpenCode's stale flag (#1103).
+    const mode = normalizeMode(entry?.data?.mode);
     if (mode) return mode;
   }
 
@@ -45,7 +46,7 @@ export function resolveSessionMode(entries, fallbackMode = DEFAULT_MODE) {
 }
 
 export function parsePonytailCommand(text, defaultMode = DEFAULT_MODE, currentMode = null) {
-  const fallback = normalizePersistedMode(defaultMode) || DEFAULT_MODE;
+  const fallback = normalizeMode(defaultMode) || DEFAULT_MODE;
   const normalizedText = String(text || "").trim().toLowerCase();
 
   if (!normalizedText) {
@@ -99,7 +100,8 @@ export default function ponytailExtension(pi) {
   }
 
   const setMode = (mode, ctx) => {
-    const normalized = normalizePersistedMode(mode);
+    // Only runtime levels can be set; review stays a one-shot command (#736).
+    const normalized = normalizeMode(mode);
     if (!normalized) return;
 
     currentMode = normalized;
