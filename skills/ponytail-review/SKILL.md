@@ -44,7 +44,10 @@ This is a report the user asked for, so give it in full.
 5. **Speed:** big slowdowns are problems. Small wins (work repeated in a hot
    loop) are suggestions; some software counts every millisecond.
 6. **Lean:** code that should not exist or should be smaller.
-   - delete: dead code, unused options, speculative features
+   - delete: dead code, unused options, speculative features. Before calling
+     code unused, grep the whole tree for it, including tests, fixtures,
+     config, and string or dynamic references. Check every use of the owner
+     (model, flag or field), not only one call site.
    - reuse: the repo already has this helper (name the path)
    - stdlib / native: the standard library or platform already does it; a
      new dependency for a few lines
@@ -60,6 +63,8 @@ This is a report the user asked for, so give it in full.
   wrong result". No case, no finding.
 - Re-read the lines and confirm: the caller exists, the value can really be
   empty, the code really is unused.
+- If every use of the owner (model, flag or field) could not be checked, mark
+  the finding `unverified` and do not recommend deleting anything.
 - A shortcut marked with a `shortcut:` (or older `ponytail:`) comment that names its limit is a
   decision, not a finding, unless the expected load already crosses it.
 - Propose the smallest fix that works. Prefer fixes that delete code. Never

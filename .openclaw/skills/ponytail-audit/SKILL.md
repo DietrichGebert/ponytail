@@ -57,6 +57,8 @@ tested and fixed later. This is a report the user asked for, so give it in full.
   wrong result". No case, no finding.
 - Before calling code unused, grep the whole tree for it, including tests,
   fixtures, config, and string or dynamic references.
+- If the whole tree cannot be checked that way, mark the finding
+  `unverified` and do not recommend deletion.
 - A shortcut marked with a `shortcut:` (or older `ponytail:`) comment that names its limit is a
   decision, not a finding, unless the expected load already crosses it.
 - Propose the smallest fix that works. Prefer fixes that delete code. Never
