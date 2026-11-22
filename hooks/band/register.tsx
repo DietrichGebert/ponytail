@@ -1,7 +1,7 @@
 import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register } from 'claude-code'
 
-import { boardHtml, tasksFrom } from './board'
+import { boardHtml, ledgerFrom } from './board'
 import type { Band } from './types'
 import type { Col } from './metrics'
 import {
@@ -185,7 +185,10 @@ async function writeBoard($: EngineInterface, dir: string) {
   const entries = await $.fs.list(dir).catch(() => [])
   const texts = await Promise.all(entries.filter(f => f.kind === 'file' && f.name.endsWith('.csv')).map(f => $.fs.read(`${dir}/${f.name}`).catch(() => '')))
   const file = `${dir}/board.html`
-  await $.fs.write(file, boardHtml(texts.flatMap(tasksFrom), await $.clock.now()))
+  const ledgers = texts.map(ledgerFrom)
+  await $.fs.write(file, boardHtml(ledgers.flatMap(l => l.tasks), await $.clock.now()))
+  const invalid = ledgers.flatMap(l => l.invalid)
+  if (invalid.length) await $.ui.status(`ponytail band: ${invalid.length} ledger rows have invalid values: ${invalid.slice(0, 3).join(', ')}`)
   return file
 }
 

@@ -1,6 +1,6 @@
 import { describe, expect, mock, test } from 'claude-code/testing'
 
-import { boardHtml, parseCsv, tasksFrom } from '../hooks/band/board'
+import { boardHtml, ledgerFrom, parseCsv } from '../hooks/band/board'
 import type { Band } from '../hooks/band/types'
 import {
   NO_TOKENS,
@@ -37,16 +37,29 @@ describe('board', () => {
     const rows = parseCsv(CSV)
     expect(rows.length).toBe(3)
     expect(rows[1]?.[3]).toBe('Fix "cart", totals\nand tax')
-    const tasks = tasksFrom(CSV)
+    const tasks = ledgerFrom(CSV).tasks
     expect(tasks[0]).toEqual({ started: '2026-10-15 12:00', project: 'shop', name: 'Fix "cart", totals\nand tax', cost: 3.1, turns: 6, agentMinutes: 26, tokens: 1_200_000, reuse: 83, tests: '14 passed', level: 'full', model: '' })
     expect(tasks[1]?.reuse).toBeNull()
-    expect(tasksFrom('not,a,ledger\n1,2,3')).toEqual([])
+    expect(ledgerFrom('not,a,ledger\n1,2,3').tasks).toEqual([])
+  })
+
+  test('a malformed number is not a zero', () => {
+    const header = 'key,started,project,name,cost_usd,turns,agent_minutes,tokens_total,reuse_pct,tests,level\n'
+    const ledger = ledgerFrom(
+      header +
+        'a-1,2026-10-15 12:00,shop,Zero,0.00,2,1.5,40000,,not run,lite\n' +
+        'b-2,2026-10-14 09:30,shop,Bad,oops,2,1.5,40000,,not run,lite\n' +
+        'c-3,2026-10-13 09:30,shop,Missing,,2,1.5,40000,,not run,lite\n' +
+        'd-4,2026-10-12 09:30,shop,Truncated,1.00,2\n',
+    )
+    expect(ledger.tasks.map(t => t.name)).toEqual(['Zero'])
+    expect(ledger.invalid.length).toBe(3)
   })
 
   const dataOf = (html: string) => JSON.parse(/<script type="application\/json" id="board-data">([\s\S]*?)<\/script>/.exec(html)?.[1] ?? 'null')
 
   test('the board carries every task as data no name can break out of', () => {
-    const html = boardHtml(tasksFrom(CSV), Date.UTC(2026, 9, 15, 12, 0))
+    const html = boardHtml(ledgerFrom(CSV).tasks, Date.UTC(2026, 9, 15, 12, 0))
     const data = dataOf(html)
     expect(data.tasks.length).toBe(2)
     expect(data.tasks[1].name).toBe('<script>alert(1)</script>')
@@ -109,7 +122,7 @@ describe('metrics', () => {
     const csv = upsertCsv(old, snapshot(BASE, Date.UTC(2026, 9, 15, 12, 0)))
     expect(csv.split('\n')[0]).toBe(CSV_HEADER)
     expect(csv.split('\n').filter(line => line.startsWith('key,')).length).toBe(1)
-    expect(tasksFrom(csv).map(t => t.model)).toEqual(['', 'claude-opus-5-5'])
+    expect(ledgerFrom(csv).tasks.map(t => t.model)).toEqual(['', 'claude-opus-5-5'])
     expect(markdown(snapshot(BASE, Date.UTC(2026, 9, 15, 12, 0)))).toContain('| Model | claude-opus-5-5 |')
   })
 
