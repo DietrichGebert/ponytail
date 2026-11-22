@@ -1,4 +1,6 @@
+import { execFile } from "node:child_process";
 import { createRequire } from "node:module";
+import { fileURLToPath } from "node:url";
 
 const require = createRequire(import.meta.url);
 const {
@@ -76,6 +78,7 @@ export default function ponytailExtension(pi) {
   let hideStatus = getHideStatus();
   let isActive = false;
   let lastCtx = null;
+  let map = Promise.resolve("");
 
   // -- Status bar --
   function syncStatus(ctx) {
@@ -204,6 +207,7 @@ export default function ponytailExtension(pi) {
     configuredDefaultMode = getDefaultMode();
     hideStatus = getHideStatus();
     restoreSessionMode(ctx);
+    loadMap(ctx);
     if (!getQuietStartup()) {
       ctx?.ui?.notify?.(`Ponytail loaded: ${currentMode}`, "info");
     }
@@ -214,6 +218,7 @@ export default function ponytailExtension(pi) {
   for (const eventName of ["session_tree", "session_switch", "session_branch"]) {
     pi.on(eventName, async (_event, ctx) => {
       restoreSessionMode(ctx);
+      if (eventName === "session_switch") loadMap(ctx);
     });
   }
 
@@ -227,13 +232,26 @@ export default function ponytailExtension(pi) {
     syncStatus(ctx);
   });
 
+  // Same map and limits as the Claude Code SessionStart hook. It builds while the session starts;
+  // the first run waits for it, at most the 3 s limit.
+  function loadMap(ctx) {
+    map = new Promise((resolve) => {
+      if (process.env.PONYTAIL_MAP === "0") return resolve("");
+      const script = fileURLToPath(new URL("../hooks/ponytail-map.js", import.meta.url));
+      execFile(process.execPath, [script, ctx?.cwd || process.cwd()], { timeout: 3000, maxBuffer: 64 * 1024 }, (error, stdout) => {
+        resolve(error ? "" : String(stdout).trimEnd());
+      });
+    });
+  }
+
   pi.on("before_agent_start", async (event) => {
     if (!currentMode || currentMode === "off") {
       // Clear a stale section when the mode is off so a previous turn does not linger (#953).
       if (event?.systemPromptOptions?.sections) delete event.systemPromptOptions.sections.ponytail;
       return;
     }
-    const instructions = getPonytailInstructions(currentMode);
+    const codebase = currentMode === "review" ? "" : await map;
+    const instructions = getPonytailInstructions(currentMode) + (codebase ? `\n\n${codebase}` : "");
     // Prefer structured sections so Pi can keep the cached prefix when other
     // extensions change their own section (#953). Fall back to replacement
     // for older Pi versions without systemPromptOptions.sections.
