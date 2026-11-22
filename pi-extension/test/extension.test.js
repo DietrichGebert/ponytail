@@ -311,7 +311,7 @@ test("PONYTAIL_HIDE_STATUS hides the indicator but keeps ponytail active (#324)"
   await events.get("agent_start")({}, ctx);
   const injected = await events.get("before_agent_start")({ systemPrompt: "BASE" }, ctx);
 
-  assert.deepEqual(statusWrites, [], "status bar must not be drawn when hidden");
+  assert.ok(statusWrites.every((w) => w.key === "ponytail" && w.text === undefined), "status bar must be cleared, never drawn, when hidden");
   assert.match(injected.systemPrompt, /PONYTAIL MODE ACTIVE/, "ruleset must still inject while status is hidden");
 }));
 
@@ -328,7 +328,8 @@ test("config.hideStatus hides the indicator but keeps ponytail active (#324)", a
   await events.get("agent_start")({}, ctx);
   const injected = await events.get("before_agent_start")({ systemPrompt: "BASE" }, ctx);
 
-  assert.deepEqual(statusWrites, [], "config.hideStatus must suppress the status bar");
+  assert.ok(statusWrites.length > 0, "hidden status must be cleared for hosts that keep statuses");
+  assert.ok(statusWrites.every((w) => w.key === "ponytail" && w.text === undefined), "config.hideStatus must only clear, never set, the status bar");
   assert.match(injected.systemPrompt, /PONYTAIL MODE ACTIVE/, "ruleset must still inject while status is hidden");
 }));
 
