@@ -18,12 +18,12 @@ const DEFS: [RegExp, RegExp[]][] = [
     /^(?:async\s+)?function\*?\s+([A-Za-z_$][\w$]*)/gm,
   ]],
   [/\.go$/, [/^func\s+(?:\([^)]*\)\s*)?([A-Za-z]\w*)/gm]],
-  [/\.rs$/, [/^(?:pub\s+)?(?:async\s+)?fn\s+(\w+)/gm]],
+  [/\.rs$/, [/^(?:pub(?:\([^\r\n)]+\))?\s+)?(?:async\s+)?fn\s+(\w+)/gm]],
   [/\.rb$/, [/^\s*def\s+(?:self\.)?([A-Za-z]\w*[?!]?)/gm]],
 ]
 
 // Lines worth a closer look; the per-language regexes above decide.
-export const GREP_DEFS = '^[[:space:]]*(export|async|def|class|function|func|pub|fn)[[:space:]]'
+export const GREP_DEFS = '^[[:space:]]*((export|async|def|class|function|func|pub|fn)[[:space:]]|pub[(])'
 
 // Names too generic to say anything about reuse.
 const GENERIC = new Set(['main', 'init', 'run', 'get', 'set', 'test', 'setup', 'open', 'close', 'read', 'write', 'start', 'stop', 'load', 'save', 'update', 'create', 'delete', 'handle', 'render', 'index', 'new', 'call', 'apply'])
