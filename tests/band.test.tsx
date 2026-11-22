@@ -88,14 +88,15 @@ describe('metrics', () => {
 
   test('a band that starts again mid-session goes on from its row instead of from zero', () => {
     const csv = `${CSV_HEADER}\nother-1,2026-10-14 09:00,shop,Other,1.00,2,3.0,500,50,,0,0,0,not run,full\n4c69e3db-7,2026-10-15 01:10,shop,"Fix the cart, again",46.09,32,55.5,107900000,250000,,0,0,0,stale,full\n`
-    const fresh: Band = { ...BASE, name: '', busyMs: 0, tokens: NO_TOKENS }
+    const fresh: Band = { ...BASE, name: '', spent: 0, busyMs: 0, tokens: NO_TOKENS }
     const b = resume(fresh, csv, '4c69e3db-7')
     expect(b.name).toBe('Fix the cart, again')
+    expect(b.spent).toBe(46.09)
     expect(b.busyMs).toBe(55.5 * 60000)
     expect(totalTokens(b.tokens)).toBe(107_900_000)
     expect(b.tokens.output).toBe(250_000)
     // A band that already counted more keeps its own numbers and name.
-    const ahead: Band = { ...BASE, busyMs: 4_000_000, tokens: { input: 0, output: 1, cacheRead: 200_000_000, cacheWrite: 0 } }
+    const ahead: Band = { ...BASE, spent: 50, busyMs: 4_000_000, tokens: { input: 0, output: 1, cacheRead: 200_000_000, cacheWrite: 0 } }
     expect(resume(ahead, csv, '4c69e3db-7')).toEqual(ahead)
     expect(resume(fresh, csv, 'missing-1')).toEqual(fresh)
     expect(resume(fresh, '', '4c69e3db-7')).toEqual(fresh)
@@ -368,6 +369,40 @@ test('the ledger is written on Windows, where there is no mkdir', async ($, on) 
   expect(written[0]?.endsWith('C:/Users/u/.config/ponytail/band/shop.csv')).toBe(true)
   expect(written[1]?.endsWith('C:/Users/u/.config/ponytail/band/board.html')).toBe(true)
 })
+
+// A task's cost is what its ledger row booked before plus each turn's share of the engine's total.
+for (const [name, booked, before, after, expected] of [
+  // The engine's cost starts over in a new process (an IDE reload); the row still has what the task cost.
+  ['a task picked up in a new process adds to its booked cost instead of starting again at zero', '11.62', 0, 0.5, '12.12'],
+  // The engine's cost goes on across /clear; the new task has no row yet.
+  ['after /clear a task books only its own turns, not what the process spent before it', '', 0.5, 0.55, '0.05'],
+] as const) {
+  test(name, async ($, on) => {
+    mock.clock(on)
+    mock.store(on)
+    let usd: number = before
+    const csv = booked === '' ? '' : `${CSV_HEADER}\ns1-0,1970-01-01 00:00,shop,Cart,${booked},2,33.2,0,0,,0,0,0,not run,full,\n`
+    on('env.get', ($, e) => ({ value: e.name === 'HOME' ? '/home/u' : undefined }))
+    on('session.repo', () => ({ value: { root: '/repo/shop' } }) as never)
+    on('session.id', () => ({ value: 's1' }))
+    on('session.turns', () => ({ value: 3 }))
+    on('session.usage', () => ({ value: { startedAt: 0, cost: { usd } } }) as never)
+    on('process.run', () => ({ value: { exitCode: 1, stdout: '', stderr: '' } }) as never)
+    on('fs.read', ($, e) => (e.path.endsWith('shop.csv') && csv !== '' ? { value: csv } : { deny: 'missing' }) as never)
+    on('fs.list', () => ({ value: [] }))
+    const rows: string[] = []
+    on('fs.write', ($, e) => {
+      if (e.path.endsWith('shop.csv')) rows.push(e.text)
+      return { value: undefined }
+    })
+    on('session.start', ($, e) => ({ cwd: e.cwd }))
+    on('turn.complete', () => ({ text: '' }))
+    await $.session.start({ cwd: '/repo/shop', surface: null } as never)
+    usd = after
+    await $.turn.complete({ answer: '', durationMs: 1000 } as never)
+    expect(rows.at(-1)).toContain(`,${expected},`)
+  })
+}
 
 test('the transcript is found with no classic hook, in its named folder or any other', async ($, on) => {
   mock.clock(on)

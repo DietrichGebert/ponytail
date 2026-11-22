@@ -209,7 +209,8 @@ export type Snapshot = {
 export const taskKey = (session: string, startedAt: number) => `${session.slice(0, 8)}-${startedAt}`
 
 // A band that starts again mid-session (a reload, an update, a second copy) picks up the session's
-// row, so what only the band counts (tokens, agent time, the name) goes on instead of starting at zero.
+// row, so what only the band counts (tokens, agent time, the name, the cost) goes on instead of starting at zero.
+// The engine's own cost starts over in a new process (an IDE reload, a resumed session), the row's does not.
 // shortcut: the ledger keeps only the token total and output, so a resumed band books the rest as input.
 export function resume(b: Band, csv: string, key: string): Band {
   const [head, ...rows] = parseCsv(csv)
@@ -221,6 +222,7 @@ export function resume(b: Band, csv: string, key: string): Band {
   return {
     ...b,
     name: b.name || at('name'),
+    spent: Math.max(b.spent, Number(at('cost_usd')) || 0),
     busyMs: Math.max(b.busyMs, (Number(at('agent_minutes')) || 0) * 60000),
     tokens: total > totalTokens(b.tokens) ? { input: total - output, output, cacheRead: 0, cacheWrite: 0 } : b.tokens,
   }
