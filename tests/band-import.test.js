@@ -103,6 +103,13 @@ try {
   assert.equal(csv.split('\n')[0], CSV_HEADER, 'a desktop worktree counts for its repo');
   assert.ok(csv.includes(',shop,Fix the cart totals,'));
   assert.deepEqual(run(), { sessions: 1, added: 0 }, 'a second import adds nothing');
+
+  // A skill body can precede the first typed prompt and fill the initial 64 KiB.
+  const skill = { cwd: '/work/shop', ...records[0], message: { content: 'skill body\n'.repeat(7000) }, isMeta: true };
+  fs.writeFileSync(path.join(projects, 'face0000-2222.jsonl'), [skill, ...records.slice(1).map(withCwd)].map(r => JSON.stringify(r)).join('\n'));
+  assert.deepEqual(run(), { sessions: 2, added: 1 }, 'a human prompt after the transcript prefix still makes the session interactive');
+  assert.ok(fs.readFileSync(path.join(temp, 'config', 'ponytail', 'band', 'shop.csv'), 'utf8').includes('face0000-'), 'the later human session reaches the board');
+  assert.deepEqual(run(), { sessions: 2, added: 0 }, 'the later human session is imported only once');
 } finally {
   for (const [k, v] of Object.entries(env)) if (v === undefined) delete process.env[k]; else process.env[k] = v;
   fs.rmSync(temp, { recursive: true, force: true });
