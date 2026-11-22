@@ -52,6 +52,7 @@ Bug fixes in hooks, installers, adapters, and docs don't need a benchmark. Befor
 
 ```bash
 npm test
+npm run test:band   # the band's tests, needs the Claude Code CLI (no sign-in or network)
 node scripts/check-rule-copies.js
 node scripts/check-versions.js
 ```

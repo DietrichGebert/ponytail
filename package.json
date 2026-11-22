@@ -35,7 +35,8 @@
     "LICENSE"
   ],
   "scripts": {
-    "test": "node --test tests/*.test.js && npm test --prefix pi-extension"
+    "test": "node --test tests/*.test.js && npm test --prefix pi-extension",
+    "test:band": "claude plugin test"
   },
   "pi": {
     "extensions": ["./pi-extension/index.js"],

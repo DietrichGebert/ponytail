@@ -19,6 +19,9 @@ jobs:
         with:
           node-version: '22'
 
+      - name: Install Claude Code for the band tests
+        run: npm install -g @anthropic-ai/claude-code@2.1.318
+
       - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: '3.12'
@@ -34,6 +37,9 @@ jobs:
 
       - name: Run tests
         run: npm test
+
+      - name: Run band tests
+        run: npm run test:band
 
       - name: Run benchmark selftest
         run: python3 benchmarks/agentic/run.py --selftest
