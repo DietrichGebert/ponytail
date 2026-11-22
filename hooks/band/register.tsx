@@ -21,6 +21,7 @@ import {
   mainModel,
   markdown,
   metricsSvg,
+  pendingChipSvg,
   MODEL_PATTERN,
   parseDefs,
   percent,
@@ -39,6 +40,7 @@ import {
 const LEVELS = ['off', 'lite', 'full', 'ultra']
 const EMPTY: Band = {
   level: 'off',
+  pending: '',
   model: '',
   cost: 0,
   spent: 0,
@@ -103,6 +105,20 @@ async function readLevel($: EngineInterface): Promise<string> {
     return 'off'
   }
 }
+
+// A level picked here waits for the session's next prompt, where the mode tracker applies it and empties the file.
+// Writing it starts no turn, so clicks during a turn queue nothing and the last one wins.
+// shortcut: a pick never followed by a prompt leaves its file behind; sweep ponytail-pending/ if that ever adds up.
+const pendingFile = async ($: EngineInterface) => `${await claudeDir($)}/ponytail-pending/${await $.session.id()}`
+async function readPending($: EngineInterface): Promise<string> {
+  const level = (await $.fs.read(await pendingFile($)).catch(() => '')).trim()
+  return LEVELS.includes(level) ? level : ''
+}
+
+// Cells the details row needs to keep the waiting pick's "next message" label; narrower, the chip is its clock alone.
+// shortcut: a guess for the desktop, whose Buttons are wider than their cells (110 was too many for a full-width pane);
+// tune it if the label still wraps there or drops where it would fit.
+const ROOM_FOR_LABEL = 80
 
 // The same commands a person types, so ponytail's own skills and hooks stay the only logic.
 const run = ($: EngineInterface, command: string, args = '') => $.command.run({ command, args })
@@ -201,6 +217,7 @@ async function openBoard($: EngineInterface) {
 async function start($: EngineInterface): Promise<Map<string, string>> {
   const grep = await $.process.run(['git', 'grep', '--untracked', '-nE', GREP_DEFS]).catch(() => undefined)
   const level = await readLevel($)
+  const pending = await readPending($)
   const details = (await $.store.get('details')) === true
   const repo = await $.session.repo().catch(() => null)
   const project = base(repo?.root ?? (await $.session.cwd()))
@@ -209,7 +226,7 @@ async function start($: EngineInterface): Promise<Map<string, string>> {
   const usage = await $.session.usage().catch(() => undefined)
   const csv = usage ? await $.fs.read(ledgerFile(await ledgerDir($), project)).catch(() => '') : ''
   const key = usage ? taskKey(session, usage.startedAt) : ''
-  await update($, band, b => resume({ ...EMPTY, ...b, level, details, project, session, cost: usage?.cost?.usd ?? b.cost }, csv, key))
+  await update($, band, b => resume({ ...EMPTY, ...b, level, pending, details, project, session, cost: usage?.cost?.usd ?? b.cost }, csv, key))
   return grep?.exitCode === 0 ? parseDefs(grep.stdout) : new Map()
 }
 
@@ -249,6 +266,17 @@ export const register: Register = (on, options) => {
       await update($, band, b => (b.name === '' ? { ...EMPTY, ...b, name } : b))
     }
     return next(e)
+  }).catch(($, e, next) => next(e))
+
+  // The mode tracker's UserPromptSubmit hook has run by now and applied or dropped the pick, slash commands included,
+  // so the band reads both back instead of guessing from the prompt.
+  on('turn.start', async ($, e, next) => {
+    if (e.agentId !== undefined) return next(e)
+    const started = await next(e)
+    const level = await readLevel($)
+    const pending = await readPending($)
+    await update($, band, b => ({ ...EMPTY, ...b, level, pending }))
+    return started
   }).catch(($, e, next) => next(e))
 
   on('tool.call', async ($, e, next) => {
@@ -297,9 +325,13 @@ export const register: Register = (on, options) => {
       return next(e)
     }
 
+    // The level first: the transcript reads and git greps below take a while, and the band waits on none of them.
+    const level = await readLevel($)
+    const pending = await readPending($)
+    await update($, band, b => ({ ...EMPTY, ...b, level, pending }))
+
     const usage = await $.session.usage()
     const turns = await $.session.turns()
-    const level = await readLevel($)
     const { removed, transcript: saved } = await load($)
     const session = await $.session.id()
     // Here, not at start: the first turn writes the file, and a new id (/clear, /resume) or a move (/cd, a worktree) changes it.
@@ -364,9 +396,10 @@ export const register: Register = (on, options) => {
     const avg = b.turns > 0 ? b.spent / b.turns : 0
     const last = b.turnCosts[b.turnCosts.length - 1]
 
+    // Picking the level in force again takes the pick back.
     const setLevel = async (level: string) => {
-      await update($, band, x => ({ ...x, level }))
-      await run($, 'ponytail:ponytail', level)
+      const picked = await update($, band, x => ({ ...x, pending: level === x.level ? '' : level }))
+      await $.fs.write(await pendingFile($), picked.pending)
     }
     const toggle = async () => {
       await update($, band, x => ({ ...x, details: !x.details }))
@@ -395,13 +428,15 @@ export const register: Register = (on, options) => {
             : ''
     const testsColor = b.tests.state === 'pass' ? 'success' : b.tests.state === 'fail' ? 'error' : undefined
     const hasOpen = b.openCallers.length > 0
+    const hint = `${b.pending} applies with your next message`
 
     if (!b.details) {
       return stack(
         <Box flexDirection="row" alignItems="center" gap={2} width={width}>
-          {/* A click opens the four levels: one click, one turn, no stops on levels nobody wanted. */}
+          {/* A click opens the four levels; a pick there applies with the next prompt. */}
           <Button key="level" plain onPress={toggle}>
             <Text color={b.level === 'off' ? 'inactive' : 'suggestion'}>●</Text> {b.level}
+            {b.pending !== '' && ` → ${b.pending}`}
           </Button>
           <Text>${b.spent.toFixed(2)}</Text>
           {last !== undefined && <Text dimColor>last ${last.toFixed(2)}</Text>}
@@ -469,6 +504,19 @@ export const register: Register = (on, options) => {
       metrics = <Svg source={metricsSvg(cols, b.turnCosts)} alt={cols.map(c => `${c.label} ${c.value}`).join(', ')} />
     }
 
+    // The waiting pick as a chip: a clock, labelled "next message" where the row has room; the full hint on hover.
+    const labelled = e.props.bodyColumns >= ROOM_FOR_LABEL
+    let chip = (
+      <Text>
+        <Text color="warning">◷</Text>
+        <Text dimColor>{labelled ? ' next message' : ''}</Text>
+      </Text>
+    )
+    if (e.surface !== 'terminal') {
+      const { Svg } = $.ui.resolve(e)
+      chip = <Svg {...pendingChipSvg(hint, labelled)} alt={hint} isInteractive />
+    }
+
     return stack(
       // The desktop's SVG draws its own line at the top, which would touch the buttons without the gap.
       <Box flexDirection="column" width={width} gap={e.surface === 'desktop' ? 1 : 0}>
@@ -477,10 +525,11 @@ export const register: Register = (on, options) => {
             <Button
               key={`level-${level}`}
               label={level}
-              {...(level === b.level ? { variant: 'primary' as const } : { plain: true as const, dimColor: true })}
+              {...(level === (b.pending || b.level) ? { variant: 'primary' as const } : { plain: true as const, dimColor: true })}
               onPress={() => setLevel(level)}
             />
           ))}
+          {b.pending !== '' && chip}
           <Box flexGrow={1} />
           <Button key="copy" plain label="Copy" onPress={copy} />
           <Button key="review" plain label="Review" onPress={review} />

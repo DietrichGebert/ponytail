@@ -46,6 +46,11 @@ fs.writeFileSync(opencodeFlagPath, 'off');
 const nudgeFlagPath = path.join(claudeDir, '.ponytail-statusline-nudged');
 fs.writeFileSync(nudgeFlagPath, '');
 
+// A level picked in the band and never followed by a prompt stays in ponytail-pending/.
+const pendingDir = path.join(claudeDir, 'ponytail-pending');
+fs.mkdirSync(pendingDir);
+fs.writeFileSync(path.join(pendingDir, 's1'), 'ultra');
+
 const configDir = path.join(temp, 'config-home', 'ponytail');
 fs.mkdirSync(configDir, { recursive: true });
 const configPath = path.join(configDir, 'config.json');
@@ -93,6 +98,7 @@ assert.equal(fs.existsSync(qoderFlagPath), false, 'Qoder mode flag must be remov
 assert.equal(fs.existsSync(opencodeFlagPath), false, 'OpenCode mode flag must be removed');
 assert.equal(fs.existsSync(qoderCustomFlagPath), true, 'default Qoder uninstall must not touch a separate custom config');
 assert.equal(fs.existsSync(nudgeFlagPath), false, 'statusline nudge flag must be removed');
+assert.equal(fs.existsSync(pendingDir), false, 'band level picks must be removed');
 assert.equal(fs.existsSync(configPath), false, 'config file must be removed');
 assert.equal(fs.existsSync(cursorFlagPath), false, 'Cursor mode flag must be removed');
 assert.equal(fs.existsSync(statuslineCopyPath), false, 'statusline script copy must be removed (#1032)');

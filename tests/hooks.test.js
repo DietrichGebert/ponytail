@@ -1002,4 +1002,48 @@ assert.equal(
   }
 }
 
+// A level picked in the band waits in ponytail-pending/<session id> and applies with the
+// next prompt, with that level's ruleset (no skill body loads); a typed switch wins.
+{
+  const bandHome = path.join(temp, 'band-home');
+  const flag = path.join(bandHome, '.claude', '.ponytail-active');
+  const pending = path.join(bandHome, '.claude', 'ponytail-pending', 's1');
+  const env = { HOME: bandHome, USERPROFILE: bandHome };
+  const prompt = (text, session_id = 's1') => run('ponytail-mode-tracker.js', env, JSON.stringify({ prompt: text, session_id }));
+  const pick = (level) => {
+    fs.mkdirSync(path.dirname(pending), { recursive: true });
+    fs.writeFileSync(pending, level);
+  };
+
+  run('ponytail-mode-tracker.js', env, JSON.stringify({ prompt: '/ponytail full', session_id: 's1' }));
+  pick('ultra');
+  let result = prompt('fix the cart totals');
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(fs.readFileSync(flag, 'utf8'), 'ultra');
+  assert.equal(fs.existsSync(pending), false, 'the pick is consumed');
+  assert.match(result.stdout, /PONYTAIL MODE CHANGED — level: ultra \(picked in the band/);
+  assert.ok(result.stdout.endsWith(getPonytailInstructions('ultra')));
+
+  // Consumed: the prompt after it says nothing.
+  assert.equal(prompt('and the tax').stdout, '');
+
+  pick('off');
+  assert.match(prompt('one more thing').stdout, /PONYTAIL MODE OFF \(picked in the band/);
+  assert.equal(fs.existsSync(flag), false);
+
+  // A pick taken back (empty file), another session's pick, or a hostile id change nothing.
+  pick('');
+  assert.equal(prompt('hello').stdout, '');
+  pick('lite');
+  assert.equal(prompt('hello', 's2').stdout, '');
+  assert.equal(prompt('hello', '../s1').stdout, '');
+  assert.equal(fs.readFileSync(pending, 'utf8'), 'lite');
+
+  // A switch typed in the prompt wins, and the pick is dropped.
+  result = prompt('/ponytail full');
+  assert.equal(fs.readFileSync(flag, 'utf8'), 'full');
+  assert.doesNotMatch(result.stdout, /picked in the band/);
+  assert.equal(fs.existsSync(pending), false);
+}
+
 console.log('hook compatibility checks passed');

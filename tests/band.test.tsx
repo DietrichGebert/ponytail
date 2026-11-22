@@ -16,6 +16,7 @@ import {
   mainModel,
   markdown,
   metricsSvg,
+  pendingChipSvg,
   parseDefs,
   percent,
   resume,
@@ -73,6 +74,13 @@ describe('board', () => {
 })
 
 describe('metrics', () => {
+  test('the pick chip escapes its tooltip and drops its label when narrow', () => {
+    expect(pendingChipSvg('<b>&', true).source).toContain('<title>&lt;b&gt;&amp;</title>')
+    expect(pendingChipSvg('x', false).source).not.toContain('<text')
+    expect(pendingChipSvg('x', false)).toMatchObject({ width: 22, height: 22 })
+    expect(pendingChipSvg('x', true)).toMatchObject({ width: 104, height: 22 })
+  })
+
   test('adds up tokens and prints them short', () => {
     const t = addTokens(addTokens(NO_TOKENS, { input_tokens: 10, output_tokens: 90, cache_read_input_tokens: 1000, cache_creation_input_tokens: 0 }), { input_tokens: 0, output_tokens: 10, cache_read_input_tokens: 140, cache_creation_input_tokens: 0 })
     expect(totalTokens(t)).toBe(1250)
@@ -472,9 +480,6 @@ test('review and audit run the same commands a person types', async ($, on) => {
   await ui.press({ key: 'level' })
   expect(await ui.find({ key: 'level-ultra' })).toBeDefined()
   expect(sent).toEqual([])
-  await ui.press({ key: 'level-lite' })
-  expect(sent).toEqual(['/ponytail:ponytail lite'])
-  sent.length = 0
   await ui.press({ key: 'review' })
   await ui.press({ key: 'audit' })
   expect(sent).toEqual(['/ponytail:ponytail-review', '/ponytail:ponytail-audit'])
@@ -517,4 +522,95 @@ test('a test run shows its count, and an edit in the project after it marks the 
   await $.tool.call({ tool: 'Edit', file_path: '/repo/cart.py', old_string: 'a = 1', new_string: 'a = 2', replace_all: false } as never)
   expect(await ui.find({ type: 'Text', text: /no test since change/ })).toBeDefined()
   await ui.unmount()
+})
+
+test('a level pick starts no turn, the last pick wins, and it shows as pending until the next prompt applies it', async ($, on) => {
+  mock.clock(on)
+  mock.store(on)
+  const sent: string[] = []
+  const files = new Map<string, string>([['/home/u/.claude/.ponytail-active', 'full']])
+  on('env.get', ($, e) => ({ value: e.name === 'HOME' ? '/home/u' : undefined }))
+  on('session.id', () => ({ value: 's1' }))
+  on('session.repo', () => ({ value: { root: '/repo/shop' } }) as never)
+  on('session.turns', () => ({ value: 1 }))
+  on('session.usage', () => ({ value: { startedAt: 0, cost: { usd: 0.5 } } }) as never)
+  on('process.run', () => ({ value: { exitCode: 1, stdout: '', stderr: '' } }) as never)
+  on('fs.list', () => ({ value: [] }))
+  on('session.start', ($, e) => ({ cwd: e.cwd }))
+  on('turn.start', () => ({ turnId: 't1' }))
+  on('turn.complete', () => ({ text: '' }))
+  on('fs.read', ($, e) => (files.has(e.path) ? { value: files.get(e.path) } : { deny: 'missing' }) as never)
+  on('fs.write', ($, e) => {
+    files.set(e.path, e.text)
+    return { value: undefined }
+  })
+  on('command.run', ($, e) => {
+    sent.push(`/${e.command} ${e.args}`.trim())
+    return { text: '' }
+  })
+  const pending = '/home/u/.claude/ponytail-pending/s1'
+  const ui = await $.ui.mount({ plugin: 'ponytail', surface: 'terminal', ...BAND })
+  await $.session.start({ cwd: '/repo/shop', surface: null } as never)
+  await ui.press({ key: 'level' })
+
+  // off, then ultra, while a turn runs: no command, and only ultra waits.
+  await ui.press({ key: 'level-off' })
+  await ui.press({ key: 'level-ultra' })
+  expect(sent).toEqual([])
+  expect(files.get(pending)).toBe('ultra')
+  expect((await ui.find({ key: 'level-ultra' }))?.props.variant).toBe('primary')
+  expect(await ui.find({ type: 'Text', text: '◷' })).toBeDefined()
+
+  // Picking the level in force takes the pick back.
+  await ui.press({ key: 'level-full' })
+  expect(files.get(pending)).toBe('')
+  expect(await ui.find({ type: 'Text', text: '◷' })).toBeUndefined()
+
+  // The next turn shows what the tracker left on disk, a slash command's turn too (the tracker deletes the file).
+  const flag = '/home/u/.claude/.ponytail-active'
+  await ui.press({ key: 'level-lite' })
+  files.set(flag, 'lite')
+  files.delete(pending)
+  await $.turn.start({ text: '/shop:checkout', turnId: 't1' } as never)
+  expect(await ui.find({ type: 'Text', text: '◷' })).toBeUndefined()
+  expect((await ui.find({ key: 'level-lite' }))?.props.variant).toBe('primary')
+
+  // A subagent's turn reads nothing; a typed /ponytail switch wins over the pick, which the tracker drops.
+  await ui.press({ key: 'level-ultra' })
+  await $.turn.start({ text: 'look around', turnId: 't2', agentId: 'a1' } as never)
+  expect(await ui.find({ type: 'Text', text: '◷' })).toBeDefined()
+  files.set(flag, 'full')
+  files.delete(pending)
+  await $.turn.start({ text: '/ponytail full', turnId: 't3' } as never)
+  expect(await ui.find({ type: 'Text', text: '◷' })).toBeUndefined()
+  expect((await ui.find({ key: 'level-full' }))?.props.variant).toBe('primary')
+  await $.turn.complete({ answer: '', durationMs: 1000 } as never)
+  expect((await ui.find({ key: 'level-full' }))?.props.variant).toBe('primary')
+  expect(sent).toEqual([])
+  await ui.unmount()
+})
+
+test('a waiting pick is a clock chip, labelled where the row has room, with the full hint as its tooltip', async ($, on) => {
+  mock.clock(on)
+  mock.store(on)
+  on('env.get', ($, e) => ({ value: e.name === 'HOME' ? '/home/u' : undefined }))
+  on('session.id', () => ({ value: 's1' }))
+  on('fs.write', () => ({ value: undefined }))
+  for (const [bodyColumns, labelled] of [[100, true], [60, false]] as const) {
+    const ui = await $.ui.mount({ plugin: 'ponytail', surface: 'desktop', ...BAND, props: { ...BAND.props, bodyColumns } })
+    await ui.press({ key: 'details' })
+    await ui.press({ key: 'level-ultra' })
+    // The chip is the first Svg in the band, ahead of the metrics line.
+    const chip = (await ui.find({ type: 'Svg' }))?.props
+    expect(chip?.alt).toBe('ultra applies with your next message')
+    expect(chip?.isInteractive).toBe(true)
+    // Without a size the interactive frame fills its slot: a chip as tall as the band.
+    expect([chip?.width, chip?.height]).toEqual([labelled ? 104 : 22, 22])
+    expect(chip?.source).toContain('<title>ultra applies with your next message</title>')
+    expect(chip?.source.includes('next message</text>')).toBe(labelled)
+    await ui.press({ key: 'level-off' })
+    expect((await ui.find({ type: 'Svg' }))?.props.alt).not.toContain('next message')
+    await ui.press({ key: 'details' })
+    await ui.unmount()
+  }
 })
