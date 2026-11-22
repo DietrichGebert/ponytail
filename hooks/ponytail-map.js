@@ -13,7 +13,10 @@ const fs = require('fs');
 const path = require('path');
 const { execFileSync } = require('child_process');
 
-const BUDGET = Number(process.env.PONYTAIL_MAP_CHARS || 2000);
+// 60000 keeps the header, the lines and the "(N more folders not listed)" footer below the
+// SessionStart hook's maxBuffer of 64 KiB; a bigger budget made execFileSync throw there and
+// the hook dropped the whole map silently (hooks/ponytail-activate.js, #1259).
+const BUDGET = Math.min(Number(process.env.PONYTAIL_MAP_CHARS || 2000), 60000);
 const MAX_FILES = 4000;
 const SRC = /\.(py|js|jsx|mjs|cjs|ts|tsx|go|rs|rb|java|kt|php|swift|cs)$/;
 const SKIP_DIR = /(^|\/)(node_modules|\.git|dist|build|out|vendor|venv|\.venv|__pycache__|coverage|\.next|target|migrations|versions|fixtures|tests?|__tests__|spec)(\/|$)/;
