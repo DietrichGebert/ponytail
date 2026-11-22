@@ -122,7 +122,11 @@ function activate(mode) {
     if (nudge || fs.existsSync(scriptPath)) {
       const tmpPath = scriptPath + '.' + process.pid + '.tmp';
       try {
-        fs.copyFileSync(path.join(__dirname, scriptName), tmpPath, fs.constants.COPYFILE_EXCL);
+        // No COPYFILE_EXCL: if a prior crashed session left this tmpPath behind,
+        // EEXIST would skip the update and the statusline script would go stale.
+        // The PID suffix already makes collisions vanishingly rare.
+        try { fs.unlinkSync(tmpPath); } catch (_) {}
+        fs.copyFileSync(path.join(__dirname, scriptName), tmpPath);
         fs.chmodSync(tmpPath, 0o644);
         fs.renameSync(tmpPath, scriptPath);
       } finally {
