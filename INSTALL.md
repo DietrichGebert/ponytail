@@ -118,7 +118,7 @@ For full plugin-tier support (automatic mode activation + ruleset injection on e
 agy plugin install https://github.com/DietrichGebert/ponytail
 ```
 
-Installs the six skills, and Antigravity turns the `/ponytail` commands into skills as well, so you [call them as slash commands](https://www.antigravity.google/docs/skills#slash-command-conversion) such as `/ponytail-review`. No lifecycle hooks, so levels don't persist. For the always-on ruleset, copy [`AGENTS.md`](AGENTS.md) into your project; Antigravity [reads it as workspace rules](https://www.antigravity.google/docs/rules). Install verified with Antigravity CLI 1.3.3.
+Installs the six skills, converts the `/ponytail` commands into skills ([called as slash commands](https://www.antigravity.google/docs/skills#slash-command-conversion) such as `/ponytail-review`), and loads [`hooks.json`](hooks.json) for both the CLI and IDE: `SessionStart` injects the ruleset for your default level and `PreInvocation` tracks `/ponytail lite|full|ultra|off` and `"stop ponytail"`. Without the plugin, copy [`AGENTS.md`](AGENTS.md) into your project; Antigravity [reads it as workspace rules](https://www.antigravity.google/docs/rules). Install verified with Antigravity CLI 1.3.3.
 
 ## Hermes Agent
 

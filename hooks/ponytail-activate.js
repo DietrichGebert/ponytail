@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // ponytail — Claude Code SessionStart activation hook (also Codex, Copilot,
-// Grok, CodeBuddy and Cursor sessionStart)
+// Grok, CodeBuddy, Cursor and Antigravity SessionStart)
 //
 // Runs on every session start:
 //   1. Writes flag file at $CLAUDE_CONFIG_DIR/.ponytail-active (defaults to ~/.claude; statusline reads this)
@@ -16,6 +16,7 @@ const {
   clearMode,
   cursorRuleNotice,
   cursorRulePath,
+  isAntigravity,
   isCodeBuddy,
   isCodex,
   isCopilot,
@@ -71,7 +72,7 @@ function activate(mode) {
   } catch (e) { /* no map */ }
 
   // 3. Detect missing statusline config — nudge Claude to help set it up
-  if (!isCodex && !isCopilot && !isCursor && !isCodeBuddy) try {
+  if (!isCodex && !isCopilot && !isCursor && !isCodeBuddy && !isAntigravity) try {
     const isWindows = process.platform === 'win32';
     let statusCommand = null;
     if (fs.existsSync(settingsPath)) {

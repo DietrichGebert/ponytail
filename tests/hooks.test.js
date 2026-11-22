@@ -47,6 +47,10 @@ delete process.env.CURSOR_PROJECT_DIR;
 // Same for CodeBuddy (#854), which sets these only for its plugin hook processes.
 delete process.env.CODEBUDDY_PLUGIN_ROOT;
 delete process.env.CODEBUDDY_CONFIG_DIR;
+// Same for Antigravity, which sets ANTIGRAVITY_CONVERSATION_ID in hook processes.
+delete process.env.ANTIGRAVITY_CONVERSATION_ID;
+delete process.env.ANTIGRAVITY_APP_DATA_DIR;
+delete process.env.ANTIGRAVITY_SOURCE_METADATA;
 
 const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'ponytail-hooks-'));
 // Runs on normal exit and on assertion-throw exit; force makes it idempotent.
@@ -728,6 +732,93 @@ const codebuddyConfigDir = path.join(temp, 'codebuddy-config');
 result = run('ponytail-activate.js', { ...codebuddyEnv, CODEBUDDY_CONFIG_DIR: codebuddyConfigDir });
 assert.equal(result.status, 0, result.stderr);
 assert.equal(fs.readFileSync(path.join(codebuddyConfigDir, '.ponytail-active'), 'utf8'), 'lite');
+
+// Antigravity: root hooks.json wires SessionStart and PreInvocation, keeps the
+// mode flag in $ANTIGRAVITY_APP_DATA_DIR or ~/.gemini/antigravity, and emits
+// HookInjectedStep JSON ({ injectSteps: [{ systemMessage: { systemMessage } }] }).
+{
+  const agyHooks = JSON.parse(fs.readFileSync(path.join(root, 'hooks.json'), 'utf8'));
+  assert.deepEqual(agyHooks.ponytail.SessionStart, [
+    { type: 'command', command: 'node hooks/ponytail-activate.js', timeout: 15 },
+  ]);
+  assert.deepEqual(agyHooks.ponytail.PreInvocation, [
+    { type: 'command', command: 'node hooks/ponytail-mode-tracker.js', timeout: 15 },
+  ]);
+
+  const agyHome = path.join(temp, 'agy-home');
+  const agyState = path.join(agyHome, '.gemini', 'antigravity', '.ponytail-active');
+  const agyTranscript = path.join(agyHome, 'transcript.jsonl');
+  fs.mkdirSync(agyHome, { recursive: true });
+  const agyEnv = {
+    HOME: agyHome,
+    USERPROFILE: agyHome,
+    ANTIGRAVITY_CONVERSATION_ID: 'conv-123',
+    PONYTAIL_DEFAULT_MODE: 'lite',
+  };
+
+  result = run('ponytail-activate.js', agyEnv);
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(fs.readFileSync(agyState, 'utf8'), 'lite');
+  assert.equal(fs.existsSync(path.join(agyHome, '.claude', '.ponytail-active')), false,
+    'Antigravity must not write the Claude Code mode flag');
+  output = JSON.parse(result.stdout);
+  assert.match(output.injectSteps[0].systemMessage.systemMessage, /PONYTAIL MODE ACTIVE — level: lite/);
+  assert.doesNotMatch(output.injectSteps[0].systemMessage.systemMessage, /STATUSLINE SETUP NEEDED/);
+
+  // PreInvocation reads the user prompt from transcriptPath (wrapped in <USER_REQUEST>),
+  // updates the flag, and injects the new level's ruleset once for that turn.
+  fs.writeFileSync(agyTranscript, JSON.stringify({
+    step_index: 0,
+    type: 'USER_INPUT',
+    content: '<USER_REQUEST>\n/ponytail ultra\n</USER_REQUEST>\n<ADDITIONAL_METADATA>\ntime\n</ADDITIONAL_METADATA>',
+  }) + '\n');
+  result = run('ponytail-mode-tracker.js', agyEnv, JSON.stringify({
+    conversationId: 'conv-123',
+    transcriptPath: agyTranscript,
+    invocationNum: 1,
+  }));
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(fs.readFileSync(agyState, 'utf8'), 'ultra');
+  output = JSON.parse(result.stdout);
+  assert.match(output.injectSteps[0].systemMessage.systemMessage, /^PONYTAIL MODE CHANGED — level: ultra/);
+  assert.match(output.injectSteps[0].systemMessage.systemMessage, /PONYTAIL MODE ACTIVE — level: ultra/);
+
+  // Subsequent tool-loop PreInvocation in the same turn (after PLANNER_RESPONSE) stays silent.
+  fs.appendFileSync(agyTranscript, JSON.stringify({
+    step_index: 1,
+    type: 'PLANNER_RESPONSE',
+    content: '',
+  }) + '\n');
+  result = run('ponytail-mode-tracker.js', agyEnv, JSON.stringify({
+    conversationId: 'conv-123',
+    transcriptPath: agyTranscript,
+    invocationNum: 2,
+  }));
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(result.stdout, '');
+
+  // Deactivation via transcriptPath clears the flag and injects PONYTAIL MODE OFF.
+  fs.appendFileSync(agyTranscript, JSON.stringify({
+    step_index: 2,
+    type: 'USER_INPUT',
+    content: '<USER_REQUEST>\nstop ponytail\n</USER_REQUEST>',
+  }) + '\n');
+  result = run('ponytail-mode-tracker.js', agyEnv, JSON.stringify({
+    conversationId: 'conv-123',
+    transcriptPath: agyTranscript,
+    invocationNum: 1,
+  }));
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(fs.existsSync(agyState), false);
+  output = JSON.parse(result.stdout);
+  assert.equal(output.injectSteps[0].systemMessage.systemMessage, 'PONYTAIL MODE OFF');
+
+  // ANTIGRAVITY_APP_DATA_DIR relocates the state file.
+  const agyCustomDir = path.join(temp, 'agy-app-data');
+  result = run('ponytail-activate.js', { ...agyEnv, ANTIGRAVITY_APP_DATA_DIR: agyCustomDir });
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(fs.readFileSync(path.join(agyCustomDir, '.ponytail-active'), 'utf8'), 'lite');
+}
 
 // writeDefaultMode must merge into existing config, not overwrite it (#490).
 const mergeHome = path.join(temp, 'merge-home');
