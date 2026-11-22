@@ -194,6 +194,24 @@ describe('metrics', () => {
     expect(defsIn('README.md', 'def nope():')).toEqual([])
   })
 
+  test('a Vue single-file component counts like JS: its script defines, script and template call', () => {
+    const sfc = [
+      '<script setup lang="ts">',
+      "import { formatMoney } from '../lib/money'",
+      'function onSave() {',
+      '  return formatMoney(total.value)',
+      '}',
+      '</script>',
+      '<template>',
+      '  <button @click="onSave()">{{ formatMoney(total) }}</button>',
+      '</template>',
+    ].join('\n')
+    expect(defsIn('src/Cart.vue', sfc)).toEqual(['onSave'])
+    const known = parseDefs('src/lib/money.ts:1:export function formatMoney(v) {\nsrc/Old.vue:3:function legacyTotal() {')
+    expect([...known.keys()]).toEqual(['formatMoney', 'legacyTotal'])
+    expect(callsIn(addedLines('', sfc), known, ['onSave'])).toEqual(['formatMoney'])
+  })
+
   test('counts calls of existing helpers, never new ones, test files or generic names', () => {
     const known = parseDefs('utils/money.py:4:def to_cents(v):\nutils/io.py:1:def load(p):\ntests/test_x.py:1:def helper():')
     expect([...known.keys()]).toEqual(['to_cents', 'load'])

@@ -13,7 +13,8 @@ const SKIP_FILE = /(^|\/)(test_[^/]*|[^/]*(_test|\.test|\.spec|\.gen|\.min|\.d)\
 // shortcut: regex, not a parser; nested and dynamic definitions are missed. Use tree-sitter if it matters.
 const DEFS: [RegExp, RegExp[]][] = [
   [/\.py$/, [/^(?:async\s+)?def\s+([A-Za-z]\w*)/gm, /^class\s+([A-Za-z]\w*)/gm]],
-  [/\.[cm]?[jt]sx?$/, [
+  // A .vue file's <script> is JS/TS; its template only calls, so the same rules hold.
+  [/\.([cm]?[jt]sx?|vue)$/, [
     /^export\s+(?:default\s+)?(?:async\s+)?(?:function\*?|class|const|let|var)\s+([A-Za-z_$][\w$]*)/gm,
     /^(?:async\s+)?function\*?\s+([A-Za-z_$][\w$]*)/gm,
   ]],
