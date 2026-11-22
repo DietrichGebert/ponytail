@@ -148,8 +148,13 @@ function writeDefaultMode(mode) {
   let config = {};
   try {
     config = JSON.parse(fs.readFileSync(configPath, 'utf8').replace(/^\uFEFF/, ''));
-    if (!config || typeof config !== 'object' || Array.isArray(config)) config = {};
-  } catch (_) {}
+  } catch (e) {
+    // Only a missing file starts empty; anything else would overwrite the user's other keys.
+    if (e.code !== 'ENOENT') throw e;
+  }
+  if (!config || typeof config !== 'object' || Array.isArray(config)) {
+    throw new Error(configPath + ' must contain a JSON object');
+  }
   config.defaultMode = normalized;
   fs.writeFileSync(configPath, JSON.stringify(config, null, 2), 'utf8');
   return normalized;
