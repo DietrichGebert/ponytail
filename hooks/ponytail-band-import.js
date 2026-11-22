@@ -27,7 +27,7 @@ const PRICES = {
   'claude-opus-4-7': OPUS,
   'claude-opus-4-6': OPUS,
   'claude-opus-4-5': OPUS,
-  'claude-sonnet-5-5': [2, 2.5, 4, 0.1, 10],
+  'claude-sonnet-5-5': [2, 2.5, 4, 0.2, 10],
   'claude-sonnet-5': [2, 2.5, 4, 0.2, 10],
   'claude-sonnet-4-6': [3, 3.75, 6, 0.3, 15],
   'claude-sonnet-4-5': [3, 3.75, 6, 0.3, 15],

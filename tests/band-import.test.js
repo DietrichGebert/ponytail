@@ -16,6 +16,7 @@ assert.equal(CSV_HEADER, /export const CSV_HEADER = '([^']+)'/.exec(metrics)[1],
 // Prices per reply: the official table, Haiku 5.5's long-prompt tier, unknown and fast replies left out.
 assert.equal(replyCost('claude-opus-5-5', { input_tokens: 1e6, output_tokens: 1e6 }), 24);
 assert.equal(replyCost('claude-opus-5-5', { cache_read_input_tokens: 1e6, cache_creation: { ephemeral_5m_input_tokens: 1e6, ephemeral_1h_input_tokens: 1e6 } }), 0.2 + 5 + 8);
+assert.equal(replyCost('claude-sonnet-5-5', { cache_read_input_tokens: 1e6 }), 0.2, 'Sonnet 5.5 cache reads cost what Sonnet 5 charges');
 assert.equal(replyCost('claude-haiku-4-5-20251001', { input_tokens: 1e6 }), 1, 'a dated model id is the same model');
 assert.equal(replyCost('claude-haiku-5-5', { input_tokens: 100000 }), 0.01, 'up to 100,000 prompt tokens: the short price');
 assert.equal(replyCost('claude-haiku-5-5', { input_tokens: 200000 }), 0.1, 'over 100,000 prompt tokens: the long price');
