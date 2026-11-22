@@ -23,7 +23,12 @@ fs.writeFileSync(path.join(dir, 'src', 'c.rb'), 'def self.helper\nend\n');
 // A tracked symlink must not be followed: it can point outside the repo or at a device that never EOFs.
 fs.writeFileSync(path.join(dir, 'outside.txt'), 'export const outside = 1\n');
 try { fs.symlinkSync(path.join('..', 'outside.txt'), path.join(dir, 'src', 'link.js')); } catch (e) {}
+// A big file is read only up to 64 KB: its head still lands in the map, its tail does not.
+fs.mkdirSync(path.join(dir, 'big'));
+fs.writeFileSync(path.join(dir, 'big', 'bundle.js'),
+  'export const head = 1\n' + '//'.padEnd(70000, 'x') + '\nexport const tail = 2\n');
 const map = buildMap(dir);
+assert.ok(map.includes('big/: head') && !/\btail\b/.test(map), map);
 assert.ok(!/NOTICE|asking|leaked|outside/.test(map), map);
 assert.ok(map.includes('src/: Foo, Bar, baz'), map);
 assert.ok(map.includes('self.helper'), map);

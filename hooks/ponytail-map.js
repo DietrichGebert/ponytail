@@ -82,8 +82,13 @@ function buildMap(root = process.cwd()) {
   for (const f of files) {
     let text;
     try {
-      if (!fs.lstatSync(path.join(root, f)).isFile()) continue;
-      text = fs.readFileSync(path.join(root, f), 'utf8').slice(0, 65536);
+      const st = fs.lstatSync(path.join(root, f));
+      if (!st.isFile()) continue;
+      // Only the head is read: a tracked 30 MB bundle would otherwise be read whole to keep 64 KB.
+      const buf = Buffer.alloc(Math.min(st.size, 65536));
+      const fd = fs.openSync(path.join(root, f), 'r');
+      try { fs.readSync(fd, buf, 0, buf.length, 0); } finally { fs.closeSync(fd); }
+      text = buf.toString('utf8');
     } catch (e) { continue; }
     const names = namesIn(f, text);
     if (!names.length) continue;
