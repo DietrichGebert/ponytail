@@ -55,8 +55,14 @@ tested and fixed later. This is a report the user asked for, so give it in full.
 
 - Every finding needs a concrete case: "this input or situation leads to this
   wrong result". No case, no finding.
-- Before calling code unused, grep the whole tree for it, including tests,
-  fixtures, config, and string or dynamic references.
+- Before calling code, a flag, a field or a config key unused, find every use
+  of its owner, not one call site: direct calls, tests, config, string or
+  dynamic references, serialization, reflection, framework hooks. One call
+  site where a setting does nothing does not prove it is dead: Pydantic
+  `from_attributes=True` on a nested model is live when another call site
+  validates an ORM object, even if the first validates a dict. If you cannot
+  check every use, mark the finding unverified and do not recommend deleting
+  it; put it under `Not checked:` instead.
 - A shortcut marked with a `shortcut:` (or older `ponytail:`) comment that names its limit is a
   decision, not a finding, unless the expected load already crosses it.
 - Propose the smallest fix that works. Prefer fixes that delete code. Never
@@ -92,7 +98,8 @@ Every finding has all four parts, each one or two short sentences:
 End with:
 - `Verdict:` one line: healthy, or what to fix first.
 - `Lean: -<N> lines, -<M> dependencies possible.` when lean findings exist.
-- `Not checked:` the parts you did not read or could not run.
+- `Not checked:` the parts you did not read or could not run. An unverified
+  deletion goes here, not in the findings.
 
 Nothing found: `What this repo does:`, then `Healthy. Nothing to fix.` and
 one line on what you checked.

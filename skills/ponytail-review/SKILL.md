@@ -23,6 +23,9 @@ This is a report the user asked for, so give it in full.
 - Trace the real flow: where data comes in, what is stored, what goes out.
 - A change can break code it does not touch. When a signature, return value
   or behavior changes, grep every caller.
+- Before calling code, a flag, a field or a config key dead, find every use of
+  its owner: direct calls, tests, config, string or dynamic references,
+  serialization, reflection, framework hooks.
 - Find the expected load in the repo (README, deploy config): one person
   running a script, or many users and processes at once. Judge scale against
   that, and say which load you assumed.
@@ -59,7 +62,12 @@ This is a report the user asked for, so give it in full.
 - Every finding needs a concrete case: "this input or situation leads to this
   wrong result". No case, no finding.
 - Re-read the lines and confirm: the caller exists, the value can really be
-  empty, the code really is unused.
+  empty, and for a deletion, every use of its owner was checked, not one call
+  site. One call site where a setting does nothing does not prove it is dead:
+  Pydantic `from_attributes=True` on a nested model is live when another call
+  site validates an ORM object, even if the first validates a dict. If you
+  cannot check every use, mark the finding unverified and do not recommend
+  deleting it; put it under `Not checked:` instead.
 - A shortcut marked with a `shortcut:` (or older `ponytail:`) comment that names its limit is a
   decision, not a finding, unless the expected load already crosses it.
 - Propose the smallest fix that works. Prefer fixes that delete code. Never
@@ -94,6 +102,7 @@ End with:
 - `Verdict: Ship.` or `Verdict: fix 1 and 3 first.`
 - `Lean: -<N> lines possible.` when lean findings exist.
 - `Not checked:` one line, if something mattered and you could not check it.
+  An unverified deletion goes here, not in the findings.
 
 Nothing found: `What this change does:`, then `Looks good. Ship.` and one line
 on what you checked.
