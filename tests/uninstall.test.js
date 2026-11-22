@@ -32,6 +32,13 @@ fs.writeFileSync(flagPath, 'full');
 const qoderFlagPath = path.join(home, '.qoder', '.ponytail-active');
 fs.mkdirSync(path.dirname(qoderFlagPath), { recursive: true });
 fs.writeFileSync(qoderFlagPath, 'ultra');
+
+// With Qoder detection on (QODER_SESSION_ID set), the mode tracker also writes
+// per-project flags under $QODER_CONFIG_DIR/ponytail-modes (hooks/ponytail-runtime.js).
+const qoderModesDir = path.join(home, '.qoder', 'ponytail-modes');
+const qoderModeFlagPath = path.join(qoderModesDir, '5be02fc2a3ca2f56c5abacd11b21830bdf4fc55b9dfbd4d9c6094848c2b6fd28');
+fs.mkdirSync(qoderModesDir, { recursive: true });
+fs.writeFileSync(qoderModeFlagPath, 'ultra');
 const qoderCustomDir = path.join(temp, 'qoder-custom-config');
 const qoderCustomFlagPath = path.join(qoderCustomDir, '.ponytail-active');
 fs.mkdirSync(qoderCustomDir, { recursive: true });
@@ -90,6 +97,7 @@ let result = runUninstall(env);
 assert.equal(result.status, 0, result.stderr);
 assert.equal(fs.existsSync(flagPath), false, 'mode flag must be removed');
 assert.equal(fs.existsSync(qoderFlagPath), false, 'Qoder mode flag must be removed');
+assert.equal(fs.existsSync(qoderModeFlagPath), false, 'Qoder per-project mode flag must be removed');
 assert.equal(fs.existsSync(opencodeFlagPath), false, 'OpenCode mode flag must be removed');
 assert.equal(fs.existsSync(qoderCustomFlagPath), true, 'default Qoder uninstall must not touch a separate custom config');
 assert.equal(fs.existsSync(nudgeFlagPath), false, 'statusline nudge flag must be removed');
