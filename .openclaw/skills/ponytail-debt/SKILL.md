@@ -14,7 +14,7 @@ can't quietly become permanent.
 Grep the repo for comment markers, skipping `.git` and everything the
 `.gitignore` files ignore (dependencies, build output, caches, in any stack):
 
-`git grep --no-index --exclude-standard -nE '(#|//|/[*]) ?(shortcut|ponytail):'`  (add other comment prefixes if your stack uses them)
+`git grep --no-index --exclude-standard -nE '(#|//|/[*]|--|;) ?(shortcut|ponytail):'`  (add other comment prefixes if your stack uses them)
 
 If the user names their own marker word (`/ponytail-debt TODO`), grep for that word instead.
 

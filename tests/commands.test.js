@@ -57,10 +57,14 @@ const debtSamples = [
   ['/* ponytail: block marker, closed here */', true],
   ['/*ponytail: block marker, no space */', true],
   ['/* ponytail: block opener, closed some lines below', true],
+  // SQL, Lua and HTML comments, then INI and Lisp ones.
+  ['-- shortcut: double-dash marker', true],
+  ['<!-- shortcut: HTML marker -->', true],
+  ['; shortcut: semicolon marker', true],
   ['prose that merely mentions ponytail: markers stays out of the ledger', false],
 ];
 
-test('every ponytail-debt copy greps #, // and /* markers but not prose', (t) => {
+test('every ponytail-debt copy greps #, //, /*, -- and ; markers but not prose', (t) => {
   const input = debtSamples.map(([line]) => line).join('\n') + '\n';
   const expected = debtSamples.flatMap(([line, hit], i) => (hit ? [`${i + 1}:${line}`] : []));
 
