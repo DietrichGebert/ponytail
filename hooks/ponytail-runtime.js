@@ -43,12 +43,12 @@ if (isCursor) stateDir = path.join(os.homedir(), '.cursor');
 
 const statePath = path.join(stateDir, STATE_FILE);
 
-// Claude Code hands every hook its project dir, so the live mode is kept per
-// project and concurrent sessions in different repos stop overwriting each other
-// (#662, #809). Hosts without it keep the single shared flag.
+// Claude Code supplies its project dir; Codex runs hooks in the session cwd.
+// Keep the live mode per project so different repos do not overwrite each other
+// (#662, #809). Other hosts without a project dir keep the shared flag.
 // ponytail: sessions in the SAME repo still share one mode, and the statusline
 // scripts read the shared flag (last write wins); key by session_id if either matters.
-const projectDir = (process.env.CLAUDE_PROJECT_DIR || '').trim();
+const projectDir = (process.env.CLAUDE_PROJECT_DIR || (isCodex ? process.cwd() : '')).trim();
 // Replacing separators with '_' aliases e.g. /work/a/b and /work/a_b (#662).
 // Do not read old sanitized keys: they cannot be assigned to one project safely.
 const projectStatePath = projectDir
