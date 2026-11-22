@@ -38,7 +38,10 @@ describe('board', () => {
     expect(rows.length).toBe(3)
     expect(rows[1]?.[3]).toBe('Fix "cart", totals\nand tax')
     const tasks = tasksFrom(CSV)
-    expect(tasks[0]).toEqual({ started: '2026-10-15 12:00', project: 'shop', name: 'Fix "cart", totals\nand tax', cost: 3.1, turns: 6, agentMinutes: 26, tokens: 1_200_000, reuse: 83, tests: '14 passed', level: 'full', model: '' })
+    expect(tasks[0]).toEqual({
+      started: '2026-10-15 12:00', project: 'shop', name: 'Fix "cart", totals\nand tax', cost: 3.1, turns: 6, agentMinutes: 26, tokens: 1_200_000,
+      tokenBreakdown: { input: null, output: 85_000, cacheRead: null, cacheWrite: null }, reuse: 83, tests: '14 passed', level: 'full', model: '',
+    })
     expect(tasks[1]?.reuse).toBeNull()
     expect(tasksFrom('not,a,ledger\n1,2,3')).toEqual([])
   })
@@ -63,6 +66,8 @@ describe('board', () => {
     expect(html).toContain('<html lang="en" data-theme="dark">')
     expect(html).toContain(':root[data-theme=light]{')
     expect(html).toContain(':root[data-theme=system]{')
+    expect(html).toContain('data-token-kind="cacheRead"')
+    expect(html).toContain('Older sessions without this token breakdown are excluded.')
   })
 
   test('an empty board still loads and says there are no sessions yet', () => {
@@ -99,6 +104,9 @@ describe('metrics', () => {
     expect(resume(ahead, csv, '4c69e3db-7')).toEqual(ahead)
     expect(resume(fresh, csv, 'missing-1')).toEqual(fresh)
     expect(resume(fresh, '', '4c69e3db-7')).toEqual(fresh)
+
+    const detailed = `${CSV_HEADER}\n4c69e3db-7,2026-10-15 01:10,shop,Cart,3.10,6,26.0,1200000,85000,,0,0,0,14 passed,full,claude-opus-5-5,5000,1100000,10000\n`
+    expect(resume(fresh, detailed, '4c69e3db-7').tokens).toEqual(BASE.tokens)
   })
 
   test('the row names the model that wrote most replies, and an older ledger keeps its rows', () => {
@@ -110,6 +118,8 @@ describe('metrics', () => {
     expect(csv.split('\n')[0]).toBe(CSV_HEADER)
     expect(csv.split('\n').filter(line => line.startsWith('key,')).length).toBe(1)
     expect(tasksFrom(csv).map(t => t.model)).toEqual(['', 'claude-opus-5-5'])
+    expect(tasksFrom(csv)[0]?.tokenBreakdown).toEqual({ input: null, output: 50, cacheRead: null, cacheWrite: null })
+    expect(tasksFrom(csv)[1]?.tokenBreakdown).toEqual({ input: 5000, output: 85_000, cacheRead: 1_100_000, cacheWrite: 10_000 })
     expect(markdown(snapshot(BASE, Date.UTC(2026, 9, 15, 12, 0)))).toContain('| Model | claude-opus-5-5 |')
   })
 
@@ -164,6 +174,8 @@ describe('metrics', () => {
     const lines = first.trim().split('\n')
     expect(lines.length).toBe(2)
     expect(lines[1]).toContain('"Fix the cart | totals, again"')
+    expect(CSV_HEADER.endsWith('tokens_input,tokens_cache_read,tokens_cache_write')).toBe(true)
+    expect(parseCsv(first)[1]?.slice(-3)).toEqual(['5000', '1100000', '10000'])
     const again = upsertCsv(first, snapshot({ ...BASE, spent: 4.2, turns: 7 }, at))
     expect(again.trim().split('\n').length).toBe(2)
     expect(again).toContain(',4.20,7,')

@@ -210,7 +210,6 @@ export const taskKey = (session: string, startedAt: number) => `${session.slice(
 
 // A band that starts again mid-session (a reload, an update, a second copy) picks up the session's
 // row, so what only the band counts (tokens, agent time, the name) goes on instead of starting at zero.
-// shortcut: the ledger keeps only the token total and output, so a resumed band books the rest as input.
 export function resume(b: Band, csv: string, key: string): Band {
   const [head, ...rows] = parseCsv(csv)
   const row = head ? rows.find(r => r[head.indexOf('key')] === key) : undefined
@@ -218,11 +217,15 @@ export function resume(b: Band, csv: string, key: string): Band {
   const at = (col: string) => row[head.indexOf(col)] ?? ''
   const total = Number(at('tokens_total')) || 0
   const output = Number(at('tokens_output')) || 0
+  const hasBreakdown = ['tokens_input', 'tokens_cache_read', 'tokens_cache_write'].every(col => at(col) !== '')
+  const tokens = hasBreakdown
+    ? { input: Number(at('tokens_input')) || 0, output, cacheRead: Number(at('tokens_cache_read')) || 0, cacheWrite: Number(at('tokens_cache_write')) || 0 }
+    : { input: total - output, output, cacheRead: 0, cacheWrite: 0 }
   return {
     ...b,
     name: b.name || at('name'),
     busyMs: Math.max(b.busyMs, (Number(at('agent_minutes')) || 0) * 60000),
-    tokens: total > totalTokens(b.tokens) ? { input: total - output, output, cacheRead: 0, cacheWrite: 0 } : b.tokens,
+    tokens: total > totalTokens(b.tokens) ? tokens : b.tokens,
   }
 }
 
@@ -271,7 +274,7 @@ export function markdown(s: Snapshot): string {
   return [`## ${cell(s.name || 'Untitled session')}`, '', '| | |', '|---|---|', ...rows.map(([k, v]) => `| ${k} | ${cell(v ?? '')} |`)].join('\n')
 }
 
-export const CSV_HEADER = 'key,started,project,name,cost_usd,turns,agent_minutes,tokens_total,tokens_output,reuse_pct,reused,new,callers_open,tests,level,model'
+export const CSV_HEADER = 'key,started,project,name,cost_usd,turns,agent_minutes,tokens_total,tokens_output,reuse_pct,reused,new,callers_open,tests,level,model,tokens_input,tokens_cache_read,tokens_cache_write'
 
 const csvField = (v: string | number | null) => {
   const s = v === null ? '' : String(v)
@@ -279,7 +282,7 @@ const csvField = (v: string | number | null) => {
 }
 
 export const csvRow = (s: Snapshot) =>
-  [s.key, s.started, s.project, s.name, s.cost.toFixed(2), s.turns, (s.agentMs / 60000).toFixed(1), totalTokens(s.tokens), s.tokens.output, s.reuse, s.reused, s.created, s.callersOpen, s.tests, s.level, s.model]
+  [s.key, s.started, s.project, s.name, s.cost.toFixed(2), s.turns, (s.agentMs / 60000).toFixed(1), totalTokens(s.tokens), s.tokens.output, s.reuse, s.reused, s.created, s.callersOpen, s.tests, s.level, s.model, s.tokens.input, s.tokens.cacheRead, s.tokens.cacheWrite]
     .map(csvField)
     .join(',')
 

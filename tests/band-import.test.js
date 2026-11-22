@@ -28,12 +28,14 @@ const at = s => `2026-10-01T10:${s}Z`;
 const prompt = (t, text) => ({ type: 'user', timestamp: at(t), origin: { kind: 'human' }, message: { content: text } });
 const reply = (t, id, usage, model = 'claude-opus-5-5') => ({ type: 'assistant', timestamp: at(t), message: { id, model, usage } });
 const tool = t => ({ type: 'user', timestamp: at(t), message: { content: [{ type: 'tool_result' }] } });
-const u = (input, output) => ({ input_tokens: input, output_tokens: output });
+const u = (input, output, cacheRead = 0, cacheWrite = 0) => ({
+  input_tokens: input, output_tokens: output, cache_read_input_tokens: cacheRead, cache_creation_input_tokens: cacheWrite,
+});
 const records = [
   { type: 'user', timestamp: at('00:00'), message: { content: '<command-name>/ponytail</command-name>' } },
   prompt('00:00', 'Fix the cart totals\nplease'),
-  reply('00:10', 'm1', u(1000, 100)),
-  reply('00:10', 'm1', u(1000, 100)),
+  reply('00:10', 'm1', u(1000, 100, 300, 40)),
+  reply('00:10', 'm1', u(1000, 100, 300, 40)),
   tool('00:20'),
   reply('01:00', 'm2', u(2000, 200)),
   prompt('10:00', 'and the tax'),
@@ -44,11 +46,19 @@ const sub = [reply('00:15', 's1', u(500, 50), 'claude-haiku-5-5'), reply('00:15'
 const s = sessionStats(records, sub, 'abcd1234-0000');
 assert.equal(s.turns, 2, 'only prompts the model answered are turns');
 assert.equal(s.agentMs, 60000 + 30000, 'agent time runs from each prompt to its last reply or tool result');
-assert.equal(s.tokens, 1100 + 2200 + 3300 + 550, 'each message counts once, subagents included');
+assert.equal(s.tokens, 1100 + 300 + 40 + 2200 + 3300 + 550, 'each message counts once, subagents included');
+assert.equal(s.input, 6500);
 assert.equal(s.output, 650);
+assert.equal(s.cacheRead, 300);
+assert.equal(s.cacheWrite, 40);
 assert.equal(s.name, 'Fix the cart totals');
 assert.equal(s.model, 'claude-opus-5-5');
-const est = (6000 * 4 + 600 * 20) / 1e6 + (500 * 0.1 + 50 * 0.5) / 1e6;
+const splitCache = sessionStats([prompt('00:00', 'Check split cache'), reply('00:10', 'split', {
+  input_tokens: 1, output_tokens: 1, cache_creation_input_tokens: 99,
+  cache_creation: { ephemeral_5m_input_tokens: 2, ephemeral_1h_input_tokens: 3 },
+})]);
+assert.equal(splitCache.cacheWrite, 5, 'split cache creation fields win over the aggregate field');
+const est = (6000 * 4 + 600 * 20 + 300 * 0.2 + 40 * 5) / 1e6 + (500 * 0.1 + 50 * 0.5) / 1e6;
 assert.ok(Math.abs(s.cost - est) < 1e-9, 'without an own total the estimate is the cost');
 
 // Claude Code's own total, when final, wins over a lower estimate; a stale $0 never does.
@@ -79,7 +89,7 @@ assert.equal(sessionStats(records.filter(r => !r.origin)), null);
 
 // CSV: the band's format, an older header replaced, a recorded session never imported twice.
 const row = csvRow('abcd1234-0000', 'shop', s);
-assert.ok(row.startsWith(`abcd1234-${s.startedMs},`) && row.endsWith(',import,claude-opus-5-5'));
+assert.ok(row.startsWith(`abcd1234-${s.startedMs},`) && row.endsWith(',import,claude-opus-5-5,6500,300,40'));
 const old = 'key,started,project,name\nabcd1234-1,2026-10-01 10:00,shop,Live\n';
 const merged = mergeRows(old, [row, csvRow('ffff0000-0000', 'shop', s)]);
 assert.equal(merged.added, 1);
