@@ -293,6 +293,10 @@ assert.ok(
   result.stdout.includes(path.join(customConfigDir, 'settings.json')),
   'statusline nudge must reference the CLAUDE_CONFIG_DIR settings.json',
 );
+// The nudge informs; it must not tell the model to act on settings.json by itself.
+assert.ok(result.stdout.includes('only if they ask'), 'setup nudge must be informational');
+assert.ok(!result.stdout.includes('Proactively'), 'setup nudge must not tell the model to act proactively');
+assert.ok(result.stdout.includes('"statusLine": {'), 'setup nudge must still carry the snippet');
 
 // #483: the statusline nudge fires at most once — after it writes its flag, a
 // later session stays silent instead of re-nagging on every start.
@@ -338,6 +342,24 @@ assert.ok(staleNudge.stdout.includes('STATUSLINE BROKEN'), 'a statusLine pointin
 const shCopyPath = path.join(customConfigDir, 'ponytail-statusline.sh');
 assert.ok(staleNudge.stdout.includes(staleScript) && staleNudge.stdout.includes(shCopyPath), 'broken-path nudge must name the old and new paths');
 assert.ok(fs.existsSync(shCopyPath), 'broken-path nudge must create the copy it points at');
+assert.ok(staleNudge.stdout.includes('only if they ask'), 'broken-path nudge must be informational');
+assert.ok(staleNudge.stdout.includes('keeping the rest of the command'), 'broken-path nudge must keep the fix detail');
+assert.ok(!staleNudge.stdout.includes('Proactively'), 'broken-path nudge must not tell the model to act proactively');
+// A config dir with a shell metacharacter takes the manual-setup branch.
+const home3 = path.join(temp, 'home3');
+fs.mkdirSync(home3, { recursive: true });
+const unsafeConfigDir = path.join(temp, 'cfg$x');
+const unsafeNudge = run('ponytail-activate.js', {
+  HOME: home3,
+  USERPROFILE: home3,
+  CLAUDE_CONFIG_DIR: unsafeConfigDir,
+  PONYTAIL_DEFAULT_MODE: 'lite',
+});
+assert.equal(unsafeNudge.status, 0, unsafeNudge.stderr);
+assert.ok(unsafeNudge.stdout.includes('unsafe to embed in a shell command'), 'unsafe config dir must hit the manual-setup branch');
+assert.ok(unsafeNudge.stdout.includes(path.join(unsafeConfigDir, 'settings.json')), 'manual-setup nudge must name settings.json');
+assert.ok(unsafeNudge.stdout.includes('only if they ask'), 'manual-setup nudge must be informational');
+assert.ok(!unsafeNudge.stdout.includes('Proactively'), 'manual-setup nudge must not tell the model to act proactively');
 assert.ok(!run('ponytail-activate.js', staleEnv).stdout.includes('STATUSLINE'), 'broken-path nudge fires once per path');
 // Unquoted paths and quoted paths with spaces are found too.
 const staleSpaced = path.join(temp, 'cache dir', 'ponytail', '4.0.0', 'hooks', 'ponytail-statusline.sh');
