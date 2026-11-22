@@ -75,8 +75,8 @@ function namesIn(file, text) {
 function buildMap(root = process.cwd()) {
   const files = listFiles(root)
     .filter((f) => SAFE_PATH.test(f) && SRC.test(f) && !SKIP_DIR.test(f) && !SKIP_FILE.test(f))
-    .slice(0, MAX_FILES)
-    .sort((a, b) => (SHARED.test(b) - SHARED.test(a)) || a.localeCompare(b));
+    .sort((a, b) => (SHARED.test(b) - SHARED.test(a)) || a.localeCompare(b))
+    .slice(0, MAX_FILES);
   // One line per directory: names are enough to know something exists; grep finds the file.
   const dirs = new Map();
   for (const f of files) {
