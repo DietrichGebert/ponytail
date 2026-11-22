@@ -86,6 +86,12 @@ assert.equal(merged.added, 1);
 assert.equal(merged.text.split('\n')[0], CSV_HEADER);
 assert.equal(mergeRows('', [row], new Set(['abcd1234-'])).added, 0, 'a session in another project file is not imported again');
 
+// A quoted task name can contain blank lines or look like a header. Import must preserve it.
+const multilineRow = csvRow('cafe0000-0000', 'shop', { ...s, name: 'Keep "quotes"\n\nkey, caption\nabcd1234-999' });
+const multilineLedger = CSV_HEADER + '\n' + multilineRow + '\n';
+assert.equal(mergeRows(multilineLedger, [csvRow('ffff0000-0000', 'shop', s)]).text,
+  multilineLedger + csvRow('ffff0000-0000', 'shop', s) + '\n', 'quoted records survive the merge unchanged');
+
 // End to end: transcripts under CLAUDE_CONFIG_DIR, the ledger under XDG_CONFIG_HOME.
 const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'ponytail-import-'));
 const projects = path.join(temp, 'claude', 'projects', '-work-shop');
@@ -97,6 +103,8 @@ fs.writeFileSync(path.join(projects, 'beef0000-1111.jsonl'), records.filter(r =>
 const env = { CLAUDE_CONFIG_DIR: process.env.CLAUDE_CONFIG_DIR, XDG_CONFIG_HOME: process.env.XDG_CONFIG_HOME };
 process.env.CLAUDE_CONFIG_DIR = path.join(temp, 'claude');
 process.env.XDG_CONFIG_HOME = path.join(temp, 'config');
+fs.mkdirSync(path.join(temp, 'config', 'ponytail', 'band'), { recursive: true });
+fs.writeFileSync(path.join(temp, 'config', 'ponytail', 'band', 'history.csv'), multilineLedger);
 try {
   assert.deepEqual(run(), { sessions: 1, added: 1 }, 'the typed session is imported, the automated one is not');
   const csv = fs.readFileSync(path.join(temp, 'config', 'ponytail', 'band', 'shop.csv'), 'utf8');
