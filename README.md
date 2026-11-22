@@ -196,6 +196,9 @@ Commands need a skill-capable host (Claude Code, Codex, Devin CLI, OpenCode, Gem
 
 ## FAQ
 
+**Does the codebase map recognize TypeScript module files?**
+Yes. The optional SessionStart map reads exports from `.ts`, `.tsx`, `.mts` and `.cts` source files. Declaration files and test files stay excluded, including `.d.mts`, `.d.cts`, `.test.mts` and `.spec.cts`.
+
 **Does it need a config file?**
 No. An optional `~/.config/ponytail/config.json` or `PONYTAIL_DEFAULT_MODE` env var can set the default level, but nothing is required.
 
