@@ -73,6 +73,7 @@ function namesIn(file, text) {
 }
 
 function buildMap(root = process.cwd()) {
+  const realRoot = fs.realpathSync(root);
   const files = listFiles(root)
     .filter((f) => SAFE_PATH.test(f) && SRC.test(f) && !SKIP_DIR.test(f) && !SKIP_FILE.test(f))
     .slice(0, MAX_FILES)
@@ -82,8 +83,13 @@ function buildMap(root = process.cwd()) {
   for (const f of files) {
     let text;
     try {
-      if (!fs.lstatSync(path.join(root, f)).isFile()) continue;
-      text = fs.readFileSync(path.join(root, f), 'utf8').slice(0, 65536);
+      const file = path.join(root, f);
+      if (!fs.lstatSync(file).isFile()) continue;
+      // lstat only rejects the final symlink; a parent can still point outside.
+      const realFile = fs.realpathSync(file);
+      const relative = path.relative(realRoot, realFile);
+      if (relative === '..' || relative.startsWith('..' + path.sep) || path.isAbsolute(relative)) continue;
+      text = fs.readFileSync(realFile, 'utf8').slice(0, 65536);
     } catch (e) { continue; }
     const names = namesIn(f, text);
     if (!names.length) continue;
