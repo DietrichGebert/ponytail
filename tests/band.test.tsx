@@ -16,6 +16,9 @@ import {
   mainModel,
   markdown,
   metricsSvg,
+  contextBar,
+  barCells,
+  panelTokens,
   parseDefs,
   percent,
   resume,
@@ -186,6 +189,54 @@ describe('metrics', () => {
     expect(svg).toContain('…')
     expect(svg).toContain('class="v warning"')
     expect(svg.match(/<rect /g)?.length).toBe(2)
+  })
+
+  test('the top line becomes a context bar in the panel order, each segment with a tooltip', () => {
+    const row = (name: string, tokens: number, kind: 'used' | 'free' | 'buffer' | 'deferred') => ({ name, tokens, color: 'x', kind })
+    // Free space listed before the buffer still draws after it, as the Context panel does.
+    const ctx = [
+      row('System tools', 100, 'used'),
+      row('Messages & more', 100, 'used'),
+      row('Free space', 250, 'free'),
+      row('Autocompact buffer', 50, 'buffer'),
+      row('MCP tools (deferred)', 9999, 'deferred'),
+    ]
+    const svg = contextBar(ctx, 0, 500)
+    expect(svg.startsWith('<svg')).toBe(true)
+    expect(svg).toContain('preserveAspectRatio="none"')
+    expect(svg).toContain('class="t"')
+    // 500 tokens shown over 500 units: each used row is 100 wide, the buffer 50 from x=200.
+    expect(svg).toContain('x="0.0" y="8" width="100.0" height="4" fill="#4f8ef7"')
+    expect(svg).toContain('x="100.0" y="8" width="100.0" height="4" fill="#e8743b"')
+    expect(svg).toContain('class="u" x="200.0" y="8" width="50.0"')
+    expect(svg).toContain('<title>System tools · 100 · 20.0%</title>')
+    expect(svg).toContain('<title>Messages &amp; more')
+    expect(svg).toContain('<title>Free space · 250 · 50.0%</title>')
+    expect(svg).not.toContain('deferred')
+    // The largest used row comes first and takes the first color, as in the panel.
+    const ranked = contextBar([row('Small', 10, 'used'), row('Big', 90, 'used')], 0, 100)
+    expect(ranked.indexOf('<title>Big')).toBeLessThan(ranked.indexOf('<title>Small'))
+    expect(ranked).toContain('width="90.0" height="4" fill="#4f8ef7"')
+    expect([733, 6600, 44000, 862900].map(panelTokens)).toEqual(['733', '6.6K', '44K', '862.9K'])
+    // The tooltip share is of the window the panel measures against, not of the drawn rows.
+    expect(contextBar([row('Messages', 44000, 'used'), row('Free space', 56000, 'free')], 1_000_000)).toContain('<title>Messages · 44K · 4.4%</title>')
+    // As wide as the numbers below it, so the bar never runs past them.
+    expect(contextBar(ctx)).toContain('width="720"')
+    // The numbers below drop their own divider only when the bar stands in for it.
+    const cols = [{ key: 'cost', label: 'cost', value: '$1', sub: '' }]
+    expect(metricsSvg(cols, [], 500)).toContain('<line ')
+    expect(metricsSvg(cols, [], 500, false)).not.toContain('<line ')
+  })
+
+  test('the terminal bar fills the row exactly, in the same order as the desktop one', () => {
+    const row = (name: string, tokens: number, kind: 'used' | 'free' | 'buffer' | 'deferred') => ({ name, tokens, color: 'x', kind })
+    // Eight tiny used rows: rounding each on its own (at least 1 cell) would overflow 40 cells.
+    const tiny = Array.from({ length: 8 }, (_, i) => row(`r${i}`, 1, 'used'))
+    const rows = barCells([...tiny, row('Free space', 992, 'free'), row('Autocompact buffer', 0, 'buffer'), row('d', 500, 'deferred')], 40)
+    expect(rows.reduce((n, r) => n + r.n, 0)).toBe(40)
+    const mixed = barCells([row('Messages', 300, 'used'), row('Free space', 600, 'free'), row('Autocompact buffer', 100, 'buffer')], 50)
+    expect(mixed.map(r => [r.seg.name, r.n])).toEqual([['Messages', 15], ['Autocompact buffer', 5], ['Free space', 30]])
+    expect(barCells([], 40)).toEqual([])
   })
 
   test('finds top-level definitions per language', () => {
@@ -478,6 +529,70 @@ test('review and audit run the same commands a person types', async ($, on) => {
   await ui.press({ key: 'review' })
   await ui.press({ key: 'audit' })
   expect(sent).toEqual(['/ponytail:ponytail-review', '/ponytail:ponytail-audit'])
+  await ui.unmount()
+})
+
+test('clear needs a second press within 5 s, then runs /clear once', async ($, on) => {
+  const clock = mock.clock(on)
+  mock.store(on)
+  const sent: string[] = []
+  on('command.run', ($, e) => {
+    sent.push(`/${e.command}`)
+    return { text: '' }
+  })
+  const ui = await $.ui.mount({ plugin: 'ponytail', surface: 'terminal', ...BAND })
+  // One press only arms it; it falls back to Clear after 5 s.
+  await ui.press({ key: 'clear' })
+  expect(sent).toEqual([])
+  expect(await ui.find({ text: '⚠ Sure?' })).toBeDefined()
+  await clock.advance(5000)
+  expect(await ui.find({ text: '⚠ Sure?' })).toBeUndefined()
+  // Two presses in a row clear.
+  await ui.press({ key: 'clear' })
+  await ui.press({ key: 'clear' })
+  expect(sent).toEqual(['/clear'])
+  await ui.unmount()
+})
+
+test('a timer left from an earlier arm never cuts a new arm short', async ($, on) => {
+  const clock = mock.clock(on)
+  mock.store(on)
+  const sent: string[] = []
+  on('command.run', ($, e) => {
+    sent.push(`/${e.command}`)
+    return { text: '' }
+  })
+  const ui = await $.ui.mount({ plugin: 'ponytail', surface: 'terminal', ...BAND })
+  await ui.press({ key: 'clear' }) // arm at 0, its timer due at 5000
+  await clock.advance(3000)
+  await ui.press({ key: 'clear' }) // clears
+  expect(sent).toEqual(['/clear'])
+  await clock.advance(1000)
+  await ui.press({ key: 'clear' }) // arm again at 4000
+  await clock.advance(1000) // the first timer fires here
+  expect(await ui.find({ text: '⚠ Sure?' })).toBeDefined()
+  await clock.advance(4000)
+  expect(await ui.find({ text: '⚠ Sure?' })).toBeUndefined()
+  await ui.unmount()
+})
+
+test('a context measurement redraws the bar, in cells that fill the row', async ($, on) => {
+  mock.clock(on)
+  mock.store(on)
+  const categories = [
+    { name: 'Messages', tokens: 300, color: 'promptBorder', isDeferred: false, kind: 'used' },
+    { name: 'Free space', tokens: 700, color: 'inactive', isDeferred: false, kind: 'free' },
+  ]
+  on('session.usage', () => ({ value: { startedAt: 0, context: { window: 1000, breakdown: { categories, rawMaxTokens: 1000 } } } }) as never)
+  on('session.measure', ($, e) => ({ changed: e.changed }))
+  const ui = await $.ui.mount({ plugin: 'ponytail', surface: 'terminal', ...BAND })
+  await ui.press({ key: 'details' })
+  // No breakdown read yet: the plain line.
+  expect(await ui.find({ text: '━'.repeat(30) })).toBeUndefined()
+  await $.session.measure({ context: { window: 1000 }, rateLimits: [], changed: ['context'] } as never)
+  // 300 of 1000 tokens over 100 cells.
+  expect(await ui.find({ text: '━'.repeat(30) })).toBeDefined()
+  expect(await ui.find({ text: '─'.repeat(70) })).toBeDefined()
   await ui.unmount()
 })
 
