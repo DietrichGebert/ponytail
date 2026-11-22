@@ -22,6 +22,7 @@ const {
   isCursor,
   readMode,
   setMode,
+  setProjectDir,
   writeHookOutput,
 } = require('./ponytail-runtime');
 
@@ -186,13 +187,16 @@ function finish() {
   let source = '';
   try {
     // Strip UTF-8 BOM some shells prepend when piping (breaks JSON.parse)
-    source = JSON.parse(input.replace(/^\uFEFF/, '')).source;
+    const data = JSON.parse(input.replace(/^\uFEFF/, ''));
+    setProjectDir(data.cwd);
+    source = data.source;
   } catch (e) {
     // No payload, or an unparseable one: treat it as a fresh session
   }
   activate(source === 'compact' ? (readMode() || 'off') : getDefaultMode());
 }
 
+process.stdin.setEncoding('utf8');
 process.stdin.on('data', chunk => { input += chunk; });
 // Never hang the session start (#443, #790): like the mode tracker, recover on a
 // stdin error or after a short ref'd fallback, and start at the default level.
