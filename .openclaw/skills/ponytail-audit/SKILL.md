@@ -65,8 +65,9 @@ tested and fixed later. This is a report the user asked for, so give it in full.
 
 ## 4. Output
 
-Very simple English: short sentences, everyday words. Explain a technical
-term the first time you use it. The reader may never have seen this code.
+Very simple language, in the language the user writes in: short sentences,
+everyday words. Explain a technical term the first time you use it. The
+reader may never have seen this code.
 
 Start with `What this repo does:` in two or three sentences, and the load
 you assumed.
