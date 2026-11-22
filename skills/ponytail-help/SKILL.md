@@ -60,6 +60,9 @@ export PONYTAIL_DEFAULT_MODE=ultra
 { "defaultMode": "lite" }
 ```
 
+**Command** (Claude Code, Codex, Copilot CLI, Cursor, OpenCode, Qoder, pi):
+`/ponytail default lite` writes that config file for you.
+
 Set `"off"` to disable auto-activation on session start, activate manually
 with `/ponytail` when wanted.
 
