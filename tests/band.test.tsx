@@ -149,6 +149,14 @@ describe('metrics', () => {
     expect(sessionTitle(JSON.stringify({ type: 'custom-title', customTitle: 'x'.repeat(80) }))?.length).toBe(60)
   })
 
+  test('without a rename the sidebar name is the one Claude Code generated', () => {
+    const ai = (aiTitle: string) => JSON.stringify({ type: 'ai-title', aiTitle, sessionId: 's' })
+    const renamed = JSON.stringify({ type: 'custom-title', customTitle: 'My name' })
+    expect(sessionTitle([ai('Old guess'), ai('Board link sync')].join('\n'))).toBe('Board link sync')
+    expect(sessionTitle([renamed, ai('Board link sync')].join('\n'))).toBe('My name')
+    expect(sessionTitle(ai(' '))).toBeUndefined()
+  })
+
   test('the Markdown export holds every value and the task name', () => {
     const md = markdown(snapshot(BASE, Date.UTC(2026, 9, 15, 12, 0)))
     expect(md.split('\n')[0]).toBe('## Fix the cart \\| totals, again')

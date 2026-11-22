@@ -59,6 +59,8 @@ assert.ok(Math.abs(zero.cost - est) < 1e-9);
 const early = sessionStats([records[1], { type: 'cost-state', sessionId: 'abcd1234-0000', totalCostUSD: 9 }, ...records.slice(2)], sub, 'abcd1234-0000');
 assert.ok(Math.abs(early.cost - est) < 1e-9, 'a total written before later replies is not final');
 assert.equal(sessionStats([...records, { type: 'custom-title', customTitle: 'Cart totals' }]).name, 'Cart totals', 'the sidebar name wins');
+assert.equal(sessionStats([...records, { type: 'ai-title', aiTitle: 'Cart fix' }]).name, 'Cart fix', 'the auto name beats the first prompt');
+assert.equal(sessionStats([...records, { type: 'custom-title', customTitle: 'Cart totals' }, { type: 'ai-title', aiTitle: 'Cart fix' }]).name, 'Cart totals', 'a rename beats the auto name');
 
 // A session reopened a day later with a slash command: a new turn, and the day between is not work.
 const later = sessionStats([...records,

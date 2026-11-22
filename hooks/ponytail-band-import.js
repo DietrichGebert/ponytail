@@ -158,12 +158,15 @@ function sessionStats(records, subagentRecords = [], sessionId = '') {
   const own = costAt >= 0 && last(records, r => r.type === 'assistant') < costAt ? records[costAt].totalCostUSD : null;
   const known = [own, estimate].filter(v => typeof v === 'number' && Number.isFinite(v) && v > 0);
   const cost = known.length ? Math.max(...known) : null;
-  const titled = records.filter(r => r.type === 'custom-title' && typeof r.customTitle === 'string' && r.customTitle.trim());
+  // A rename wins over Claude Code's auto name.
+  const renamed = records.filter(r => r.type === 'custom-title' && typeof r.customTitle === 'string' && r.customTitle.trim()).map(r => r.customTitle);
+  const auto = records.filter(r => r.type === 'ai-title' && typeof r.aiTitle === 'string' && r.aiTitle.trim()).map(r => r.aiTitle);
+  const titled = renamed.length ? renamed : auto;
   const first = prompts.map(promptText).find(t => t && !t.startsWith('<') && !t.startsWith('/')) || '';
   const started = records.map(ms).find(Number.isFinite);
   return {
     startedMs: started,
-    name: (titled.length ? titled[titled.length - 1].customTitle.trim() : first.split('\n')[0]).slice(0, 60),
+    name: (titled.length ? titled[titled.length - 1].trim() : first.split('\n')[0]).slice(0, 60),
     model: models.sort((a, b) => replies[b] - replies[a])[0],
     cost,
     own,
