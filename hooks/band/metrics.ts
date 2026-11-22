@@ -284,8 +284,11 @@ export const csvRow = (s: Snapshot) =>
     .join(',')
 
 // One row per session, replaced on every turn, so the file stays a table of tasks.
+// Split into records, not lines: a quoted name with a line break spans two lines.
 export function upsertCsv(existing: string, s: Snapshot): string {
-  const rows = existing.split('\n').filter(line => line !== '' && !line.startsWith('key,') && !line.startsWith(`${s.key},`))
+  const rows = parseCsv(existing)
+    .filter(r => r[0] !== 'key' && r[0] !== s.key)
+    .map(r => r.map(csvField).join(','))
   return [CSV_HEADER, ...rows, csvRow(s)].join('\n') + '\n'
 }
 
