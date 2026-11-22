@@ -223,6 +223,20 @@ const APP = `(function () {
     return f ? Math.max(7, Math.round((now - new Date(f.slice(0, 10) + 'T00:00').getTime()) / DAY) + 1) : 30
   }
   function days(n) { var out = []; for (var i = n - 1; i >= 0; i--) out.push(dayKey(now - i * DAY)); return out }
+  // Days 1..upTo of the calendar month off months from now (the whole month when upTo is left out).
+  function monthKeys(off, upTo) {
+    var d = new Date(now), y = d.getFullYear(), m = d.getMonth() + off, len = new Date(y, m + 1, 0).getDate(), out = []
+    for (var i = 1; i <= Math.min(upTo || len, len); i++) out.push(dayKey(new Date(y, m, i).getTime()))
+    return out
+  }
+  // The chosen period: its days, the days it is compared with, and how to word both.
+  function period() {
+    var p = state.period
+    if (p === 'mtd') { var k = monthKeys(0, new Date(now).getDate()); return { keys: k, prev: monthKeys(-1, k.length), text: 'month to date', vs: 'vs same days last month' } }
+    if (p === 'last') return { keys: monthKeys(-1), prev: monthKeys(-2), text: 'last month', vs: 'vs previous month' }
+    var n = span()
+    return { keys: days(n), prev: p ? days(2 * n).slice(0, n) : [], text: p ? 'last ' + n + ' days' : 'all time', vs: 'vs previous ' + n + ' days' }
+  }
   function inDays(list, keys) { return list.filter(function (t) { return keys.indexOf(t.started.slice(0, 10)) >= 0 }) }
   function perDay(list, keys, pick) { return keys.map(function (k) { return total(list.filter(function (t) { return t.started.slice(0, 10) === k }), pick) }) }
   function avg(values, r) { return values.map(function (_, i) { var a = values.slice(Math.max(0, i - r), i + r + 1); return a.reduce(add, 0) / a.length }) }
@@ -282,27 +296,27 @@ const APP = `(function () {
   }
 
   function kpis() {
-    var list = scope(), n = span(), keys = days(n), wrap = byId('kpis'); wrap.textContent = ''
-    var cur = inDays(list, keys), prev = state.period ? inDays(list, days(2 * n).slice(0, n)) : []
+    var list = scope(), P = period(), keys = P.keys, wrap = byId('kpis'); wrap.textContent = ''
+    var cur = inDays(list, keys), prev = inDays(list, P.prev)
     KPI.forEach(function (k, i) {
       var M = METRICS[k[0]], v = total(cur, M.pick), p = total(prev, M.pick)
       var card = h('div', 'card kpi'), value = h('div', 'kpi-value num', M.fmt(v)); card.style.setProperty('--k', k[2])
       if (p > 0) { var pct = Math.round((v - p) / p * 100); value.append(h('span', 'delta ' + (pct >= 0 ? 'up' : 'down'), (pct >= 0 ? '↑' : '↓') + Math.abs(pct) + '%')) }
-      var note = !state.period ? 'all time' : p > 0 ? 'vs previous ' + n + ' days' : 'last ' + n + ' days'
+      var note = p > 0 ? P.vs : P.text
       card.append(h('div', 'kpi-label', M.label), value, h('div', 'kpi-note', note), sparkline(perDay(list, keys, M.pick), i, k))
       wrap.append(card)
     })
   }
 
   function chart() {
-    var list = scope(), n = span(), keys = days(n), M = METRICS[state.metric], box = byId('stream'), tip = byId('tip'); tip.hidden = true
+    var list = scope(), P = period(), keys = P.keys, n = keys.length, M = METRICS[state.metric], box = byId('stream'), tip = byId('tip'); tip.hidden = true
     var W = Math.max(320, Math.round(box.getBoundingClientRect().width) || 900), H = 340, top = 66, base = 282
     box.setAttribute('viewBox', '0 0 ' + W + ' ' + H); box.textContent = ''
     var defs = svg('defs', {}, box); blur(defs, 'sglow', 10)
     var shown = names.filter(function (p) { return (!state.project || p === state.project) && list.some(function (t) { return t.project === p }) })
     var projects = shown.filter(function (p) { return !state.hidden[p] })
     var cur = inDays(list, keys).filter(function (t) { return !state.hidden[t.project] })
-    byId('chart-sub').textContent = M.label + (state.period ? ', last ' + n + ' days' : ', all time')
+    byId('chart-sub').textContent = M.label + ', ' + P.text
     byId('chart-total').textContent = M.fmt(total(cur, M.pick))
     legend(shown)
     var x = function (i) { return n > 1 ? i * W / (n - 1) : W / 2 }
@@ -358,7 +372,7 @@ const APP = `(function () {
 
   function table() {
     var body = byId('rows'), q = state.q.trim().toLowerCase(); body.textContent = ''
-    var list = inDays(scope(), days(span())).filter(function (t) { return !q || (t.name + ' ' + t.project + ' ' + modelName(t.model)).toLowerCase().indexOf(q) >= 0 })
+    var list = inDays(scope(), period().keys).filter(function (t) { return !q || (t.name + ' ' + t.project + ' ' + modelName(t.model)).toLowerCase().indexOf(q) >= 0 })
       .sort(function (a, b) { return b.started.localeCompare(a.started) })
     byId('count').textContent = String(list.length)
     if (!list.length) {
@@ -422,7 +436,7 @@ const APP = `(function () {
     var share = byId('h-active-sub'); share.textContent = ''; share.append(h('b', '', Math.round(active / 84 * 100) + '%'), document.createTextNode('of the last 84 days'))
     byId('h-streak').textContent = plural(streak, 'day')
     byId('h-streak-sub').textContent = 'longest ' + plural(longest, 'day')
-    var cur = inDays(list, days(span())), byDay = {}, best = null
+    var cur = inDays(list, period().keys), byDay = {}, best = null
     cur.forEach(function (t) { var k = t.started.slice(0, 10); byDay[k] = (byDay[k] || 0) + t.agentMinutes; if (!best || t.agentMinutes > best.agentMinutes) best = t })
     var busiest = Object.keys(byDay).sort(function (a, b) { return byDay[b] - byDay[a] })[0], facts = byId('facts'); facts.textContent = ''
     ;[['Busiest day', busiest ? shortDate(busiest) + ' · ' + time(byDay[busiest] * 60000) : '–'],
@@ -435,9 +449,9 @@ const APP = `(function () {
 
   // The share card: the numbers and the stream of what is on screen.
   function card() {
-    var list = scope(), n = span(), keys = days(n), cur = inDays(list, keys).filter(function (t) { return !state.hidden[t.project] })
+    var list = scope(), P = period(), keys = P.keys, n = keys.length, cur = inDays(list, keys).filter(function (t) { return !state.hidden[t.project] })
     var projects = names.filter(function (p) { return cur.some(function (t) { return t.project === p }) })
-    byId('c-scope').textContent = (state.project || plural(projects.length, 'project')) + ' · ' + (state.period ? 'last ' + n + ' days' : 'all time')
+    byId('c-scope').textContent = (state.project || plural(projects.length, 'project')) + ' · ' + P.text
     byId('c-time').textContent = time(total(cur, METRICS.time.pick))
     byId('c-cost').textContent = money(total(cur, METRICS.cost.pick))
     byId('c-tokens').textContent = tok(total(cur, METRICS.tokens.pick))
@@ -476,7 +490,7 @@ const APP = `(function () {
     b.addEventListener('click', function () { state.metric = b.getAttribute('data-metric'); document.querySelectorAll('[data-metric]').forEach(function (x) { x.classList.toggle('on', x === b) }); chart() })
   })
   document.querySelectorAll('[data-period]').forEach(function (b) {
-    b.addEventListener('click', function () { state.period = +b.getAttribute('data-period'); document.querySelectorAll('[data-period]').forEach(function (x) { x.classList.toggle('on', x === b) }); render() })
+    b.addEventListener('click', function () { state.period = b.getAttribute('data-period'); if (/^\d+$/.test(state.period)) state.period = +state.period; document.querySelectorAll('[data-period]').forEach(function (x) { x.classList.toggle('on', x === b) }); render() })
   })
   var resizing; window.addEventListener('resize', function () { clearTimeout(resizing); resizing = setTimeout(chart, 120) })
   byId('share').addEventListener('click', function () { byId('share-dialog').showModal() })
@@ -540,7 +554,7 @@ export function boardHtml(tasks: Task[], now: number): string {
 <aside class="side"><div class="brand"><span class="logo"><svg viewBox="${LOGO_VIEWBOX}" aria-hidden="true"><use href="#pt-logo"/></svg></span>ponytail</div><div class="side-label">Projects</div><nav id="projects"></nav><div class="side-foot"><div class="foot-text">Local board<br>${esc(day(now))}</div><span class="foot-sep"></span>${THEME_BUTTON}</div></aside>
 <main>
 <div class="top"><div><div class="crumb">Board / <b id="crumb"></b></div><h1 id="title"></h1><p id="subtitle"></p></div>
-<div class="actions"><div class="seg" role="group" aria-label="Period">${seg('period', [['7', '7d'], ['30', '30d'], ['90', '90d'], ['0', 'All']], '30')}</div><button type="button" class="btn" id="share">Share card</button></div></div>
+<div class="actions"><div class="seg" role="group" aria-label="Period">${seg('period', [['7', '7d'], ['30', '30d'], ['90', '90d'], ['mtd', 'MTD'], ['last', 'Last month'], ['0', 'All']], '30')}</div><button type="button" class="btn" id="share">Share card</button></div></div>
 <section class="kpis" id="kpis"></section>
 <section class="card chart-card"><div class="chart-head"><div><div class="label" id="chart-sub"></div><div class="big num" id="chart-total"></div></div>
 <div class="seg" role="group" aria-label="Metric">${seg('metric', [['time', 'Agent time'], ['cost', 'Cost'], ['tokens', 'Tokens']], 'time')}</div></div>
