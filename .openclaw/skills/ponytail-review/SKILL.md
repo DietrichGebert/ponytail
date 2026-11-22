@@ -57,6 +57,11 @@ This is a report the user asked for, so give it in full.
   wrong result". No case, no finding.
 - Re-read the lines and confirm: the caller exists, the value can really be
   empty, the code really is unused.
+- Show the case itself, not a step toward it: "the code reaches the database" is not
+  "the test fails on an empty database". A case you could not show goes in
+  `Not checked:`, and "If we skip it" claims nothing beyond what you showed.
+- Try the case on the base too. If it fails there as well, the change did not cause it:
+  drop it, or note it once outside the numbered findings.
 - A shortcut marked with a `shortcut:` (or older `ponytail:`) comment that names its limit is a
   decision, not a finding, unless the expected load already crosses it.
 - Propose the smallest fix that works. Prefer fixes that delete code. Never

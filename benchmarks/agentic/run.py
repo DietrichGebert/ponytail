@@ -316,11 +316,10 @@ def score_workspace(task_id, arm, model, workdir: Path):
         sc = TASKS[task_id]["score"](workdir)
     return {"task": task_id, "arm": arm, "model": model, **sc, **stats, **meta}
 
-def _base_cmd(claude, prompt, model):
+def _base_cmd(claude, prompt, model, bash=False):
     return [claude, "-p", prompt, "--model", MODELS.get(model, model),
             "--permission-mode", "bypassPermissions", "--output-format", "json",
-            "--setting-sources", "project,local", "--strict-mcp-config",
-            "--disallowedTools", "Bash"]
+            "--setting-sources", "project,local", "--strict-mcp-config"] + ([] if bash else ["--disallowedTools", "Bash"])
 
 def warm_cache(model):
     """One throwaway call before the pool. Without it the first parallel cells each pay the cold
@@ -347,6 +346,9 @@ def run_cell(task_id, arm, model, workdir: Path):
         manifest = sorted(str(p.relative_to(workdir)).replace("\\", "/")
                           for p in workdir.rglob("*") if p.is_file())
         (workdir / "_fixture_files.json").write_text(json.dumps(manifest), encoding="utf-8")
+    for fn, content in task.get("base", {}).items():  # a review task commits its base; the seed is the change on top
+        _write(workdir / fn, content)
+    if task.get("base"): _git_snapshot(workdir)
     for fn, content in task.get("seed", {}).items():
         _write(workdir / fn, content)
     if task.get("fixture") or task.get("diff"): _git_snapshot(workdir)  # baseline commit -> diff the agent's changes
@@ -358,8 +360,8 @@ def run_cell(task_id, arm, model, workdir: Path):
     # No live verification (see NO_RUN): --strict-mcp-config drops all MCP servers so there is no browser
     # tool, and --disallowedTools Bash blocks running a server/db/npm. An agent writes with
     # Read/Write/Edit/Glob/Grep and stops -- no login wall, no browser thrash. We measure code, not execution.
-    cmd = _base_cmd(claude, task["prompt"], model)
-    append = NO_RUN                                     # all arms get NO_RUN, identically
+    cmd = _base_cmd(claude, task["prompt"], model, task.get("bash", False))
+    append = task.get("system", NO_RUN)                 # all arms get the same text (NO_RUN unless the task sets one)
     if arm in PLUGIN_ARMS:
         cmd += ["--plugin-dir", _plugin_dir(arm)]       # real activation of exactly one plugin
     elif arm in SETTINGS_ARMS:
