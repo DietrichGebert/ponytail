@@ -68,6 +68,12 @@
     <img src="assets/photoreunion-logo-light.svg" height="128" alt="PhotoReunion">
   </picture>
 </a>
+<a href="https://braids.page/?ref=ponytail-gh">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/braids-logo-dark.svg">
+    <img src="assets/braids-logo-light.svg" height="128" alt="Braids">
+  </picture>
+</a>
 
 ---
 

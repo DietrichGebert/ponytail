@@ -195,6 +195,7 @@ function finish() {
   }
 }
 
+process.stdin.setEncoding('utf8');
 process.stdin.on('data', chunk => { input += chunk; });
 // Exit on 'end', not just finish(): the fallback timer below must stay ref'd
 // (see #790) so it can actually fire when stdin is stuck, and a ref'd timer
