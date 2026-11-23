@@ -158,6 +158,17 @@ describe('metrics', () => {
     expect(md).toContain('| Tests | 14 passed |')
   })
 
+  test('the Markdown export treats task names, project paths and models as literal text', () => {
+    const md = markdown(snapshot({
+      ...BASE, name: 'Fix <Menu> and *label*\r\n[reference](notes) #',
+      project: 'C:\\work\\|play\nsecond row', model: '`my_model` &copy;',
+    }, Date.UTC(2026, 9, 15, 12, 0)))
+    expect(md.split('\n')[0]).toBe('## Fix \\<Menu\\> and \\*label\\*<br>\\[reference\\](notes) \\#')
+    expect(md).toContain('| Project | C:\\\\work\\\\\\|play<br>second row |')
+    expect(md).toContain('| Model | \\`my\\_model\\` \\&copy; |')
+    expect(md).toContain('| Session | `4c69e3db-57a0` |')
+  })
+
   test('the CSV keeps one row per task and replaces it on every turn', () => {
     const at = Date.UTC(2026, 9, 15, 12, 0)
     const first = upsertCsv('', snapshot(BASE, at))
