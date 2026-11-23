@@ -43,7 +43,7 @@ export type Hit = { file: string; line: string; text: string }
 
 // `git grep -n` output, one "file:line:text" row each.
 export const hits = (stdout: string): Hit[] =>
-  stdout.split('\n').flatMap(row => {
+  stdout.split(/\r?\n/).flatMap(row => {
     const m = /^(.+?):(\d+):(.*)$/.exec(row)
     return m ? [{ file: m[1] ?? '', line: m[2] ?? '', text: m[3] ?? '' }] : []
   })
@@ -62,8 +62,8 @@ export function parseDefs(stdout: string): Map<string, string> {
 
 // Lines of `after` that `before` did not have: what an edit added.
 export function addedLines(before: string, after: string): string {
-  const old = new Set(before.split('\n'))
-  return after.split('\n').filter(line => !old.has(line)).join('\n')
+  const old = new Set(before.split(/\r?\n/))
+  return after.split(/\r?\n/).filter(line => !old.has(line)).join('\n')
 }
 
 // Known names the added code calls, skipping its own new definitions.

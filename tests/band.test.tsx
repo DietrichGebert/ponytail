@@ -194,6 +194,18 @@ describe('metrics', () => {
     expect(defsIn('README.md', 'def nope():')).toEqual([])
   })
 
+  test('recognizes definitions in CRLF git grep output', () => {
+    expect([...parseDefs('rag.py:29:def private_lines(folder):\r\ntext.py:2:def lookup():\n')]).toEqual([
+      ['private_lines', 'rag.py:29'],
+      ['lookup', 'text.py:2'],
+    ])
+  })
+
+  test('does not count unchanged lines after CRLF normalization as additions', () => {
+    expect(addedLines('keep()\r\nunchanged()\r\n', 'keep()\nunchanged()\nnew_call()\n')).toBe('new_call()')
+    expect(addedLines('keep()\n', 'keep()\r\nnew_call()\r\n')).toBe('new_call()')
+  })
+
   test('counts calls of existing helpers, never new ones, test files or generic names', () => {
     const known = parseDefs('utils/money.py:4:def to_cents(v):\nutils/io.py:1:def load(p):\ntests/test_x.py:1:def helper():')
     expect([...known.keys()]).toEqual(['to_cents', 'load'])
