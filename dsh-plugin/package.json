@@ -1,6 +1,6 @@
 {
   "name": "dsh-ponytail",
-  "version": "5.3.2",
+  "version": "5.3.3",
   "private": true,
   "description": "Ponytail for DeepSeek Harness: per-step ruleset, /ponytail modes, skills, and a composer status mark.",
   "keywords": [
