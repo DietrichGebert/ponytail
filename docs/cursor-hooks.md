@@ -85,7 +85,7 @@ Execution environment (client, 3.20.17):
   to that level. Default `off`: no flag, no output.
 - `/ponytail lite|full|ultra` sent as a plain message: the flag changes and the
   turn receives `PONYTAIL MODE CHANGED — level: <level>` plus that level's ruleset
-  (about 5,300 characters, under the inline cap). Cursor has no `/ponytail`
+  (about 3,000 characters, under the inline cap). Cursor has no `/ponytail`
   command to load the skill body, so the hook carries it. `@ponytail` and
   `$ponytail` are parsed too, but `@` opens Cursor's context picker. If the
   ponytail skills are also installed under `~/.cursor/skills`, Cursor treats
