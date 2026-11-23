@@ -21,7 +21,6 @@ export type Band = {
   transcript: string
   reused: string[]
   created: string[]
-  dupes: { name: string; like: string }[]
   removed: string[]
   openCallers: string[]
   tests: Tests

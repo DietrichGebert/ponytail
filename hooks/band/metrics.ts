@@ -76,17 +76,11 @@ export function callsIn(text: string, known: Map<string, string>, own: string[])
   return [...names]
 }
 
-const norm = (name: string) => name.toLowerCase().replace(/[_-]/g, '')
-
-// A new definition whose name an existing one already has, ignoring case and _ (format_price vs formatPrice).
-// shortcut: names only; a helper rewritten under another name (parse_price vs to_cents) is not found.
-export function duplicateOf(name: string, file: string, known: Map<string, string>): string | undefined {
-  for (const [other, where] of known) {
-    const at = where.slice(0, where.lastIndexOf(':'))
-    const sameFile = file === at || file.endsWith(`/${at}`)
-    if (norm(other) === norm(name) && !sameFile) return `${other} (${where})`
-  }
-  return undefined
+// Whether a file lies under the project root; Windows paths may use either slash.
+export function inProject(file: string, root: string): boolean {
+  const f = file.replace(/\\/g, '/')
+  const r = root.replace(/\\/g, '/').replace(/\/+$/, '')
+  return f === r || f.startsWith(`${r}/`)
 }
 
 const TEST_CMD = /\b(npm (run )?test|pnpm (run )?test|yarn test|bun test|npx (jest|vitest)|jest|vitest|pytest|python3? -m pytest|go test|cargo test|mvn test|gradle test|rspec|phpunit|dotnet test|node --test|deno test|make test)\b/

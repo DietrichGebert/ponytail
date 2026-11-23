@@ -193,6 +193,7 @@ function finish() {
   activate(source === 'compact' ? (readMode() || 'off') : getDefaultMode());
 }
 
+process.stdin.setEncoding('utf8');
 process.stdin.on('data', chunk => { input += chunk; });
 // Never hang the session start (#443, #790): like the mode tracker, recover on a
 // stdin error or after a short ref'd fallback, and start at the default level.

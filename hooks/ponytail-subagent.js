@@ -82,6 +82,7 @@ function finish() {
   inject();
 }
 
+process.stdin.setEncoding('utf8');
 process.stdin.on('data', chunk => { input += chunk; });
 // Exit on 'end' (not just finish()) so the ref'd fallback timer below can't
 // add its full 1000ms to the normal fast path.

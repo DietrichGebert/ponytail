@@ -11,10 +11,10 @@ import {
   addedLines,
   callsIn,
   defsIn,
-  duplicateOf,
   elapsed,
   fmtTokens,
   hits,
+  inProject,
   isCode,
   isSource,
   isTestCommand,
@@ -52,7 +52,6 @@ const EMPTY: Band = {
   transcript: '',
   reused: [],
   created: [],
-  dupes: [],
   removed: [],
   openCallers: [],
   tests: { state: 'none' },
@@ -69,7 +68,6 @@ const TASK = {
   model: '',
   reused: [],
   created: [],
-  dupes: [],
   removed: [],
   openCallers: [],
   tests: { state: 'none' as const },
@@ -125,6 +123,24 @@ async function readModel($: EngineInterface, transcript: string): Promise<string
   if (transcript === '') return ''
   const grep = await $.process.run(['grep', '-o', MODEL_PATTERN, transcript]).catch(() => undefined)
   return grep?.exitCode === 0 ? mainModel(grep.stdout) : ''
+}
+
+// Where Claude Code keeps the session's transcript: on managed, Team and Enterprise machines its cc-plugin-sec-default skips every classic.* hook, so no hook hands the path over.
+// First the folder its rule names, then every project folder: it hashes names past 200 characters, and /cd, worktrees and /resume can put the file elsewhere.
+// shortcut: with persistence off there is no file, so every turn checks every folder, read the path from the engine once it offers one.
+async function findTranscript($: EngineInterface, session: string): Promise<string> {
+  const projects = `${await claudeDir($)}/projects`
+  const exists = (file: string) => $.fs.exists(file).catch(() => false)
+  const root = await $.session.root().catch(() => '')
+  const named = `${projects}/${root.replace(/[^a-zA-Z0-9]/g, '-')}/${session}.jsonl`
+  if (root !== '' && (await exists(named))) return named
+  const dirs = (await $.fs.list(projects).catch(() => [])).filter(d => d.kind === 'dir')
+  // One at a time: thousands of checks in flight at once are slower than in turn.
+  for (const dir of dirs) {
+    const file = `${projects}/${dir.name}/${session}.jsonl`
+    if (await exists(file)) return file
+  }
+  return ''
 }
 
 // Where the task ledgers and the board live.
@@ -206,11 +222,13 @@ export const register: Register = (on, options) => {
     return next(e)
   }).catch(($, e, next) => next(e))
 
-  // /clear and /resume go on under another session id with an empty band and no session.start, so the band showed
-  // "off" until the first turn ended. Set it up again once a command has moved the session.
+  // /clear, /resume and /branch go on under another session id with an empty band and no session.start, so the band
+  // showed "off" until the first turn ended. Set it up again once one of them has moved the session.
+  // Only these commands: the engine labels a command's output with every plugin its hook chain ran through, so a hook on
+  // every command printed "ponytail+<plugin>:" before other plugins' commands.
   // shortcut: after /clear, ponytail-activate.js may reset the flag to the default level after this, so a level switched
   // before /clear can show until the first turn ends; a session skips a plugin's classic.SessionStart hook, the one later point.
-  on('command.run', async ($, e, next) => {
+  on('command.run', { command: ['clear', 'resume', 'branch'] }, async ($, e, next) => {
     const session = await $.session.id()
     const result = await next(e)
     if ((await $.session.id()) !== session) known = await start($).catch(() => known)
@@ -220,12 +238,6 @@ export const register: Register = (on, options) => {
   // /clear starts a new task: the counters start over, the cost baseline stays.
   on('session.end', async ($, e, next) => {
     if (e.reason === 'clear') await update($, band, b => ({ ...EMPTY, ...b, ...TASK }))
-    return next(e)
-  }).catch(($, e, next) => next(e))
-
-  // Only the classic hook input carries the transcript path, which holds the sidebar name.
-  on('classic.UserPromptSubmit', async ($, e, next) => {
-    await update($, band, b => (b.transcript === e.transcript_path ? b : { ...EMPTY, ...b, transcript: e.transcript_path }))
     return next(e)
   }).catch(($, e, next) => next(e))
 
@@ -252,6 +264,9 @@ export const register: Register = (on, options) => {
     if (e.tool !== 'Edit' && e.tool !== 'Write') return next(e)
 
     const file = e.file_path
+    // A scratch script outside the project is never reused or called by it (#1300).
+    const repo = await $.session.repo().catch(() => null)
+    if (!inProject(file, repo?.root ?? (await $.session.cwd()))) return next(e)
     const before = e.tool === 'Write' ? await $.fs.read(file).catch(() => '') : e.old_string
     const after = e.tool === 'Write' ? e.content : e.new_string
     const ran = await next(e)
@@ -262,16 +277,11 @@ export const register: Register = (on, options) => {
     const created = isSource(file) ? newDefs.filter(n => !oldDefs.includes(n)) : []
     const removed = oldDefs.filter(n => !newDefs.includes(n))
     const reused = isSource(file) ? callsIn(addedLines(before, after), known, newDefs) : []
-    const dupes = created.flatMap(name => {
-      const like = duplicateOf(name, file, known)
-      return like ? [{ name, like }] : []
-    })
 
     await update($, band, b => ({
       ...b,
       reused: union(b.reused, reused),
       created: union(b.created, created),
-      dupes: [...b.dupes, ...dupes.filter(d => !b.dupes.some(x => x.name === d.name))],
       removed: union(b.removed, removed),
       tests: isCode(file) && b.tests.state !== 'none' ? { ...b.tests, state: 'stale' as const } : b.tests,
     }))
@@ -290,7 +300,11 @@ export const register: Register = (on, options) => {
     const usage = await $.session.usage()
     const turns = await $.session.turns()
     const level = await readLevel($)
-    const { removed, transcript } = await load($)
+    const { removed, transcript: saved } = await load($)
+    const session = await $.session.id()
+    // Here, not at start: the first turn writes the file, and a new id (/clear, /resume) or a move (/cd, a worktree) changes it.
+    const kept = base(saved) === `${session}.jsonl` && (await $.fs.exists(saved).catch(() => false))
+    const transcript = kept ? saved : await findTranscript($, session)
     const title = await readTitle($, transcript)
     const model = await readModel($, transcript)
 
@@ -318,6 +332,7 @@ export const register: Register = (on, options) => {
       return {
         ...b,
         level,
+        transcript,
         cost,
         // Cost and turns are the session's own totals, so a reload or a second band never starts them over.
         spent: usage.cost?.usd ?? b.spent + turn,
@@ -366,7 +381,9 @@ export const register: Register = (on, options) => {
     }
 
     const { Box, Text, Button } = $.ui.resolve(e)
-    const stack = (mine: NonNullable<typeof below>) => (below ? <Box flexDirection="column">{mine}{below}</Box> : mine)
+    // bodyColumns counts terminal cells; a graphical surface draws Buttons wider than their cells, so a row sized to it wraps there.
+    const width = e.surface === 'terminal' ? e.props.bodyColumns : undefined
+    const stack =(mine: NonNullable<typeof below>) => (below ? <Box flexDirection="column">{mine}{below}</Box> : mine)
 
     const testsText =
       b.tests.state === 'pass'
@@ -377,13 +394,11 @@ export const register: Register = (on, options) => {
             ? 'no test since change'
             : ''
     const testsColor = b.tests.state === 'pass' ? 'success' : b.tests.state === 'fail' ? 'error' : undefined
-    const dupe = b.dupes[0]
-    const hasDupes = dupe !== undefined
     const hasOpen = b.openCallers.length > 0
 
     if (!b.details) {
       return stack(
-        <Box flexDirection="row" alignItems="center" gap={2} width={e.props.bodyColumns}>
+        <Box flexDirection="row" alignItems="center" gap={2} width={width}>
           {/* A click opens the four levels: one click, one turn, no stops on levels nobody wanted. */}
           <Button key="level" plain onPress={toggle}>
             <Text color={b.level === 'off' ? 'inactive' : 'suggestion'}>●</Text> {b.level}
@@ -392,7 +407,6 @@ export const register: Register = (on, options) => {
           {last !== undefined && <Text dimColor>last ${last.toFixed(2)}</Text>}
           <Text dimColor>{elapsed(b.busyMs)}</Text>
           {reuse !== undefined && <Text>{reuse}% reuse</Text>}
-          {hasDupes && <Text color="warning">{b.dupes.length} duplicate?</Text>}
           {hasOpen && <Text color="warning">⚠ {b.openCallers.length} callers open</Text>}
           {testsText !== '' && (
             <Text color={testsColor} dimColor={b.tests.state === 'stale'}>
@@ -411,18 +425,10 @@ export const register: Register = (on, options) => {
     // Only columns that say something; callers and tests appear once there is something to report.
     const cols: Col[] = [
       { key: 'cost', label: 'cost', value: `$${b.spent.toFixed(2)}`, sub: last === undefined ? '' : `last $${last.toFixed(2)} · ⌀ $${avg.toFixed(2)}` },
-      { key: 'tokens', label: 'tokens', value: fmtTokens(totalTokens(b.tokens)), sub: `${fmtTokens(b.tokens.output)} out · ${b.turns} ${b.turns === 1 ? 'turn' : 'turns'}` },
+      { key: 'tokens', label: 'tokens', value: fmtTokens(totalTokens(b.tokens)), sub: `${b.turns} ${b.turns === 1 ? 'turn' : 'turns'}` },
       { key: 'time', label: 'agent time', value: elapsed(b.busyMs), sub: b.turns > 0 ? `⌀ ${elapsed(b.busyMs / b.turns)} / turn` : '' },
     ]
-    if (b.reused.length + b.created.length > 0) {
-      cols.push({
-        key: 'reuse',
-        label: 'reuse',
-        value: reuse === undefined ? `${b.created.length} new` : `${reuse}%`,
-        sub: dupe ? `${dupe.name} ≈ ${dupe.like}` : reuse === undefined ? `${b.reused.length} reused` : `${b.reused.length} used · ${b.created.length} new`,
-        tone: hasDupes ? 'warning' : undefined,
-      })
-    }
+    if (reuse !== undefined) cols.push({ key: 'reuse', label: 'reuse', value: `${reuse}%`, sub: '' })
     if (hasOpen) {
       cols.push({ key: 'callers', label: 'callers', value: `${b.openCallers.length} open`, sub: b.openCallers.slice(0, 2).join(', '), tone: 'warning' })
     }
@@ -437,13 +443,14 @@ export const register: Register = (on, options) => {
     }
 
     let metrics = (
-      <Box flexDirection="column" gap={1}>
+      <Box flexDirection="column">
         <Text dimColor wrap="truncate-end">
           {'─'.repeat(e.props.bodyColumns)}
         </Text>
         <Box flexDirection="row" gap={2}>
           {cols.map(c => (
-            <Box key={c.key} flexDirection="column" width={Math.max(10, Math.floor(e.props.bodyColumns / cols.length) - 2)}>
+            // Off the terminal the columns share the row; a width in cells would leave most of it empty and cut the text.
+            <Box key={c.key} flexDirection="column" {...(width === undefined ? { flexGrow: 1 } : { width: Math.max(10, Math.floor(width / cols.length) - 2) })}>
               <Text dimColor>{c.label}</Text>
               <Text bold color={c.tone}>
                 {c.value}
@@ -463,7 +470,8 @@ export const register: Register = (on, options) => {
     }
 
     return stack(
-      <Box flexDirection="column" gap={1} width={e.props.bodyColumns}>
+      // The desktop's SVG draws its own line at the top, which would touch the buttons without the gap.
+      <Box flexDirection="column" width={width} gap={e.surface === 'desktop' ? 1 : 0}>
         <Box flexDirection="row" alignItems="center" gap={1}>
           {LEVELS.map(level => (
             <Button
