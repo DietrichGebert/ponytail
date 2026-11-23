@@ -56,6 +56,23 @@ const home = path.join(temp, 'home');
 const pluginData = path.join(temp, 'plugin-data');
 fs.mkdirSync(home, { recursive: true });
 
+// A missing optional config is quiet, but a config path that cannot be read is
+// reported without interfering with the hook's JSON output.
+{
+  const xdg = path.join(temp, 'config-read');
+  const configFile = path.join(xdg, 'ponytail', 'config.json');
+  const env = { HOME: home, USERPROFILE: home, XDG_CONFIG_HOME: xdg, PONYTAIL_DEFAULT_MODE: '' };
+  const absent = run('ponytail-activate.js', env);
+  assert.equal(absent.status, 0, absent.stderr);
+  assert.equal(absent.stderr, '');
+
+  fs.mkdirSync(configFile, { recursive: true });
+  const unreadable = run('ponytail-activate.js', env);
+  assert.equal(unreadable.status, 0, unreadable.stderr);
+  assert.ok(unreadable.stderr.includes(configFile), 'unreadable config should identify the file');
+  assert.match(unreadable.stderr, /EISDIR|EACCES/);
+}
+
 // Off-mode SessionStart must clear stale state without emitting model-visible
 // output on any harness.
 for (const { label, env, statePath } of [

@@ -88,8 +88,8 @@ function getDefaultMode() {
   }
 
   // 2. Config file
+  const configPath = getConfigPath();
   try {
-    const configPath = getConfigPath();
     // Strip UTF-8 BOM (common on Windows-saved files) so JSON.parse doesn't choke
     const config = JSON.parse(fs.readFileSync(configPath, 'utf8').replace(/^\uFEFF/, ''));
     const configMode = normalizeMode(config.defaultMode);
@@ -97,7 +97,9 @@ function getDefaultMode() {
       return configMode;
     }
   } catch (e) {
-    // Config file doesn't exist or is invalid — fall through
+    if (e.code && e.code !== 'ENOENT') {
+      process.stderr.write(`Ponytail could not read ${configPath} (${e.code})\n`);
+    }
   }
 
   // 3. Default
