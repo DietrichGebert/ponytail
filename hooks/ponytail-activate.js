@@ -28,7 +28,7 @@ const {
 const claudeDir = getClaudeDir();
 const settingsPath = path.join(claudeDir, 'settings.json');
 
-function activate(mode) {
+function activate(mode, sessionCwd) {
   // "off" mode — skip activation entirely, don't write flag or emit rules
   if (mode === 'off') {
     clearMode();
@@ -64,7 +64,9 @@ function activate(mode) {
   // gets 3 s, well inside the 15 s hook limit, so a stalled map never costs the rules (#1079, #1157).
   // shortcut: a map slower than 3 s is still dropped; a cached per-repo map would lift that if it shows up.
   if (mode !== 'review' && process.env.PONYTAIL_MAP !== '0') try {
-    const map = execFileSync(process.execPath, [path.join(__dirname, 'ponytail-map.js')], {
+    const mapArgs = [path.join(__dirname, 'ponytail-map.js')];
+    if (typeof sessionCwd === 'string' && path.isAbsolute(sessionCwd)) mapArgs.push(sessionCwd);
+    const map = execFileSync(process.execPath, mapArgs, {
       encoding: 'utf8', timeout: 3000, maxBuffer: 64 * 1024, stdio: ['ignore', 'pipe', 'ignore'],
     }).trimEnd();
     if (map) output += '\n\n' + map;
@@ -183,14 +185,14 @@ let done = false;
 function finish() {
   if (done) return;
   done = true;
-  let source = '';
+  let payload;
   try {
     // Strip UTF-8 BOM some shells prepend when piping (breaks JSON.parse)
-    source = JSON.parse(input.replace(/^\uFEFF/, '')).source;
+    payload = JSON.parse(input.replace(/^\uFEFF/, ''));
   } catch (e) {
     // No payload, or an unparseable one: treat it as a fresh session
   }
-  activate(source === 'compact' ? (readMode() || 'off') : getDefaultMode());
+  activate(payload?.source === 'compact' ? (readMode() || 'off') : getDefaultMode(), payload?.cwd);
 }
 
 process.stdin.setEncoding('utf8');
