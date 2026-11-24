@@ -2,7 +2,7 @@
 
 Pick your agent below. Not listed? Most agents read [`AGENTS.md`](AGENTS.md): copy it into your project, or ask your agent to install [`skills/ponytail/SKILL.md`](skills/ponytail/SKILL.md) as a skill. Which files map to which agent: [Agent portability](docs/agent-portability.md).
 
-The Claude Code and Codex plugins (and the Cursor hooks) run two tiny Node.js lifecycle hooks, so `node` needs to be on your PATH (note for Nix/nvm users: it must be on the non-interactive shell's PATH). If it isn't, the skills still work, but every hook call shows a harmless `node: command not found` error; installing Node (or putting it on that PATH) makes it go away.
+The Claude Code, Codex and Antigravity plugins (and the Cursor hooks) run two tiny Node.js lifecycle hooks, so `node` needs to be on your PATH (note for Nix/nvm users: it must be on the non-interactive shell's PATH). If it isn't, the skills still work, but every hook call shows a harmless `node: command not found` error; installing Node (or putting it on that PATH) makes it go away.
 
 ## Claude Code
 
@@ -118,7 +118,7 @@ For full plugin-tier support (automatic mode activation + ruleset injection on e
 agy plugin install https://github.com/DietrichGebert/ponytail
 ```
 
-Installs the six skills, and Antigravity turns the `/ponytail` commands into skills as well, so you [call them as slash commands](https://www.antigravity.google/docs/skills#slash-command-conversion) such as `/ponytail-review`. No lifecycle hooks, so levels don't persist. For the always-on ruleset, copy [`AGENTS.md`](AGENTS.md) into your project; Antigravity [reads it as workspace rules](https://www.antigravity.google/docs/rules). Install verified with Antigravity CLI 1.3.3.
+Installs the six skills, converts the `/ponytail` commands into skills ([called as slash commands](https://www.antigravity.google/docs/skills#slash-command-conversion) such as `/ponytail-review`), and loads [`hooks.json`](hooks.json) for Antigravity CLI, IDE and desktop: `SessionStart` injects the ruleset for your default level (with the workspace codebase map) and `PreInvocation` tracks `/ponytail lite|full|ultra|off`, `/ponytail default <level>` and `"stop ponytail"`. Without the plugin, copy [`AGENTS.md`](AGENTS.md) into your project; Antigravity [reads it as workspace rules](https://www.antigravity.google/docs/rules). Hooks verified with Antigravity 2.34.0 and `agy` 1.5.12.
 
 ## Hermes Agent
 
@@ -227,6 +227,7 @@ Jules (Google) reads `AGENTS.md` from the repository root, which this repo ships
 |------|---------|
 | Claude Code | `/plugin remove ponytail` |
 | Codex | `codex plugin remove ponytail` |
+| Antigravity | `agy plugin uninstall ponytail` |
 | Devin CLI | `devin plugins remove ponytail` |
 | Grok Build | `grok plugin uninstall ponytail` |
 | Pi agent | `pi uninstall ponytail` |

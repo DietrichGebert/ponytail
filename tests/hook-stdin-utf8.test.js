@@ -9,7 +9,7 @@ function fixture(t) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ponytail-hook-utf8-'));
   t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
   const env = { ...process.env, CLAUDE_CONFIG_DIR: dir, PONYTAIL_DEFAULT_MODE: 'lite', PONYTAIL_MAP: '0' };
-  for (const key of ['CLAUDE_PROJECT_DIR', 'CLAUDE_PLUGIN_ROOT', 'PLUGIN_DATA', 'COPILOT_PLUGIN_DATA', 'QODER_SESSION_ID', 'CURSOR_VERSION', 'CURSOR_PROJECT_DIR', 'CODEBUDDY_PLUGIN_ROOT', 'CODEBUDDY_CONFIG_DIR', 'PONYTAIL_SUBAGENT_MATCHER']) delete env[key];
+  for (const key of ['CLAUDE_PROJECT_DIR', 'CLAUDE_PLUGIN_ROOT', 'PLUGIN_DATA', 'COPILOT_PLUGIN_DATA', 'QODER_SESSION_ID', 'CURSOR_VERSION', 'CURSOR_PROJECT_DIR', 'CODEBUDDY_PLUGIN_ROOT', 'CODEBUDDY_CONFIG_DIR', 'ANTIGRAVITY_CONVERSATION_ID', 'ANTIGRAVITY_APP_DATA_DIR', 'ANTIGRAVITY_SOURCE_METADATA', 'PONYTAIL_SUBAGENT_MATCHER']) delete env[key];
   return { dir, env, flag: path.join(dir, '.ponytail-active') };
 }
 
