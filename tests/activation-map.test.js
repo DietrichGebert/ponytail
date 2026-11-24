@@ -7,18 +7,22 @@ const { spawnSync } = require('node:child_process');
 
 const root = path.join(__dirname, '..');
 
-for (const scenario of ['blocked', 'failed', 'oversized', 'successful', 'disabled']) {
+for (const scenario of ['blocked', 'failed', 'oversized', 'successful', 'session worktree', 'disabled']) {
   test(`SessionStart preserves instructions when the optional map is ${scenario}`, (t) => {
     const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'ponytail activation '));
     t.after(() => fs.rmSync(temp, { recursive: true, force: true }));
     const hooks = path.join(temp, 'plugin', 'hooks');
     const workspace = path.join(temp, 'workspace');
+    const worktree = path.join(temp, 'session worktree');
     fs.cpSync(path.join(root, 'hooks'), hooks, { recursive: true });
     fs.cpSync(path.join(root, 'skills'), path.join(temp, 'plugin', 'skills'), { recursive: true });
     fs.mkdirSync(path.join(workspace, 'lib'), { recursive: true });
     fs.writeFileSync(path.join(workspace, 'lib', 'helper.js'), 'export function usefulHelper() {}');
 
-    if (scenario !== 'successful') {
+    if (scenario === 'session worktree') {
+      fs.mkdirSync(path.join(worktree, 'src'), { recursive: true });
+      fs.writeFileSync(path.join(worktree, 'src', 'task.js'), 'export function worktreeTask() {}');
+    } else if (scenario !== 'successful') {
       const body = {
         blocked: 'Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 10000); return "";',
         failed: 'throw new Error("map unavailable");',
@@ -32,7 +36,7 @@ for (const scenario of ['blocked', 'failed', 'oversized', 'successful', 'disable
 
     const result = spawnSync(process.execPath, [path.join(hooks, 'ponytail-activate.js')], {
       cwd: workspace,
-      input: '',
+      input: scenario === 'session worktree' ? JSON.stringify({ source: 'startup', cwd: worktree }) : '',
       encoding: 'utf8',
       timeout: 5000,
       env: {
@@ -55,6 +59,9 @@ for (const scenario of ['blocked', 'failed', 'oversized', 'successful', 'disable
     assert.match(output.additionalContext, /Never cut:/);
     if (scenario === 'successful') {
       assert.match(output.additionalContext, /Codebase map[^]*lib\/: usefulHelper/);
+    } else if (scenario === 'session worktree') {
+      assert.match(output.additionalContext, /Codebase map[^]*src\/: worktreeTask/);
+      assert.doesNotMatch(output.additionalContext, /usefulHelper/);
     } else {
       assert.doesNotMatch(output.additionalContext, /Codebase map|unexpected map|x{1000}/);
     }
