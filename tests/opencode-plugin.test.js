@@ -308,6 +308,17 @@ test('parseCommandFile returns null when there is no frontmatter', () => {
   assert.equal(parseCommandFile(bare), null);
 });
 
+test('parseCommandFile unquotes a quoted description (ponytail-debt.md needs quotes for its inner ": ")', () => {
+  const file = path.join(tmp, 'cmd-quoted.md');
+  fs.writeFileSync(file, '---\ndescription: "Harvest shortcut: comments"\n---\n\nbody\n');
+  assert.equal(parseCommandFile(file).description, 'Harvest shortcut: comments');
+  fs.writeFileSync(file, "---\ndescription: 'single'\n---\n\nbody\n");
+  assert.equal(parseCommandFile(file).description, 'single');
+  // Ambiguous quoting stays as written.
+  fs.writeFileSync(file, '---\ndescription: "a" and "b"\n---\n\nbody\n');
+  assert.equal(parseCommandFile(file).description, '"a" and "b"');
+});
+
 test('parseSkillFile folds >, keeps | lines, and stops at the next key', () => {
   const file = path.join(tmp, 'skill.md');
   fs.writeFileSync(

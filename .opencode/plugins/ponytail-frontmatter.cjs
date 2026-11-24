@@ -16,7 +16,9 @@ function parseCommandFile(filePath) {
   // Tolerate CRLF: a Windows checkout (autocrlf) delivers \r\n, npm ships \n.
   const match = content.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n([\s\S]*)$/);
   if (!match) return null;
-  const description = match[1].match(/description:\s*(.+)/)?.[1]?.trim();
+  // shortcut: strips one pair of matching outer quotes only; a description that needs escapes wants a real YAML parser.
+  const description = match[1].match(/description:\s*(.+)/)?.[1]?.trim()
+    .replace(/^"([^"]*)"$|^'([^']*)'$/, '$1$2');
   return { description, template: match[2].trim() };
 }
 
