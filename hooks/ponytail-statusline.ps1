@@ -7,7 +7,7 @@ if (-not (Test-Path $Flag)) {
 
 $Mode = ""
 try {
-    $Mode = (Get-Content $Flag -ErrorAction Stop | Select-Object -First 1).Trim()
+    $Mode = "$(Get-Content $Flag -ErrorAction Stop | Select-Object -First 1)".Trim()
 } catch {
     exit 0
 }
