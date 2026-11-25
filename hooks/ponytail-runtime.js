@@ -2,7 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const { createHash } = require('crypto');
-const { getClaudeDir, getQoderDir } = require('./ponytail-config');
+const { getClaudeDir, getQoderDir, normalizePersistedMode } = require('./ponytail-config');
 
 const STATE_FILE = '.ponytail-active';
 
@@ -72,9 +72,10 @@ function clearMode() {
 }
 
 // Live mode written by activate/mode-tracker. Absent flag = ponytail off.
+// Anything but a known mode counts as absent: callers echo it into the model's context.
 function readMode() {
   try {
-    return fs.readFileSync(projectStatePath || statePath, 'utf8').trim() || null;
+    return normalizePersistedMode(fs.readFileSync(projectStatePath || statePath, 'utf8'));
   } catch (e) {
     return null;
   }
