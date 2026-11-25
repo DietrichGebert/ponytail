@@ -80,11 +80,11 @@ assert.equal(sessionStats(records.filter(r => !r.origin)), null);
 // CSV: the band's format, an older header replaced, a recorded session never imported twice.
 const row = csvRow('abcd1234-0000', 'shop', s);
 assert.ok(row.startsWith(`abcd1234-${s.startedMs},`) && row.endsWith(',import,claude-opus-5-5'));
-const old = 'key,started,project,name\nabcd1234-1,2026-10-01 10:00,shop,Live\n';
+const old = `key,started,project,name\n${row}\n`;
 const merged = mergeRows(old, [row, csvRow('ffff0000-0000', 'shop', s)]);
 assert.equal(merged.added, 1);
 assert.equal(merged.text.split('\n')[0], CSV_HEADER);
-assert.equal(mergeRows('', [row], new Set(['abcd1234-'])).added, 0, 'a session in another project file is not imported again');
+assert.equal(mergeRows('', [row], new Set([row.slice(0, row.indexOf(','))])).added, 0, 'a session in another project file is not imported again');
 
 // End to end: transcripts under CLAUDE_CONFIG_DIR, the ledger under XDG_CONFIG_HOME.
 const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'ponytail-import-'));
@@ -102,7 +102,9 @@ process.env.CLAUDE_CONFIG_DIR = path.join(temp, 'claude');
 process.env.XDG_CONFIG_HOME = path.join(temp, 'config');
 try {
   assert.deepEqual(run(), { sessions: 1, added: 1 }, 'the typed session is imported, the automated one is not');
-  const csv = fs.readFileSync(path.join(temp, 'config', 'ponytail', 'band', 'shop.csv'), 'utf8');
+  const bandDir = path.join(temp, 'config', 'ponytail', 'band');
+  const csvName = fs.readdirSync(bandDir).find(f => f.startsWith('shop-') && f.endsWith('.csv'));
+  const csv = fs.readFileSync(path.join(bandDir, csvName), 'utf8');
   assert.equal(csv.split('\n')[0], CSV_HEADER, 'a desktop worktree counts for its repo');
   assert.ok(csv.includes(',shop,Fix the cart totals,'));
   const row = csv.split('\n')[1].split(',');
