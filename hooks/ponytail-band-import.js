@@ -8,6 +8,7 @@ const os = require('os');
 const path = require('path');
 const { spawnSync } = require('child_process');
 const { StringDecoder } = require('string_decoder');
+const { createHash } = require('crypto');
 const { getClaudeDir } = require('./ponytail-config');
 
 // The band's columns (CSV_HEADER in hooks/band/metrics.ts; a test keeps the two equal).
@@ -187,7 +188,7 @@ function csvRow(sessionId, project, s) {
 
 // New rows go in after the ledger's own: a newer header replaces an older one, and a session
 // already recorded anywhere in the ledger (same session id prefix) is never imported twice.
-const sessionOf = row => row.slice(0, 9);
+const sessionOf = row => row.slice(0, row.indexOf(','));
 function mergeRows(existing, rows, have = new Set()) {
   const kept = existing.split('\n').filter(l => l !== '' && !l.startsWith('key,'));
   const added = rows.filter(r => !have.has(sessionOf(r)) && !kept.some(l => sessionOf(l) === sessionOf(r)));
@@ -216,6 +217,7 @@ function ledgerDir() {
 function run() {
   const root = path.join(getClaudeDir(), 'projects');
   const byProject = new Map();
+  const projectCwds = new Map();
   const roots = new Map();
   let dirs = [];
   try { dirs = fs.readdirSync(root); } catch (e) { return { sessions: 0, added: 0 }; }
@@ -228,9 +230,9 @@ function run() {
       // The working dir sits in the first records; scratch and temp dirs are never real projects.
       let head = '';
       try { const fd = fs.openSync(p, 'r'); const b = Buffer.alloc(65536); head = b.toString('utf8', 0, fs.readSync(fd, b, 0, b.length, 0)); fs.closeSync(fd); } catch (e) { continue; }
-      const m = /"cwd":"((?:[^"\\]|\\.)*)"/.exec(head);
-      if (!m) continue;
-      const cwd = JSON.parse(`"${m[1]}"`);
+      let cwd;
+      try { const nl = head.indexOf('\n'); cwd = JSON.parse(nl >= 0 ? head.slice(0, nl) : head).cwd; } catch (e) {}
+      if (!cwd || typeof cwd !== 'string') continue;
       if (TEMP.some(t => cwd.startsWith(t)) || cwd === '/tmp') continue;
       // A session's first prompt is typed by a person; automated runs (benchmarks, `claude -p`) never are.
       if (head.includes('"type":"user"') && !/"turnOrigin":"human"|"origin":\{"kind":"human"/.test(head)) continue;
@@ -248,7 +250,7 @@ function run() {
       if (!stats || !Number.isFinite(stats.startedMs)) continue;
       sessions++;
       const project = projectOf(cwd, roots);
-      if (!byProject.has(project)) byProject.set(project, []);
+      if (!byProject.has(project)) { byProject.set(project, []); projectCwds.set(project, cwd); }
       byProject.get(project).push(csvRow(id, project, stats));
     }
   }
@@ -260,7 +262,8 @@ function run() {
   }
   let added = 0;
   for (const [project, rows] of byProject) {
-    const file = path.join(dir, `${project.replace(/[^\w.-]/g, '_')}.csv`);
+    const hash = createHash('sha256').update(projectCwds.get(project)).digest('hex').slice(0, 6);
+    const file = path.join(dir, `${project.replace(/[^\w.-]/g, '_')}-${hash}.csv`);
     let existing = '';
     try { existing = fs.readFileSync(file, 'utf8'); } catch (e) {}
     const merged = mergeRows(existing, rows, have);
