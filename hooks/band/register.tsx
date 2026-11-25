@@ -153,16 +153,21 @@ const ledgerFile = (dir: string, project: string) => `${dir}/${project.replace(/
 
 // After every turn: the task's row in a CSV per project, and the same row to a webhook if one is set.
 async function record($: EngineInterface, b: Band, options: Options) {
+  // A session that used no tokens and cost nothing did no work: a scripted `claude -p` health probe
+  // retried every minute wrote tens of thousands of such rows, until the ledger passed $.fs's 4 MiB.
+  if (b.spent === 0 && totalTokens(b.tokens) === 0) return
   const startedAt = (await $.session.usage()).startedAt
   const row = snapshot(b, startedAt)
   if (options.ledger !== false && b.project !== '') {
     const dir = await ledgerDir($)
     const file = ledgerFile(dir, b.project)
-    const existing = await $.fs.read(file).catch(() => '')
+    // Only a missing ledger starts empty: one that cannot be read (over 4 MiB) must not be overwritten with this row alone.
+    const existing = (await $.fs.exists(file).catch(() => false)) ? await $.fs.read(file) : ''
     // $.fs.write creates the directory: no mkdir, which Windows does not have.
     await $.fs.write(file, upsertCsv(existing, row))
     // The board is a plain file a refresh rereads, so it is rebuilt with every row.
-    await writeBoard($, dir)
+    // Its own status: a board that cannot be written does not mean this project's row was lost.
+    await writeBoard($, dir).catch(() => $.ui.status('ponytail band: could not write the board'))
   }
   const url = typeof options.webhookUrl === 'string' ? options.webhookUrl.trim() : ''
   if (url !== '') {

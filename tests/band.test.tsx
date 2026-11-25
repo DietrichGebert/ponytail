@@ -1,4 +1,6 @@
+import type { On } from 'claude-code'
 import { describe, expect, mock, test } from 'claude-code/testing'
+import type { Engine } from 'claude-code/testing'
 
 import { boardHtml, parseCsv, tasksFrom } from '../hooks/band/board'
 import type { Band } from '../hooks/band/types'
@@ -367,6 +369,58 @@ test('the ledger is written on Windows, where there is no mkdir', async ($, on) 
   expect(written.length).toBe(2)
   expect(written[0]?.endsWith('C:/Users/u/.config/ponytail/band/shop.csv')).toBe(true)
   expect(written[1]?.endsWith('C:/Users/u/.config/ponytail/band/board.html')).toBe(true)
+})
+
+// One turn of a session in /repo/shop with the given cost and ledger files; returns the writes and status lines.
+async function ledgerTurn(engine: Engine, o: On, opts: { usd: number; files?: Record<string, string>; unreadable?: string[]; boardFails?: boolean }) {
+  mock.clock(o)
+  mock.store(o)
+  const files = opts.files ?? {}
+  o('env.get', ($, e) => ({ value: e.name === 'XDG_CONFIG_HOME' ? '/cfg' : undefined }))
+  o('session.repo', () => ({ value: { root: '/repo/shop' } }) as never)
+  o('session.id', () => ({ value: 's1' }))
+  o('session.turns', () => ({ value: 1 }))
+  o('session.usage', () => ({ value: { startedAt: 0, cost: { usd: opts.usd } } }) as never)
+  o('process.run', () => ({ value: { exitCode: 1, stdout: '', stderr: '' } }) as never)
+  o('fs.exists', ($, e) => ({ value: e.path in files }))
+  o('fs.read', ($, e) => (opts.unreadable?.includes(e.path) || !(e.path in files) ? { deny: 'over 4 MiB' } : { value: files[e.path] }) as never)
+  o('fs.list', () => ({ value: [] }))
+  const written: string[] = []
+  o('fs.write', ($, e) => {
+    if (opts.boardFails && e.path.endsWith('board.html')) return { deny: 'over 4 MiB' } as never
+    written.push(e.path)
+    return { value: undefined }
+  })
+  const status: unknown[] = []
+  o('ui.status', ($, e) => {
+    status.push(e)
+    return { value: undefined }
+  })
+  o('session.start', ($, e) => ({ cwd: e.cwd }))
+  o('turn.complete', () => ({ text: '' }))
+  await engine.session.start({ cwd: '/repo/shop', surface: null } as never)
+  await engine.turn.complete({ answer: '', durationMs: 1000 } as never)
+  return { written, status: JSON.stringify(status) }
+}
+
+test('a session that used no tokens and cost nothing writes no ledger row', async ($, on) => {
+  const { written, status } = await ledgerTurn($, on, { usd: 0 })
+  expect(written.length).toBe(0)
+  expect(status).not.toContain('could not write')
+})
+
+test('a ledger that exists but cannot be read is not overwritten with one row', async ($, on) => {
+  const file = '/cfg/ponytail/band/shop.csv'
+  const { written, status } = await ledgerTurn($, on, { usd: 0.5, files: { [file]: 'history' }, unreadable: [file] })
+  expect(written).not.toContain(file)
+  expect(status).toContain('could not write the task ledger')
+})
+
+test('a board that cannot be written keeps the row and says the board failed', async ($, on) => {
+  const { written, status } = await ledgerTurn($, on, { usd: 0.5, boardFails: true })
+  expect(written).toContain('/cfg/ponytail/band/shop.csv')
+  expect(status).toContain('could not write the board')
+  expect(status).not.toContain('could not write the task ledger')
 })
 
 test('the transcript is found with no classic hook, in its named folder or any other', async ($, on) => {
