@@ -108,10 +108,10 @@ export function testCounts(output: string): { passed?: number; failed?: number }
     passed: num(/(\d+) (?:passed|passing)\b/, src) ?? num(/(?:ℹ |# )pass (\d+)/, src),
     failed: num(/(\d+) (?:failed|failing)\b/, src) ?? num(/(?:ℹ |# )fail (\d+)/, src),
   })
-  if (tests) {
-    const scoped = counts(tests)
-    if (scoped.passed !== undefined || scoped.failed !== undefined) return scoped
-  }
+  // A recognized Tests summary is authoritative even when it reports only
+  // skipped/todo: falling back to the whole output would read the Test Suites
+  // line above it and report suite counts as test counts.
+  if (tests) return counts(tests)
   return counts(text)
 }
 
