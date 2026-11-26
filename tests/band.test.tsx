@@ -234,6 +234,8 @@ describe('metrics', () => {
     expect(testCounts('\x1b[2m Test Files \x1b[22m \x1b[1m\x1b[32m2 passed\x1b[39m\x1b[22m\x1b[90m (2)\x1b[39m\n\x1b[2m      Tests \x1b[22m \x1b[1m\x1b[32m10 passed\x1b[39m\x1b[22m\x1b[90m (10)\x1b[39m\n')).toEqual({ passed: 10, failed: undefined })
     // skipped tests can lead the vitest segment list.
     expect(testCounts(' Test Files  2 passed (2)\n      Tests  2 skipped | 10 passed (12)\n')).toEqual({ passed: 10, failed: undefined })
+    // a skipped/todo-only summary must not fall back to the suite line above it.
+    expect(testCounts('Test Suites: 1 failed, 1 total\nTests: 3 skipped, 3 total\n')).toEqual({ passed: undefined, failed: undefined })
     // log captures can leave trailing whitespace on the summary line.
     expect(testCounts('Test Suites: 2 passed, 2 total\nTests:       10 passed, 10 total \n')).toEqual({ passed: 10, failed: undefined })
     expect(testCounts(' Test Files  2 passed (2)\n      Tests  10 passed (10)\t\n')).toEqual({ passed: 10, failed: undefined })
