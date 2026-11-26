@@ -6,9 +6,10 @@ Game tự chơi trên ESP32. AI điều khiển máy bay, tự bắn và học b
 
 1. Tạo project ESP32 mới trong Wokwi.
 2. Sao chép `wokwi/diagram.json` vào file `diagram.json`.
-3. Sao chép `wokwi/sketch.ino` vào `sketch.ino` và `wokwi/libraries.txt` vào `libraries.txt`.
-4. Tạo file `secrets.h` trong Wokwi bằng nội dung `wokwi/secrets.example.h`; tạo Gemini API key trong [Google AI Studio](https://aistudio.google.com/apikey) và thay giá trị `GEMINI_API_KEY`.
-5. Chạy mô phỏng. Không cần joystick.
+3. Sao chép `wokwi/sketch.ino` vào `sketch.ino`. Chứng chỉ Google đã nằm trong sketch, không cần thêm file header nào khác.
+4. Thêm các thư viện trong `wokwi/libraries.txt` qua mục **Libraries** của Wokwi (hoặc sao chép danh sách đó vào `libraries.txt`).
+5. Tạo file `secrets.h` trong Wokwi bằng nội dung `wokwi/secrets.example.h`; tạo Gemini API key trong [Google AI Studio](https://aistudio.google.com/apikey) và thay giá trị `GEMINI_API_KEY`.
+6. Chạy mô phỏng. Không cần joystick.
 
 | ILI9341 / nút | ESP32 |
 |---|---:|
