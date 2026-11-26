@@ -53,6 +53,9 @@ const INVARIANTS = [
   'prevents data loss',
   'security',
   'accessibility',
+  'the full scope of the request',
+  'finished work ships now',
+  'size and complexity of the code only',  // "lazy" scope: never tests, timescales or the ask (#1563)
 ];
 
 const skill = read('skills/ponytail/SKILL.md');

@@ -143,9 +143,9 @@ In Claude Code, ponytail now shows a band above the prompt: what the current tas
 
 The ladder runs *after* it understands the problem, not instead of it: it reads the code the change touches and traces the real flow before picking a rung. Lazy about the solution, never about reading.
 
-Lazy, not negligent: trust-boundary validation, data-loss handling, security, and accessibility are never on the chopping block.
+Lazy, not negligent: lazy is about the size of the code only. Trust-boundary validation, data-loss handling, security, accessibility, the full scope of what you asked for, and the pace of delivery are never on the chopping block.
 
-Logic with a branch, a loop, a parser, money or security leaves one small test behind. Every reply ends with what was skipped or not checked and any risk you should know.
+Logic with a branch, a loop, a parser, money or security leaves one small test behind. Every reply ends with the optional extras left out, anything deferred or not checked (with a reason), and any risk you should know.
 
 ## The prompt
 
