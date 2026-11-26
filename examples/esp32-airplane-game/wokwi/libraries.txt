@@ -1,0 +1,3 @@
+Adafruit GFX Library
+Adafruit ILI9341
+ArduinoJson

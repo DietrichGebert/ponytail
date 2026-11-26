@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "author": "Ponytail",
+  "editor": "wokwi",
+  "parts": [
+    { "type": "board-esp32-devkit-c-v4", "id": "esp", "top": 0, "left": 0, "attrs": {} },
+    { "type": "wokwi-ili9341", "id": "lcd", "top": 15, "left": 320, "attrs": {} },
+    { "type": "wokwi-pushbutton", "id": "btn", "top": 195, "left": 55, "attrs": { "color": "green", "label": "BOOT" } }
+  ],
+  "connections": [
+    [ "esp:18", "lcd:SCK", "green", [] ],
+    [ "esp:23", "lcd:MOSI", "blue", [] ],
+    [ "esp:19", "lcd:MISO", "purple", [] ],
+    [ "esp:5", "lcd:CS", "yellow", [] ],
+    [ "esp:2", "lcd:DC", "orange", [] ],
+    [ "esp:3V3", "lcd:VCC", "red", [] ],
+    [ "esp:GND.1", "lcd:GND", "black", [] ],
+    [ "esp:0", "btn:1.l", "green", [] ],
+    [ "esp:GND.2", "btn:2.l", "black", [] ]
+  ],
+  "dependencies": {}
+}
