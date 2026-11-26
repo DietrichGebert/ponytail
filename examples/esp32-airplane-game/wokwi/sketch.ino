@@ -1,6 +1,12 @@
 #include <SPI.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_ILI9341.h>
+#include <ArduinoJson.h>
+#include <HTTPClient.h>
+#include <WiFi.h>
+#include <WiFiClientSecure.h>
+#include <string.h>
+#include "google_root_ca.h"
 
 constexpr int TFT_CS = 5, TFT_DC = 2, BUTTON_PIN = 0;
 constexpr int SCREEN_W = 320, SCREEN_H = 240, PLAYER_Y = 205;
@@ -9,8 +15,17 @@ constexpr int PLAYER_BINS = 6, DX_BINS = 3, DISTANCE_BINS = 3;
 constexpr int ACTION_COUNT = 3;
 constexpr int STATE_COUNT = PLAYER_BINS * DX_BINS * DISTANCE_BINS;
 constexpr uint32_t FRAME_MS = 40, SHOT_MS = 220;
+constexpr uint32_t GEMINI_INTERVAL_MS = 20000, GEMINI_ACTION_MS = 25000;
 constexpr float LEARNING_RATE = 0.2f, DISCOUNT_RATE = 0.85f;
 static_assert(STATE_COUNT == 54, "Q table state count must match the observation bins");
+
+#if __has_include("secrets.h")
+#include "secrets.h"
+#else
+#define GEMINI_API_KEY ""
+#define WIFI_SSID "Wokwi-GUEST"
+#define WIFI_PASSWORD ""
+#endif
 
 Adafruit_ILI9341 tft(TFT_CS, TFT_DC);
 enum GameState { OFF, PLAYING, GAME_OVER };
@@ -22,12 +37,18 @@ Enemy enemies[ENEMY_COUNT];
 Bullet bullets[BULLET_COUNT];
 Star stars[STAR_COUNT];
 float qValues[STATE_COUNT][ACTION_COUNT] = {};
-GameState gameState = OFF;
+volatile GameState gameState = OFF;
 int playerX = SCREEN_W / 2, drawnPlayerX = SCREEN_W / 2;
-int score = 3, shownScore = -1;
+volatile int score = 3;
+int shownScore = -1;
 uint32_t learningSteps = 0, shownLearning = UINT32_MAX;
 uint32_t lastFrame = 0, lastShot = 0, lastDebounce = 0;
 bool lastReading = HIGH, buttonState = HIGH;
+volatile int geminiAction = -1;
+volatile uint32_t geminiActionAt = 0;
+volatile int aiPlayerX = SCREEN_W / 2, aiTargetX = SCREEN_W / 2, aiTargetY = 0;
+volatile int geminiStatus = 0;
+int shownGeminiStatus = -1;
 
 void spawnEnemy(Enemy &enemy) {
   enemy.x = random(18, SCREEN_W - 18);
@@ -100,6 +121,15 @@ void drawIdle() {
   tft.setCursor(25, 155); tft.print("Nhan nut BOOT de choi");
 }
 
+const char *geminiStatusLabel() {
+  switch (geminiStatus) {
+    case 1: return "NET";
+    case 2: return "ON";
+    case 3: return "ERR";
+    default: return "OFF";
+  }
+}
+
 void drawHud(bool force = false) {
   if (force || score != shownScore) {
     tft.fillRect(0, 0, 105, 28, ILI9341_BLACK);
@@ -113,6 +143,12 @@ void drawHud(bool force = false) {
     tft.setTextSize(2); tft.setTextColor(ILI9341_CYAN); tft.setCursor(222, 7);
     tft.print("HOC "); tft.print(learnDisplay);
     shownLearning = learnDisplay;
+  }
+  if (force || geminiStatus != shownGeminiStatus) {
+    tft.fillRect(112, 0, 94, 28, ILI9341_BLACK);
+    tft.setTextSize(2); tft.setTextColor(geminiStatus == 2 ? ILI9341_GREEN : ILI9341_YELLOW);
+    tft.setCursor(116, 7); tft.print("G:"); tft.print(geminiStatusLabel());
+    shownGeminiStatus = geminiStatus;
   }
 }
 
@@ -198,9 +234,18 @@ void handleButton(uint32_t now) {
 
 void updateGame(uint32_t now) {
   const int state = observeState();
-  const int action = chooseAction(state);
+  int action = chooseAction(state);
+  if (geminiAction >= 0 && now - static_cast<uint32_t>(geminiActionAt) < GEMINI_ACTION_MS)
+    action = geminiAction;
   if (action == 1) playerX = max(12, playerX - 7);
   if (action == 2) playerX = min(SCREEN_W - 12, playerX + 7);
+  aiPlayerX = playerX;
+  const Enemy *target = &enemies[0];
+  for (const Enemy &enemy : enemies) {
+    if (enemy.y > target->y) target = &enemy;
+  }
+  aiTargetX = target->x;
+  aiTargetY = target->y;
   int reward = 0;
 
   if (now - lastShot >= SHOT_MS) {
@@ -241,13 +286,134 @@ void updateGame(uint32_t now) {
   learn(state, action, reward, observeState(), gameState == GAME_OVER);
 }
 
+bool askGemini(int player, int target, int targetY, int currentScore, int &action) {
+  WiFiClientSecure client;
+  client.setCACert(GOOGLE_ROOT_CA);
+  HTTPClient https;
+  https.setTimeout(5000);
+  if (!https.begin(client, "https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-lite-latest:generateContent")) {
+    Serial.println("Gemini: HTTPS connection setup failed.");
+    return false;
+  }
+  https.addHeader("Content-Type", "application/json");
+  https.addHeader("x-goog-api-key", GEMINI_API_KEY);
+
+  JsonDocument request;
+  request["contents"][0]["parts"][0]["text"] =
+      "You control a tiny airplane game. Choose the next horizontal action to align with the target and survive. "
+      "Return only JSON {\"action\":\"LEFT\"}, {\"action\":\"RIGHT\"}, or {\"action\":\"STAY\"}. "
+      "Current plane x=" + String(player) + ", target x=" + String(target) +
+      ", target y=" + String(targetY) + ", score=" + String(currentScore) +
+      ". Screen x range is 12 to 308. A target closer to y=240 is urgent.";
+  request["generationConfig"]["responseMimeType"] = "application/json";
+  request["generationConfig"]["responseSchema"]["type"] = "OBJECT";
+  request["generationConfig"]["responseSchema"]["properties"]["action"]["type"] = "STRING";
+  JsonArray allowed = request["generationConfig"]["responseSchema"]["properties"]["action"]["enum"].to<JsonArray>();
+  allowed.add("LEFT");
+  allowed.add("RIGHT");
+  allowed.add("STAY");
+  request["generationConfig"]["responseSchema"]["required"][0] = "action";
+  request["generationConfig"]["maxOutputTokens"] = 20;
+
+  String body;
+  serializeJson(request, body);
+  const int status = https.POST(body);
+  if (status != HTTP_CODE_OK) {
+    Serial.printf("Gemini HTTP error: %d\n", status);
+    https.end();
+    return false;
+  }
+
+  JsonDocument response;
+  const String responseBody = https.getString();
+  https.end();
+  const DeserializationError error = deserializeJson(response, responseBody);
+  if (error) {
+    Serial.printf("Gemini response JSON error: %s\n", error.c_str());
+    return false;
+  }
+
+  const char *answer = response["candidates"][0]["content"]["parts"][0]["text"];
+  if (!answer) {
+    Serial.println("Gemini response did not contain candidate text.");
+    return false;
+  }
+  JsonDocument decision;
+  if (deserializeJson(decision, answer)) {
+    Serial.println("Gemini action was not valid JSON.");
+    return false;
+  }
+  const char *choice = decision["action"];
+  if (!choice) {
+    Serial.println("Gemini response did not contain an action.");
+    return false;
+  }
+  if (strcmp(choice, "LEFT") == 0) action = 1;
+  else if (strcmp(choice, "STAY") == 0) action = 0;
+  else if (strcmp(choice, "RIGHT") == 0) action = 2;
+  else {
+    Serial.println("Gemini returned an unsupported action.");
+    return false;
+  }
+  return true;
+}
+
+void geminiTask(void *) {
+  if (!GEMINI_API_KEY[0] || strcmp(GEMINI_API_KEY, "paste-your-gemini-api-key-here") == 0) {
+    geminiStatus = 0;
+    Serial.println("Gemini disabled: add a valid key to secrets.h.");
+    vTaskDelete(nullptr);
+    return;
+  }
+
+  geminiStatus = 1;
+  WiFi.mode(WIFI_STA);
+  uint32_t lastRequest = millis() - GEMINI_INTERVAL_MS;
+  for (;;) {
+    if (WiFi.status() != WL_CONNECTED) {
+      geminiStatus = 1;
+      WiFi.begin(WIFI_SSID, WIFI_PASSWORD, 6);
+      for (int attempt = 0; attempt < 40 && WiFi.status() != WL_CONNECTED; ++attempt)
+        vTaskDelay(pdMS_TO_TICKS(250));
+      if (WiFi.status() != WL_CONNECTED) {
+        geminiStatus = 3;
+        Serial.println("Gemini unavailable: Wi-Fi connection failed; retrying.");
+        vTaskDelay(pdMS_TO_TICKS(10000));
+        continue;
+      }
+      geminiStatus = 2;
+      Serial.println("Wi-Fi connected; Gemini pilot enabled.");
+    }
+
+    if (gameState != PLAYING || millis() - lastRequest < GEMINI_INTERVAL_MS) {
+      vTaskDelay(pdMS_TO_TICKS(250));
+      continue;
+    }
+
+    lastRequest = millis();
+    int action = -1;
+    if (askGemini(aiPlayerX, aiTargetX, aiTargetY, score, action)) {
+      geminiAction = action;
+      geminiActionAt = millis();
+      geminiStatus = 2;
+      Serial.printf("Gemini action: %s\n", action == 1 ? "LEFT" : action == 2 ? "RIGHT" : "STAY");
+    } else {
+      geminiStatus = 3;
+      Serial.println("Gemini request failed; local Q-learning pilot remains active.");
+    }
+    vTaskDelay(pdMS_TO_TICKS(250));
+  }
+}
+
 void setup() {
+  Serial.begin(115200);
   pinMode(BUTTON_PIN, INPUT_PULLUP);
   randomSeed(micros());
   SPI.begin(18, 19, 23, TFT_CS);
   tft.begin();
   tft.setRotation(1);
   drawIdle();
+  xTaskCreatePinnedToCore(geminiTask, "GeminiPilot", 8192, nullptr, 1, nullptr, 0);
 }
 
 void loop() {
@@ -255,9 +421,11 @@ void loop() {
   handleButton(now);
   if (gameState != PLAYING || now - lastFrame < FRAME_MS) return;
   lastFrame = now;
+  tft.startWrite();
   eraseOldSprites();
   updateGame(now);
   drawHud();
   drawSprites();
   if (gameState == GAME_OVER) drawGameOver();
+  tft.endWrite();
 }

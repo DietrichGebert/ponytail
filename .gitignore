@@ -2,6 +2,7 @@
 .env
 .env.*
 !.env.example
+secrets.h
 
 # Dependencies
 node_modules/

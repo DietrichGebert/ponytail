@@ -333,6 +333,7 @@ void loop() {
 
   if (gameState == GameState::PLAYING && now - lastFrame >= FRAME_MS) {
     lastFrame = now;
+    tft.startWrite();
     eraseOldSprites();
     updateGame(now);
     drawHud();
@@ -341,6 +342,7 @@ void loop() {
       drawGameOver();
       screenNeedsDraw = false;
     }
+    tft.endWrite();
   } else if (gameState == GameState::OFF && screenNeedsDraw) {
     drawIdleScreen();
     screenNeedsDraw = false;

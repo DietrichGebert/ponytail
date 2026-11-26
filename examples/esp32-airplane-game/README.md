@@ -6,8 +6,9 @@ Game tự chơi trên ESP32. AI điều khiển máy bay, tự bắn và học b
 
 1. Tạo project ESP32 mới trong Wokwi.
 2. Sao chép `wokwi/diagram.json` vào file `diagram.json`.
-3. Sao chép `wokwi/sketch.ino` vào file `sketch.ino` và `wokwi/libraries.txt` vào file `libraries.txt`.
-4. Chạy mô phỏng. Không cần joystick.
+3. Sao chép `wokwi/sketch.ino` vào `sketch.ino` và `wokwi/libraries.txt` vào `libraries.txt`.
+4. Tạo file `secrets.h` trong Wokwi bằng nội dung `wokwi/secrets.example.h`; tạo Gemini API key trong [Google AI Studio](https://aistudio.google.com/apikey) và thay giá trị `GEMINI_API_KEY`.
+5. Chạy mô phỏng. Không cần joystick.
 
 | ILI9341 / nút | ESP32 |
 |---|---:|
@@ -19,7 +20,11 @@ Game tự chơi trên ESP32. AI điều khiển máy bay, tự bắn và học b
 | VCC / GND | 3V3 / GND |
 | Nút BOOT | GPIO 0 nối GND |
 
-Nhấn nút để bắt đầu; nhấn trong game để dừng; nhấn lại để mở ván mới. Màn hình chỉ cập nhật các vùng vật thể di chuyển, không quét lại toàn bộ màn hình mỗi khung hình.
+Nhấn nút để bắt đầu; nhấn trong game để dừng; nhấn lại để mở ván mới. ESP32 gửi trạng thái game tới `gemini-flash-lite-latest` mỗi 20 giây trên một FreeRTOS task riêng. Trên màn hình, `G:ON` là Gemini đã kết nối, `G:NET` đang kết nối, `G:ERR` là lần gọi gần nhất lỗi, `G:OFF` là chưa cấu hình key. Trong khi chờ mạng, máy bay vẫn chạy bằng Q-learning cục bộ; không gọi API theo từng khung hình. Màn hình gom các lệnh SPI của một khung hình và chỉ cập nhật vùng game, không xóa cả màn hình khi đang chơi.
+
+Nếu chưa tạo `secrets.h`, code vẫn chạy với Q-learning cục bộ và hiển thị `G:OFF`. Khi API lỗi hoặc hết quota, game tiếp tục tự chơi cục bộ. Log Wi-Fi/Gemini nằm trong Serial Monitor ở 115200 baud.
+
+**Bảo mật:** `secrets.h` bị Git bỏ qua. Không đưa API key vào file công khai hoặc project Wokwi công khai; key trên ESP32 vẫn có thể bị trích xuất. Bản này phù hợp thử nghiệm; sản phẩm triển khai cho người khác nên gọi một backend riêng giữ key thay vì nhúng key trong thiết bị.
 
 ## Chạy trên ESP32-2432S028R (CYD)
 
@@ -36,4 +41,4 @@ Trong `TFT_eSPI/User_Setup.h`, chọn driver ILI9341 và các chân theo bảng 
 
 GPIO 0 là chân boot strap; không giữ nút BOOT khi cấp nguồn nếu không muốn vào chế độ nạp.
 
-Q-learning ở đây là mô hình nhỏ chạy trực tiếp trên ESP32, không phải mạng neuron. Bảng học chiếm khoảng 650 byte RAM, mất khi khởi động lại; không cần kết nối mạng hay dịch vụ AI bên ngoài. AI có thể cần nhiều ván để tìm ra hành động tốt.
+Q-learning ở đây là mô hình nhỏ chạy trực tiếp trên ESP32, không phải mạng neuron. Bảng học chiếm khoảng 650 byte RAM, mất khi khởi động lại. Trong sketch Wokwi, Gemini là AI chiến thuật trực tuyến; Q-learning làm phương án dự phòng cục bộ.
