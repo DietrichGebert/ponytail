@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "windows-mcp": {
+      "type": "local",
+      "command": "uvx",
+      "args": ["windows-mcp", "serve"]
+    }
+  }
+}
