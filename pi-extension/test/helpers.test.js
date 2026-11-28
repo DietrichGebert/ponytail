@@ -26,6 +26,12 @@ test("parsePonytailCommand parses modes, status, and default subcommand", () => 
   assert.deepEqual(parsePonytailCommand("default lite", "full"), { type: "set-default", mode: "lite" });
 });
 
+test("parsePonytailCommand parses the per-project default (#1389)", () => {
+  assert.deepEqual(parsePonytailCommand("project lite", "full"), { type: "set-project-default", mode: "lite" });
+  assert.deepEqual(parsePonytailCommand("project review", "full"), { type: "invalid", reason: "invalid-default-mode" });
+  assert.deepEqual(parsePonytailCommand("project", "full"), { type: "invalid", reason: "invalid-default-mode" });
+});
+
 test("parsePonytailCommand rejects review as a default (session-only mode, #377)", () => {
   assert.deepEqual(parsePonytailCommand("default review", "full"), { type: "invalid", reason: "invalid-default-mode" });
 });

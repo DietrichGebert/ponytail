@@ -5,7 +5,7 @@
 const fs = require('fs');
 const path = require('path');
 const { spawn } = require('child_process');
-const { getClaudeDir, getDefaultMode, isDeactivationCommand, writeDefaultMode } = require('./ponytail-config');
+const { getClaudeDir, getDefaultMode, isDeactivationCommand, writeDefaultMode, writeProjectDefaultMode } = require('./ponytail-config');
 const {
   clearMode,
   cursorRuleNotice,
@@ -74,6 +74,25 @@ function finish() {
           // Qoder still needs this turn's ruleset: the block below folds the
           // notice into it. mode stays null, so the session level is untouched.
           if (!isQoder) return; // don't fall through to the session-mode switch
+        }
+        // `/ponytail project <mode>` sets the default for this project only, in
+        // the repo's .ponytail.json (#1389). The session level stays as it is.
+        if (arg === 'project') {
+          const pmode = parts[2];
+          const valid = pmode === 'off' || pmode === 'lite' || pmode === 'full' || pmode === 'ultra';
+          if (valid && writeProjectDefaultMode(pmode)) {
+            defaultNotice = 'PONYTAIL PROJECT DEFAULT SET — new sessions in this project start in ' + pmode + '.';
+          } else if (valid) {
+            defaultNotice = 'PONYTAIL PROJECT DEFAULT NOT SET — could not write .ponytail.json in this project.';
+          } else {
+            defaultNotice = 'PONYTAIL PROJECT DEFAULT: use /ponytail project off|lite|full|ultra.';
+          }
+          // Qoder folds the notice into this turn's ruleset below; every other
+          // host reports it now and keeps the session-mode switch out of it.
+          if (!isQoder) {
+            writeHookOutput('UserPromptSubmit', readMode() || 'off', defaultNotice);
+            return;
+          }
         }
         // `/ponytail band [on|off]` shows or hides the band above the Claude Code
         // prompt (hooks/band reads this flag). It outlives the session; absent = shown.

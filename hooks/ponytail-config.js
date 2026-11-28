@@ -3,11 +3,13 @@
 //
 // Resolution order for default mode:
 //   1. PONYTAIL_DEFAULT_MODE environment variable
-//   2. Config file defaultMode field:
+//   2. Project config file defaultMode field: .ponytail.json in the project
+//      (nearest ancestor of the working directory)
+//   3. Config file defaultMode field:
 //      - $XDG_CONFIG_HOME/ponytail/config.json (any platform, if set)
 //      - ~/.config/ponytail/config.json (macOS / Linux fallback)
 //      - %APPDATA%\ponytail\config.json (Windows fallback)
-//   3. 'full'
+//   4. 'full'
 
 const fs = require('fs');
 const path = require('path');
@@ -16,6 +18,7 @@ const os = require('os');
 const DEFAULT_MODE = 'full';
 const VALID_MODES = ['off', 'lite', 'full', 'ultra', 'review'];
 const RUNTIME_MODES = ['off', 'lite', 'full', 'ultra'];
+const PROJECT_CONFIG_NAME = '.ponytail.json';
 
 function normalizeMode(mode) {
   if (typeof mode !== 'string') return null;
@@ -68,6 +71,33 @@ function getConfigPath() {
   return path.join(getConfigDir(), 'config.json');
 }
 
+// Per-project default (#1389): the nearest .ponytail.json above the working
+// directory, so a repo can default to `full` while the user config stays `off`.
+// Walking up lets hooks that run in a subdirectory find the repo's file.
+// shortcut: a .ponytail.json in a home directory applies to every project below
+// it; keep the user-wide default in config.json instead.
+function getProjectConfigPath(dir = process.cwd()) {
+  let current = path.resolve(dir);
+  for (;;) {
+    const candidate = path.join(current, PROJECT_CONFIG_NAME);
+    if (fs.existsSync(candidate)) return candidate;
+    const parent = path.dirname(current);
+    if (parent === current) return null;
+    current = parent;
+  }
+}
+
+function readProjectConfig() {
+  const configPath = getProjectConfigPath();
+  if (!configPath) return null;
+  try {
+    const config = JSON.parse(fs.readFileSync(configPath, 'utf8').replace(/^\uFEFF/, ''));
+    return config && typeof config === 'object' && !Array.isArray(config) ? config : null;
+  } catch (_) {
+    return null;
+  }
+}
+
 function getClaudeDir() {
   // ponytail: CLAUDE_CONFIG_DIR overrides ~/.claude, matching Claude Code.
   return process.env.CLAUDE_CONFIG_DIR || path.join(os.homedir(), '.claude');
@@ -87,7 +117,14 @@ function getDefaultMode() {
     return envMode;
   }
 
-  // 2. Config file
+  // 2. Project config file
+  const projectConfig = readProjectConfig();
+  const projectMode = projectConfig && normalizeMode(projectConfig.defaultMode);
+  if (projectMode) {
+    return projectMode;
+  }
+
+  // 3. Config file
   try {
     const configPath = getConfigPath();
     // Strip UTF-8 BOM (common on Windows-saved files) so JSON.parse doesn't choke
@@ -100,7 +137,7 @@ function getDefaultMode() {
     // Config file doesn't exist or is invalid — fall through
   }
 
-  // 3. Default
+  // 4. Default
   return DEFAULT_MODE;
 }
 
@@ -155,6 +192,28 @@ function writeDefaultMode(mode) {
   return normalized;
 }
 
+// `/ponytail project <mode>`: write the level into the repo's .ponytail.json so
+// every session in this project starts there. An existing file is merged; one
+// we cannot read is left alone rather than clobbered with a partial config.
+function writeProjectDefaultMode(mode) {
+  const normalized = normalizeMode(mode);
+  if (!normalized) return null;
+
+  const configPath = getProjectConfigPath() || path.join(process.cwd(), PROJECT_CONFIG_NAME);
+  let config = {};
+  if (fs.existsSync(configPath)) {
+    try {
+      config = JSON.parse(fs.readFileSync(configPath, 'utf8').replace(/^\uFEFF/, ''));
+      if (!config || typeof config !== 'object' || Array.isArray(config)) return null;
+    } catch (_) {
+      return null;
+    }
+  }
+  config.defaultMode = normalized;
+  fs.writeFileSync(configPath, JSON.stringify(config, null, 2), 'utf8');
+  return normalized;
+}
+
 module.exports = {
   DEFAULT_MODE,
   VALID_MODES,
@@ -162,6 +221,7 @@ module.exports = {
   getDefaultMode,
   getConfigDir,
   getConfigPath,
+  getProjectConfigPath,
   getClaudeDir,
   getQoderDir,
   getHideStatus,
@@ -172,4 +232,5 @@ module.exports = {
   normalizePersistedMode,
   isDeactivationCommand,
   writeDefaultMode,
+  writeProjectDefaultMode,
 };

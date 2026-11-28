@@ -11,6 +11,7 @@ const {
   normalizePersistedMode,
   isDeactivationCommand,
   writeDefaultMode,
+  writeProjectDefaultMode,
 } = require("../hooks/ponytail-config.js");
 const { getPonytailInstructions, filterSkillBodyForMode } = require("../hooks/ponytail-instructions.js");
 
@@ -19,13 +20,18 @@ export const readDefaultMode = getDefaultMode;
 export const readQuietStartup = getQuietStartup;
 
 const RUNTIME_MODE_LIST = RUNTIME_MODES.join("|");
-const PONYTAIL_COMMAND_DESCRIPTION = `Set mode: ${RUNTIME_MODE_LIST}. Commands: status, default <mode>`;
+const PONYTAIL_COMMAND_DESCRIPTION = `Set mode: ${RUNTIME_MODE_LIST}. Commands: status, default <mode>, project <mode>`;
 
 // Every item is a complete command: pi submits on Enter, so a bare "default" would run without a mode.
 // Values only: per-level descriptions would be a second copy of the Levels table in SKILL.md.
 export function completePonytailArgs(prefix) {
   const typed = String(prefix || "").trimStart();
-  const values = [...RUNTIME_MODES, "status", ...RUNTIME_MODES.map((m) => `default ${m}`)].filter((v) => v.startsWith(typed));
+  const values = [
+    ...RUNTIME_MODES,
+    "status",
+    ...RUNTIME_MODES.map((m) => `default ${m}`),
+    ...RUNTIME_MODES.map((m) => `project ${m}`),
+  ].filter((v) => v.startsWith(typed));
   return values.length ? values.map((value) => ({ value, label: value })) : null;
 }
 
@@ -62,6 +68,12 @@ export function parsePonytailCommand(text, defaultMode = DEFAULT_MODE, currentMo
     // ponytail: a default must be a runtime level; review is session-only (#377).
     const mode = normalizeMode(secondary);
     return mode ? { type: "set-default", mode } : { type: "invalid", reason: "invalid-default-mode" };
+  }
+
+  // Per-project default in .ponytail.json (#1389); the session level is unchanged.
+  if (primary === "project") {
+    const mode = normalizeMode(secondary);
+    return mode ? { type: "set-project-default", mode } : { type: "invalid", reason: "invalid-default-mode" };
   }
 
   const mode = normalizeMode(primary);
@@ -147,6 +159,21 @@ export default function ponytailExtension(pi) {
           }
         } catch (e) {
           ctx?.ui?.notify?.(`Failed to save default mode: ${e.message}`, "error");
+        }
+        return;
+      }
+
+      if (parsed.type === "set-project-default") {
+        try {
+          const written = writeProjectDefaultMode(parsed.mode);
+          if (written) {
+            configuredDefaultMode = getDefaultMode();
+            ctx?.ui?.notify?.(`Project default Ponytail mode set to ${written}.`, "info");
+          } else {
+            ctx?.ui?.notify?.("Failed to save the project default: no writable .ponytail.json.", "error");
+          }
+        } catch (e) {
+          ctx?.ui?.notify?.(`Failed to save the project default: ${e.message}`, "error");
         }
         return;
       }

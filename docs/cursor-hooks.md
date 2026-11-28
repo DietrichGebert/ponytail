@@ -80,7 +80,7 @@ Execution environment (client, 3.20.17):
 ## Behavior
 
 - New conversation: `sessionStart` sets the live mode to the default level
-  (`PONYTAIL_DEFAULT_MODE`, then `config.json`, then `full`) and
+  (`PONYTAIL_DEFAULT_MODE`, then the project's `.ponytail.json`, then `config.json`, then `full`) and
   injects `PONYTAIL MODE ACTIVE — level: <level>` followed by the ruleset filtered
   to that level. Default `off`: no flag, no output.
 - `/ponytail lite|full|ultra` sent as a plain message: the flag changes and the
@@ -97,7 +97,8 @@ Execution environment (client, 3.20.17):
   in the conversation's system context; the notice is what tells the model to
   stop applying it, the same as in Claude Code.
 - `/ponytail`: reports `PONYTAIL MODE ACTIVE — level: <level>` without changing
-  anything. `/ponytail default <level>` persists the default to `config.json`.
+  anything. `/ponytail default <level>` persists the default to `config.json`;
+  `/ponytail project <level>` persists it to the repo's `.ponytail.json`.
 - Any other prompt: no output.
 
 ### Coexistence with `.cursor/rules/ponytail.mdc`
