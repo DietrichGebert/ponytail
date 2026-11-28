@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
@@ -83,6 +83,26 @@ test("/ponytail updates session mode and injects instructions", async () => with
   const result = await events.get("before_agent_start")({ systemPrompt: "BASE" }, ctx);
   assert.ok(result.systemPrompt.includes("PONYTAIL MODE ACTIVE"));
   assert.ok(result.systemPrompt.includes("ultra"));
+}));
+
+test("/ponytail project writes .ponytail.json without changing the session level (#1389)", async () => withTempConfig(async () => {
+  const previousCwd = process.cwd();
+  const project = mkdtempSync(join(tmpdir(), "ponytail-project-"));
+  process.chdir(project);
+  try {
+    const { commands, appendedEntries } = createPiHarness();
+    const notifications = [];
+    const ctx = createCommandContext({ ui: { notify: (text, level) => notifications.push({ text, level }) } });
+
+    await commands.get("ponytail").handler("project lite", ctx);
+
+    assert.deepEqual(JSON.parse(readFileSync(join(project, ".ponytail.json"), "utf8")), { defaultMode: "lite" });
+    assert.deepEqual(appendedEntries, [], "a project default must not change the session level");
+    assert.ok(notifications.at(-1).text.includes("lite"), "the write is reported");
+  } finally {
+    process.chdir(previousCwd);
+    rmSync(project, { recursive: true, force: true });
+  }
 }));
 
 test("before_agent_start guards missing event and missing systemPrompt (#439, #440)", async () => withTempConfig(async () => {
@@ -347,17 +367,21 @@ test("PONYTAIL_HIDE_STATUS=0 does not hide the indicator", async () => withTempC
   assert.ok(statusWrites.length > 0, "0 must be treated as 'do not hide'");
 }));
 
-test("/ponytail autocompletes modes, commands and default <mode>", () => {
+test("/ponytail autocompletes modes, commands, default <mode> and project <mode>", () => {
   const { commands } = createPiHarness();
   const complete = (prefix) => commands.get("ponytail").getArgumentCompletions(prefix);
 
   assert.deepEqual(complete("").map((item) => item.value),
-    ["off", "lite", "full", "ultra", "status", "default off", "default lite", "default full", "default ultra"]);
+    ["off", "lite", "full", "ultra", "status",
+      "default off", "default lite", "default full", "default ultra",
+      "project off", "project lite", "project full", "project ultra"]);
   assert.deepEqual(complete("fu").map((item) => item.value), ["full"]);
   assert.deepEqual(complete("default ").map((item) => item.value), ["default off", "default lite", "default full", "default ultra"]);
   assert.deepEqual(complete("default l").map((item) => item.value), ["default lite"]);
   assert.deepEqual(complete("default").map((item) => item.value),
     ["default off", "default lite", "default full", "default ultra"], "never a bare default: Enter would submit it without a mode");
+  assert.deepEqual(complete("project").map((item) => item.value),
+    ["project off", "project lite", "project full", "project ultra"], "never a bare project: Enter would submit it without a mode");
   assert.equal(complete("status x"), null, "no command takes a second word after status");
   assert.equal(complete("lite x"), null);
   assert.equal(complete("bogus"), null, "nothing matches an unknown prefix");

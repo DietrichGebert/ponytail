@@ -60,10 +60,19 @@ export PONYTAIL_DEFAULT_MODE=ultra
 { "defaultMode": "lite" }
 ```
 
+**Project file** (`.ponytail.json` in the repo root, opt-in per project):
+```json
+{ "defaultMode": "full" }
+```
+
+Every session started in that project, or in a subdirectory, uses it. `/ponytail project <level>` writes
+the file; `/ponytail project off` turns ponytail off for that project only. Commit it to share the level
+with the team, or leave it untracked for yourself.
+
 Set `"off"` to disable auto-activation on session start, activate manually
 with `/ponytail` when wanted.
 
-Resolution: env var > config file > `full`.
+Resolution: env var > project file > config file > `full`.
 
 ## Update
 

@@ -11,7 +11,7 @@ const root = path.join(__dirname, '..');
 // isShellSafe gates the statusline setup snippet (issue #200): ordinary install
 // paths pass, paths carrying shell metacharacters are rejected so they never get
 // embedded in a shell command.
-const { DEFAULT_MODE, getDefaultMode, isShellSafe, writeDefaultMode } = require('../hooks/ponytail-config');
+const { DEFAULT_MODE, getDefaultMode, isShellSafe, writeDefaultMode, writeProjectDefaultMode } = require('../hooks/ponytail-config');
 const { getPonytailInstructions } = require('../hooks/ponytail-instructions');
 assert.equal(isShellSafe('C:\\Users\\x\\.claude\\plugins\\ponytail\\hooks\\ponytail-statusline.ps1'), true);
 assert.equal(isShellSafe('/home/u/.claude/plugins/ponytail/hooks/ponytail-statusline.sh'), true);
@@ -19,11 +19,12 @@ assert.equal(isShellSafe('/tmp/a"&calc.exe&"/x.sh'), false);
 assert.equal(isShellSafe('/tmp/$(calc)/x.sh'), false);
 assert.equal(isShellSafe('/tmp/a;rm -rf/x.sh'), false);
 
-function run(script, env, input = '') {
+function run(script, env, input = '', cwd = undefined) {
   return spawnSync(process.execPath, [path.join(root, 'hooks', script)], {
     env: { ...process.env, ...env },
     input,
     encoding: 'utf8',
+    cwd,
   });
 }
 
@@ -828,6 +829,70 @@ try {
   if (prevXdgRev === undefined) delete process.env.XDG_CONFIG_HOME; else process.env.XDG_CONFIG_HOME = prevXdgRev;
   if (prevEnvModeRev === undefined) delete process.env.PONYTAIL_DEFAULT_MODE; else process.env.PONYTAIL_DEFAULT_MODE = prevEnvModeRev;
 }
+
+// #1389: a repo's `.ponytail.json` sets the default for that project only. It
+// beats the user config, still loses to an explicit env var, and is found from
+// a subdirectory. `/ponytail project <mode>` writes it; the session level stays.
+const projHome = path.join(temp, 'project-default-home');
+const projRoot = path.join(projHome, 'repo');
+const projSub = path.join(projRoot, 'src', 'deep');
+fs.mkdirSync(projSub, { recursive: true });
+fs.mkdirSync(path.join(projHome, '.config', 'ponytail'), { recursive: true });
+const projUserConfig = path.join(projHome, '.config', 'ponytail', 'config.json');
+fs.writeFileSync(projUserConfig, JSON.stringify({ defaultMode: 'off' }, null, 2));
+const projEnv = { HOME: projHome, USERPROFILE: projHome, XDG_CONFIG_HOME: path.join(projHome, '.config') };
+const projFlag = path.join(projHome, '.claude', '.ponytail-active');
+const projConfig = path.join(projRoot, '.ponytail.json');
+
+result = run('ponytail-mode-tracker.js', projEnv, JSON.stringify({ prompt: '/ponytail project full' }), projRoot);
+assert.equal(result.status, 0, result.stderr);
+assert.match(result.stdout, /PONYTAIL PROJECT DEFAULT SET — new sessions in this project start in full/);
+assert.equal(JSON.parse(fs.readFileSync(projConfig, 'utf8')).defaultMode, 'full', '/ponytail project must write the repo file');
+assert.equal(fs.existsSync(projFlag), false, '/ponytail project must not change the session mode');
+
+// A session started in a subdirectory picks up the repo's default, not the user's off.
+result = run('ponytail-activate.js', projEnv, '', projSub);
+assert.equal(result.status, 0, result.stderr);
+assert.equal(fs.readFileSync(projFlag, 'utf8'), 'full', 'SessionStart must start at the project default');
+assert.match(result.stdout, /PONYTAIL MODE ACTIVE — level: full/);
+
+// Precedence: env var > project file > user config. review is still not a default.
+const prevCwdProj = process.cwd();
+const prevEnvModeProj = process.env.PONYTAIL_DEFAULT_MODE;
+const prevXdgProj = process.env.XDG_CONFIG_HOME;
+try {
+  process.chdir(projSub);
+  process.env.XDG_CONFIG_HOME = path.join(projHome, '.config');
+  delete process.env.PONYTAIL_DEFAULT_MODE;
+  assert.equal(getDefaultMode(), 'full', 'the project file must beat the user config');
+  process.env.PONYTAIL_DEFAULT_MODE = 'lite';
+  assert.equal(getDefaultMode(), 'lite', 'the env var must beat the project file');
+  delete process.env.PONYTAIL_DEFAULT_MODE;
+  assert.equal(writeProjectDefaultMode('review'), null, 'review must not be accepted as a project default');
+  assert.equal(JSON.parse(fs.readFileSync(projConfig, 'utf8')).defaultMode, 'full', 'a refused write must leave the file unchanged');
+  assert.equal(writeProjectDefaultMode('ultra'), 'ultra');
+  assert.equal(getDefaultMode(), 'ultra', 'the written project default must apply immediately');
+} finally {
+  process.chdir(prevCwdProj);
+  if (prevEnvModeProj === undefined) delete process.env.PONYTAIL_DEFAULT_MODE; else process.env.PONYTAIL_DEFAULT_MODE = prevEnvModeProj;
+  if (prevXdgProj === undefined) delete process.env.XDG_CONFIG_HOME; else process.env.XDG_CONFIG_HOME = prevXdgProj;
+}
+
+// A file we cannot parse is reported, never clobbered.
+const brokenRoot = path.join(temp, 'broken-project');
+const brokenConfig = path.join(brokenRoot, '.ponytail.json');
+fs.mkdirSync(brokenRoot, { recursive: true });
+fs.writeFileSync(brokenConfig, '{ not json');
+result = run('ponytail-mode-tracker.js', projEnv, JSON.stringify({ prompt: '/ponytail project lite' }), brokenRoot);
+assert.equal(result.status, 0, result.stderr);
+assert.match(result.stdout, /PONYTAIL PROJECT DEFAULT NOT SET/);
+assert.equal(fs.readFileSync(brokenConfig, 'utf8'), '{ not json', 'an unreadable project file must be left alone');
+
+// An unsupported argument explains the subcommand instead of guessing.
+result = run('ponytail-mode-tracker.js', projEnv, JSON.stringify({ prompt: '/ponytail project' }), projRoot);
+assert.equal(result.status, 0, result.stderr);
+assert.match(result.stdout, /PONYTAIL PROJECT DEFAULT: use \/ponytail project off\|lite\|full\|ultra/);
+assert.equal(JSON.parse(fs.readFileSync(projConfig, 'utf8')).defaultMode, 'ultra', 'a bare /ponytail project must not write');
 
 // Normal path stays fast: 'end' exits explicitly, so the (now ref'd) fallback
 // timer never adds its full 1000ms to a prompt that does reach EOF.

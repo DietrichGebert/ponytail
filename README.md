@@ -186,6 +186,8 @@ Only install ponytail from `DietrichGebert/ponytail` on GitHub or `@dietrichgebe
 | `/ponytail [lite \| full \| ultra \| off]` | Set the intensity, or turn it off. No argument switches ponytail on at the default level if it is off, and otherwise reports the current level. |
 | `/ponytail band [on \| off]` | Claude Code only: hide or show the band above the prompt. No argument switches it. The level stays. |
 | `/ponytail band import` | Claude Code only: add your past Claude Code sessions to the board, with their cost, agent time and tokens. |
+| `/ponytail default [lite \| full \| ultra \| off]` | Save the default level for every new session. |
+| `/ponytail project [lite \| full \| ultra \| off]` | Save the default level for this project only, in `.ponytail.json`. |
 | `/ponytail-review` | Review the current diff like the senior dev who gets paged when it breaks: bugs, security, real load, risky code without a test, slow paths, and what to cut. Each finding says what the code does, what goes wrong, how to fix it, and what happens if you don't. Name a target in plain words to narrow or widen it: `uncommitted`, `staged`, `branch`, or a PR link. |
 | `/ponytail-audit` | The same check for the whole repo, most important first. |
 | `/ponytail-debt` | Harvest the `shortcut:` comments you've deferred into a ledger, so "later" doesn't become "never". |
@@ -197,7 +199,7 @@ Commands need a skill-capable host (Claude Code, Codex, Devin CLI, OpenCode, Gem
 ## FAQ
 
 **Does it need a config file?**
-No. An optional `~/.config/ponytail/config.json` or `PONYTAIL_DEFAULT_MODE` env var can set the default level, but nothing is required.
+No. An optional `~/.config/ponytail/config.json`, a per-project `.ponytail.json`, or `PONYTAIL_DEFAULT_MODE` env var can set the default level, but nothing is required.
 
 **Why does it write `shortcut:` comments?**
 They mark a deliberate shortcut and when to revisit it, and `/ponytail-debt` collects them into a ledger. Want another word, or none? Say so in your project's `CLAUDE.md` or `AGENTS.md`, then run `/ponytail-debt <your word>`.
