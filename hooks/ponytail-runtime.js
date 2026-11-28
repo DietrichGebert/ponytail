@@ -19,9 +19,12 @@ function isVsCodeCopilotRoot(pluginRoot) {
 
 const isCopilot = Boolean(process.env.COPILOT_PLUGIN_DATA) ||
   isVsCodeCopilotRoot(process.env.CLAUDE_PLUGIN_ROOT);
-// KEEP: Antigravity also sets PLUGIN_DATA on installed plugin hooks, so check it before isCodex; ANTIGRAVITY_SOURCE_METADATA filters out run_command shells.
-const isAntigravity = !isCopilot && Boolean(process.env.ANTIGRAVITY_CONVERSATION_ID) &&
-  !process.env.ANTIGRAVITY_SOURCE_METADATA;
+const agyConvId = process.env.ANTIGRAVITY_CONVERSATION_ID || '';
+const agyToolMeta = process.env.ANTIGRAVITY_SOURCE_METADATA || '';
+// KEEP: Antigravity also sets PLUGIN_DATA on installed plugin hooks, so check it before isCodex; run_command sets ANTIGRAVITY_SOURCE_METADATA with the same conversationId, whereas nested agy hooks get a new ANTIGRAVITY_CONVERSATION_ID.
+const isAntigravityRunCommand = Boolean(agyToolMeta) &&
+  (!agyToolMeta.includes('conversationId') || agyToolMeta.includes(agyConvId));
+const isAntigravity = !isCopilot && Boolean(agyConvId) && !isAntigravityRunCommand;
 const isCodex = !isCopilot && !isAntigravity && Boolean(process.env.PLUGIN_DATA);
 const isQoder = !isCopilot && !isAntigravity && !isCodex && Boolean(process.env.QODER_SESSION_ID);
 // CodeBuddy (#854) loads the Claude-format plugin and sets CLAUDE_PLUGIN_ROOT

@@ -63,10 +63,10 @@ function extractAntigravityPrompt(data) {
         if (!lines[i]) continue;
         let step;
         try { step = JSON.parse(lines[i]); } catch (e) { continue; }
-        // KEEP: Ignore hook-injected steps (e.g. SessionStart) when checking whether this turn starts with USER_INPUT.
-        if (step.type === 'SYSTEM_MESSAGE' && step.source === 'SYSTEM_SDK') continue;
+        // KEEP: Ignore hook-injected steps and server-restart notices so only PLANNER_RESPONSE/tool output terminates the fresh-turn scan.
+        if (step.type === 'SYSTEM_MESSAGE') continue;
         if (step.type === 'USER_INPUT') return unwrapUserRequest(step.content);
-        // KEEP: Latest non-hook step is PLANNER_RESPONSE/tool/system wakeup, so do not replay stale lastUserInput.
+        // KEEP: Latest non-system step is PLANNER_RESPONSE/tool output, so do not replay stale lastUserInput.
         return '';
       }
     } catch (e) {

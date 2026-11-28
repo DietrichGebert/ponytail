@@ -815,16 +815,22 @@ assert.equal(fs.readFileSync(path.join(codebuddyConfigDir, '.ponytail-active'), 
   assert.equal(result.status, 0, result.stderr);
   assert.equal(fs.readFileSync(agyDefaultState, 'utf8'), 'lite');
 
-  // Inside an Antigravity run_command shell (ANTIGRAVITY_SOURCE_METADATA set), do not match isAntigravity.
-  result = run('ponytail-activate.js', { ...agyEnv, ANTIGRAVITY_SOURCE_METADATA: '{"tool":{}}' });
+  // Inside an Antigravity run_command shell (ANTIGRAVITY_SOURCE_METADATA matching the same conversation),
+  // do not match isAntigravity; a nested agy session with a new conversationId still matches.
+  result = run('ponytail-activate.js', { ...agyEnv, ANTIGRAVITY_SOURCE_METADATA: '{"tool":{"conversationId":"conv-123"}}' });
   assert.equal(result.status, 0, result.stderr);
   assert.ok(JSON.parse(result.stdout).hookSpecificOutput, 'ANTIGRAVITY_SOURCE_METADATA must keep run_command shells out of isAntigravity');
 
-  // PreInvocation at invocationNum 0 reads <USER_REQUEST> from transcriptPath (ignoring hook-injected SYSTEM_SDK steps),
-  // updates the flag, and injects the new level's ruleset.
+  result = run('ponytail-activate.js', { ...agyEnv, ANTIGRAVITY_SOURCE_METADATA: '{"tool":{"conversationId":"parent-conv-999"}}' });
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(JSON.parse(result.stdout).injectSteps[0].systemMessage.systemMessage, /PONYTAIL MODE ACTIVE — level: lite/);
+
+  // PreInvocation at invocationNum 0 reads <USER_REQUEST> from transcriptPath (ignoring hook-injected SYSTEM_SDK
+  // steps and server-restart SYSTEM notices), updates the flag, and injects the new level's ruleset.
   fs.writeFileSync(agyTranscript, [
     JSON.stringify({ step_index: 0, source: 'USER_EXPLICIT', type: 'USER_INPUT', content: '<USER_REQUEST>\n/ponytail ultra\n</USER_REQUEST>\n<ADDITIONAL_METADATA>\ntime\n</ADDITIONAL_METADATA>' }),
     JSON.stringify({ step_index: 1, source: 'SYSTEM_SDK', type: 'SYSTEM_MESSAGE', content: 'SessionStart hook' }),
+    JSON.stringify({ step_index: 2, source: 'SYSTEM', type: 'SYSTEM_MESSAGE', content: '[Notice] server restart' }),
   ].join('\n') + '\n');
   result = run('ponytail-mode-tracker.js', agyEnv, JSON.stringify({
     conversationId: 'conv-123',
