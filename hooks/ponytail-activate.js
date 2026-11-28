@@ -67,7 +67,8 @@ function activate(mode) {
     const map = execFileSync(process.execPath, [path.join(__dirname, 'ponytail-map.js')], {
       encoding: 'utf8', timeout: 3000, maxBuffer: 64 * 1024, stdio: ['ignore', 'pipe', 'ignore'],
     }).trimEnd();
-    if (map) output += '\n\n' + map;
+    // Codex can append the first prompt immediately after this context.
+    if (map) output += '\n\n' + map + (isCodex ? '\n' : '');
   } catch (e) { /* no map */ }
 
   // 3. Detect missing statusline config — nudge Claude to help set it up

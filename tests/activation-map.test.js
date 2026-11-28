@@ -55,6 +55,8 @@ for (const scenario of ['blocked', 'failed', 'oversized', 'successful', 'disable
     assert.match(output.additionalContext, /Never cut:/);
     if (scenario === 'successful') {
       assert.match(output.additionalContext, /Codebase map[^]*lib\/: usefulHelper/);
+      const firstPrompt = 'Reply with exactly: OK';
+      assert.match(output.additionalContext + firstPrompt, /usefulHelper\nReply with exactly: OK$/);
     } else {
       assert.doesNotMatch(output.additionalContext, /Codebase map|unexpected map|x{1000}/);
     }
