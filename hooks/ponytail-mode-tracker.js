@@ -10,6 +10,7 @@ const {
   clearMode,
   cursorRuleNotice,
   cursorRulePath,
+  isAntigravity,
   isCodeBuddy,
   isCodex,
   isCopilot,
@@ -21,6 +22,60 @@ const {
 } = require('./ponytail-runtime');
 const { getPonytailInstructions } = require('./ponytail-instructions');
 
+const TRANSCRIPT_TAIL_BYTES = 65536;
+
+function unwrapUserRequest(text) {
+  const raw = String(text || '');
+  const match = raw.match(/<USER_REQUEST>\s*([\s\S]*?)\s*<\/USER_REQUEST>/i);
+  return (match ? match[1] : raw).trim().toLowerCase();
+}
+
+function readTranscriptTail(filePath) {
+  let fd;
+  try {
+    fd = fs.openSync(filePath, 'r');
+    const size = fs.fstatSync(fd).size;
+    const start = Math.max(0, size - TRANSCRIPT_TAIL_BYTES);
+    const buf = Buffer.allocUnsafe(size - start);
+    fs.readSync(fd, buf, 0, buf.length, start);
+    const text = buf.toString('utf8');
+    if (start > 0) {
+      const trimmed = text.trimEnd();
+      const nl = trimmed.indexOf('\n');
+      if (nl === -1) return null;
+      return trimmed.slice(nl + 1);
+    }
+    return text;
+  } finally {
+    if (fd !== undefined) fs.closeSync(fd);
+  }
+}
+
+function extractAntigravityPrompt(data) {
+  // KEEP: PreInvocation fires before every model call in a turn (0-based invocationNum); skip mid-turn tool loops.
+  if (typeof data.invocationNum === 'number' && data.invocationNum > 0) return '';
+  if (data.transcriptPath) {
+    try {
+      const tail = readTranscriptTail(data.transcriptPath);
+      if (tail === null) return '';
+      const lines = tail.trim().split('\n');
+      for (let i = lines.length - 1; i >= 0; i--) {
+        if (!lines[i]) continue;
+        let step;
+        try { step = JSON.parse(lines[i]); } catch (e) { continue; }
+        // KEEP: Ignore hook-injected steps and server-restart notices so only PLANNER_RESPONSE/tool output terminates the fresh-turn scan.
+        if (step.type === 'SYSTEM_MESSAGE') continue;
+        if (step.type === 'USER_INPUT') return unwrapUserRequest(step.content);
+        // KEEP: Latest non-system step is PLANNER_RESPONSE/tool output, so do not replay stale lastUserInput.
+        return '';
+      }
+    } catch (e) {
+      // Unreadable transcript: fall back to lastUserInput below.
+    }
+  }
+  return unwrapUserRequest(data.lastUserInput);
+}
+
 let input = '';
 let done = false;
 
@@ -30,7 +85,9 @@ function finish() {
   try {
     // Strip UTF-8 BOM some shells prepend when piping (breaks JSON.parse)
     const data = JSON.parse(input.replace(/^\uFEFF/, ''));
-    const prompt = (data.prompt || '').trim().toLowerCase();
+    const prompt = isAntigravity
+      ? extractAntigravityPrompt(data)
+      : (data.prompt || '').trim().toLowerCase();
 
     // Cursor with the always-on rule in the workspace: no hook can change or
     // switch off a rule, so answer the command with the notice instead of
@@ -78,7 +135,7 @@ function finish() {
         // `/ponytail band [on|off]` shows or hides the band above the Claude Code
         // prompt (hooks/band reads this flag). It outlives the session; absent = shown.
         // Other hosts have no band, so there the word stays an unknown argument.
-        if (arg === 'band' && !isCopilot && !isCodex && !isQoder && !isCodeBuddy && !isCursor) {
+        if (arg === 'band' && !isCopilot && !isCodex && !isQoder && !isCodeBuddy && !isCursor && !isAntigravity) {
           // `/ponytail band import`: past sessions into the board, in the background, so the prompt
           // is answered right away while the transcripts are read. Detached, it outlives this hook's
           // process.exit below.
@@ -144,7 +201,7 @@ function finish() {
           writeHookOutput(
             'UserPromptSubmit',
             mode,
-            (isCodex || isCursor) ? header + '\n\n' + getPonytailInstructions(mode) : header,
+            (isCodex || isCursor || isAntigravity) ? header + '\n\n' + getPonytailInstructions(mode) : header,
           );
         }
       } else if (mode === 'off') {

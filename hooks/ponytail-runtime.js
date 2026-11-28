@@ -19,20 +19,30 @@ function isVsCodeCopilotRoot(pluginRoot) {
 
 const isCopilot = Boolean(process.env.COPILOT_PLUGIN_DATA) ||
   isVsCodeCopilotRoot(process.env.CLAUDE_PLUGIN_ROOT);
-const isCodex = !isCopilot && Boolean(process.env.PLUGIN_DATA);
-const isQoder = !isCopilot && !isCodex && Boolean(process.env.QODER_SESSION_ID);
+const agyConvId = process.env.ANTIGRAVITY_CONVERSATION_ID || '';
+const agyToolMeta = process.env.ANTIGRAVITY_SOURCE_METADATA || '';
+// KEEP: Antigravity also sets PLUGIN_DATA on installed plugin hooks, so check it before isCodex; run_command sets ANTIGRAVITY_SOURCE_METADATA with the same conversationId, whereas nested agy hooks get a new ANTIGRAVITY_CONVERSATION_ID.
+const isAntigravityRunCommand = Boolean(agyToolMeta) &&
+  (!agyToolMeta.includes('conversationId') || agyToolMeta.includes(agyConvId));
+const isAntigravity = !isCopilot && Boolean(agyConvId) && !isAntigravityRunCommand;
+const isCodex = !isCopilot && !isAntigravity && Boolean(process.env.PLUGIN_DATA);
+const isQoder = !isCopilot && !isAntigravity && !isCodex && Boolean(process.env.QODER_SESSION_ID);
 // CodeBuddy (#854) loads the Claude-format plugin and sets CLAUDE_PLUGIN_ROOT
 // too, but adds CODEBUDDY_PLUGIN_ROOT only for its own plugin hook processes.
-const isCodeBuddy = !isCopilot && !isCodex && !isQoder && Boolean(process.env.CODEBUDDY_PLUGIN_ROOT);
+const isCodeBuddy = !isCopilot && !isAntigravity && !isCodex && !isQoder && Boolean(process.env.CODEBUDDY_PLUGIN_ROOT);
 // Cursor (#817): CURSOR_VERSION is set only in the environment Cursor builds
 // for hook processes (Cursor 3.20.17 assigns it in exactly one place, the hook
 // env builder), so it never leaks into a Claude Code session running inside
 // Cursor's terminal. Cursor also sets it when it runs a Claude-format plugin's
 // hooks next to CLAUDE_PLUGIN_ROOT, and it needs Cursor-shaped JSON either
 // way, so this check comes after the hosts with their own data dirs.
-const isCursor = !isCopilot && !isCodex && !isQoder && !isCodeBuddy && Boolean(process.env.CURSOR_VERSION);
+const isCursor = !isCopilot && !isAntigravity && !isCodex && !isQoder && !isCodeBuddy && Boolean(process.env.CURSOR_VERSION);
 
 let stateDir = getClaudeDir();
+if (isAntigravity) {
+  stateDir = process.env.PLUGIN_DATA || process.env.ANTIGRAVITY_APP_DATA_DIR ||
+    path.join(os.homedir(), '.gemini', 'antigravity');
+}
 if (isCodex) stateDir = process.env.PLUGIN_DATA;
 // COPILOT_PLUGIN_DATA is unset under VS Code Copilot, so fall back to
 // getClaudeDir() rather than building a path from undefined.
@@ -157,6 +167,12 @@ function writeHookOutput(event, mode, context = '') {
     writeOut(JSON.stringify(output));
     return;
   }
+  if (isAntigravity) {
+    // KEEP: Antigravity requires nested systemMessage inside injectSteps to persist context across turns.
+    writeOut(JSON.stringify(
+      context ? { injectSteps: [{ systemMessage: { systemMessage: context } }] } : {}));
+    return;
+  }
   // Native Claude: SessionStart accepts raw stdout, but SubagentStart needs the
   // hookSpecificOutput JSON form or the context is dropped.
   if (event === 'SubagentStart') {
@@ -171,6 +187,7 @@ module.exports = {
   clearMode,
   cursorRuleNotice,
   cursorRulePath,
+  isAntigravity,
   isCodeBuddy,
   isCodex,
   isCopilot,

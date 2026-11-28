@@ -22,6 +22,7 @@ const { spawn, execFileSync } = require('child_process');
 
 const root = path.join(__dirname, '..');
 const HOOKS_JSON = 'hooks/claude-codex-hooks.json';
+const ANTIGRAVITY_HOOKS_JSON = 'hooks.json';
 const COPILOT_HOOKS_JSON = 'hooks/copilot-hooks.json';
 const HOST_PLUGIN_MANIFESTS = [
   '.claude-plugin/plugin.json',
@@ -50,6 +51,14 @@ function copilotCommands() {
   return Object.values(config.hooks)
     .flat()
     .flatMap((entry) => [entry.bash, entry.powershell]);
+}
+
+function antigravityHooks() {
+  const config = JSON.parse(fs.readFileSync(path.join(root, ANTIGRAVITY_HOOKS_JSON), 'utf8'));
+  return Object.values(config)
+    .flatMap((spec) => Object.values(spec))
+    .filter(Array.isArray)
+    .flat();
 }
 
 // commandWindows is not part of the supported hooks schema on the Claude.ai
@@ -162,6 +171,19 @@ test('copilot-hooks.json commands contain no plugin-root placeholder', () => {
   assert.ok(commands.length > 0, 'expected at least one copilot command entry');
   for (const cmd of commands) {
     assert.doesNotMatch(cmd, PLUGIN_ROOT_PLACEHOLDER, `command interpolates the plugin root into shell text: ${cmd}`);
+  }
+});
+
+test('root hooks.json commands are shell-agnostic, exist in hooks/, and avoid plugin-root placeholders', () => {
+  const hooks = antigravityHooks();
+  assert.ok(hooks.length > 0, 'expected at least one Antigravity hook entry');
+  for (const hook of hooks) {
+    assert.match(hook.command, /^node\s+/, `command must invoke node directly: ${hook.command}`);
+    assert.doesNotMatch(hook.command, POSIX_GUARD_SYNTAX, `command uses POSIX-only guard syntax: ${hook.command}`);
+    assert.doesNotMatch(hook.command, PLUGIN_ROOT_PLACEHOLDER, `command interpolates the plugin root: ${hook.command}`);
+    const match = hook.command.match(HOOK_SCRIPT);
+    assert.ok(match, `cannot find a hooks/ script in command: ${hook.command}`);
+    assert.ok(fs.existsSync(path.join(root, 'hooks', match[1])), `command references a missing hook script: ${match[1]}`);
   }
 });
 
