@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import inspect
 import json
 import os
 import re
@@ -203,12 +204,39 @@ def _make_skill_command_handler(ctx: Any, command: str) -> Callable[[str], str]:
     return handler
 
 
+def _skill_frontmatter(skill_md: Path) -> dict[str, Any]:
+    """SKILL.md frontmatter, or ``{}`` on a host without the parser or an unreadable file."""
+    try:
+        from agent.skill_utils import parse_frontmatter
+        return parse_frontmatter(skill_md.read_text(encoding="utf-8"))[0]
+    except Exception:
+        return {}
+
+
+def _register_skill(ctx: Any, name: str, skill_md: Path) -> None:
+    """Register a bundled skill with its SKILL.md frontmatter when the host accepts it.
+
+    Hermes defaults ``description`` to "" and ``frontmatter`` to empty when they are omitted, so
+    every bundled skill reached the ``<available_skills>`` index as a bare name. Without the
+    description the model cannot tell what a skill does or that its ruleset is already injected,
+    and guesses the qualified name (``plugin:ponytail`` resolves nowhere).
+    """
+    frontmatter = _skill_frontmatter(skill_md)
+    params = inspect.signature(ctx.register_skill).parameters
+    if "description" in params and "frontmatter" in params:
+        ctx.register_skill(name, skill_md,
+                           description=str(frontmatter.get("description") or ""),
+                           frontmatter=frontmatter)
+    else:  # Hermes before the description/frontmatter keywords: register as before
+        ctx.register_skill(name, skill_md)
+
+
 def register(ctx: Any) -> None:
     """Register Ponytail hooks, skills, and slash commands with Hermes."""
     for child in sorted(SKILLS_DIR.iterdir() if SKILLS_DIR.exists() else []):
         skill_md = child / "SKILL.md"
         if child.is_dir() and skill_md.exists():
-            ctx.register_skill(child.name, skill_md)
+            _register_skill(ctx, child.name, skill_md)
 
     ctx.register_hook("pre_llm_call", _pre_llm_call)
     ctx.register_hook("pre_gateway_dispatch", rewrite_gateway_command)
