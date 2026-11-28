@@ -2,7 +2,7 @@
 
 Pick your agent below. Not listed? Most agents read [`AGENTS.md`](AGENTS.md): copy it into your project, or ask your agent to install [`skills/ponytail/SKILL.md`](skills/ponytail/SKILL.md) as a skill. Which files map to which agent: [Agent portability](docs/agent-portability.md).
 
-The Claude Code and Codex plugins (and the Cursor hooks) run two tiny Node.js lifecycle hooks, so `node` needs to be on your PATH (note for Nix/nvm users: it must be on the non-interactive shell's PATH). If it isn't, the skills still work, but every hook call shows a harmless `node: command not found` error; installing Node (or putting it on that PATH) makes it go away.
+The Claude Code and Codex plugins (and the Cursor hooks) use Node.js for their lifecycle hooks. Keep `node` on the non-interactive shell's PATH so the host can run them.
 
 ## Claude Code
 
@@ -25,9 +25,22 @@ codex plugin marketplace add DietrichGebert/ponytail
 codex plugin add ponytail@ponytail
 ```
 
-Run `codex` and open `/hooks`, review and trust its two lifecycle hooks, and start a new thread.
+Run `codex` and open `/hooks`. Review and trust Ponytail's `SessionStart` and
+`UserPromptSubmit` hooks for startup rules and mode tracking, then start a new thread.
 
 This same install also covers the Codex desktop app: restart the app after installing and it picks up the plugin.
+
+### Verify Claude Code and Codex installs
+
+Run `claude plugin list --json` or `codex plugin list --marketplace ponytail --json`
+to check the installed version and whether the plugin is enabled. Codex's marketplace
+entry fetches the plugin from the repository's `main` branch. The installed version can
+differ from the version in the checkout used to add the marketplace.
+
+After installing or updating, start a fresh session. The session-start hook includes
+`PONYTAIL MODE ACTIVE` when Ponytail starts in an active mode. If activation is missing
+in Codex, check the hook's trust status in `/hooks`. If either host reports
+`node: command not found`, check Node.js on the non-interactive shell's PATH.
 
 ## GitHub Copilot CLI
 
